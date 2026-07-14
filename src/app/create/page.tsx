@@ -2,6 +2,24 @@
 
 import { useActionState, useState } from 'react'
 import { createItinerary } from '@/actions/itinerary'
+import * as pdfjsLib from 'pdfjs-dist'
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
+
+async function extractTextFromPdf(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer()
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  const pages: string[] = []
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const content = await page.getTextContent()
+    const pageText = content.items
+      .map((item) => ('str' in item ? item.str : ''))
+      .join(' ')
+    pages.push(pageText)
+  }
+  return pages.join('\n\n')
+}
 
 type DestItem = { type: 'activity' | 'food_drink'; name: string; notes: string }
 type Destination = { name: string; country: string; items: DestItem[] }
@@ -41,21 +59,16 @@ export default function CreatePage() {
     setExtracting(true)
     setExtractError(null)
     try {
-      // Step 1: upload PDF to Vercel Blob to avoid payload size limits
-      const fd = new FormData()
-      fd.append('file', file)
-      const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd })
-      if (!uploadRes.ok) {
-        const body = await uploadRes.json().catch(() => ({}))
-        throw new Error(body.error ?? 'Upload failed.')
+      // Extract text from PDF in the browser — no file upload needed
+      const text = await extractTextFromPdf(file)
+      if (!text.trim()) {
+        throw new Error('Could not read text from this PDF. It may be a scanned image.')
       }
-      const { url: pdfUrl } = await uploadRes.json()
 
-      // Step 2: send just the URL to Claude for extraction
       const res = await fetch('/api/extract-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: pdfUrl }),
+        body: JSON.stringify({ text }),
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
