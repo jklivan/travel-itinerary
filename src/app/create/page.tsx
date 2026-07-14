@@ -17,9 +17,61 @@ const labelClass = 'block text-sm font-medium text-gray-700 mb-1'
 export default function CreatePage() {
   const [state, action, pending] = useActionState(createItinerary, undefined)
 
+  // Basic fields (controlled so PDF import can pre-fill them)
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [budget, setBudget] = useState('')
+  const [currency, setCurrency] = useState('USD')
+  const [notes, setNotes] = useState('')
+
   const [destinations, setDestinations] = useState<Destination[]>([emptyDest()])
   const [photos, setPhotos] = useState<UploadedPhoto[]>([])
   const [uploading, setUploading] = useState(false)
+
+  // PDF import state
+  const [extracting, setExtracting] = useState(false)
+  const [extractError, setExtractError] = useState<string | null>(null)
+
+  // ── PDF import ────────────────────────────────────────────────────────────
+  async function handlePdfImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setExtracting(true)
+    setExtractError(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/extract-pdf', { method: 'POST', body: fd })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error ?? 'Extraction failed.')
+      }
+      const data = await res.json()
+      if (data.title) setTitle(data.title)
+      if (data.description) setDescription(data.description)
+      if (data.startDate) setStartDate(data.startDate)
+      if (data.endDate) setEndDate(data.endDate)
+      if (data.budget != null) setBudget(String(data.budget))
+      if (data.currency) setCurrency(data.currency)
+      if (data.notes) setNotes(data.notes)
+      if (Array.isArray(data.destinations) && data.destinations.length > 0) {
+        setDestinations(
+          data.destinations.map((d: Destination) => ({
+            name: d.name ?? '',
+            country: d.country ?? '',
+            items: Array.isArray(d.items) ? d.items : [],
+          }))
+        )
+      }
+    } catch (err) {
+      setExtractError(err instanceof Error ? err.message : 'Something went wrong.')
+    } finally {
+      setExtracting(false)
+      e.target.value = ''
+    }
+  }
 
   // ── Destinations ──────────────────────────────────────────────────────────
   function addDest() {
@@ -103,7 +155,45 @@ export default function CreatePage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Post an Itinerary</h1>
-      <p className="text-gray-500 text-sm mb-8">Share your trip with the world.</p>
+      <p className="text-gray-500 text-sm mb-6">Share your trip with the world.</p>
+
+      {/* ── PDF Import ─────────────────────────────────────────────────── */}
+      <div className="mb-8 bg-indigo-50 border border-indigo-200 rounded-2xl p-5">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl">📄</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-indigo-900 text-sm">Import from PDF</p>
+            <p className="text-xs text-indigo-600 mt-0.5">
+              Upload a PDF itinerary and we&apos;ll extract the details automatically.
+              Only confirmed trip items are imported — no AI suggestions.
+            </p>
+            {extractError && (
+              <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+                {extractError}
+              </p>
+            )}
+            {extracting && (
+              <p className="mt-2 text-xs text-indigo-700 animate-pulse">
+                Reading your itinerary…
+              </p>
+            )}
+          </div>
+          <label className={`shrink-0 cursor-pointer rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            extracting
+              ? 'bg-indigo-200 text-indigo-400 cursor-not-allowed'
+              : 'bg-indigo-600 text-white hover:bg-indigo-700'
+          }`}>
+            {extracting ? 'Extracting…' : 'Choose PDF'}
+            <input
+              type="file"
+              accept="application/pdf"
+              className="sr-only"
+              onChange={handlePdfImport}
+              disabled={extracting}
+            />
+          </label>
+        </div>
+      </div>
 
       <form action={action} className="space-y-8">
         <input type="hidden" name="destinations" value={JSON.stringify(destinations)} />
@@ -121,32 +211,38 @@ export default function CreatePage() {
           <div>
             <label htmlFor="title" className={labelClass}>Title *</label>
             <input id="title" name="title" type="text" required className={inputClass}
-              placeholder="e.g. 2 weeks through Southeast Asia" />
+              placeholder="e.g. 2 weeks through Southeast Asia"
+              value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div>
             <label htmlFor="description" className={labelClass}>Short description</label>
             <textarea id="description" name="description" rows={2} className={inputClass}
-              placeholder="A brief summary of the trip…" />
+              placeholder="A brief summary of the trip…"
+              value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="startDate" className={labelClass}>Start date *</label>
-              <input id="startDate" name="startDate" type="date" required className={inputClass} />
+              <input id="startDate" name="startDate" type="date" required className={inputClass}
+                value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </div>
             <div>
               <label htmlFor="endDate" className={labelClass}>End date *</label>
-              <input id="endDate" name="endDate" type="date" required className={inputClass} />
+              <input id="endDate" name="endDate" type="date" required className={inputClass}
+                value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="budget" className={labelClass}>Total budget</label>
               <input id="budget" name="budget" type="number" min="0" step="0.01"
-                className={inputClass} placeholder="e.g. 3000" />
+                className={inputClass} placeholder="e.g. 3000"
+                value={budget} onChange={(e) => setBudget(e.target.value)} />
             </div>
             <div>
               <label htmlFor="currency" className={labelClass}>Currency</label>
-              <select id="currency" name="currency" className={inputClass}>
+              <select id="currency" name="currency" className={inputClass}
+                value={currency} onChange={(e) => setCurrency(e.target.value)}>
                 {['USD','EUR','GBP','JPY','AUD','CAD','CHF','CNY','INR','MXN','BRL'].map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
@@ -278,7 +374,8 @@ export default function CreatePage() {
         <section className="bg-white rounded-2xl border border-gray-200 p-6">
           <h2 className="font-semibold text-gray-900 mb-4">General Notes</h2>
           <textarea name="notes" rows={3} className={inputClass}
-            placeholder="Tips, packing list, visa info, anything useful for other travellers…" />
+            placeholder="Tips, packing list, visa info, anything useful for other travellers…"
+            value={notes} onChange={(e) => setNotes(e.target.value)} />
         </section>
 
         {/* ── Photos ─────────────────────────────────────────────────── */}
