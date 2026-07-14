@@ -73,9 +73,11 @@ export async function POST(req: NextRequest) {
 CRITICAL RULES:
 - Only extract things CONFIRMED as part of this specific trip.
 - Do NOT add suggestions or recommendations not in the text.
-- If dates, budget, or currency are not stated, omit those fields.
+- Do NOT extract specific calendar dates or times anywhere. Instead, use relative labels like "Day 1", "Day 2" etc. in the notes field of each item to indicate when it occurs.
+- Do NOT populate startDate or endDate — leave those out entirely.
+- If budget or currency are not stated, omit those fields.
 - Classify as "activity" for sightseeing/experiences, "food_drink" for restaurants/bars/cafes.
-- Set "notes" to empty string if no notes for that item.
+- Set "notes" to empty string if there are no notes for that item (do not put a day label if the document doesn't organise things by day).
 
 DOCUMENT TEXT:
 ${text}`,
