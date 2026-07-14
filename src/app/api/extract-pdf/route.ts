@@ -7,22 +7,9 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
 export async function POST(req: NextRequest) {
   try {
-    const form = await req.formData()
-    const file = form.get('file') as File | null
-    if (!file || file.type !== 'application/pdf') {
-      return NextResponse.json({ error: 'A PDF file is required.' }, { status: 400 })
-    }
-
-    const buffer = await file.arrayBuffer()
-    const base64 = Buffer.from(buffer).toString('base64')
-
-    const documentBlock: Anthropic.DocumentBlockParam = {
-      type: 'document',
-      source: {
-        type: 'base64',
-        media_type: 'application/pdf',
-        data: base64,
-      },
+    const { url } = await req.json() as { url?: string }
+    if (!url) {
+      return NextResponse.json({ error: 'A PDF URL is required.' }, { status: 400 })
     }
 
     const response = await client.messages.create({
@@ -111,7 +98,10 @@ export async function POST(req: NextRequest) {
         {
           role: 'user',
           content: [
-            documentBlock,
+            {
+              type: 'document',
+              source: { type: 'url', url },
+            } as Anthropic.DocumentBlockParam,
             {
               type: 'text',
               text: `Extract the actual itinerary from this PDF.

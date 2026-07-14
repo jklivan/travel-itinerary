@@ -41,9 +41,22 @@ export default function CreatePage() {
     setExtracting(true)
     setExtractError(null)
     try {
+      // Step 1: upload PDF to Vercel Blob to avoid payload size limits
       const fd = new FormData()
       fd.append('file', file)
-      const res = await fetch('/api/extract-pdf', { method: 'POST', body: fd })
+      const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd })
+      if (!uploadRes.ok) {
+        const body = await uploadRes.json().catch(() => ({}))
+        throw new Error(body.error ?? 'Upload failed.')
+      }
+      const { url: pdfUrl } = await uploadRes.json()
+
+      // Step 2: send just the URL to Claude for extraction
+      const res = await fetch('/api/extract-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: pdfUrl }),
+      })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body.error ?? 'Extraction failed.')

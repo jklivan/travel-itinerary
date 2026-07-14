@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'No file provided' }, { status: 400 })
   }
 
-  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf']
   if (!allowed.includes(file.type)) {
     return Response.json({ error: 'Invalid file type' }, { status: 400 })
   }
