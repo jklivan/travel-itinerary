@@ -12,6 +12,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'A PDF URL is required.' }, { status: 400 })
     }
 
+    // Fetch the PDF from Vercel Blob server-side and convert to base64
+    const pdfRes = await fetch(url)
+    if (!pdfRes.ok) {
+      return NextResponse.json({ error: 'Could not fetch PDF from storage.' }, { status: 502 })
+    }
+    const pdfBuffer = await pdfRes.arrayBuffer()
+    const base64 = Buffer.from(pdfBuffer).toString('base64')
+
+    const documentBlock: Anthropic.DocumentBlockParam = {
+      type: 'document',
+      source: { type: 'base64', media_type: 'application/pdf', data: base64 },
+    }
+
     const response = await client.messages.create({
       model: 'claude-opus-4-6',
       max_tokens: 4096,
@@ -98,10 +111,7 @@ export async function POST(req: NextRequest) {
         {
           role: 'user',
           content: [
-            {
-              type: 'document',
-              source: { type: 'url', url },
-            } as Anthropic.DocumentBlockParam,
+            documentBlock,
             {
               type: 'text',
               text: `Extract the actual itinerary from this PDF.
