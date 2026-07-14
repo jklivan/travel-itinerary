@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id          String      @id @default(cuid())
+  email       String      @unique
+  name        String
+  password    String
+  itineraries Itinerary[]
+  createdAt   DateTime    @default(now())
+}
+
+model Itinerary {
+  id           String        @id @default(cuid())
+  title        String
+  description  String?
+  startDate    DateTime
+  endDate      DateTime
+  budget       Float?
+  currency     String        @default("USD")
+  notes        String?
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  destinations Destination[]
+  photos       Photo[]
+  createdAt    DateTime      @default(now())
+}
+
+model Destination {
+  id          String     @id @default(cuid())
+  name        String
+  country     String?
+  order       Int        @default(0)
+  itineraryId String
+  itinerary   Itinerary  @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  items       DestItem[]
+}
+
+// type: "activity" | "food_drink"
+model DestItem {
+  id            String      @id @default(cuid())
+  type          String
+  name          String
+  notes         String?
+  destinationId String
+  destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+}
+
+model Photo {
+  id          String    @id @default(cuid())
+  url         String
+  caption     String?
+  itineraryId String
+  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+}
