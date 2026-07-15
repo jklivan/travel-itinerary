@@ -34,7 +34,7 @@ export async function createItinerary(
   const destinations: {
     name: string
     country: string
-    items: { type: string; name: string; notes: string; rating: number }[]
+    items: { type: string; name: string; notes: string; rating: number; link: string }[]
   }[] = destinationsJson ? JSON.parse(destinationsJson) : []
 
   // Photos: URLs already uploaded, encoded as JSON
@@ -66,6 +66,7 @@ export async function createItinerary(
                 name: item.name.trim(),
                 notes: item.notes.trim() || null,
                 rating: item.rating > 0 ? item.rating : null,
+                link: item.link?.trim() || null,
               })),
           },
         })),

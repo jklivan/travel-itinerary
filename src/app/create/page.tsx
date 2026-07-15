@@ -19,11 +19,11 @@ async function extractTextFromPdf(file: File): Promise<string> {
   return pages.join('\n\n')
 }
 
-type DestItem = { type: 'activity' | 'food_drink'; name: string; notes: string; rating: number }
+type DestItem = { type: 'activity' | 'food_drink'; name: string; notes: string; rating: number; link: string }
 type Destination = { name: string; country: string; items: DestItem[] }
 type UploadedPhoto = { url: string; caption: string }
 
-const emptyItem = (): DestItem => ({ type: 'activity', name: '', notes: '', rating: 0 })
+const emptyItem = (): DestItem => ({ type: 'activity', name: '', notes: '', rating: 0, link: '' })
 
 function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
@@ -103,7 +103,15 @@ export default function CreatePage() {
           data.destinations.map((d: Destination) => ({
             name: d.name ?? '',
             country: d.country ?? '',
-            items: Array.isArray(d.items) ? d.items : [],
+            items: Array.isArray(d.items)
+              ? d.items.map((item: DestItem) => ({
+                  type: item.type ?? 'activity',
+                  name: item.name ?? '',
+                  notes: item.notes ?? '',
+                  rating: 0,
+                  link: item.link ?? '',
+                }))
+              : [],
           }))
         )
       }
@@ -132,7 +140,7 @@ export default function CreatePage() {
   function addItem(destIdx: number, type: 'activity' | 'food_drink') {
     setDestinations((d) =>
       d.map((dest, i) =>
-        i === destIdx ? { ...dest, items: [...dest.items, { type, name: '', notes: '', rating: 0 }] } : dest
+        i === destIdx ? { ...dest, items: [...dest.items, { type, name: '', notes: '', rating: 0, link: '' }] } : dest
       )
     )
   }
@@ -370,6 +378,13 @@ export default function CreatePage() {
                           className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-400"
                           placeholder="Notes (optional)"
                         />
+                        <input
+                          type="url"
+                          value={item.link}
+                          onChange={(e) => updateItem(destIdx, itemIdx, 'link', e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                          placeholder="🔗 Link (optional)"
+                        />
                       </div>
                       <button type="button" onClick={() => removeItem(destIdx, itemIdx)}
                         className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
@@ -416,6 +431,13 @@ export default function CreatePage() {
                           onChange={(e) => updateItem(destIdx, itemIdx, 'notes', e.target.value)}
                           className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-400"
                           placeholder="Notes (optional)"
+                        />
+                        <input
+                          type="url"
+                          value={item.link}
+                          onChange={(e) => updateItem(destIdx, itemIdx, 'link', e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                          placeholder="🔗 Link (optional)"
                         />
                       </div>
                       <button type="button" onClick={() => removeItem(destIdx, itemIdx)}

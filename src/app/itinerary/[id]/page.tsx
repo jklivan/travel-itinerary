@@ -110,6 +110,12 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                             {item.notes && (
                               <p className="text-xs text-gray-500 mt-0.5">{item.notes}</p>
                             )}
+                            {item.link && (
+                              <a href={item.link} target="_blank" rel="noopener noreferrer"
+                                className="text-xs text-indigo-500 hover:underline mt-0.5 inline-block">
+                                🔗 Official site
+                              </a>
+                            )}
                           </div>
                         </li>
                       ))}
@@ -133,6 +139,12 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                             </div>
                             {item.notes && (
                               <p className="text-xs text-gray-500 mt-0.5">{item.notes}</p>
+                            )}
+                            {item.link && (
+                              <a href={item.link} target="_blank" rel="noopener noreferrer"
+                                className="text-xs text-indigo-500 hover:underline mt-0.5 inline-block">
+                                🔗 Official site
+                              </a>
                             )}
                           </div>
                         </li>

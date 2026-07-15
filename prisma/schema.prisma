@@ -49,6 +49,7 @@ model DestItem {
   name          String
   notes         String?
   rating        Int?
+  link          String?
   destinationId String
   destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
 }
