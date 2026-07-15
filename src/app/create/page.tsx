@@ -19,11 +19,29 @@ async function extractTextFromPdf(file: File): Promise<string> {
   return pages.join('\n\n')
 }
 
-type DestItem = { type: 'activity' | 'food_drink'; name: string; notes: string }
+type DestItem = { type: 'activity' | 'food_drink'; name: string; notes: string; rating: number }
 type Destination = { name: string; country: string; items: DestItem[] }
 type UploadedPhoto = { url: string; caption: string }
 
-const emptyItem = (): DestItem => ({ type: 'activity', name: '', notes: '' })
+const emptyItem = (): DestItem => ({ type: 'activity', name: '', notes: '', rating: 0 })
+
+function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          type="button"
+          onClick={() => onChange(value === star ? 0 : star)}
+          className="text-lg leading-none focus:outline-none"
+          aria-label={`${star} star${star !== 1 ? 's' : ''}`}
+        >
+          <span className={star <= value ? 'text-yellow-400' : 'text-gray-300'}>★</span>
+        </button>
+      ))}
+    </div>
+  )
+}
 const emptyDest = (): Destination => ({ name: '', country: '', items: [emptyItem()] })
 
 const inputClass =
@@ -114,7 +132,7 @@ export default function CreatePage() {
   function addItem(destIdx: number, type: 'activity' | 'food_drink') {
     setDestinations((d) =>
       d.map((dest, i) =>
-        i === destIdx ? { ...dest, items: [...dest.items, { type, name: '', notes: '' }] } : dest
+        i === destIdx ? { ...dest, items: [...dest.items, { type, name: '', notes: '', rating: 0 }] } : dest
       )
     )
   }
@@ -139,7 +157,9 @@ export default function CreatePage() {
           ? {
               ...dest,
               items: dest.items.map((item, j) =>
-                j === itemIdx ? { ...item, [field]: val } : item
+                j === itemIdx
+                  ? { ...item, [field]: field === 'rating' ? Number(val) : val }
+                  : item
               ),
             }
           : dest
@@ -336,13 +356,19 @@ export default function CreatePage() {
                           className={inputClass}
                           placeholder="e.g. Temple tour, Hiking, Museum visit"
                         />
-                        <input
-                          type="text"
-                          value={item.notes}
-                          onChange={(e) => updateItem(destIdx, itemIdx, 'notes', e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                          placeholder="Notes (optional)"
-                        />
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="text"
+                            value={item.notes}
+                            onChange={(e) => updateItem(destIdx, itemIdx, 'notes', e.target.value)}
+                            className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                            placeholder="Notes (optional)"
+                          />
+                          <StarRating
+                            value={item.rating}
+                            onChange={(v) => updateItem(destIdx, itemIdx, 'rating', String(v))}
+                          />
+                        </div>
                       </div>
                       <button type="button" onClick={() => removeItem(destIdx, itemIdx)}
                         className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
@@ -376,13 +402,19 @@ export default function CreatePage() {
                           className={inputClass}
                           placeholder="e.g. Ramen Ichiran, Rooftop bar, Street market"
                         />
-                        <input
-                          type="text"
-                          value={item.notes}
-                          onChange={(e) => updateItem(destIdx, itemIdx, 'notes', e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                          placeholder="Notes (optional)"
-                        />
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="text"
+                            value={item.notes}
+                            onChange={(e) => updateItem(destIdx, itemIdx, 'notes', e.target.value)}
+                            className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                            placeholder="Notes (optional)"
+                          />
+                          <StarRating
+                            value={item.rating}
+                            onChange={(v) => updateItem(destIdx, itemIdx, 'rating', String(v))}
+                          />
+                        </div>
                       </div>
                       <button type="button" onClick={() => removeItem(destIdx, itemIdx)}
                         className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>

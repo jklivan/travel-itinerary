@@ -3,6 +3,17 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+function Stars({ rating }: { rating: number | null }) {
+  if (!rating) return null
+  return (
+    <span className="text-sm leading-none">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <span key={s} className={s <= rating ? 'text-yellow-400' : 'text-gray-200'}>★</span>
+      ))}
+    </span>
+  )
+}
+
 export default async function ItineraryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
@@ -92,7 +103,10 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                         <li key={item.id} className="flex gap-3">
                           <span className="text-indigo-500 mt-0.5">🎯</span>
                           <div>
-                            <span className="text-sm font-medium text-gray-800">{item.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-gray-800">{item.name}</span>
+                              <Stars rating={item.rating} />
+                            </div>
                             {item.notes && (
                               <p className="text-xs text-gray-500 mt-0.5">{item.notes}</p>
                             )}
@@ -113,7 +127,10 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                         <li key={item.id} className="flex gap-3">
                           <span className="mt-0.5">🍜</span>
                           <div>
-                            <span className="text-sm font-medium text-gray-800">{item.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-gray-800">{item.name}</span>
+                              <Stars rating={item.rating} />
+                            </div>
                             {item.notes && (
                               <p className="text-xs text-gray-500 mt-0.5">{item.notes}</p>
                             )}
