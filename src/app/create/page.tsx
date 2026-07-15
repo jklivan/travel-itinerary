@@ -356,19 +356,20 @@ export default function CreatePage() {
                           className={inputClass}
                           placeholder="e.g. Temple tour, Hiking, Museum visit"
                         />
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="text"
-                            value={item.notes}
-                            onChange={(e) => updateItem(destIdx, itemIdx, 'notes', e.target.value)}
-                            className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                            placeholder="Notes (optional)"
-                          />
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-400 shrink-0">Rate it!</span>
                           <StarRating
                             value={item.rating}
                             onChange={(v) => updateItem(destIdx, itemIdx, 'rating', String(v))}
                           />
                         </div>
+                        <input
+                          type="text"
+                          value={item.notes}
+                          onChange={(e) => updateItem(destIdx, itemIdx, 'notes', e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                          placeholder="Notes (optional)"
+                        />
                       </div>
                       <button type="button" onClick={() => removeItem(destIdx, itemIdx)}
                         className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
@@ -402,19 +403,20 @@ export default function CreatePage() {
                           className={inputClass}
                           placeholder="e.g. Ramen Ichiran, Rooftop bar, Street market"
                         />
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="text"
-                            value={item.notes}
-                            onChange={(e) => updateItem(destIdx, itemIdx, 'notes', e.target.value)}
-                            className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                            placeholder="Notes (optional)"
-                          />
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-400 shrink-0">Rate it!</span>
                           <StarRating
                             value={item.rating}
                             onChange={(v) => updateItem(destIdx, itemIdx, 'rating', String(v))}
                           />
                         </div>
+                        <input
+                          type="text"
+                          value={item.notes}
+                          onChange={(e) => updateItem(destIdx, itemIdx, 'notes', e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                          placeholder="Notes (optional)"
+                        />
                       </div>
                       <button type="button" onClick={() => removeItem(destIdx, itemIdx)}
                         className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
