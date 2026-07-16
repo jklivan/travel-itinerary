@@ -49,7 +49,7 @@ export default async function FeedPage({
           <h1 className="text-3xl font-bold text-gray-900">
             {searchQuery ? `"${searchQuery}"` : 'Itineraries'}
           </h1>
-          <p className="text-gray-500 mt-1">
+          <p className="text-gray-700 mt-1">
             {searchQuery
               ? <Link href="/" className="text-indigo-500 hover:underline text-sm">← Clear search</Link>
               : 'Discover trips planned by travellers around the world.'}
@@ -75,9 +75,9 @@ export default async function FeedPage({
       </div>
 
       {itineraries.length === 0 ? (
-        <div className="text-center py-24 text-gray-400">
+        <div className="text-center py-24 text-gray-600">
           <p className="text-5xl mb-4">{isFriends ? '👥' : '🌍'}</p>
-          <p className="text-lg font-medium text-gray-500">
+          <p className="text-lg font-medium text-gray-700">
             {isFriends ? 'No itineraries from friends yet.' : 'No itineraries yet.'}
           </p>
           <p className="text-sm mt-1">

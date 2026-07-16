@@ -19,7 +19,7 @@ function FollowButton({
 }) {
   return isFollowing ? (
     <button onClick={() => onUnfollow(userId)}
-      className="text-xs font-medium px-3 py-1 rounded-full border border-gray-300 text-gray-500 hover:border-red-300 hover:text-red-500 transition-colors">
+      className="text-xs font-medium px-3 py-1 rounded-full border border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-500 transition-colors">
       Following
     </button>
   ) : (
@@ -104,7 +104,7 @@ export default function FriendsUI({ following }: { following: User[] }) {
               </button>
             </form>
             {nameSearched && nameResults.length === 0 && (
-              <p className="mt-4 text-sm text-gray-400 italic">No users found.</p>
+              <p className="mt-4 text-sm text-gray-600 italic">No users found.</p>
             )}
             {nameResults.length > 0 && (
               <ul className="mt-4 divide-y divide-gray-100">
@@ -133,7 +133,7 @@ export default function FriendsUI({ following }: { following: User[] }) {
               </button>
             </form>
             {destSearched && destResults.length === 0 && (
-              <p className="mt-4 text-sm text-gray-400 italic">No travellers found for that destination.</p>
+              <p className="mt-4 text-sm text-gray-600 italic">No travellers found for that destination.</p>
             )}
             {destResults.length > 0 && (
               <ul className="mt-4 divide-y divide-gray-100">
@@ -141,7 +141,7 @@ export default function FriendsUI({ following }: { following: User[] }) {
                   <li key={user.id} className="flex items-center justify-between py-3 gap-4">
                     <div>
                       <p className="text-sm font-medium text-gray-800">{user.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
+                      <p className="text-xs text-gray-600 mt-0.5">
                         📍 {user.matchedDestinations.join(' · ')}
                       </p>
                     </div>
@@ -160,11 +160,11 @@ export default function FriendsUI({ following }: { following: User[] }) {
         <h2 className="font-semibold text-gray-900 mb-4">
           People you follow
           {followingIds.size > 0 && (
-            <span className="ml-2 text-sm font-normal text-gray-400">({followingIds.size})</span>
+            <span className="ml-2 text-sm font-normal text-gray-600">({followingIds.size})</span>
           )}
         </h2>
         {followingIds.size === 0 ? (
-          <p className="text-sm text-gray-400 italic">
+          <p className="text-sm text-gray-600 italic">
             You&apos;re not following anyone yet. Search above to find travellers.
           </p>
         ) : (
@@ -173,7 +173,7 @@ export default function FriendsUI({ following }: { following: User[] }) {
               <li key={user.id} className="flex items-center justify-between py-3">
                 <span className="text-sm font-medium text-gray-800">{user.name}</span>
                 <button onClick={() => handleUnfollow(user.id)}
-                  className="text-xs font-medium px-3 py-1 rounded-full border border-gray-300 text-gray-500 hover:border-red-300 hover:text-red-500 transition-colors">
+                  className="text-xs font-medium px-3 py-1 rounded-full border border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-500 transition-colors">
                   Unfollow
                 </button>
               </li>

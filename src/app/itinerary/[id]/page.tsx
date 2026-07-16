@@ -10,7 +10,7 @@ function Stars({ rating }: { rating: number | null }) {
   return (
     <span className="text-sm leading-none">
       {[1, 2, 3, 4, 5].map((s) => (
-        <span key={s} className={s <= rating ? 'text-yellow-400' : 'text-gray-200'}>★</span>
+        <span key={s} className={s <= rating ? 'text-yellow-400' : 'text-gray-300'}>★</span>
       ))}
     </span>
   )
@@ -80,9 +80,9 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
         </div>
 
         <h1 className="text-3xl font-bold text-gray-900 leading-tight">{it.title}</h1>
-        {it.description && <p className="text-gray-600 mt-2 text-base">{it.description}</p>}
+        {it.description && <p className="text-gray-700 mt-2 text-base">{it.description}</p>}
 
-        <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-500">
+        <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-700">
           <span>📅 {fmtShort(it.startDate)} – {fmtShort(it.endDate)} ({days} days)</span>
           <div className="flex items-center gap-3">
             <span>✍️ {it.user.name}</span>
@@ -120,7 +120,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                 if (items.length === 0) return null
                 return (
                   <div key={type} className="mb-4 last:mb-0">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
                       {icon} {label}
                     </p>
                     <ul className="space-y-2">
@@ -132,7 +132,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                               <Stars rating={item.rating} />
                             </div>
                             {item.notes && (
-                              <p className="text-xs text-gray-500 mt-0.5">{item.notes}</p>
+                              <p className="text-xs text-gray-700 mt-0.5">{item.notes}</p>
                             )}
                             {item.link && (
                               <a href={item.link} target="_blank" rel="noopener noreferrer"
@@ -149,7 +149,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
               })}
 
               {dest.items.length === 0 && (
-                <p className="text-sm text-gray-400 italic">No items listed.</p>
+                <p className="text-sm text-gray-600 italic">No items listed.</p>
               )}
             </div>
           ))}
@@ -175,7 +175,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                   <Image src={photo.url} alt={photo.caption ?? ''} fill className="object-cover" />
                 </div>
                 {photo.caption && (
-                  <p className="text-xs text-gray-500 text-center">{photo.caption}</p>
+                  <p className="text-xs text-gray-700 text-center">{photo.caption}</p>
                 )}
               </div>
             ))}

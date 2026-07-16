@@ -59,15 +59,15 @@ export default function ItineraryCard({
             {title}
           </h2>
           {description && (
-            <p className="text-sm text-gray-500 mt-1 line-clamp-2">{description}</p>
+            <p className="text-sm text-gray-700 mt-1 line-clamp-2">{description}</p>
           )}
-          <div className="mt-4 flex items-center justify-between text-xs text-gray-400">
+          <div className="mt-4 flex items-center justify-between text-xs text-gray-600">
             <div className="flex gap-3">
               <span>{formatDate(startDate)}</span>
               <span>·</span>
               <span>{tripLength(startDate, endDate)}</span>
             </div>
-            <span className="font-medium text-gray-500">{authorName}</span>
+            <span className="font-medium text-gray-700">{authorName}</span>
           </div>
         </div>
       </div>

@@ -35,7 +35,7 @@ export default async function Navbar() {
               >
                 <button
                   type="submit"
-                  className="text-sm text-gray-500 hover:text-gray-800 transition-colors"
+                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   Sign out
                 </button>
