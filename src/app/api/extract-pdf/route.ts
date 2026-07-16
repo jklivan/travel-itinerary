@@ -84,6 +84,7 @@ RULES:
 - Do NOT populate startDate or endDate.
 - Classify as "activity" for sightseeing/experiences, "food_drink" for restaurants/bars/cafes.
 - Set "notes" to empty string if no notes exist for an item.
+- Do NOT include transportation logistics: skip anything that is purely about pick-up, drop-off, transfers, airport/hotel shuttles, departure/arrival times, or transit between locations. Only include destinations and things to do, eat, or stay at those destinations.
 
 DOCUMENT:
 ${text}`,
