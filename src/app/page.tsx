@@ -6,11 +6,12 @@ import Link from 'next/link'
 export default async function FeedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string }>
+  searchParams: Promise<{ view?: string; search?: string }>
 }) {
-  const { view } = await searchParams
+  const { view, search } = await searchParams
   const session = await auth()
   const isFriends = view === 'friends' && !!session?.user?.id
+  const searchQuery = search?.trim() || ''
 
   let userIdFilter: { in: string[] } | undefined
   if (isFriends && session?.user?.id) {
@@ -20,7 +21,19 @@ export default async function FeedPage({
   }
 
   const itineraries = await prisma.itinerary.findMany({
-    where: isFriends ? { userId: userIdFilter } : undefined,
+    where: {
+      ...(isFriends && userIdFilter ? { userId: userIdFilter } : {}),
+      ...(searchQuery ? {
+        destinations: {
+          some: {
+            OR: [
+              { name: { contains: searchQuery, mode: 'insensitive' } },
+              { country: { contains: searchQuery, mode: 'insensitive' } },
+            ],
+          },
+        },
+      } : {}),
+    },
     orderBy: { createdAt: 'desc' },
     include: {
       user: { select: { name: true } },
@@ -33,8 +46,14 @@ export default async function FeedPage({
     <div className="max-w-6xl mx-auto px-4 py-10">
       <div className="mb-8 flex items-end justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Itineraries</h1>
-          <p className="text-gray-500 mt-1">Discover trips planned by travellers around the world.</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {searchQuery ? `"${searchQuery}"` : 'Itineraries'}
+          </h1>
+          <p className="text-gray-500 mt-1">
+            {searchQuery
+              ? <Link href="/" className="text-indigo-500 hover:underline text-sm">← Clear search</Link>
+              : 'Discover trips planned by travellers around the world.'}
+          </p>
         </div>
 
         {session?.user && (

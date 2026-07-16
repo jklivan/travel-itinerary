@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { auth, signOut } from '@/auth'
+import NavSearch from './NavSearch'
 
 export default async function Navbar() {
   const session = await auth()
@@ -11,6 +12,7 @@ export default async function Navbar() {
           TravelShare
         </Link>
         <div className="flex items-center gap-4">
+          <NavSearch />
           {session?.user ? (
             <>
               <span className="text-sm text-gray-600 hidden sm:block">

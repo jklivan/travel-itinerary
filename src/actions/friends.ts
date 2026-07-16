@@ -36,3 +36,59 @@ export async function searchUsers(query: string): Promise<{ id: string; name: st
     take: 10,
   })
 }
+
+export async function searchUsersByDestination(
+  destination: string
+): Promise<{ id: string; name: string; matchedDestinations: string[] }[]> {
+  const session = await auth()
+  if (!session?.user?.id || !destination.trim()) return []
+
+  const q = destination.trim()
+  const users = await prisma.user.findMany({
+    where: {
+      id: { not: session.user.id },
+      itineraries: {
+        some: {
+          destinations: {
+            some: {
+              OR: [
+                { name: { contains: q, mode: 'insensitive' } },
+                { country: { contains: q, mode: 'insensitive' } },
+              ],
+            },
+          },
+        },
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      itineraries: {
+        select: {
+          destinations: {
+            where: {
+              OR: [
+                { name: { contains: q, mode: 'insensitive' } },
+                { country: { contains: q, mode: 'insensitive' } },
+              ],
+            },
+            select: { name: true, country: true },
+          },
+        },
+      },
+    },
+    take: 10,
+  })
+
+  return users.map((u) => ({
+    id: u.id,
+    name: u.name,
+    matchedDestinations: [
+      ...new Set(
+        u.itineraries
+          .flatMap((i) => i.destinations)
+          .map((d) => (d.country ? `${d.name}, ${d.country}` : d.name))
+      ),
+    ],
+  }))
+}
