@@ -7,8 +7,7 @@ type Props = {
   description: string | null
   startDate: Date
   endDate: Date
-  budget: number | null
-  currency: string
+  audience: string
   authorName: string
   destinations: { name: string; country: string | null }[]
   coverPhoto: string | null
@@ -25,20 +24,16 @@ function tripLength(start: Date, end: Date) {
 }
 
 export default function ItineraryCard({
-  id, title, description, startDate, endDate, budget, currency,
-  authorName, destinations, coverPhoto, createdAt,
+  id, title, description, startDate, endDate, audience,
+  authorName, destinations, coverPhoto,
 }: Props) {
   return (
     <Link href={`/itinerary/${id}`} className="block group">
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
         {coverPhoto ? (
           <div className="relative h-48 w-full bg-gray-100">
-            <Image
-              src={coverPhoto}
-              alt={title}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
-            />
+            <Image src={coverPhoto} alt={title} fill
+              className="object-cover group-hover:scale-105 transition-transform duration-300" />
           </div>
         ) : (
           <div className="h-48 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
@@ -48,13 +43,17 @@ export default function ItineraryCard({
         <div className="p-5">
           <div className="flex flex-wrap gap-1 mb-3">
             {destinations.map((d, i) => (
-              <span
-                key={i}
-                className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium"
-              >
+              <span key={i} className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
                 {d.name}{d.country ? `, ${d.country}` : ''}
               </span>
             ))}
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+              audience === 'adult'
+                ? 'bg-rose-50 text-rose-600'
+                : 'bg-green-50 text-green-700'
+            }`}>
+              {audience === 'adult' ? 'Adults only' : 'Family friendly'}
+            </span>
           </div>
           <h2 className="font-semibold text-gray-900 text-lg leading-snug group-hover:text-indigo-600 transition-colors">
             {title}
@@ -67,12 +66,6 @@ export default function ItineraryCard({
               <span>{formatDate(startDate)}</span>
               <span>·</span>
               <span>{tripLength(startDate, endDate)}</span>
-              {budget && (
-                <>
-                  <span>·</span>
-                  <span>{currency} {budget.toLocaleString()}</span>
-                </>
-              )}
             </div>
             <span className="font-medium text-gray-500">{authorName}</span>
           </div>

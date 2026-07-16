@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { createItinerary } from '@/actions/itinerary'
+
 async function extractTextFromPdf(file: File): Promise<string> {
   const pdfjsLib = await import('pdfjs-dist')
   pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
@@ -11,60 +12,100 @@ async function extractTextFromPdf(file: File): Promise<string> {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i)
     const content = await page.getTextContent()
-    const pageText = content.items
-      .map((item) => ('str' in item ? item.str : ''))
-      .join(' ')
-    pages.push(pageText)
+    pages.push(content.items.map((item) => ('str' in item ? item.str : '')).join(' '))
   }
   return pages.join('\n\n')
 }
 
-type DestItem = { type: 'activity' | 'food_drink'; name: string; notes: string; rating: number; link: string }
+type DestItem = {
+  type: 'hotel' | 'food_drink' | 'activity'
+  name: string
+  notes: string
+  rating: number
+  link: string
+}
 type Destination = { name: string; country: string; items: DestItem[] }
 type UploadedPhoto = { url: string; caption: string }
 
-const emptyItem = (): DestItem => ({ type: 'activity', name: '', notes: '', rating: 0, link: '' })
+const emptyItem = (type: DestItem['type'] = 'activity'): DestItem => ({
+  type, name: '', notes: '', rating: 0, link: '',
+})
+const emptyDest = (): Destination => ({ name: '', country: '', items: [] })
+
+const inputClass =
+  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+const labelClass = 'block text-sm font-medium text-gray-700 mb-1'
 
 function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
     <div className="flex gap-0.5">
       {[1, 2, 3, 4, 5].map((star) => (
-        <button
-          key={star}
-          type="button"
+        <button key={star} type="button"
           onClick={() => onChange(value === star ? 0 : star)}
           className="text-lg leading-none focus:outline-none"
-          aria-label={`${star} star${star !== 1 ? 's' : ''}`}
-        >
+          aria-label={`${star} star${star !== 1 ? 's' : ''}`}>
           <span className={star <= value ? 'text-yellow-400' : 'text-gray-300'}>★</span>
         </button>
       ))}
     </div>
   )
 }
-const emptyDest = (): Destination => ({ name: '', country: '', items: [emptyItem()] })
 
-const inputClass =
-  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
-const labelClass = 'block text-sm font-medium text-gray-700 mb-1'
+function ItemRow({
+  item, destIdx, itemIdx,
+  onUpdate, onRemove,
+}: {
+  item: DestItem
+  destIdx: number
+  itemIdx: number
+  onUpdate: (field: keyof DestItem, val: string) => void
+  onRemove: () => void
+}) {
+  const placeholder =
+    item.type === 'hotel'
+      ? 'e.g. The Marriott, Airbnb, Hostel name'
+      : item.type === 'food_drink'
+      ? 'e.g. Ramen Ichiran, Rooftop bar, Street market'
+      : 'e.g. Temple tour, Hiking, Museum visit'
+
+  return (
+    <div className="flex gap-2 items-start">
+      <div className="flex-1 space-y-1">
+        <input type="text" value={item.name}
+          onChange={(e) => onUpdate('name', e.target.value)}
+          className={inputClass} placeholder={placeholder} />
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400 shrink-0">Rate it!</span>
+          <StarRating value={item.rating}
+            onChange={(v) => onUpdate('rating', String(v))} />
+        </div>
+        <input type="text" value={item.notes}
+          onChange={(e) => onUpdate('notes', e.target.value)}
+          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+          placeholder="Notes (optional)" />
+        <input type="url" value={item.link}
+          onChange={(e) => onUpdate('link', e.target.value)}
+          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+          placeholder="🔗 Link (optional)" />
+      </div>
+      <button type="button" onClick={onRemove}
+        className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
+    </div>
+  )
+}
 
 export default function CreatePage() {
   const [state, action, pending] = useActionState(createItinerary, undefined)
 
-  // Basic fields (controlled so PDF import can pre-fill them)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [budget, setBudget] = useState('')
-  const [currency, setCurrency] = useState('USD')
+  const [isAdult, setIsAdult] = useState(false)
   const [notes, setNotes] = useState('')
-
   const [destinations, setDestinations] = useState<Destination[]>([emptyDest()])
   const [photos, setPhotos] = useState<UploadedPhoto[]>([])
   const [uploading, setUploading] = useState(false)
-
-  // PDF import state
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState<string | null>(null)
 
@@ -75,12 +116,8 @@ export default function CreatePage() {
     setExtracting(true)
     setExtractError(null)
     try {
-      // Extract text from PDF in the browser — no file upload needed
       const text = await extractTextFromPdf(file)
-      if (!text.trim()) {
-        throw new Error('Could not read text from this PDF. It may be a scanned image.')
-      }
-
+      if (!text.trim()) throw new Error('Could not read text from this PDF. It may be a scanned image.')
       const res = await fetch('/api/extract-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -95,8 +132,6 @@ export default function CreatePage() {
       if (data.description) setDescription(data.description)
       if (data.startDate) setStartDate(data.startDate)
       if (data.endDate) setEndDate(data.endDate)
-      if (data.budget != null) setBudget(String(data.budget))
-      if (data.currency) setCurrency(data.currency)
       if (data.notes) setNotes(data.notes)
       if (Array.isArray(data.destinations) && data.destinations.length > 0) {
         setDestinations(
@@ -124,55 +159,30 @@ export default function CreatePage() {
   }
 
   // ── Destinations ──────────────────────────────────────────────────────────
-  function addDest() {
-    setDestinations((d) => [...d, emptyDest()])
-  }
-  function removeDest(i: number) {
-    setDestinations((d) => d.filter((_, idx) => idx !== i))
-  }
+  function addDest() { setDestinations((d) => [...d, emptyDest()]) }
+  function removeDest(i: number) { setDestinations((d) => d.filter((_, idx) => idx !== i)) }
   function updateDest(i: number, field: 'name' | 'country', val: string) {
-    setDestinations((d) =>
-      d.map((dest, idx) => (idx === i ? { ...dest, [field]: val } : dest))
-    )
+    setDestinations((d) => d.map((dest, idx) => idx === i ? { ...dest, [field]: val } : dest))
   }
-
-  // ── Items (per destination) ───────────────────────────────────────────────
-  function addItem(destIdx: number, type: 'activity' | 'food_drink') {
-    setDestinations((d) =>
-      d.map((dest, i) =>
-        i === destIdx ? { ...dest, items: [...dest.items, { type, name: '', notes: '', rating: 0, link: '' }] } : dest
-      )
-    )
+  function addItem(destIdx: number, type: DestItem['type']) {
+    setDestinations((d) => d.map((dest, i) =>
+      i === destIdx ? { ...dest, items: [...dest.items, emptyItem(type)] } : dest
+    ))
   }
   function removeItem(destIdx: number, itemIdx: number) {
-    setDestinations((d) =>
-      d.map((dest, i) =>
-        i === destIdx
-          ? { ...dest, items: dest.items.filter((_, j) => j !== itemIdx) }
-          : dest
-      )
-    )
+    setDestinations((d) => d.map((dest, i) =>
+      i === destIdx ? { ...dest, items: dest.items.filter((_, j) => j !== itemIdx) } : dest
+    ))
   }
-  function updateItem(
-    destIdx: number,
-    itemIdx: number,
-    field: keyof DestItem,
-    val: string
-  ) {
-    setDestinations((d) =>
-      d.map((dest, i) =>
-        i === destIdx
-          ? {
-              ...dest,
-              items: dest.items.map((item, j) =>
-                j === itemIdx
-                  ? { ...item, [field]: field === 'rating' ? Number(val) : val }
-                  : item
-              ),
-            }
-          : dest
-      )
-    )
+  function updateItem(destIdx: number, itemIdx: number, field: keyof DestItem, val: string) {
+    setDestinations((d) => d.map((dest, i) =>
+      i === destIdx ? {
+        ...dest,
+        items: dest.items.map((item, j) =>
+          j === itemIdx ? { ...item, [field]: field === 'rating' ? Number(val) : val } : item
+        ),
+      } : dest
+    ))
   }
 
   // ── Photos ────────────────────────────────────────────────────────────────
@@ -194,15 +204,19 @@ export default function CreatePage() {
     setUploading(false)
     e.target.value = ''
   }
-  function removePhoto(i: number) {
-    setPhotos((p) => p.filter((_, idx) => idx !== i))
-  }
+  function removePhoto(i: number) { setPhotos((p) => p.filter((_, idx) => idx !== i)) }
   function updateCaption(i: number, val: string) {
-    setPhotos((p) => p.map((ph, idx) => (idx === i ? { ...ph, caption: val } : ph)))
+    setPhotos((p) => p.map((ph, idx) => idx === i ? { ...ph, caption: val } : ph))
   }
 
-  const activities = (dest: Destination) => dest.items.filter((it) => it.type === 'activity')
-  const foodDrink = (dest: Destination) => dest.items.filter((it) => it.type === 'food_drink')
+  const byType = (dest: Destination, type: DestItem['type']) =>
+    dest.items.filter((it) => it.type === type)
+
+  const sections: { type: DestItem['type']; label: string; icon: string; btnLabel: string }[] = [
+    { type: 'hotel',     label: 'Hotels',      icon: '🏨', btnLabel: '+ Add hotel' },
+    { type: 'food_drink',label: 'Food & Drink', icon: '🍜', btnLabel: '+ Add place' },
+    { type: 'activity',  label: 'Activities',  icon: '🎯', btnLabel: '+ Add activity' },
+  ]
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
@@ -217,7 +231,6 @@ export default function CreatePage() {
             <p className="font-medium text-indigo-900 text-sm">Import from PDF</p>
             <p className="text-xs text-indigo-600 mt-0.5">
               Upload a PDF itinerary and we&apos;ll extract the details automatically.
-              Only confirmed trip items are imported — no AI suggestions.
             </p>
             {extractError && (
               <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
@@ -225,24 +238,15 @@ export default function CreatePage() {
               </p>
             )}
             {extracting && (
-              <p className="mt-2 text-xs text-indigo-700 animate-pulse">
-                Reading your itinerary…
-              </p>
+              <p className="mt-2 text-xs text-indigo-700 animate-pulse">Reading your itinerary…</p>
             )}
           </div>
           <label className={`shrink-0 cursor-pointer rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-            extracting
-              ? 'bg-indigo-200 text-indigo-400 cursor-not-allowed'
-              : 'bg-indigo-600 text-white hover:bg-indigo-700'
+            extracting ? 'bg-indigo-200 text-indigo-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'
           }`}>
             {extracting ? 'Extracting…' : 'Choose PDF'}
-            <input
-              type="file"
-              accept="application/pdf"
-              className="sr-only"
-              onChange={handlePdfImport}
-              disabled={extracting}
-            />
+            <input type="file" accept="application/pdf" className="sr-only"
+              onChange={handlePdfImport} disabled={extracting} />
           </label>
         </div>
       </div>
@@ -250,6 +254,7 @@ export default function CreatePage() {
       <form action={action} className="space-y-8">
         <input type="hidden" name="destinations" value={JSON.stringify(destinations)} />
         <input type="hidden" name="photos" value={JSON.stringify(photos)} />
+        <input type="hidden" name="audience" value={isAdult ? 'adult' : 'family'} />
 
         {state?.error && (
           <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
@@ -284,23 +289,16 @@ export default function CreatePage() {
                 value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="budget" className={labelClass}>Total budget</label>
-              <input id="budget" name="budget" type="number" min="0" step="0.01"
-                className={inputClass} placeholder="e.g. 3000"
-                value={budget} onChange={(e) => setBudget(e.target.value)} />
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <div
+              onClick={() => setIsAdult((v) => !v)}
+              className={`w-10 h-6 rounded-full transition-colors relative ${isAdult ? 'bg-rose-500' : 'bg-gray-200'}`}>
+              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${isAdult ? 'translate-x-5' : 'translate-x-1'}`} />
             </div>
-            <div>
-              <label htmlFor="currency" className={labelClass}>Currency</label>
-              <select id="currency" name="currency" className={inputClass}
-                value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                {['USD','EUR','GBP','JPY','AUD','CAD','CHF','CNY','INR','MXN','BRL'].map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+            <span className="text-sm text-gray-700">
+              Adults only{isAdult ? <span className="ml-1 text-rose-600 font-medium">(18+)</span> : ''}
+            </span>
+          </label>
         </section>
 
         {/* ── Destinations ───────────────────────────────────────────── */}
@@ -315,23 +313,15 @@ export default function CreatePage() {
 
           {destinations.map((dest, destIdx) => (
             <div key={destIdx} className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
-              {/* Destination header */}
               <div className="flex gap-3 items-start">
                 <div className="flex-1 grid grid-cols-2 gap-3">
-                  <input
-                    type="text"
-                    value={dest.name}
+                  <input type="text" value={dest.name}
                     onChange={(e) => updateDest(destIdx, 'name', e.target.value)}
                     className={inputClass}
-                    placeholder={`City / place${destinations.length > 1 ? ` ${destIdx + 1}` : ''}`}
-                  />
-                  <input
-                    type="text"
-                    value={dest.country}
+                    placeholder={`City / place${destinations.length > 1 ? ` ${destIdx + 1}` : ''}`} />
+                  <input type="text" value={dest.country}
                     onChange={(e) => updateDest(destIdx, 'country', e.target.value)}
-                    className={inputClass}
-                    placeholder="Country"
-                  />
+                    className={inputClass} placeholder="Country" />
                 </div>
                 {destinations.length > 1 && (
                   <button type="button" onClick={() => removeDest(destIdx)}
@@ -339,113 +329,30 @@ export default function CreatePage() {
                 )}
               </div>
 
-              {/* Activities */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Activities
-                  </p>
-                  <button type="button" onClick={() => addItem(destIdx, 'activity')}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
-                    + Add activity
-                  </button>
+              {sections.map(({ type, label, icon, btnLabel }) => (
+                <div key={type} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {icon} {label}
+                    </p>
+                    <button type="button" onClick={() => addItem(destIdx, type)}
+                      className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                      {btnLabel}
+                    </button>
+                  </div>
+                  {byType(dest, type).length === 0 && (
+                    <p className="text-xs text-gray-400 italic">None added yet.</p>
+                  )}
+                  {dest.items.map((item, itemIdx) =>
+                    item.type !== type ? null : (
+                      <ItemRow key={itemIdx}
+                        item={item} destIdx={destIdx} itemIdx={itemIdx}
+                        onUpdate={(field, val) => updateItem(destIdx, itemIdx, field, val)}
+                        onRemove={() => removeItem(destIdx, itemIdx)} />
+                    )
+                  )}
                 </div>
-                {activities(dest).length === 0 && (
-                  <p className="text-xs text-gray-400 italic">No activities yet.</p>
-                )}
-                {dest.items.map((item, itemIdx) =>
-                  item.type !== 'activity' ? null : (
-                    <div key={itemIdx} className="flex gap-2 items-start">
-                      <div className="flex-1 space-y-1">
-                        <input
-                          type="text"
-                          value={item.name}
-                          onChange={(e) => updateItem(destIdx, itemIdx, 'name', e.target.value)}
-                          className={inputClass}
-                          placeholder="e.g. Temple tour, Hiking, Museum visit"
-                        />
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-400 shrink-0">Rate it!</span>
-                          <StarRating
-                            value={item.rating}
-                            onChange={(v) => updateItem(destIdx, itemIdx, 'rating', String(v))}
-                          />
-                        </div>
-                        <input
-                          type="text"
-                          value={item.notes}
-                          onChange={(e) => updateItem(destIdx, itemIdx, 'notes', e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                          placeholder="Notes (optional)"
-                        />
-                        <input
-                          type="url"
-                          value={item.link}
-                          onChange={(e) => updateItem(destIdx, itemIdx, 'link', e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                          placeholder="🔗 Link (optional)"
-                        />
-                      </div>
-                      <button type="button" onClick={() => removeItem(destIdx, itemIdx)}
-                        className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
-                    </div>
-                  )
-                )}
-              </div>
-
-              {/* Food & Drink */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Food & Drink
-                  </p>
-                  <button type="button" onClick={() => addItem(destIdx, 'food_drink')}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
-                    + Add place
-                  </button>
-                </div>
-                {foodDrink(dest).length === 0 && (
-                  <p className="text-xs text-gray-400 italic">No food & drink yet.</p>
-                )}
-                {dest.items.map((item, itemIdx) =>
-                  item.type !== 'food_drink' ? null : (
-                    <div key={itemIdx} className="flex gap-2 items-start">
-                      <div className="flex-1 space-y-1">
-                        <input
-                          type="text"
-                          value={item.name}
-                          onChange={(e) => updateItem(destIdx, itemIdx, 'name', e.target.value)}
-                          className={inputClass}
-                          placeholder="e.g. Ramen Ichiran, Rooftop bar, Street market"
-                        />
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-400 shrink-0">Rate it!</span>
-                          <StarRating
-                            value={item.rating}
-                            onChange={(v) => updateItem(destIdx, itemIdx, 'rating', String(v))}
-                          />
-                        </div>
-                        <input
-                          type="text"
-                          value={item.notes}
-                          onChange={(e) => updateItem(destIdx, itemIdx, 'notes', e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                          placeholder="Notes (optional)"
-                        />
-                        <input
-                          type="url"
-                          value={item.link}
-                          onChange={(e) => updateItem(destIdx, itemIdx, 'link', e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                          placeholder="🔗 Link (optional)"
-                        />
-                      </div>
-                      <button type="button" onClick={() => removeItem(destIdx, itemIdx)}
-                        className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
-                    </div>
-                  )
-                )}
-              </div>
+              ))}
             </div>
           ))}
         </section>
@@ -475,8 +382,7 @@ export default function CreatePage() {
               {photos.map((photo, i) => (
                 <div key={i} className="relative group">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo.url} alt=""
-                    className="w-full h-32 object-cover rounded-lg" />
+                  <img src={photo.url} alt="" className="w-full h-32 object-cover rounded-lg" />
                   <button type="button" onClick={() => removePhoto(i)}
                     className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     ×

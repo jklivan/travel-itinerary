@@ -16,6 +16,9 @@ export default async function Navbar() {
               <span className="text-sm text-gray-600 hidden sm:block">
                 {session.user.name}
               </span>
+              <Link href="/friends" className="text-sm text-gray-600 hover:text-indigo-600 transition-colors hidden sm:block">
+                Friends
+              </Link>
               <Link
                 href="/create"
                 className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"

@@ -18,8 +18,7 @@ export async function createItinerary(
   const description = (formData.get('description') as string)?.trim() || null
   const startDateStr = formData.get('startDate') as string
   const endDateStr = formData.get('endDate') as string
-  const budget = formData.get('budget') ? Number(formData.get('budget')) : null
-  const currency = (formData.get('currency') as string) || 'USD'
+  const audience = (formData.get('audience') as string) || 'family'
   const notes = (formData.get('notes') as string)?.trim() || null
 
   if (!title) return { error: 'Title is required.' }
@@ -29,7 +28,6 @@ export async function createItinerary(
   const endDate = new Date(endDateStr)
   if (endDate < startDate) return { error: 'End date must be after start date.' }
 
-  // Destinations with nested items, encoded as JSON
   const destinationsJson = formData.get('destinations') as string
   const destinations: {
     name: string
@@ -37,11 +35,8 @@ export async function createItinerary(
     items: { type: string; name: string; notes: string; rating: number; link: string }[]
   }[] = destinationsJson ? JSON.parse(destinationsJson) : []
 
-  // Photos: URLs already uploaded, encoded as JSON
   const photosJson = formData.get('photos') as string
-  const photos: { url: string; caption: string }[] = photosJson
-    ? JSON.parse(photosJson)
-    : []
+  const photos: { url: string; caption: string }[] = photosJson ? JSON.parse(photosJson) : []
 
   const itinerary = await prisma.itinerary.create({
     data: {
@@ -49,8 +44,7 @@ export async function createItinerary(
       description,
       startDate,
       endDate,
-      budget,
-      currency,
+      audience,
       notes,
       userId: session.user.id,
       destinations: {
