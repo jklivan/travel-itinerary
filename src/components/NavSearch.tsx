@@ -24,7 +24,7 @@ function NavSearchInner() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search destination…"
-          className="pl-8 pr-3 py-1.5 text-sm rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white w-44 sm:w-52 transition-all"
+          className="pl-8 pr-3 py-1.5 text-sm text-gray-900 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white w-44 sm:w-52 transition-all"
         />
       </div>
     </form>
