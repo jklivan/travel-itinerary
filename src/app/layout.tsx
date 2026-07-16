@@ -14,11 +14,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geist.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-gray-50 font-[family-name:var(--font-geist-sans)]">
+      <body className="min-h-full flex flex-col bg-slate-100 font-[family-name:var(--font-geist-sans)]">
         <Providers>
           <Navbar />
           <main className="flex-1">{children}</main>
-          <footer className="text-center text-xs text-gray-400 py-6 border-t border-gray-100">
+          <footer className="text-center text-xs text-gray-600 py-6 border-t border-slate-200">
             TravelShare — Share your adventures
           </footer>
         </Providers>

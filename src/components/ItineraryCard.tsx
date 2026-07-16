@@ -29,7 +29,7 @@ export default function ItineraryCard({
 }: Props) {
   return (
     <Link href={`/itinerary/${id}`} className="block group">
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
+      <div className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-shadow">
         {coverPhoto ? (
           <div className="relative h-48 w-full bg-gray-100">
             <Image src={coverPhoto} alt={title} fill
@@ -59,15 +59,15 @@ export default function ItineraryCard({
             {title}
           </h2>
           {description && (
-            <p className="text-sm text-gray-700 mt-1 line-clamp-2">{description}</p>
+            <p className="text-sm text-gray-900 mt-1 line-clamp-2">{description}</p>
           )}
-          <div className="mt-4 flex items-center justify-between text-xs text-gray-600">
+          <div className="mt-4 flex items-center justify-between text-xs text-gray-700">
             <div className="flex gap-3">
               <span>{formatDate(startDate)}</span>
               <span>·</span>
               <span>{tripLength(startDate, endDate)}</span>
             </div>
-            <span className="font-medium text-gray-700">{authorName}</span>
+            <span className="font-medium text-gray-900">{authorName}</span>
           </div>
         </div>
       </div>

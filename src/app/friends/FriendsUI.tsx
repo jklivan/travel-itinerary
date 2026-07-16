@@ -74,19 +74,19 @@ export default function FriendsUI({ following }: { following: User[] }) {
   return (
     <div className="space-y-8">
       {/* Search */}
-      <section className="bg-white rounded-2xl border border-gray-200 p-6">
+      <section className="bg-white rounded-2xl shadow-md p-6">
         <h2 className="font-semibold text-gray-900 mb-4">Find travellers</h2>
 
         {/* Tabs */}
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium mb-4 w-fit">
           <button
             onClick={() => setTab('name')}
-            className={`px-4 py-1.5 rounded-lg transition-colors ${tab === 'name' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}>
+            className={`px-4 py-1.5 rounded-lg transition-colors ${tab === 'name' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-700 hover:text-gray-900'}`}>
             By name
           </button>
           <button
             onClick={() => setTab('destination')}
-            className={`px-4 py-1.5 rounded-lg transition-colors ${tab === 'destination' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}>
+            className={`px-4 py-1.5 rounded-lg transition-colors ${tab === 'destination' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-700 hover:text-gray-900'}`}>
             By destination
           </button>
         </div>
@@ -97,20 +97,20 @@ export default function FriendsUI({ following }: { following: User[] }) {
               <input type="text" value={nameQuery}
                 onChange={(e) => { setNameQuery(e.target.value); setNameSearched(false) }}
                 placeholder="Search by name…"
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               <button type="submit"
                 className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
                 Search
               </button>
             </form>
             {nameSearched && nameResults.length === 0 && (
-              <p className="mt-4 text-sm text-gray-600 italic">No users found.</p>
+              <p className="mt-4 text-sm text-gray-900 italic">No users found.</p>
             )}
             {nameResults.length > 0 && (
               <ul className="mt-4 divide-y divide-gray-100">
                 {nameResults.map((user) => (
                   <li key={user.id} className="flex items-center justify-between py-3">
-                    <span className="text-sm font-medium text-gray-800">{user.name}</span>
+                    <span className="text-sm font-medium text-gray-900">{user.name}</span>
                     <FollowButton userId={user.id} isFollowing={followingIds.has(user.id)}
                       onFollow={handleFollow} onUnfollow={handleUnfollow} />
                   </li>
@@ -126,22 +126,22 @@ export default function FriendsUI({ following }: { following: User[] }) {
               <input type="text" value={destQuery}
                 onChange={(e) => { setDestQuery(e.target.value); setDestSearched(false) }}
                 placeholder="e.g. Tokyo, France, Bali…"
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               <button type="submit"
                 className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
                 Search
               </button>
             </form>
             {destSearched && destResults.length === 0 && (
-              <p className="mt-4 text-sm text-gray-600 italic">No travellers found for that destination.</p>
+              <p className="mt-4 text-sm text-gray-900 italic">No travellers found for that destination.</p>
             )}
             {destResults.length > 0 && (
               <ul className="mt-4 divide-y divide-gray-100">
                 {destResults.map((user) => (
                   <li key={user.id} className="flex items-center justify-between py-3 gap-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{user.name}</p>
-                      <p className="text-xs text-gray-600 mt-0.5">
+                      <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                      <p className="text-xs text-gray-900 mt-0.5">
                         📍 {user.matchedDestinations.join(' · ')}
                       </p>
                     </div>
@@ -156,22 +156,22 @@ export default function FriendsUI({ following }: { following: User[] }) {
       </section>
 
       {/* Following list */}
-      <section className="bg-white rounded-2xl border border-gray-200 p-6">
+      <section className="bg-white rounded-2xl shadow-md p-6">
         <h2 className="font-semibold text-gray-900 mb-4">
           People you follow
           {followingIds.size > 0 && (
-            <span className="ml-2 text-sm font-normal text-gray-600">({followingIds.size})</span>
+            <span className="ml-2 text-sm font-normal text-gray-900">({followingIds.size})</span>
           )}
         </h2>
         {followingIds.size === 0 ? (
-          <p className="text-sm text-gray-600 italic">
+          <p className="text-sm text-gray-900 italic">
             You&apos;re not following anyone yet. Search above to find travellers.
           </p>
         ) : (
           <ul className="divide-y divide-gray-100">
             {following.filter((u) => followingIds.has(u.id)).map((user) => (
               <li key={user.id} className="flex items-center justify-between py-3">
-                <span className="text-sm font-medium text-gray-800">{user.name}</span>
+                <span className="text-sm font-medium text-gray-900">{user.name}</span>
                 <button onClick={() => handleUnfollow(user.id)}
                   className="text-xs font-medium px-3 py-1 rounded-full border border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-500 transition-colors">
                   Unfollow

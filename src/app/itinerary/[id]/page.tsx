@@ -80,9 +80,9 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
         </div>
 
         <h1 className="text-3xl font-bold text-gray-900 leading-tight">{it.title}</h1>
-        {it.description && <p className="text-gray-700 mt-2 text-base">{it.description}</p>}
+        {it.description && <p className="text-gray-900 mt-2 text-base">{it.description}</p>}
 
-        <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-700">
+        <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-800">
           <span>📅 {fmtShort(it.startDate)} – {fmtShort(it.endDate)} ({days} days)</span>
           <div className="flex items-center gap-3">
             <span>✍️ {it.user.name}</span>
@@ -110,7 +110,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
         <section className="mb-8 space-y-6">
           <h2 className="text-xl font-semibold text-gray-900">Destinations</h2>
           {it.destinations.map((dest) => (
-            <div key={dest.id} className="bg-white border border-gray-200 rounded-2xl p-6">
+            <div key={dest.id} className="bg-white shadow-md rounded-2xl p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 📍 {dest.name}{dest.country ? `, ${dest.country}` : ''}
               </h3>
@@ -132,7 +132,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                               <Stars rating={item.rating} />
                             </div>
                             {item.notes && (
-                              <p className="text-xs text-gray-700 mt-0.5">{item.notes}</p>
+                              <p className="text-xs text-gray-900 mt-0.5">{item.notes}</p>
                             )}
                             {item.link && (
                               <a href={item.link} target="_blank" rel="noopener noreferrer"
@@ -175,7 +175,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                   <Image src={photo.url} alt={photo.caption ?? ''} fill className="object-cover" />
                 </div>
                 {photo.caption && (
-                  <p className="text-xs text-gray-700 text-center">{photo.caption}</p>
+                  <p className="text-xs text-gray-900 text-center">{photo.caption}</p>
                 )}
               </div>
             ))}

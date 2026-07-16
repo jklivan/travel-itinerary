@@ -15,10 +15,10 @@ export default async function Navbar() {
           <NavSearch />
           {session?.user ? (
             <>
-              <span className="text-sm text-gray-600 hidden sm:block">
+              <span className="text-sm text-gray-900 hidden sm:block">
                 {session.user.name}
               </span>
-              <Link href="/friends" className="text-sm text-gray-600 hover:text-indigo-600 transition-colors hidden sm:block">
+              <Link href="/friends" className="text-sm text-gray-900 hover:text-indigo-600 transition-colors hidden sm:block">
                 Friends
               </Link>
               <Link
@@ -43,7 +43,7 @@ export default async function Navbar() {
             </>
           ) : (
             <>
-              <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900">
+              <Link href="/login" className="text-sm text-gray-900 hover:text-indigo-600">
                 Sign in
               </Link>
               <Link
