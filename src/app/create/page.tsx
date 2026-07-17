@@ -126,6 +126,7 @@ export default function CreatePage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [isAdult, setIsAdult] = useState(false)
+  const [isPrivate, setIsPrivate] = useState(false)
   const [notes, setNotes] = useState('')
   const [destinations, setDestinations] = useState<Destination[]>([emptyDest()])
   const [photos, setPhotos] = useState<UploadedPhoto[]>([])
@@ -281,6 +282,7 @@ export default function CreatePage() {
         <input type="hidden" name="destinations" value={JSON.stringify(destinations)} />
         <input type="hidden" name="photos" value={JSON.stringify(photos)} />
         <input type="hidden" name="audience" value={isAdult ? 'adult' : 'family'} />
+        <input type="hidden" name="visibility" value={isPrivate ? 'private' : 'public'} />
 
         {state?.error && (
           <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
@@ -321,8 +323,18 @@ export default function CreatePage() {
               className={`w-10 h-6 rounded-full transition-colors relative ${isAdult ? 'bg-rose-500' : 'bg-gray-200'}`}>
               <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${isAdult ? 'translate-x-5' : 'translate-x-1'}`} />
             </div>
-            <span className="text-sm text-gray-700">
+            <span className="text-sm text-gray-900">
               Adults only{isAdult ? <span className="ml-1 text-rose-600 font-medium">(18+)</span> : ''}
+            </span>
+          </label>
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <div
+              onClick={() => setIsPrivate((v) => !v)}
+              className={`w-10 h-6 rounded-full transition-colors relative ${isPrivate ? 'bg-gray-700' : 'bg-gray-200'}`}>
+              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${isPrivate ? 'translate-x-5' : 'translate-x-1'}`} />
+            </div>
+            <span className="text-sm text-gray-900">
+              {isPrivate ? 'Private — only visible to you' : 'Public — visible to everyone'}
             </span>
           </label>
         </section>

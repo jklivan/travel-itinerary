@@ -3,7 +3,7 @@ import { auth } from '@/auth'
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { followUser, unfollowUser } from '@/actions/friends'
+import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
 
 function Stars({ rating }: { rating: number | null }) {
   if (!rating) return null
@@ -41,11 +41,16 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
   if (!it) notFound()
 
   const isOwn = session?.user?.id === it.user.id
-  const isFollowing = session?.user?.id && !isOwn
-    ? !!(await prisma.follow.findUnique({
+
+  // Private itineraries are only visible to their owner
+  if (it.visibility === 'private' && !isOwn) notFound()
+
+  const followRecord = session?.user?.id && !isOwn
+    ? await prisma.follow.findUnique({
         where: { followerId_followingId: { followerId: session.user.id, followingId: it.user.id } },
-      }))
-    : false
+      })
+    : null
+  const followStatus = followRecord?.status ?? 'none' // 'none' | 'pending' | 'accepted'
 
   function fmtShort(d: Date) {
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -86,19 +91,28 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
           <span>📅 {fmtShort(it.startDate)} – {fmtShort(it.endDate)} ({days} days)</span>
           <div className="flex items-center gap-3">
             <span>✍️ {it.user.name}</span>
+            {isOwn && (
+              <Link href={`/itinerary/${it.id}/edit`}
+                className="text-xs font-medium px-3 py-1 rounded-full border border-gray-300 text-gray-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors">
+                Edit
+              </Link>
+            )}
             {session?.user && !isOwn && (
               <form action={async () => {
                 'use server'
-                if (isFollowing) await unfollowUser(it.user.id)
-                else await followUser(it.user.id)
+                if (followStatus === 'accepted') await unfollowUser(it.user.id)
+                else if (followStatus === 'pending') await cancelFollowRequest(it.user.id)
+                else await sendFollowRequest(it.user.id)
               }}>
                 <button type="submit"
                   className={`text-xs font-medium px-3 py-1 rounded-full border transition-colors ${
-                    isFollowing
-                      ? 'border-gray-300 text-gray-500 hover:border-red-300 hover:text-red-500'
+                    followStatus === 'accepted'
+                      ? 'border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-500'
+                      : followStatus === 'pending'
+                      ? 'border-amber-300 text-amber-700 hover:border-red-300 hover:text-red-500'
                       : 'border-indigo-300 text-indigo-600 hover:bg-indigo-50'
                   }`}>
-                  {isFollowing ? 'Following' : '+ Follow'}
+                  {followStatus === 'accepted' ? 'Following' : followStatus === 'pending' ? 'Requested' : '+ Follow'}
                 </button>
               </form>
             )}

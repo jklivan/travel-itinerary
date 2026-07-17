@@ -7,13 +7,26 @@ export default async function FriendsPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
-  const follows = await prisma.follow.findMany({
-    where: { followerId: session.user.id },
-    include: { following: { select: { id: true, name: true } } },
-    orderBy: { createdAt: 'desc' },
-  })
-
-  const following = follows.map((f) => f.following)
+  const [acceptedFollows, pendingOutgoingFollows, incomingFollowRequests] = await Promise.all([
+    // People I follow (accepted)
+    prisma.follow.findMany({
+      where: { followerId: session.user.id, status: 'accepted' },
+      include: { following: { select: { id: true, name: true } } },
+      orderBy: { createdAt: 'desc' },
+    }),
+    // Requests I've sent that haven't been accepted yet
+    prisma.follow.findMany({
+      where: { followerId: session.user.id, status: 'pending' },
+      include: { following: { select: { id: true, name: true } } },
+      orderBy: { createdAt: 'desc' },
+    }),
+    // Requests others have sent me
+    prisma.follow.findMany({
+      where: { followingId: session.user.id, status: 'pending' },
+      include: { follower: { select: { id: true, name: true } } },
+      orderBy: { createdAt: 'desc' },
+    }),
+  ])
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
@@ -23,7 +36,11 @@ export default async function FriendsPage() {
           Follow travellers to see their itineraries in your feed.
         </p>
       </div>
-      <FriendsUI following={following} />
+      <FriendsUI
+        following={acceptedFollows.map((f) => f.following)}
+        pendingOutgoing={pendingOutgoingFollows.map((f) => f.following)}
+        incomingRequests={incomingFollowRequests.map((f) => f.follower)}
+      />
     </div>
   )
 }

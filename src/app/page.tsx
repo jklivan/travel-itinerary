@@ -15,13 +15,20 @@ export default async function FeedPage({
 
   let userIdFilter: { in: string[] } | undefined
   if (isFriends && session?.user?.id) {
-    const follows = await prisma.follow.findMany({ where: { followerId: session.user.id } })
+    const follows = await prisma.follow.findMany({
+      where: { followerId: session.user.id, status: 'accepted' },
+    })
     const ids = follows.map((f) => f.followingId)
     userIdFilter = { in: ids }
   }
 
   const itineraries = await prisma.itinerary.findMany({
     where: {
+      // Only show public itineraries (or the logged-in user's own)
+      OR: [
+        { visibility: 'public' },
+        ...(session?.user?.id ? [{ userId: session.user.id }] : []),
+      ],
       ...(isFriends && userIdFilter ? { userId: userIdFilter } : {}),
       ...(searchQuery ? {
         destinations: {

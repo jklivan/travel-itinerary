@@ -22,6 +22,7 @@ model Follow {
   id          String   @id @default(cuid())
   followerId  String
   followingId String
+  status      String   @default("pending")
   createdAt   DateTime @default(now())
   follower    User     @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
   following   User     @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
@@ -36,6 +37,7 @@ model Itinerary {
   startDate    DateTime
   endDate      DateTime
   audience     String        @default("family")
+  visibility   String        @default("public")
   notes        String?
   userId       String
   user         User          @relation(fields: [userId], references: [id])

@@ -1,28 +1,49 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { searchUsers, searchUsersByDestination, followUser, unfollowUser } from '@/actions/friends'
+import {
+  searchUsers,
+  searchUsersByDestination,
+  sendFollowRequest,
+  cancelFollowRequest,
+  acceptFollowRequest,
+  rejectFollowRequest,
+  unfollowUser,
+} from '@/actions/friends'
 
 type User = { id: string; name: string }
 type DestUser = { id: string; name: string; matchedDestinations: string[] }
 
 function FollowButton({
   userId,
-  isFollowing,
+  status,
   onFollow,
+  onCancel,
   onUnfollow,
 }: {
   userId: string
-  isFollowing: boolean
+  status: 'none' | 'pending' | 'following'
   onFollow: (id: string) => void
+  onCancel: (id: string) => void
   onUnfollow: (id: string) => void
 }) {
-  return isFollowing ? (
-    <button onClick={() => onUnfollow(userId)}
-      className="text-xs font-medium px-3 py-1 rounded-full border border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-500 transition-colors">
-      Following
-    </button>
-  ) : (
+  if (status === 'following') {
+    return (
+      <button onClick={() => onUnfollow(userId)}
+        className="text-xs font-medium px-3 py-1 rounded-full border border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-500 transition-colors">
+        Following
+      </button>
+    )
+  }
+  if (status === 'pending') {
+    return (
+      <button onClick={() => onCancel(userId)}
+        className="text-xs font-medium px-3 py-1 rounded-full border border-amber-300 text-amber-700 hover:border-red-300 hover:text-red-500 transition-colors">
+        Requested
+      </button>
+    )
+  }
+  return (
     <button onClick={() => onFollow(userId)}
       className="text-xs font-medium px-3 py-1 rounded-full border border-indigo-300 text-indigo-600 hover:bg-indigo-50 transition-colors">
       + Follow
@@ -30,7 +51,15 @@ function FollowButton({
   )
 }
 
-export default function FriendsUI({ following }: { following: User[] }) {
+export default function FriendsUI({
+  following,
+  pendingOutgoing,
+  incomingRequests,
+}: {
+  following: User[]
+  pendingOutgoing: User[]
+  incomingRequests: User[]
+}) {
   const [tab, setTab] = useState<'name' | 'destination'>('name')
   const [nameQuery, setNameQuery] = useState('')
   const [destQuery, setDestQuery] = useState('')
@@ -38,10 +67,17 @@ export default function FriendsUI({ following }: { following: User[] }) {
   const [destResults, setDestResults] = useState<DestUser[]>([])
   const [nameSearched, setNameSearched] = useState(false)
   const [destSearched, setDestSearched] = useState(false)
-  const [followingIds, setFollowingIds] = useState<Set<string>>(
-    new Set(following.map((u) => u.id))
-  )
+  const [followingIds, setFollowingIds] = useState(new Set(following.map((u) => u.id)))
+  const [pendingIds, setPendingIds] = useState(new Set(pendingOutgoing.map((u) => u.id)))
+  const [requests, setRequests] = useState(incomingRequests)
+  const [followingList, setFollowingList] = useState(following)
   const [, startTransition] = useTransition()
+
+  function followStatus(userId: string): 'none' | 'pending' | 'following' {
+    if (followingIds.has(userId)) return 'following'
+    if (pendingIds.has(userId)) return 'pending'
+    return 'none'
+  }
 
   async function handleNameSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -59,8 +95,15 @@ export default function FriendsUI({ following }: { following: User[] }) {
 
   function handleFollow(userId: string) {
     startTransition(async () => {
-      await followUser(userId)
-      setFollowingIds((prev) => new Set([...prev, userId]))
+      await sendFollowRequest(userId)
+      setPendingIds((prev) => new Set([...prev, userId]))
+    })
+  }
+
+  function handleCancel(userId: string) {
+    startTransition(async () => {
+      await cancelFollowRequest(userId)
+      setPendingIds((prev) => { const n = new Set(prev); n.delete(userId); return n })
     })
   }
 
@@ -68,24 +111,65 @@ export default function FriendsUI({ following }: { following: User[] }) {
     startTransition(async () => {
       await unfollowUser(userId)
       setFollowingIds((prev) => { const n = new Set(prev); n.delete(userId); return n })
+      setFollowingList((prev) => prev.filter((u) => u.id !== userId))
+    })
+  }
+
+  function handleAccept(user: User) {
+    startTransition(async () => {
+      await acceptFollowRequest(user.id)
+      setRequests((prev) => prev.filter((r) => r.id !== user.id))
+      setFollowingIds((prev) => new Set([...prev, user.id]))
+      setFollowingList((prev) => [user, ...prev])
+    })
+  }
+
+  function handleReject(userId: string) {
+    startTransition(async () => {
+      await rejectFollowRequest(userId)
+      setRequests((prev) => prev.filter((r) => r.id !== userId))
     })
   }
 
   return (
     <div className="space-y-8">
+      {/* Incoming requests */}
+      {requests.length > 0 && (
+        <section className="bg-amber-50 border border-amber-200 rounded-2xl shadow-sm p-6">
+          <h2 className="font-semibold text-gray-900 mb-4">
+            Follow requests
+            <span className="ml-2 text-sm font-normal text-amber-700">({requests.length})</span>
+          </h2>
+          <ul className="divide-y divide-amber-100">
+            {requests.map((user) => (
+              <li key={user.id} className="flex items-center justify-between py-3">
+                <span className="text-sm font-medium text-gray-900">{user.name}</span>
+                <div className="flex gap-2">
+                  <button onClick={() => handleAccept(user)}
+                    className="text-xs font-medium px-3 py-1 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                    Accept
+                  </button>
+                  <button onClick={() => handleReject(user.id)}
+                    className="text-xs font-medium px-3 py-1 rounded-full border border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-500 transition-colors">
+                    Decline
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {/* Search */}
       <section className="bg-white rounded-2xl shadow-md p-6">
         <h2 className="font-semibold text-gray-900 mb-4">Find travellers</h2>
 
-        {/* Tabs */}
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium mb-4 w-fit">
-          <button
-            onClick={() => setTab('name')}
+          <button onClick={() => setTab('name')}
             className={`px-4 py-1.5 rounded-lg transition-colors ${tab === 'name' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-700 hover:text-gray-900'}`}>
             By name
           </button>
-          <button
-            onClick={() => setTab('destination')}
+          <button onClick={() => setTab('destination')}
             className={`px-4 py-1.5 rounded-lg transition-colors ${tab === 'destination' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-700 hover:text-gray-900'}`}>
             By destination
           </button>
@@ -111,8 +195,8 @@ export default function FriendsUI({ following }: { following: User[] }) {
                 {nameResults.map((user) => (
                   <li key={user.id} className="flex items-center justify-between py-3">
                     <span className="text-sm font-medium text-gray-900">{user.name}</span>
-                    <FollowButton userId={user.id} isFollowing={followingIds.has(user.id)}
-                      onFollow={handleFollow} onUnfollow={handleUnfollow} />
+                    <FollowButton userId={user.id} status={followStatus(user.id)}
+                      onFollow={handleFollow} onCancel={handleCancel} onUnfollow={handleUnfollow} />
                   </li>
                 ))}
               </ul>
@@ -145,8 +229,8 @@ export default function FriendsUI({ following }: { following: User[] }) {
                         📍 {user.matchedDestinations.join(' · ')}
                       </p>
                     </div>
-                    <FollowButton userId={user.id} isFollowing={followingIds.has(user.id)}
-                      onFollow={handleFollow} onUnfollow={handleUnfollow} />
+                    <FollowButton userId={user.id} status={followStatus(user.id)}
+                      onFollow={handleFollow} onCancel={handleCancel} onUnfollow={handleUnfollow} />
                   </li>
                 ))}
               </ul>
@@ -159,17 +243,17 @@ export default function FriendsUI({ following }: { following: User[] }) {
       <section className="bg-white rounded-2xl shadow-md p-6">
         <h2 className="font-semibold text-gray-900 mb-4">
           People you follow
-          {followingIds.size > 0 && (
-            <span className="ml-2 text-sm font-normal text-gray-900">({followingIds.size})</span>
+          {followingList.length > 0 && (
+            <span className="ml-2 text-sm font-normal text-gray-900">({followingList.length})</span>
           )}
         </h2>
-        {followingIds.size === 0 ? (
+        {followingList.length === 0 ? (
           <p className="text-sm text-gray-900 italic">
             You&apos;re not following anyone yet. Search above to find travellers.
           </p>
         ) : (
           <ul className="divide-y divide-gray-100">
-            {following.filter((u) => followingIds.has(u.id)).map((user) => (
+            {followingList.map((user) => (
               <li key={user.id} className="flex items-center justify-between py-3">
                 <span className="text-sm font-medium text-gray-900">{user.name}</span>
                 <button onClick={() => handleUnfollow(user.id)}
