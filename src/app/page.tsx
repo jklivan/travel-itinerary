@@ -10,21 +10,24 @@ export default async function FeedPage({
 }) {
   const { view, search } = await searchParams
   const session = await auth()
-  const isFriends = view === 'friends' && !!session?.user?.id
   const searchQuery = search?.trim() || ''
+
+  // Logged-in users see their friends feed by default; ?view=explore shows everything
+  const isExplore = !session?.user?.id || view === 'explore'
+  const isFriends = !isExplore
 
   let userIdFilter: { in: string[] } | undefined
   if (isFriends && session?.user?.id) {
     const follows = await prisma.follow.findMany({
       where: { followerId: session.user.id, status: 'accepted' },
     })
-    const ids = follows.map((f) => f.followingId)
+    // Include own itineraries + friends'
+    const ids = [...follows.map((f) => f.followingId), session.user.id]
     userIdFilter = { in: ids }
   }
 
   const itineraries = await prisma.itinerary.findMany({
     where: {
-      // Only show public itineraries (or the logged-in user's own)
       OR: [
         { visibility: 'public' },
         ...(session?.user?.id ? [{ userId: session.user.id }] : []),
@@ -54,11 +57,13 @@ export default async function FeedPage({
       <div className="mb-8 flex items-end justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            {searchQuery ? `"${searchQuery}"` : 'Itineraries'}
+            {searchQuery ? `"${searchQuery}"` : isFriends ? 'Friends' : 'Explore'}
           </h1>
           <p className="text-gray-900 mt-1">
             {searchQuery
               ? <Link href="/" className="text-indigo-500 hover:underline text-sm">← Clear search</Link>
+              : isFriends
+              ? 'Itineraries from people you follow.'
               : 'Discover trips planned by travellers around the world.'}
           </p>
         </div>
@@ -67,27 +72,27 @@ export default async function FeedPage({
           <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium">
             <Link href="/"
               className={`px-4 py-1.5 rounded-lg transition-colors ${
-                !isFriends ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'
-              }`}>
-              Explore
-            </Link>
-            <Link href="/?view=friends"
-              className={`px-4 py-1.5 rounded-lg transition-colors ${
-                isFriends ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'
+                isFriends ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-700 hover:text-gray-900'
               }`}>
               Friends
+            </Link>
+            <Link href="/?view=explore"
+              className={`px-4 py-1.5 rounded-lg transition-colors ${
+                isExplore ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-700 hover:text-gray-900'
+              }`}>
+              Explore
             </Link>
           </div>
         )}
       </div>
 
       {itineraries.length === 0 ? (
-        <div className="text-center py-24 text-gray-900">
+        <div className="text-center py-24">
           <p className="text-5xl mb-4">{isFriends ? '👥' : '🌍'}</p>
           <p className="text-lg font-medium text-gray-900">
             {isFriends ? 'No itineraries from friends yet.' : 'No itineraries yet.'}
           </p>
-          <p className="text-sm mt-1">
+          <p className="text-sm mt-1 text-gray-900">
             {isFriends ? (
               <Link href="/friends" className="text-indigo-600 hover:underline">Follow some travellers</Link>
             ) : 'Be the first to share a trip!'}
