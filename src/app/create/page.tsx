@@ -3,18 +3,42 @@
 import { useActionState, useState } from 'react'
 import { createItinerary } from '@/actions/itinerary'
 
-async function extractTextFromPdf(file: File): Promise<string> {
-  const pdfjsLib = await import('pdfjs-dist')
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
-  const arrayBuffer = await file.arrayBuffer()
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-  const pages: string[] = []
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i)
-    const content = await page.getTextContent()
-    pages.push(content.items.map((item) => ('str' in item ? item.str : '')).join(' '))
+async function extractTextFromFile(file: File): Promise<string> {
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+  const mime = file.type
+
+  // PDF
+  if (ext === 'pdf' || mime === 'application/pdf') {
+    const pdfjsLib = await import('pdfjs-dist')
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
+    const arrayBuffer = await file.arrayBuffer()
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+    const pages: string[] = []
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i)
+      const content = await page.getTextContent()
+      pages.push(content.items.map((item) => ('str' in item ? item.str : '')).join(' '))
+    }
+    return pages.join('\n\n')
   }
-  return pages.join('\n\n')
+
+  // Excel
+  if (ext === 'xlsx' || ext === 'xls' || mime.includes('spreadsheet') || mime.includes('excel')) {
+    const XLSX = await import('xlsx')
+    const arrayBuffer = await file.arrayBuffer()
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+    return workbook.SheetNames.map((name) =>
+      `Sheet: ${name}\n${XLSX.utils.sheet_to_csv(workbook.Sheets[name])}`
+    ).join('\n\n')
+  }
+
+  // CSV or plain text — read as-is
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => resolve((e.target?.result as string) ?? '')
+    reader.onerror = () => reject(new Error('Failed to read file.'))
+    reader.readAsText(file)
+  })
 }
 
 type DestItem = {
@@ -109,15 +133,15 @@ export default function CreatePage() {
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState<string | null>(null)
 
-  // ── PDF import ────────────────────────────────────────────────────────────
-  async function handlePdfImport(e: React.ChangeEvent<HTMLInputElement>) {
+  // ── Document import ───────────────────────────────────────────────────────
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     setExtracting(true)
     setExtractError(null)
     try {
-      const text = await extractTextFromPdf(file)
-      if (!text.trim()) throw new Error('Could not read text from this PDF. It may be a scanned image.')
+      const text = await extractTextFromFile(file)
+      if (!text.trim()) throw new Error('Could not read any text from this file.')
       const res = await fetch('/api/extract-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -223,14 +247,14 @@ export default function CreatePage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Post an Itinerary</h1>
       <p className="text-gray-500 text-sm mb-6">Share your trip with the world.</p>
 
-      {/* ── PDF Import ─────────────────────────────────────────────────── */}
+      {/* ── Document Import ─────────────────────────────────────────────── */}
       <div className="mb-8 bg-indigo-50 border border-indigo-200 rounded-2xl p-5">
         <div className="flex items-start gap-3">
           <span className="text-2xl">📄</span>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-indigo-900 text-sm">Import from PDF</p>
+            <p className="font-medium text-indigo-900 text-sm">Import from document</p>
             <p className="text-xs text-indigo-600 mt-0.5">
-              Upload a PDF itinerary and we&apos;ll extract the details automatically.
+              Upload a PDF, Excel, CSV, or text file and we&apos;ll extract the details automatically.
             </p>
             {extractError && (
               <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
@@ -244,9 +268,11 @@ export default function CreatePage() {
           <label className={`shrink-0 cursor-pointer rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
             extracting ? 'bg-indigo-200 text-indigo-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'
           }`}>
-            {extracting ? 'Extracting…' : 'Choose PDF'}
-            <input type="file" accept="application/pdf" className="sr-only"
-              onChange={handlePdfImport} disabled={extracting} />
+            {extracting ? 'Extracting…' : 'Choose file'}
+            <input type="file"
+              accept=".pdf,.xlsx,.xls,.csv,.txt,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain"
+              className="sr-only"
+              onChange={handleImport} disabled={extracting} />
           </label>
         </div>
       </div>
