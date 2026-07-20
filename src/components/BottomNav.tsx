@@ -1,17 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { Home, Compass, Plus, Users, User } from 'lucide-react'
 import { Suspense } from 'react'
 
 function BottomNavInner({ userId, pendingCount }: { userId: string | null; pendingCount: number }) {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const view = searchParams.get('view')
 
-  const isFeed = pathname === '/' && view !== 'explore'
-  const isExplore = pathname === '/' && view === 'explore'
+  const isFeed = pathname === '/'
+  const isExplore = pathname.startsWith('/explore')
   const isFriends = pathname.startsWith('/friends')
   const isProfile = pathname.startsWith('/user/')
 
@@ -27,7 +25,7 @@ function BottomNavInner({ userId, pendingCount }: { userId: string | null; pendi
           <span className="text-xs font-medium">Feed</span>
         </Link>
 
-        <Link href="/?view=explore" className={cls(isExplore)}>
+        <Link href="/explore" className={cls(isExplore)}>
           <Compass className="w-6 h-6" />
           <span className="text-xs font-medium">Explore</span>
         </Link>
