@@ -23,7 +23,9 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Itinerary</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">
+        {it.postType === 'guide' ? 'Edit Guide' : 'Edit Itinerary'}
+      </h1>
       <EditForm itinerary={it} />
     </div>
   )

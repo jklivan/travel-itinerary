@@ -3,6 +3,7 @@ import { Geist } from 'next/font/google'
 import './globals.css'
 import Navbar from '@/components/Navbar'
 import Providers from '@/components/Providers'
+import BottomNavWrapper from '@/components/BottomNavWrapper'
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 
@@ -14,13 +15,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geist.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-slate-100 font-[family-name:var(--font-geist-sans)]">
+      <body className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 font-[family-name:var(--font-geist-sans)]">
         <Providers>
           <Navbar />
-          <main className="flex-1">{children}</main>
-          <footer className="text-center text-xs text-gray-600 py-6 border-t border-slate-200">
-            TravelShare — Share your adventures
-          </footer>
+          <main className="pb-24">{children}</main>
+          <BottomNavWrapper />
         </Providers>
       </body>
     </html>

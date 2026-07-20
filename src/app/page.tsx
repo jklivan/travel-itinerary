@@ -11,101 +11,90 @@ export default async function FeedPage({
   const { view, search } = await searchParams
   const session = await auth()
   const searchQuery = search?.trim() || ''
+  const userId = session?.user?.id ?? null
 
-  // Logged-in users see their friends feed by default; ?view=explore shows everything
-  const isExplore = !session?.user?.id || view === 'explore'
+  const isExplore = !userId || view === 'explore'
   const isFriends = !isExplore
 
   let userIdFilter: { in: string[] } | undefined
-  if (isFriends && session?.user?.id) {
+  if (isFriends && userId) {
     const follows = await prisma.follow.findMany({
-      where: { followerId: session.user.id, status: 'accepted' },
+      where: { followerId: userId, status: 'accepted' },
     })
-    // Include own itineraries + friends'
-    const ids = [...follows.map((f) => f.followingId), session.user.id]
+    const ids = [...follows.map((f) => f.followingId), userId]
     userIdFilter = { in: ids }
   }
 
-  const itineraries = await prisma.itinerary.findMany({
-    where: {
-      OR: [
-        { visibility: 'public' },
-        ...(session?.user?.id ? [{ userId: session.user.id }] : []),
-      ],
-      ...(isFriends && userIdFilter ? { userId: userIdFilter } : {}),
-      ...(searchQuery ? {
-        destinations: {
-          some: {
-            OR: [
-              { name: { contains: searchQuery, mode: 'insensitive' } },
-              { country: { contains: searchQuery, mode: 'insensitive' } },
-            ],
+  const [itineraries, bucketIds] = await Promise.all([
+    prisma.itinerary.findMany({
+      where: {
+        OR: [
+          { visibility: 'public' },
+          ...(userId ? [{ userId }] : []),
+        ],
+        ...(isFriends && userIdFilter ? { userId: userIdFilter } : {}),
+        ...(searchQuery ? {
+          destinations: {
+            some: {
+              OR: [
+                { name: { contains: searchQuery, mode: 'insensitive' } },
+                { country: { contains: searchQuery, mode: 'insensitive' } },
+              ],
+            },
           },
-        },
-      } : {}),
-    },
-    orderBy: { createdAt: 'desc' },
-    include: {
-      user: { select: { name: true } },
-      destinations: { orderBy: { order: 'asc' }, include: { items: true } },
-      photos: { take: 1 },
-    },
-  })
+        } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: { select: { name: true, id: true } },
+        destinations: { orderBy: { order: 'asc' }, include: { items: true } },
+        photos: { take: 1 },
+      },
+    }),
+    userId
+      ? prisma.bucketListItem.findMany({ where: { userId }, select: { itineraryId: true } })
+      : Promise.resolve([]),
+  ])
+
+  const bucketSet = new Set(bucketIds.map((b) => b.itineraryId))
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {searchQuery
-              ? `"${searchQuery}"`
-              : isFriends ? 'Friends' : 'Explore'}
-          </h1>
-          <p className="text-gray-600 text-sm mt-0.5">
-            {searchQuery
-              ? <Link href="/" className="text-indigo-500 hover:underline">← Clear search</Link>
-              : isFriends
-              ? 'Itineraries from people you follow'
-              : 'Discover trips from around the world'}
+    <div className="max-w-2xl mx-auto px-4 py-6">
+      {searchQuery ? (
+        <div className="mb-5">
+          <h2 className="text-lg font-bold text-gray-900">&quot;{searchQuery}&quot;</h2>
+          <Link href="/" className="text-sm text-blue-600 hover:underline">← Clear search</Link>
+        </div>
+      ) : (
+        <div className="mb-5">
+          <h2 className="text-lg font-bold text-gray-900">
+            {isFriends ? 'Friends\' Trips' : 'Explore'}
+          </h2>
+          <p className="text-sm text-gray-500">
+            {isFriends ? 'Itineraries from people you follow' : 'Discover trips from around the world'}
           </p>
         </div>
-
-        {session?.user && (
-          <div className="flex gap-1 bg-white rounded-xl p-1 text-sm font-medium shadow-sm border border-gray-200">
-            <Link href="/"
-              className={`px-4 py-1.5 rounded-lg transition-colors ${
-                isFriends ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-700 hover:text-gray-900'
-              }`}>
-              Friends
-            </Link>
-            <Link href="/?view=explore"
-              className={`px-4 py-1.5 rounded-lg transition-colors ${
-                isExplore ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-700 hover:text-gray-900'
-              }`}>
-              Explore
-            </Link>
-          </div>
-        )}
-      </div>
+      )}
 
       {itineraries.length === 0 ? (
-        <div className="text-center py-24">
-          <p className="text-5xl mb-4">{isFriends ? '👥' : '🌍'}</p>
-          <p className="text-lg font-medium text-gray-900">
+        <div className="text-center py-20 bg-white rounded-xl shadow-sm">
+          <p className="text-4xl mb-4">{isFriends ? '👥' : '🌍'}</p>
+          <p className="text-base font-medium text-gray-900">
             {isFriends ? 'No itineraries from friends yet.' : 'No itineraries yet.'}
           </p>
-          <p className="text-sm mt-1 text-gray-900">
+          <p className="text-sm mt-1 text-gray-500">
             {isFriends ? (
-              <Link href="/friends" className="text-indigo-600 hover:underline">Follow some travellers</Link>
+              <Link href="/friends" className="text-blue-600 hover:underline">Follow some travellers</Link>
             ) : 'Be the first to share a trip!'}
           </p>
         </div>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-5">
           {itineraries.map((it) => (
             <ItineraryCard
               key={it.id}
               id={it.id}
+              postType={it.postType}
               title={it.title}
               startDate={it.startDate}
               endDate={it.endDate}
@@ -113,6 +102,9 @@ export default async function FeedPage({
               authorName={it.user.name}
               destinations={it.destinations}
               coverPhoto={it.photos[0]?.url ?? null}
+              currentUserId={userId}
+              isOwn={it.user.id === userId}
+              isBucketed={bucketSet.has(it.id)}
             />
           ))}
         </div>

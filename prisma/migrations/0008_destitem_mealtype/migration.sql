@@ -1,0 +1,1 @@
+ALTER TABLE "DestItem" ADD COLUMN "mealType" TEXT;

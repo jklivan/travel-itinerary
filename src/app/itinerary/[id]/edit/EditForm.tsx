@@ -5,6 +5,7 @@ import { updateItinerary } from '@/actions/itinerary'
 
 type DestItem = {
   type: 'hotel' | 'food_drink' | 'activity'
+  mealType: string
   name: string
   notes: string
   rating: number
@@ -15,6 +16,7 @@ type UploadedPhoto = { url: string; caption: string }
 
 type ItineraryData = {
   id: string
+  postType: string
   title: string
   description: string | null
   startDate: Date
@@ -31,7 +33,7 @@ type ItineraryData = {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
 const labelClass = 'block text-sm font-medium text-gray-900 mb-1'
 
 function fmt(d: Date) {
@@ -53,12 +55,20 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   )
 }
 
+const SECTION_STYLES = {
+  hotel:      { border: 'border-l-blue-400',   bg: 'bg-blue-50',   label: 'text-blue-600' },
+  food_drink: { border: 'border-l-orange-400', bg: 'bg-orange-50', label: 'text-orange-600' },
+  activity:   { border: 'border-l-green-400',  bg: 'bg-green-50',  label: 'text-green-600' },
+} as const
+
 function ItemRow({
-  item, onUpdate, onRemove,
+  item, index, onUpdate, onRemove, showRating,
 }: {
   item: DestItem
+  index: number
   onUpdate: (field: keyof DestItem, val: string) => void
   onRemove: () => void
+  showRating: boolean
 }) {
   const placeholder =
     item.type === 'hotel'
@@ -67,33 +77,60 @@ function ItemRow({
       ? 'e.g. Ramen Ichiran, Rooftop bar, Street market'
       : 'e.g. Temple tour, Hiking, Museum visit'
 
+  const MEAL_TYPES = ['lunch', 'dinner', 'drinks'] as const
+  const style = SECTION_STYLES[item.type]
+  const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
+
   return (
-    <div className="flex gap-2 items-start">
-      <div className="flex-1 space-y-1">
-        <input type="text" value={item.name}
-          onChange={(e) => onUpdate('name', e.target.value)}
-          className={inputClass} placeholder={placeholder} />
+    <div className={`rounded-xl border border-l-4 ${style.border} ${rowBg} p-4 space-y-3`}>
+      <div className="flex gap-2 items-start">
+        <div className="flex-1">
+          <input type="text" value={item.name}
+            onChange={(e) => onUpdate('name', e.target.value)}
+            className={inputClass} placeholder={placeholder} />
+        </div>
+        <button type="button" onClick={onRemove}
+          className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
+      </div>
+      {item.type === 'food_drink' && (
+        <div className="flex gap-1 flex-wrap">
+          {MEAL_TYPES.map((mt) => (
+            <button key={mt} type="button"
+              onClick={() => onUpdate('mealType', item.mealType === mt ? '' : mt)}
+              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${
+                item.mealType === mt
+                  ? mt === 'lunch' ? 'bg-orange-500 text-white border-orange-500'
+                    : mt === 'dinner' ? 'bg-purple-600 text-white border-purple-600'
+                    : 'bg-blue-500 text-white border-blue-500'
+                  : 'border-gray-300 text-gray-500 hover:border-gray-400'
+              }`}>
+              {mt === 'lunch' ? '☀️' : mt === 'dinner' ? '🌙' : '🍹'} {mt}
+            </button>
+          ))}
+        </div>
+      )}
+      {showRating && (
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-600 shrink-0">Rate it!</span>
           <StarRating value={item.rating} onChange={(v) => onUpdate('rating', String(v))} />
         </div>
+      )}
+      <div className="grid grid-cols-1 gap-2">
         <input type="text" value={item.notes}
           onChange={(e) => onUpdate('notes', e.target.value)}
-          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-          placeholder="Notes (optional)" />
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link}
           onChange={(e) => onUpdate('link', e.target.value)}
-          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-          placeholder="🔗 Link (optional)" />
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          placeholder="🔗 Website link (optional)" />
       </div>
-      <button type="button" onClick={onRemove}
-        className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
     </div>
   )
 }
 
 const emptyItem = (type: DestItem['type'] = 'activity'): DestItem => ({
-  type, name: '', notes: '', rating: 0, link: '',
+  type, mealType: '', name: '', notes: '', rating: 0, link: '',
 })
 const emptyDest = (): Destination => ({ name: '', country: '', items: [] })
 
@@ -107,6 +144,9 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   const boundAction = updateItinerary.bind(null, itinerary.id)
   const [state, action, pending] = useActionState(boundAction, undefined)
 
+  const [postType, setPostType] = useState<'itinerary' | 'guide'>(
+    itinerary.postType === 'guide' ? 'guide' : 'itinerary'
+  )
   const [title, setTitle] = useState(itinerary.title)
   const [description, setDescription] = useState(itinerary.description ?? '')
   const [startDate, setStartDate] = useState(fmt(itinerary.startDate))
@@ -121,6 +161,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
           country: d.country ?? '',
           items: d.items.map((item) => ({
             type: item.type as DestItem['type'],
+            mealType: (item as { mealType?: string | null }).mealType ?? '',
             name: item.name,
             notes: item.notes ?? '',
             rating: item.rating ?? 0,
@@ -192,6 +233,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       <input type="hidden" name="photos" value={JSON.stringify(photos)} />
       <input type="hidden" name="audience" value={isAdult ? 'adult' : 'family'} />
       <input type="hidden" name="visibility" value={isPrivate ? 'private' : 'public'} />
+      <input type="hidden" name="postType" value={postType} />
 
       {state?.error && (
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
@@ -201,7 +243,24 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
 
       {/* Basic Info */}
       <section className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-        <h2 className="font-semibold text-gray-900">Basic Info</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900">Basic Info</h2>
+          <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium">
+            <button type="button" onClick={() => setPostType('itinerary')}
+              className={`px-3 py-1.5 rounded-lg transition-colors ${postType === 'itinerary' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
+              ✈️ Itinerary
+            </button>
+            <button type="button" onClick={() => setPostType('guide')}
+              className={`px-3 py-1.5 rounded-lg transition-colors ${postType === 'guide' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
+              📖 Guide
+            </button>
+          </div>
+        </div>
+        {postType === 'guide' && (
+          <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+            Guide mode — share your recommendations without dates or personal ratings.
+          </p>
+        )}
         <div>
           <label htmlFor="title" className={labelClass}>Title *</label>
           <input id="title" name="title" type="text" required className={inputClass}
@@ -212,18 +271,20 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
           <textarea id="description" name="description" rows={2} className={inputClass}
             value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="startDate" className={labelClass}>Start date *</label>
-            <input id="startDate" name="startDate" type="date" required className={inputClass}
-              value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+        {postType === 'itinerary' && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="startDate" className={labelClass}>Start date *</label>
+              <input id="startDate" name="startDate" type="date" required className={inputClass}
+                value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </div>
+            <div>
+              <label htmlFor="endDate" className={labelClass}>End date *</label>
+              <input id="endDate" name="endDate" type="date" required className={inputClass}
+                value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
           </div>
-          <div>
-            <label htmlFor="endDate" className={labelClass}>End date *</label>
-            <input id="endDate" name="endDate" type="date" required className={inputClass}
-              value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          </div>
-        </div>
+        )}
         <label className="flex items-center gap-3 cursor-pointer select-none">
           <div onClick={() => setIsAdult((v) => !v)}
             className={`w-10 h-6 rounded-full transition-colors relative ${isAdult ? 'bg-rose-500' : 'bg-gray-200'}`}>
@@ -249,7 +310,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-gray-900 text-lg">Destinations</h2>
           <button type="button" onClick={addDest}
-            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+            className="text-sm text-blue-600 hover:text-blue-800 font-medium">
             + Add destination
           </button>
         </div>
@@ -279,20 +340,26 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                     {icon} {label}
                   </p>
                   <button type="button" onClick={() => addItem(destIdx, type)}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium">
                     {btnLabel}
                   </button>
                 </div>
                 {byType(dest, type).length === 0 && (
                   <p className="text-xs text-gray-600 italic">None added yet.</p>
                 )}
-                {dest.items.map((item, itemIdx) =>
-                  item.type !== type ? null : (
-                    <ItemRow key={itemIdx} item={item}
-                      onUpdate={(field, val) => updateItem(destIdx, itemIdx, field, val)}
-                      onRemove={() => removeItem(destIdx, itemIdx)} />
-                  )
-                )}
+                <div className="space-y-3">
+                  {dest.items
+                    .map((item, itemIdx) => ({ item, itemIdx }))
+                    .filter(({ item }) => item.type === type)
+                    .map(({ item, itemIdx }, typeIdx) => (
+                      <ItemRow key={itemIdx} item={item}
+                        index={typeIdx}
+                        showRating={postType === 'itinerary'}
+                        onUpdate={(field, val) => updateItem(destIdx, itemIdx, field, val)}
+                        onRemove={() => removeItem(destIdx, itemIdx)} />
+                    ))
+                  }
+                </div>
               </div>
             ))}
           </div>
@@ -310,7 +377,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       {/* Photos */}
       <section className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
         <h2 className="font-semibold text-gray-900">Photos</h2>
-        <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-8 cursor-pointer hover:border-indigo-400 transition-colors">
+        <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-8 cursor-pointer hover:border-blue-400 transition-colors">
           <span className="text-2xl mb-2">📸</span>
           <span className="text-sm font-medium text-gray-900">
             {uploading ? 'Uploading…' : 'Click to upload photos'}
@@ -331,7 +398,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 </button>
                 <input type="text" value={photo.caption}
                   onChange={(e) => updateCaption(i, e.target.value)}
-                  className="mt-1 w-full rounded border border-gray-200 px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                  className="mt-1 w-full rounded border border-gray-200 px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
                   placeholder="Caption (optional)" />
               </div>
             ))}
@@ -341,7 +408,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
 
       <div className="flex gap-3">
         <button type="submit" disabled={pending || uploading}
-          className="flex-1 bg-indigo-600 text-white font-semibold py-3 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-60 text-base">
+          className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60 text-base">
           {pending ? 'Saving…' : 'Save changes'}
         </button>
       </div>

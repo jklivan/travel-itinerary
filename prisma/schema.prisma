@@ -8,14 +8,15 @@ datasource db {
 }
 
 model User {
-  id          String      @id @default(cuid())
-  email       String      @unique
-  name        String
-  password    String
-  itineraries Itinerary[]
-  following   Follow[]    @relation("UserFollowing")
-  followers   Follow[]    @relation("UserFollowers")
-  createdAt   DateTime    @default(now())
+  id             String           @id @default(cuid())
+  email          String           @unique
+  name           String
+  password       String
+  itineraries    Itinerary[]
+  following      Follow[]         @relation("UserFollowing")
+  followers      Follow[]         @relation("UserFollowers")
+  bucketList     BucketListItem[]
+  createdAt      DateTime         @default(now())
 }
 
 model Follow {
@@ -31,19 +32,32 @@ model Follow {
 }
 
 model Itinerary {
-  id           String        @id @default(cuid())
+  id           String           @id @default(cuid())
   title        String
   description  String?
   startDate    DateTime
   endDate      DateTime
-  audience     String        @default("family")
-  visibility   String        @default("public")
+  postType     String           @default("itinerary")
+  audience     String           @default("family")
+  visibility   String           @default("public")
   notes        String?
   userId       String
-  user         User          @relation(fields: [userId], references: [id])
+  user         User             @relation(fields: [userId], references: [id])
   destinations Destination[]
   photos       Photo[]
-  createdAt    DateTime      @default(now())
+  bucketedBy   BucketListItem[]
+  createdAt    DateTime         @default(now())
+}
+
+model BucketListItem {
+  id          String    @id @default(cuid())
+  userId      String
+  itineraryId String
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itineraryId])
 }
 
 model Destination {
@@ -56,10 +70,12 @@ model Destination {
   items       DestItem[]
 }
 
-// type: "activity" | "food_drink"
+// type: "activity" | "food_drink" | "hotel"
+// mealType (food_drink only): "lunch" | "dinner" | "drinks" | null
 model DestItem {
   id            String      @id @default(cuid())
   type          String
+  mealType      String?
   name          String
   notes         String?
   rating        Int?

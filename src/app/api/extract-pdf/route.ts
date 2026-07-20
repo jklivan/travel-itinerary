@@ -25,10 +25,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No text provided.' }, { status: 400 })
     }
 
-    // ── Step 1: extract itinerary structure ─────────────────────────────────
+    // Truncate to avoid very long inputs
+    const truncated = text.length > 20000 ? text.slice(0, 20000) + '\n[truncated]' : text
+
+    // ── Extract itinerary structure ──────────────────────────────────────────
     const extraction = await client.messages.create({
-      model: 'claude-opus-4-6',
-      max_tokens: 4096,
+      model: 'claude-haiku-4-5',
+      max_tokens: 2048,
       tools: [
         {
           name: 'extract_itinerary',
@@ -87,7 +90,7 @@ RULES:
 - Do NOT include transportation logistics: skip anything that is purely about pick-up, drop-off, transfers, airport/hotel shuttles, departure/arrival times, or transit between locations. Only include destinations and things to do, eat, or stay at those destinations.
 
 DOCUMENT:
-${text}`,
+${truncated}`,
         },
       ],
     })

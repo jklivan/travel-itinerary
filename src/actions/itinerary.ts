@@ -10,7 +10,7 @@ export type ItineraryState = { error?: string } | undefined
 type DestInput = {
   name: string
   country: string
-  items: { type: string; name: string; notes: string; rating: number; link: string }[]
+  items: { type: string; mealType?: string; name: string; notes: string; rating: number; link: string }[]
 }
 
 function parseFormData(formData: FormData) {
@@ -18,6 +18,7 @@ function parseFormData(formData: FormData) {
   const description = (formData.get('description') as string)?.trim() || null
   const startDateStr = formData.get('startDate') as string
   const endDateStr = formData.get('endDate') as string
+  const postType = (formData.get('postType') as string) || 'itinerary'
   const audience = (formData.get('audience') as string) || 'family'
   const visibility = (formData.get('visibility') as string) || 'public'
   const notes = (formData.get('notes') as string)?.trim() || null
@@ -27,7 +28,7 @@ function parseFormData(formData: FormData) {
   const photos: { url: string; caption: string }[] = formData.get('photos')
     ? JSON.parse(formData.get('photos') as string)
     : []
-  return { title, description, startDateStr, endDateStr, audience, visibility, notes, destinations, photos }
+  return { postType, title, description, startDateStr, endDateStr, audience, visibility, notes, destinations, photos }
 }
 
 export async function createItinerary(
@@ -37,18 +38,23 @@ export async function createItinerary(
   const session = await auth()
   if (!session?.user?.id) return { error: 'You must be logged in.' }
 
-  const { title, description, startDateStr, endDateStr, audience, visibility, notes, destinations, photos } =
+  const { postType, title, description, startDateStr, endDateStr, audience, visibility, notes, destinations, photos } =
     parseFormData(formData)
 
   if (!title) return { error: 'Title is required.' }
-  if (!startDateStr || !endDateStr) return { error: 'Start and end dates are required.' }
 
-  const startDate = new Date(startDateStr)
-  const endDate = new Date(endDateStr)
+  // Dates are required for itineraries, optional for guides
+  const isGuide = postType === 'guide'
+  if (!isGuide && (!startDateStr || !endDateStr)) return { error: 'Start and end dates are required.' }
+
+  const today = new Date()
+  const startDate = startDateStr ? new Date(startDateStr) : today
+  const endDate = endDateStr ? new Date(endDateStr) : today
   if (endDate < startDate) return { error: 'End date must be after start date.' }
 
   const itinerary = await prisma.itinerary.create({
     data: {
+      postType,
       title,
       description,
       startDate,
@@ -67,6 +73,7 @@ export async function createItinerary(
               .filter((item) => item.name.trim())
               .map((item) => ({
                 type: item.type,
+                mealType: item.mealType?.trim() || null,
                 name: item.name.trim(),
                 notes: item.notes.trim() || null,
                 rating: item.rating > 0 ? item.rating : null,
@@ -96,14 +103,17 @@ export async function updateItinerary(
   const existing = await prisma.itinerary.findUnique({ where: { id } })
   if (!existing || existing.userId !== session.user.id) return { error: 'Not found.' }
 
-  const { title, description, startDateStr, endDateStr, audience, visibility, notes, destinations, photos } =
+  const { postType, title, description, startDateStr, endDateStr, audience, visibility, notes, destinations, photos } =
     parseFormData(formData)
 
   if (!title) return { error: 'Title is required.' }
-  if (!startDateStr || !endDateStr) return { error: 'Start and end dates are required.' }
 
-  const startDate = new Date(startDateStr)
-  const endDate = new Date(endDateStr)
+  const isGuide = postType === 'guide'
+  if (!isGuide && (!startDateStr || !endDateStr)) return { error: 'Start and end dates are required.' }
+
+  const today = new Date()
+  const startDate = startDateStr ? new Date(startDateStr) : today
+  const endDate = endDateStr ? new Date(endDateStr) : today
   if (endDate < startDate) return { error: 'End date must be after start date.' }
 
   // Delete existing destinations (cascades to items) and photos, then recreate
@@ -113,6 +123,7 @@ export async function updateItinerary(
   await prisma.itinerary.update({
     where: { id },
     data: {
+      postType,
       title,
       description,
       startDate,
@@ -130,6 +141,7 @@ export async function updateItinerary(
               .filter((item) => item.name.trim())
               .map((item) => ({
                 type: item.type,
+                mealType: item.mealType?.trim() || null,
                 name: item.name.trim(),
                 notes: item.notes.trim() || null,
                 rating: item.rating > 0 ? item.rating : null,

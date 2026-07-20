@@ -43,6 +43,7 @@ async function extractTextFromFile(file: File): Promise<string> {
 
 type DestItem = {
   type: 'hotel' | 'food_drink' | 'activity'
+  mealType: string
   name: string
   notes: string
   rating: number
@@ -52,7 +53,7 @@ type Destination = { name: string; country: string; items: DestItem[] }
 type UploadedPhoto = { url: string; caption: string }
 
 const emptyItem = (type: DestItem['type'] = 'activity'): DestItem => ({
-  type, name: '', notes: '', rating: 0, link: '',
+  type, mealType: '', name: '', notes: '', rating: 0, link: '',
 })
 const emptyDest = (): Destination => ({ name: '', country: '', items: [] })
 
@@ -75,15 +76,21 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   )
 }
 
+const SECTION_STYLES = {
+  hotel:      { border: 'border-l-blue-400',   bg: 'bg-blue-50',   accent: 'text-blue-600' },
+  food_drink: { border: 'border-l-orange-400', bg: 'bg-orange-50', accent: 'text-orange-600' },
+  activity:   { border: 'border-l-green-400',  bg: 'bg-green-50',  accent: 'text-green-600' },
+} as const
+
 function ItemRow({
-  item, destIdx, itemIdx,
-  onUpdate, onRemove,
+  item, index,
+  onUpdate, onRemove, showRating,
 }: {
   item: DestItem
-  destIdx: number
-  itemIdx: number
+  index: number
   onUpdate: (field: keyof DestItem, val: string) => void
   onRemove: () => void
+  showRating: boolean
 }) {
   const placeholder =
     item.type === 'hotel'
@@ -92,28 +99,57 @@ function ItemRow({
       ? 'e.g. Ramen Ichiran, Rooftop bar, Street market'
       : 'e.g. Temple tour, Hiking, Museum visit'
 
+  const MEAL_TYPES = ['lunch', 'dinner', 'drinks'] as const
+  const style = SECTION_STYLES[item.type]
+  const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
+
   return (
-    <div className="flex gap-2 items-start">
-      <div className="flex-1 space-y-1">
-        <input type="text" value={item.name}
-          onChange={(e) => onUpdate('name', e.target.value)}
-          className={inputClass} placeholder={placeholder} />
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400 shrink-0">Rate it!</span>
-          <StarRating value={item.rating}
-            onChange={(v) => onUpdate('rating', String(v))} />
+    <div className={`rounded-xl border border-l-4 ${style.border} ${rowBg} p-4 space-y-3`}>
+      <div className="flex gap-2 items-start">
+        <div className="flex-1">
+          <input type="text" value={item.name}
+            onChange={(e) => onUpdate('name', e.target.value)}
+            className={inputClass} placeholder={placeholder} />
         </div>
+        <button type="button" onClick={onRemove}
+          className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
+      </div>
+
+      {item.type === 'food_drink' && (
+        <div className="flex gap-1 flex-wrap">
+          {MEAL_TYPES.map((mt) => (
+            <button key={mt} type="button"
+              onClick={() => onUpdate('mealType', item.mealType === mt ? '' : mt)}
+              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${
+                item.mealType === mt
+                  ? mt === 'lunch' ? 'bg-orange-500 text-white border-orange-500'
+                    : mt === 'dinner' ? 'bg-purple-600 text-white border-purple-600'
+                    : 'bg-blue-500 text-white border-blue-500'
+                  : 'border-gray-300 text-gray-500 hover:border-gray-400'
+              }`}>
+              {mt === 'lunch' ? '☀️' : mt === 'dinner' ? '🌙' : '🍹'} {mt}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showRating && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-600 shrink-0">Rate it!</span>
+          <StarRating value={item.rating} onChange={(v) => onUpdate('rating', String(v))} />
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-2">
         <input type="text" value={item.notes}
           onChange={(e) => onUpdate('notes', e.target.value)}
-          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-          placeholder="Notes (optional)" />
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link}
           onChange={(e) => onUpdate('link', e.target.value)}
-          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-          placeholder="🔗 Link (optional)" />
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          placeholder="🔗 Website link (optional)" />
       </div>
-      <button type="button" onClick={onRemove}
-        className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
     </div>
   )
 }
@@ -125,6 +161,7 @@ export default function CreatePage() {
   const [description, setDescription] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [postType, setPostType] = useState<'itinerary' | 'guide'>('itinerary')
   const [isAdult, setIsAdult] = useState(false)
   const [isPrivate, setIsPrivate] = useState(false)
   const [notes, setNotes] = useState('')
@@ -133,6 +170,70 @@ export default function CreatePage() {
   const [uploading, setUploading] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState<string | null>(null)
+  const [pasteMode, setPasteMode] = useState(false)
+  const [pasteText, setPasteText] = useState('')
+
+  // ── Shared extraction logic ───────────────────────────────────────────────
+  async function runExtraction(text: string) {
+    if (!text.trim()) throw new Error('No text to extract from.')
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 45000)
+    let res: Response
+    try {
+      res = await fetch('/api/extract-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timeout)
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new Error(body.error ?? 'Extraction failed.')
+    }
+    const data = await res.json()
+    if (data.title) setTitle(data.title)
+    if (data.description) setDescription(data.description)
+    if (data.startDate) setStartDate(data.startDate)
+    if (data.endDate) setEndDate(data.endDate)
+    if (data.notes) setNotes(data.notes)
+    if (Array.isArray(data.destinations) && data.destinations.length > 0) {
+      setDestinations(
+        data.destinations.map((d: Destination) => ({
+          name: d.name ?? '',
+          country: d.country ?? '',
+          items: Array.isArray(d.items)
+            ? d.items.map((item: DestItem) => ({
+                type: item.type ?? 'activity',
+                mealType: item.mealType ?? '',
+                name: item.name ?? '',
+                notes: item.notes ?? '',
+                rating: 0,
+                link: item.link ?? '',
+              }))
+            : [],
+        }))
+      )
+    }
+  }
+
+  // ── Paste text extraction ─────────────────────────────────────────────────
+  async function handlePasteExtract() {
+    if (!pasteText.trim()) return
+    setExtracting(true)
+    setExtractError(null)
+    try {
+      await runExtraction(pasteText)
+      setPasteMode(false)
+      setPasteText('')
+    } catch (err) {
+      setExtractError(err instanceof Error ? err.message : 'Something went wrong.')
+    } finally {
+      setExtracting(false)
+    }
+  }
 
   // ── Document import ───────────────────────────────────────────────────────
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -142,39 +243,7 @@ export default function CreatePage() {
     setExtractError(null)
     try {
       const text = await extractTextFromFile(file)
-      if (!text.trim()) throw new Error('Could not read any text from this file.')
-      const res = await fetch('/api/extract-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.error ?? 'Extraction failed.')
-      }
-      const data = await res.json()
-      if (data.title) setTitle(data.title)
-      if (data.description) setDescription(data.description)
-      if (data.startDate) setStartDate(data.startDate)
-      if (data.endDate) setEndDate(data.endDate)
-      if (data.notes) setNotes(data.notes)
-      if (Array.isArray(data.destinations) && data.destinations.length > 0) {
-        setDestinations(
-          data.destinations.map((d: Destination) => ({
-            name: d.name ?? '',
-            country: d.country ?? '',
-            items: Array.isArray(d.items)
-              ? d.items.map((item: DestItem) => ({
-                  type: item.type ?? 'activity',
-                  name: item.name ?? '',
-                  notes: item.notes ?? '',
-                  rating: 0,
-                  link: item.link ?? '',
-                }))
-              : [],
-          }))
-        )
-      }
+      await runExtraction(text)
     } catch (err) {
       setExtractError(err instanceof Error ? err.message : 'Something went wrong.')
     } finally {
@@ -249,33 +318,81 @@ export default function CreatePage() {
       <p className="text-gray-500 text-sm mb-6">Share your trip with the world.</p>
 
       {/* ── Document Import ─────────────────────────────────────────────── */}
-      <div className="mb-8 bg-indigo-50 border border-indigo-200 rounded-2xl p-5">
-        <div className="flex items-start gap-3">
+      <div className="mb-8 bg-blue-50 border border-blue-200 rounded-2xl p-5">
+        <div className="flex items-start gap-3 mb-3">
           <span className="text-2xl">📄</span>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-indigo-900 text-sm">Import from document</p>
-            <p className="text-xs text-indigo-600 mt-0.5">
-              Upload a PDF, Excel, CSV, or text file and we&apos;ll extract the details automatically.
+            <p className="font-medium text-blue-900 text-sm">Import itinerary</p>
+            <p className="text-xs text-blue-600 mt-0.5">
+              Upload a file or paste text (email, notes, etc.) and we&apos;ll fill in the fields automatically.
             </p>
-            {extractError && (
-              <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
-                {extractError}
-              </p>
-            )}
-            {extracting && (
-              <p className="mt-2 text-xs text-indigo-700 animate-pulse">Reading your itinerary…</p>
-            )}
           </div>
-          <label className={`shrink-0 cursor-pointer rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-            extracting ? 'bg-indigo-200 text-indigo-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'
+        </div>
+
+        {/* Buttons row */}
+        <div className="flex gap-2 mb-3">
+          <label className={`flex-1 text-center cursor-pointer rounded-lg px-4 py-2 text-sm font-medium transition-colors border ${
+            extracting
+              ? 'bg-blue-100 text-blue-300 border-blue-200 cursor-not-allowed'
+              : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-600 hover:text-white hover:border-blue-600'
           }`}>
-            {extracting ? 'Extracting…' : 'Choose file'}
+            {extracting ? 'Extracting…' : '📎 Upload file'}
             <input type="file"
               accept=".pdf,.xlsx,.xls,.csv,.txt,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain"
               className="sr-only"
               onChange={handleImport} disabled={extracting} />
           </label>
+          <button
+            type="button"
+            disabled={extracting}
+            onClick={() => { setPasteMode((v) => !v); setExtractError(null) }}
+            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors border ${
+              pasteMode
+                ? 'bg-blue-600 text-white border-blue-600'
+                : extracting
+                ? 'bg-blue-100 text-blue-300 border-blue-200 cursor-not-allowed'
+                : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-600 hover:text-white hover:border-blue-600'
+            }`}>
+            📋 Paste text
+          </button>
         </div>
+
+        {/* Paste text area */}
+        {pasteMode && (
+          <div className="space-y-2">
+            <textarea
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              placeholder="Paste your itinerary text here — email confirmation, notes, booking details…"
+              rows={6}
+              className="w-full rounded-lg border border-blue-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handlePasteExtract}
+                disabled={extracting || !pasteText.trim()}
+                className="flex-1 bg-blue-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
+                {extracting ? 'Extracting…' : 'Extract itinerary'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPasteMode(false); setPasteText(''); setExtractError(null) }}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {extractError && (
+          <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+            {extractError}
+          </p>
+        )}
+        {extracting && (
+          <p className="mt-2 text-xs text-blue-700 animate-pulse">Reading your itinerary…</p>
+        )}
       </div>
 
       <form action={action} className="space-y-8">
@@ -283,6 +400,7 @@ export default function CreatePage() {
         <input type="hidden" name="photos" value={JSON.stringify(photos)} />
         <input type="hidden" name="audience" value={isAdult ? 'adult' : 'family'} />
         <input type="hidden" name="visibility" value={isPrivate ? 'private' : 'public'} />
+        <input type="hidden" name="postType" value={postType} />
 
         {state?.error && (
           <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
@@ -292,7 +410,24 @@ export default function CreatePage() {
 
         {/* ── Basic Info ─────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900">Basic Info</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-gray-900">Basic Info</h2>
+            <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium">
+              <button type="button" onClick={() => setPostType('itinerary')}
+                className={`px-3 py-1.5 rounded-lg transition-colors ${postType === 'itinerary' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
+                ✈️ Itinerary
+              </button>
+              <button type="button" onClick={() => setPostType('guide')}
+                className={`px-3 py-1.5 rounded-lg transition-colors ${postType === 'guide' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
+                📖 Guide
+              </button>
+            </div>
+          </div>
+          {postType === 'guide' && (
+            <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+              Guide mode — share your recommendations without dates or personal ratings.
+            </p>
+          )}
           <div>
             <label htmlFor="title" className={labelClass}>Title *</label>
             <input id="title" name="title" type="text" required className={inputClass}
@@ -305,18 +440,20 @@ export default function CreatePage() {
               placeholder="A brief summary of the trip…"
               value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="startDate" className={labelClass}>Start date *</label>
-              <input id="startDate" name="startDate" type="date" required className={inputClass}
-                value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          {postType === 'itinerary' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="startDate" className={labelClass}>Start date *</label>
+                <input id="startDate" name="startDate" type="date" required className={inputClass}
+                  value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              </div>
+              <div>
+                <label htmlFor="endDate" className={labelClass}>End date *</label>
+                <input id="endDate" name="endDate" type="date" required className={inputClass}
+                  value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              </div>
             </div>
-            <div>
-              <label htmlFor="endDate" className={labelClass}>End date *</label>
-              <input id="endDate" name="endDate" type="date" required className={inputClass}
-                value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            </div>
-          </div>
+          )}
           <label className="flex items-center gap-3 cursor-pointer select-none">
             <div
               onClick={() => setIsAdult((v) => !v)}
@@ -381,14 +518,19 @@ export default function CreatePage() {
                   {byType(dest, type).length === 0 && (
                     <p className="text-xs text-gray-400 italic">None added yet.</p>
                   )}
-                  {dest.items.map((item, itemIdx) =>
-                    item.type !== type ? null : (
-                      <ItemRow key={itemIdx}
-                        item={item} destIdx={destIdx} itemIdx={itemIdx}
-                        onUpdate={(field, val) => updateItem(destIdx, itemIdx, field, val)}
-                        onRemove={() => removeItem(destIdx, itemIdx)} />
-                    )
-                  )}
+                  <div className="space-y-3">
+                    {dest.items
+                      .map((item, itemIdx) => ({ item, itemIdx }))
+                      .filter(({ item }) => item.type === type)
+                      .map(({ item, itemIdx }, typeIdx) => (
+                        <ItemRow key={itemIdx}
+                          item={item} index={typeIdx}
+                          showRating={postType === 'itinerary'}
+                          onUpdate={(field, val) => updateItem(destIdx, itemIdx, field, val)}
+                          onRemove={() => removeItem(destIdx, itemIdx)} />
+                      ))
+                    }
+                  </div>
                 </div>
               ))}
             </div>

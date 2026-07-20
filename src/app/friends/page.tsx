@@ -29,10 +29,10 @@ export default async function FriendsPage() {
   ])
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Friends</h1>
-        <p className="text-gray-900 text-sm mt-1">
+    <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="mb-5">
+        <h1 className="text-xl font-bold text-gray-900">Friends</h1>
+        <p className="text-gray-500 text-sm mt-0.5">
           Follow travellers to see their itineraries in your feed.
         </p>
       </div>

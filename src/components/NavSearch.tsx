@@ -16,15 +16,15 @@ function NavSearchInner() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center">
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+    <form onSubmit={handleSubmit} className="flex items-center w-full">
+      <div className="relative w-full">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60 text-sm">🔍</span>
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search destination…"
-          className="pl-8 pr-3 py-1.5 text-sm text-gray-900 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white w-44 sm:w-52 transition-all"
+          placeholder="Search destinations…"
+          className="w-full pl-8 pr-3 py-1.5 text-sm text-white placeholder-white/60 rounded-lg bg-white/20 border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 focus:bg-white/30 transition-all"
         />
       </div>
     </form>
