@@ -90,7 +90,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
         <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-800">
           <span>📅 {fmtShort(it.startDate)} – {fmtShort(it.endDate)} ({days} days)</span>
           <div className="flex items-center gap-3">
-            <span>✍️ {it.user.name}</span>
+            <Link href={`/user/${it.user.id}`} className="hover:text-indigo-600 transition-colors">✍️ {it.user.name}</Link>
             {isOwn && (
               <Link href={`/itinerary/${it.id}/edit`}
                 className="text-xs font-medium px-3 py-1 rounded-full border border-gray-300 text-gray-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors">

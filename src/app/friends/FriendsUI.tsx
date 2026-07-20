@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import {
   searchUsers,
   searchUsersByDestination,
@@ -143,7 +144,7 @@ export default function FriendsUI({
           <ul className="divide-y divide-amber-100">
             {requests.map((user) => (
               <li key={user.id} className="flex items-center justify-between py-3">
-                <span className="text-sm font-medium text-gray-900">{user.name}</span>
+                <Link href={`/user/${user.id}`} className="text-sm font-medium text-gray-900 hover:text-indigo-600 transition-colors">{user.name}</Link>
                 <div className="flex gap-2">
                   <button onClick={() => handleAccept(user)}
                     className="text-xs font-medium px-3 py-1 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
@@ -194,7 +195,7 @@ export default function FriendsUI({
               <ul className="mt-4 divide-y divide-gray-100">
                 {nameResults.map((user) => (
                   <li key={user.id} className="flex items-center justify-between py-3">
-                    <span className="text-sm font-medium text-gray-900">{user.name}</span>
+                    <Link href={`/user/${user.id}`} className="text-sm font-medium text-gray-900 hover:text-indigo-600 transition-colors">{user.name}</Link>
                     <FollowButton userId={user.id} status={followStatus(user.id)}
                       onFollow={handleFollow} onCancel={handleCancel} onUnfollow={handleUnfollow} />
                   </li>
@@ -224,7 +225,7 @@ export default function FriendsUI({
                 {destResults.map((user) => (
                   <li key={user.id} className="flex items-center justify-between py-3 gap-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                      <Link href={`/user/${user.id}`} className="text-sm font-medium text-gray-900 hover:text-indigo-600 transition-colors">{user.name}</Link>
                       <p className="text-xs text-gray-900 mt-0.5">
                         📍 {user.matchedDestinations.join(' · ')}
                       </p>
@@ -255,7 +256,7 @@ export default function FriendsUI({
           <ul className="divide-y divide-gray-100">
             {followingList.map((user) => (
               <li key={user.id} className="flex items-center justify-between py-3">
-                <span className="text-sm font-medium text-gray-900">{user.name}</span>
+                <Link href={`/user/${user.id}`} className="text-sm font-medium text-gray-900 hover:text-indigo-600 transition-colors">{user.name}</Link>
                 <button onClick={() => handleUnfollow(user.id)}
                   className="text-xs font-medium px-3 py-1 rounded-full border border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-500 transition-colors">
                   Unfollow
