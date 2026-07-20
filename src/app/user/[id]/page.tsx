@@ -154,13 +154,13 @@ export default async function UserProfilePage({
           <Link
             href={`/user/${id}?tab=bucket`}
             className={`px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              showBucket ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              showBucket ? 'bg-red-500 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            <span>🪣</span> Bucket List
+            <span>❤️</span> Saved
             {bucketItems.length > 0 && (
               <span className={`text-xs rounded-full px-1.5 py-0.5 font-bold ${
-                showBucket ? 'bg-amber-400 text-white' : 'bg-gray-100 text-gray-600'
+                showBucket ? 'bg-red-400 text-white' : 'bg-gray-100 text-gray-600'
               }`}>
                 {bucketItems.length}
               </span>
@@ -203,14 +203,14 @@ export default async function UserProfilePage({
       ) : (
         <>
           <h2 className="font-semibold text-gray-900 text-sm mb-3 flex items-center gap-2">
-            <span>🪣</span> Bucket List
+            <span>❤️</span> Saved
           </h2>
           {bucketItems.length === 0 ? (
             <div className="bg-white rounded-xl shadow-md p-8 text-center">
-              <p className="text-4xl mb-3">🪣</p>
-              <p className="text-gray-500 text-sm">Your bucket list is empty.</p>
+              <p className="text-4xl mb-3">❤️</p>
+              <p className="text-gray-500 text-sm">Nothing saved yet.</p>
               <p className="text-gray-400 text-xs mt-1">
-                Tap the 🪣 on any itinerary to save it for later.
+                Tap the ❤️ on any itinerary to save it.
               </p>
             </div>
           ) : (

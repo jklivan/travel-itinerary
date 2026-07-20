@@ -1,9 +1,9 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useTransition, useState } from 'react'
 import { addToBucketList, removeFromBucketList } from '@/actions/bucketList'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { Heart } from 'lucide-react'
 
 export default function BucketButton({
   itineraryId,
@@ -41,7 +41,7 @@ export default function BucketButton({
     })
   }
 
-  const label = bucketed ? 'Remove from bucket list' : 'Add to bucket list'
+  const label = bucketed ? 'Remove from saved' : 'Save'
 
   if (size === 'md') {
     return (
@@ -51,12 +51,12 @@ export default function BucketButton({
         aria-label={label}
         className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
           bucketed
-            ? 'bg-amber-50 border-amber-300 text-amber-700 hover:bg-red-50 hover:border-red-300 hover:text-red-600'
-            : 'border-gray-300 text-gray-600 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700'
+            ? 'bg-red-50 border-red-300 text-red-600 hover:bg-red-100'
+            : 'border-gray-300 text-gray-600 hover:bg-red-50 hover:border-red-300 hover:text-red-500'
         }`}
       >
-        <span className="text-base">{bucketed ? '🪣' : '🪣'}</span>
-        {bucketed ? 'In bucket list' : 'Add to bucket list'}
+        <Heart size={15} className={bucketed ? 'fill-red-500 text-red-500' : ''} />
+        {bucketed ? 'Saved' : 'Save'}
       </button>
     )
   }
@@ -68,11 +68,11 @@ export default function BucketButton({
       aria-label={label}
       className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-all ${
         bucketed
-          ? 'bg-amber-400 text-white scale-110'
-          : 'bg-white/90 text-gray-500 hover:bg-amber-50 hover:text-amber-600'
+          ? 'bg-red-500 text-white scale-110'
+          : 'bg-white/90 text-gray-400 hover:bg-red-50 hover:text-red-400'
       }`}
     >
-      <span className="text-sm leading-none">{bucketed ? '🪣' : '🪣'}</span>
+      <Heart size={14} className={bucketed ? 'fill-white' : ''} />
     </button>
   )
 }
