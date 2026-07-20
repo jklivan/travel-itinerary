@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import type { ItineraryWhereInput } from '@/generated/prisma/models/Itinerary'
 import { auth } from '@/auth'
 import Link from 'next/link'
 import ItineraryCard from '@/components/ItineraryCard'
@@ -11,7 +12,7 @@ const TRIP_TYPE_META: Record<string, { label: string; emoji: string; desc: strin
 }
 
 async function fetchItineraries(
-  where: Parameters<typeof prisma.itinerary.findMany>[0]['where'],
+  where: ItineraryWhereInput,
   userId: string | null
 ) {
   const [itineraries, bucketIds] = await Promise.all([
