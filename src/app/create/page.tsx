@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { createItinerary } from '@/actions/itinerary'
+import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 
 async function extractTextFromFile(file: File): Promise<string> {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
@@ -83,8 +84,13 @@ function FoodRow({ item, index, onUpdate, onRemove, showRating }: {
   return (
     <div className={`rounded-xl border border-l-4 border-l-orange-400 ${rowBg} p-4 space-y-3`}>
       <div className="flex gap-2 items-start">
-        <input type="text" value={item.name} onChange={e => onUpdate('name', e.target.value)}
-          className={inputClass} placeholder="e.g. Ramen Ichiran, Rooftop bar, Street market" />
+        <PlacesAutocomplete
+          value={item.name}
+          onChange={val => onUpdate('name', val)}
+          type="restaurant"
+          placeholder="e.g. Ramen Ichiran, Rooftop bar, Street market"
+          className={inputClass}
+        />
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
       <div className="flex gap-1 flex-wrap">
@@ -113,8 +119,13 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
   return (
     <div className={`rounded-xl border border-l-4 border-l-green-400 ${rowBg} p-4 space-y-3`}>
       <div className="flex gap-2 items-start">
-        <input type="text" value={item.name} onChange={e => onUpdate('name', e.target.value)}
-          className={inputClass} placeholder="e.g. Temple tour, Hiking, Museum visit" />
+        <PlacesAutocomplete
+          value={item.name}
+          onChange={val => onUpdate('name', val)}
+          type="activity"
+          placeholder="e.g. Temple tour, Hiking, Museum visit"
+          className={inputClass}
+        />
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
       {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
@@ -445,8 +456,14 @@ export default function CreatePage() {
               {/* City / Country */}
               <div className="flex gap-3 items-start">
                 <div className="flex-1 grid grid-cols-2 gap-3">
-                  <input type="text" value={dest.name} onChange={e => updateDest(di, 'name', e.target.value)}
-                    className={inputClass} placeholder={`City / place${destinations.length > 1 ? ` ${di + 1}` : ''}`} />
+                  <PlacesAutocomplete
+                    value={dest.name}
+                    onChange={val => updateDest(di, 'name', val)}
+                    onSelect={(main, secondary) => setDestinations(d => d.map((dst, idx) => idx === di ? { ...dst, name: main, country: secondary || dst.country } : dst))}
+                    type="destination"
+                    placeholder={`City / place${destinations.length > 1 ? ` ${di + 1}` : ''}`}
+                    className={inputClass}
+                  />
                   <input type="text" value={dest.country} onChange={e => updateDest(di, 'country', e.target.value)}
                     className={inputClass} placeholder="Country" />
                 </div>
@@ -468,8 +485,13 @@ export default function CreatePage() {
                     {/* Hotel */}
                     <div className="bg-blue-50 rounded-xl border border-l-4 border-l-blue-400 p-3 space-y-2">
                       <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">🏨 Hotel / Accommodation</p>
-                      <input type="text" value={group.hotelName} onChange={e => updateHotel(di, gi, 'hotelName', e.target.value)}
-                        className={inputClass} placeholder="Hotel name (optional)" />
+                      <PlacesAutocomplete
+                        value={group.hotelName}
+                        onChange={val => updateHotel(di, gi, 'hotelName', val)}
+                        type="hotel"
+                        placeholder="Hotel name (optional)"
+                        className={inputClass}
+                      />
                       {group.hotelName && (<>
                         {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600">Rate it!</span><StarRating value={group.hotelRating} onChange={v => updateHotel(di, gi, 'hotelRating', String(v))} /></div>}
                         <input type="text" value={group.hotelNotes} onChange={e => updateHotel(di, gi, 'hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
