@@ -13,41 +13,21 @@ export async function GET(req: NextRequest) {
 
   if (!q || q.length < 2) return Response.json([])
 
-  // Only use types confirmed valid in the Places API (New)
-  let includedPrimaryTypes: string[] | undefined
-  if (type === 'hotel') {
-    includedPrimaryTypes = ['lodging']
-  } else if (type === 'restaurant') {
-    includedPrimaryTypes = ['restaurant', 'cafe', 'bar']
-  } else if (type === 'activity') {
-    includedPrimaryTypes = ['tourist_attraction', 'museum', 'park', 'zoo', 'art_gallery', 'aquarium', 'amusement_park']
-  } else {
-    // destination — locality + countries
-    includedPrimaryTypes = ['locality', 'administrative_area_level_1']
-  }
+  // Use legacy Places Autocomplete API (more widely enabled)
+  const placeType =
+    type === 'hotel' || type === 'restaurant' || type === 'activity'
+      ? 'establishment'
+      : '(cities)'
 
-  const body: Record<string, unknown> = {
-    input: q,
-    languageCode: 'en',
-  }
-  if (includedPrimaryTypes) {
-    body.includedPrimaryTypes = includedPrimaryTypes
-  }
+  const url = new URL('https://maps.googleapis.com/maps/api/place/autocomplete/json')
+  url.searchParams.set('input', q)
+  url.searchParams.set('key', API_KEY)
+  url.searchParams.set('types', placeType)
+  url.searchParams.set('language', 'en')
 
   let res: Response
   try {
-    res = await fetch(
-      'https://places.googleapis.com/v1/places:autocomplete',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': API_KEY,
-          'X-Goog-FieldMask': 'suggestions.placePrediction.text,suggestions.placePrediction.structuredFormat',
-        },
-        body: JSON.stringify(body),
-      }
-    )
+    res = await fetch(url.toString())
   } catch (err) {
     console.error('[places] fetch error:', err)
     return Response.json([])
@@ -55,25 +35,24 @@ export async function GET(req: NextRequest) {
 
   const data = await res.json()
 
-  if (!res.ok) {
-    console.error('[places] API error:', JSON.stringify(data))
+  if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+    console.error('[places] API error:', data.status, data.error_message)
     return Response.json([])
   }
 
-  const suggestions = (data.suggestions ?? []).slice(0, 6).map((s: {
-    placePrediction: {
-      text: { text: string }
-      structuredFormat?: {
-        mainText: { text: string }
-        secondaryText?: { text: string }
-      }
+  type Prediction = {
+    description: string
+    structured_formatting: {
+      main_text: string
+      secondary_text?: string
     }
-  }) => {
-    const p = s.placePrediction
-    const main = p.structuredFormat?.mainText?.text ?? p.text.text
-    const secondary = p.structuredFormat?.secondaryText?.text ?? ''
-    return { label: p.text.text, main, secondary }
-  })
+  }
+
+  const suggestions = (data.predictions ?? []).slice(0, 6).map((p: Prediction) => ({
+    label: p.description,
+    main: p.structured_formatting.main_text,
+    secondary: p.structured_formatting.secondary_text ?? '',
+  }))
 
   return Response.json(suggestions)
 }
