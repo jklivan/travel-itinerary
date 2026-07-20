@@ -41,21 +41,16 @@ async function extractTextFromFile(file: File): Promise<string> {
   })
 }
 
-type DestItem = {
-  type: 'hotel' | 'food_drink' | 'activity'
-  mealType: string
-  name: string
-  notes: string
-  rating: number
-  link: string
-}
-type Destination = { name: string; country: string; items: DestItem[] }
+type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number }
+type ActivityItem = { name: string; notes: string; link: string; rating: number }
+type StayGroup    = { hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number; food: FoodItem[]; activities: ActivityItem[] }
+type Destination  = { name: string; country: string; groups: StayGroup[] }
 type UploadedPhoto = { url: string; caption: string }
 
-const emptyItem = (type: DestItem['type'] = 'activity'): DestItem => ({
-  type, mealType: '', name: '', notes: '', rating: 0, link: '',
-})
-const emptyDest = (): Destination => ({ name: '', country: '', items: [] })
+const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0 })
+const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0 })
+const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, food: [], activities: [] })
+const emptyDest     = (): Destination  => ({ name: '', country: '', groups: [emptyGroup()] })
 
 const inputClass =
   'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
@@ -76,79 +71,56 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   )
 }
 
-const SECTION_STYLES = {
-  hotel:      { border: 'border-l-blue-400',   bg: 'bg-blue-50',   accent: 'text-blue-600' },
-  food_drink: { border: 'border-l-orange-400', bg: 'bg-orange-50', accent: 'text-orange-600' },
-  activity:   { border: 'border-l-green-400',  bg: 'bg-green-50',  accent: 'text-green-600' },
-} as const
+const subInputClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400'
+const MEAL_TYPES = ['lunch', 'dinner', 'drinks'] as const
 
-function ItemRow({
-  item, index,
-  onUpdate, onRemove, showRating,
-}: {
-  item: DestItem
-  index: number
-  onUpdate: (field: keyof DestItem, val: string) => void
-  onRemove: () => void
-  showRating: boolean
+function FoodRow({ item, index, onUpdate, onRemove, showRating }: {
+  item: FoodItem; index: number
+  onUpdate: (field: keyof FoodItem, val: string) => void
+  onRemove: () => void; showRating: boolean
 }) {
-  const placeholder =
-    item.type === 'hotel'
-      ? 'e.g. The Marriott, Airbnb, Hostel name'
-      : item.type === 'food_drink'
-      ? 'e.g. Ramen Ichiran, Rooftop bar, Street market'
-      : 'e.g. Temple tour, Hiking, Museum visit'
-
-  const MEAL_TYPES = ['lunch', 'dinner', 'drinks'] as const
-  const style = SECTION_STYLES[item.type]
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
-
   return (
-    <div className={`rounded-xl border border-l-4 ${style.border} ${rowBg} p-4 space-y-3`}>
+    <div className={`rounded-xl border border-l-4 border-l-orange-400 ${rowBg} p-4 space-y-3`}>
       <div className="flex gap-2 items-start">
-        <div className="flex-1">
-          <input type="text" value={item.name}
-            onChange={(e) => onUpdate('name', e.target.value)}
-            className={inputClass} placeholder={placeholder} />
-        </div>
-        <button type="button" onClick={onRemove}
-          className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
+        <input type="text" value={item.name} onChange={e => onUpdate('name', e.target.value)}
+          className={inputClass} placeholder="e.g. Ramen Ichiran, Rooftop bar, Street market" />
+        <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
+      <div className="flex gap-1 flex-wrap">
+        {MEAL_TYPES.map(mt => (
+          <button key={mt} type="button" onClick={() => onUpdate('mealType', item.mealType === mt ? '' : mt)}
+            className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${item.mealType === mt ? mt === 'lunch' ? 'bg-orange-500 text-white border-orange-500' : mt === 'dinner' ? 'bg-purple-600 text-white border-purple-600' : 'bg-blue-500 text-white border-blue-500' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+            {mt === 'lunch' ? '☀️' : mt === 'dinner' ? '🌙' : '🍹'} {mt}
+          </button>
+        ))}
+      </div>
+      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
+      <div className="grid gap-2">
+        <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
+        <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
+      </div>
+    </div>
+  )
+}
 
-      {item.type === 'food_drink' && (
-        <div className="flex gap-1 flex-wrap">
-          {MEAL_TYPES.map((mt) => (
-            <button key={mt} type="button"
-              onClick={() => onUpdate('mealType', item.mealType === mt ? '' : mt)}
-              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${
-                item.mealType === mt
-                  ? mt === 'lunch' ? 'bg-orange-500 text-white border-orange-500'
-                    : mt === 'dinner' ? 'bg-purple-600 text-white border-purple-600'
-                    : 'bg-blue-500 text-white border-blue-500'
-                  : 'border-gray-300 text-gray-500 hover:border-gray-400'
-              }`}>
-              {mt === 'lunch' ? '☀️' : mt === 'dinner' ? '🌙' : '🍹'} {mt}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {showRating && (
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-600 shrink-0">Rate it!</span>
-          <StarRating value={item.rating} onChange={(v) => onUpdate('rating', String(v))} />
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-2">
-        <input type="text" value={item.notes}
-          onChange={(e) => onUpdate('notes', e.target.value)}
-          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
-          placeholder="📝 Notes (optional)" />
-        <input type="url" value={item.link}
-          onChange={(e) => onUpdate('link', e.target.value)}
-          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
-          placeholder="🔗 Website link (optional)" />
+function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
+  item: ActivityItem; index: number
+  onUpdate: (field: keyof ActivityItem, val: string) => void
+  onRemove: () => void; showRating: boolean
+}) {
+  const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
+  return (
+    <div className={`rounded-xl border border-l-4 border-l-green-400 ${rowBg} p-4 space-y-3`}>
+      <div className="flex gap-2 items-start">
+        <input type="text" value={item.name} onChange={e => onUpdate('name', e.target.value)}
+          className={inputClass} placeholder="e.g. Temple tour, Hiking, Museum visit" />
+        <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
+      </div>
+      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
+      <div className="grid gap-2">
+        <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
+        <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
       </div>
     </div>
   )
@@ -201,20 +173,16 @@ export default function CreatePage() {
     if (data.notes) setNotes(data.notes)
     if (Array.isArray(data.destinations) && data.destinations.length > 0) {
       setDestinations(
-        data.destinations.map((d: Destination) => ({
-          name: d.name ?? '',
-          country: d.country ?? '',
-          items: Array.isArray(d.items)
-            ? d.items.map((item: DestItem) => ({
-                type: item.type ?? 'activity',
-                mealType: item.mealType ?? '',
-                name: item.name ?? '',
-                notes: item.notes ?? '',
-                rating: 0,
-                link: item.link ?? '',
-              }))
-            : [],
-        }))
+        data.destinations.map((d: { name?: string; country?: string; items?: { type: string; mealType?: string; name: string; notes?: string; link?: string }[] }) => {
+          const items = Array.isArray(d.items) ? d.items : []
+          const hotels = items.filter(i => i.type === 'hotel')
+          const food   = items.filter(i => i.type === 'food_drink').map(f => ({ name: f.name ?? '', mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: 0 }))
+          const acts   = items.filter(i => i.type === 'activity').map(a => ({ name: a.name ?? '', notes: a.notes ?? '', link: a.link ?? '', rating: 0 }))
+          const groups: StayGroup[] = hotels.length === 0
+            ? [{ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, food, activities: acts }]
+            : hotels.map((h, hi) => ({ hotelName: h.name ?? '', hotelNotes: h.notes ?? '', hotelLink: h.link ?? '', hotelRating: 0, food: hi === 0 ? food : [], activities: hi === 0 ? acts : [] }))
+          return { name: d.name ?? '', country: d.country ?? '', groups }
+        })
       )
     }
   }
@@ -253,30 +221,28 @@ export default function CreatePage() {
   }
 
   // ── Destinations ──────────────────────────────────────────────────────────
-  function addDest() { setDestinations((d) => [...d, emptyDest()]) }
-  function removeDest(i: number) { setDestinations((d) => d.filter((_, idx) => idx !== i)) }
+  function addDest() { setDestinations(d => [...d, emptyDest()]) }
+  function removeDest(i: number) { setDestinations(d => d.filter((_, idx) => idx !== i)) }
   function updateDest(i: number, field: 'name' | 'country', val: string) {
-    setDestinations((d) => d.map((dest, idx) => idx === i ? { ...dest, [field]: val } : dest))
+    setDestinations(d => d.map((dest, idx) => idx === i ? { ...dest, [field]: val } : dest))
   }
-  function addItem(destIdx: number, type: DestItem['type']) {
-    setDestinations((d) => d.map((dest, i) =>
-      i === destIdx ? { ...dest, items: [...dest.items, emptyItem(type)] } : dest
-    ))
+  function updGroup(di: number, gi: number, fn: (g: StayGroup) => StayGroup) {
+    setDestinations(d => d.map((dest, i) => i !== di ? dest : { ...dest, groups: dest.groups.map((g, j) => j !== gi ? g : fn(g)) }))
   }
-  function removeItem(destIdx: number, itemIdx: number) {
-    setDestinations((d) => d.map((dest, i) =>
-      i === destIdx ? { ...dest, items: dest.items.filter((_, j) => j !== itemIdx) } : dest
-    ))
+  function addGroup(di: number) { setDestinations(d => d.map((dest, i) => i !== di ? dest : { ...dest, groups: [...dest.groups, emptyGroup()] })) }
+  function removeGroup(di: number, gi: number) { setDestinations(d => d.map((dest, i) => i !== di ? dest : { ...dest, groups: dest.groups.filter((_, j) => j !== gi) })) }
+  function updateHotel(di: number, gi: number, field: keyof StayGroup, val: string) {
+    updGroup(di, gi, g => ({ ...g, [field]: field === 'hotelRating' ? Number(val) : val }))
   }
-  function updateItem(destIdx: number, itemIdx: number, field: keyof DestItem, val: string) {
-    setDestinations((d) => d.map((dest, i) =>
-      i === destIdx ? {
-        ...dest,
-        items: dest.items.map((item, j) =>
-          j === itemIdx ? { ...item, [field]: field === 'rating' ? Number(val) : val } : item
-        ),
-      } : dest
-    ))
+  function addFood(di: number, gi: number) { updGroup(di, gi, g => ({ ...g, food: [...g.food, emptyFood()] })) }
+  function removeFood(di: number, gi: number, ii: number) { updGroup(di, gi, g => ({ ...g, food: g.food.filter((_, j) => j !== ii) })) }
+  function updateFood(di: number, gi: number, ii: number, field: keyof FoodItem, val: string) {
+    updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, [field]: field === 'rating' ? Number(val) : val }) }))
+  }
+  function addActivity(di: number, gi: number) { updGroup(di, gi, g => ({ ...g, activities: [...g.activities, emptyActivity()] })) }
+  function removeActivity(di: number, gi: number, ii: number) { updGroup(di, gi, g => ({ ...g, activities: g.activities.filter((_, j) => j !== ii) })) }
+  function updateActivity(di: number, gi: number, ii: number, field: keyof ActivityItem, val: string) {
+    updGroup(di, gi, g => ({ ...g, activities: g.activities.map((a, j) => j !== ii ? a : { ...a, [field]: field === 'rating' ? Number(val) : val }) }))
   }
 
   // ── Photos ────────────────────────────────────────────────────────────────
@@ -303,14 +269,7 @@ export default function CreatePage() {
     setPhotos((p) => p.map((ph, idx) => idx === i ? { ...ph, caption: val } : ph))
   }
 
-  const byType = (dest: Destination, type: DestItem['type']) =>
-    dest.items.filter((it) => it.type === type)
-
-  const sections: { type: DestItem['type']; label: string; icon: string; btnLabel: string }[] = [
-    { type: 'hotel',     label: 'Hotels',      icon: '🏨', btnLabel: '+ Add hotel' },
-    { type: 'food_drink',label: 'Food & Drink', icon: '🍜', btnLabel: '+ Add place' },
-    { type: 'activity',  label: 'Activities',  icon: '🎯', btnLabel: '+ Add activity' },
-  ]
+  const showRating = postType === 'itinerary'
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
@@ -480,57 +439,67 @@ export default function CreatePage() {
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-gray-900 text-lg">Destinations</h2>
-            <button type="button" onClick={addDest}
-              className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
-              + Add destination
-            </button>
+            <button type="button" onClick={addDest} className="text-sm text-blue-600 hover:text-blue-800 font-medium">+ Add destination</button>
           </div>
 
-          {destinations.map((dest, destIdx) => (
-            <div key={destIdx} className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+          {destinations.map((dest, di) => (
+            <div key={di} className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+              {/* City / Country */}
               <div className="flex gap-3 items-start">
                 <div className="flex-1 grid grid-cols-2 gap-3">
-                  <input type="text" value={dest.name}
-                    onChange={(e) => updateDest(destIdx, 'name', e.target.value)}
-                    className={inputClass}
-                    placeholder={`City / place${destinations.length > 1 ? ` ${destIdx + 1}` : ''}`} />
-                  <input type="text" value={dest.country}
-                    onChange={(e) => updateDest(destIdx, 'country', e.target.value)}
+                  <input type="text" value={dest.name} onChange={e => updateDest(di, 'name', e.target.value)}
+                    className={inputClass} placeholder={`City / place${destinations.length > 1 ? ` ${di + 1}` : ''}`} />
+                  <input type="text" value={dest.country} onChange={e => updateDest(di, 'country', e.target.value)}
                     className={inputClass} placeholder="Country" />
                 </div>
                 {destinations.length > 1 && (
-                  <button type="button" onClick={() => removeDest(destIdx)}
-                    className="mt-1 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
+                  <button type="button" onClick={() => removeDest(di)} className="mt-1 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
                 )}
               </div>
 
-              {sections.map(({ type, label, icon, btnLabel }) => (
-                <div key={type} className="space-y-2">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    {icon} {label}
-                  </p>
-                  {byType(dest, type).length === 0 && (
-                    <p className="text-xs text-gray-400 italic">None added yet.</p>
+              {/* Stays */}
+              {dest.groups.map((group, gi) => (
+                <div key={gi} className="rounded-xl border border-gray-200 overflow-hidden">
+                  {dest.groups.length > 1 && (
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+                      <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Stay {gi + 1}</span>
+                      <button type="button" onClick={() => removeGroup(di, gi)} className="text-xs text-red-400 hover:text-red-600 font-medium">Remove stay</button>
+                    </div>
                   )}
-                  <div className="space-y-3">
-                    {dest.items
-                      .map((item, itemIdx) => ({ item, itemIdx }))
-                      .filter(({ item }) => item.type === type)
-                      .map(({ item, itemIdx }, typeIdx) => (
-                        <ItemRow key={itemIdx}
-                          item={item} index={typeIdx}
-                          showRating={postType === 'itinerary'}
-                          onUpdate={(field, val) => updateItem(destIdx, itemIdx, field, val)}
-                          onRemove={() => removeItem(destIdx, itemIdx)} />
-                      ))
-                    }
+                  <div className="p-4 space-y-4">
+                    {/* Hotel */}
+                    <div className="bg-blue-50 rounded-xl border border-l-4 border-l-blue-400 p-3 space-y-2">
+                      <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">🏨 Hotel / Accommodation</p>
+                      <input type="text" value={group.hotelName} onChange={e => updateHotel(di, gi, 'hotelName', e.target.value)}
+                        className={inputClass} placeholder="Hotel name (optional)" />
+                      {group.hotelName && (<>
+                        {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600">Rate it!</span><StarRating value={group.hotelRating} onChange={v => updateHotel(di, gi, 'hotelRating', String(v))} /></div>}
+                        <input type="text" value={group.hotelNotes} onChange={e => updateHotel(di, gi, 'hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
+                        <input type="url" value={group.hotelLink} onChange={e => updateHotel(di, gi, 'hotelLink', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
+                      </>)}
+                    </div>
+                    {/* Food & Drink */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🍜 Food & Drink</p>
+                      {group.food.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
+                      <div className="space-y-3">{group.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, ii, f, v)} onRemove={() => removeFood(di, gi, ii)} />)}</div>
+                      <button type="button" onClick={() => addFood(di, gi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add food / drink</button>
+                    </div>
+                    {/* Activities */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🎯 Activities</p>
+                      {group.activities.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
+                      <div className="space-y-3">{group.activities.map((item, ii) => <ActivityRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, ii, f, v)} onRemove={() => removeActivity(di, gi, ii)} />)}</div>
+                      <button type="button" onClick={() => addActivity(di, gi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add activity</button>
+                    </div>
                   </div>
-                  <button type="button" onClick={() => addItem(destIdx, type)}
-                    className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">
-                    {btnLabel}
-                  </button>
                 </div>
               ))}
+
+              <button type="button" onClick={() => addGroup(di)}
+                className="w-full text-sm text-gray-500 hover:text-blue-600 border border-dashed border-gray-300 hover:border-blue-300 rounded-xl py-3 transition-colors">
+                + Add another stay (different hotel)
+              </button>
             </div>
           ))}
         </section>

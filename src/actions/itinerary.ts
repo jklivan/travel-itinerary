@@ -7,10 +7,30 @@ import { revalidatePath } from 'next/cache'
 
 export type ItineraryState = { error?: string } | undefined
 
-type DestInput = {
-  name: string
-  country: string
-  items: { type: string; mealType?: string; name: string; notes: string; rating: number; link: string }[]
+type FoodInput = { name: string; mealType?: string; notes: string; rating: number; link: string }
+type ActivityInput = { name: string; notes: string; rating: number; link: string }
+type StayGroup = {
+  hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number
+  food: FoodInput[]; activities: ActivityInput[]
+}
+type DestInput = { name: string; country: string; groups: StayGroup[] }
+
+type ItemRow = { type: string; name: string; notes: string | null; link: string | null; rating: number | null; mealType: string | null; groupIndex: number }
+
+function flattenGroups(groups: StayGroup[]): ItemRow[] {
+  return groups.flatMap((g, gi) => {
+    const rows: ItemRow[] = []
+    if (g.hotelName?.trim()) {
+      rows.push({ type: 'hotel', name: g.hotelName.trim(), notes: g.hotelNotes?.trim() || null, link: g.hotelLink?.trim() || null, rating: g.hotelRating > 0 ? g.hotelRating : null, mealType: null, groupIndex: gi })
+    }
+    for (const f of g.food ?? []) {
+      if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, mealType: f.mealType?.trim() || null, groupIndex: gi })
+    }
+    for (const a of g.activities ?? []) {
+      if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), notes: a.notes?.trim() || null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, mealType: null, groupIndex: gi })
+    }
+    return rows
+  })
 }
 
 function parseFormData(formData: FormData) {
@@ -68,18 +88,7 @@ export async function createItinerary(
           name: d.name,
           country: d.country || null,
           order: i,
-          items: {
-            create: d.items
-              .filter((item) => item.name.trim())
-              .map((item) => ({
-                type: item.type,
-                mealType: item.mealType?.trim() || null,
-                name: item.name.trim(),
-                notes: item.notes.trim() || null,
-                rating: item.rating > 0 ? item.rating : null,
-                link: item.link?.trim() || null,
-              })),
-          },
+          items: { create: flattenGroups(d.groups ?? []) },
         })),
       },
       photos: {
@@ -136,18 +145,7 @@ export async function updateItinerary(
           name: d.name,
           country: d.country || null,
           order: i,
-          items: {
-            create: d.items
-              .filter((item) => item.name.trim())
-              .map((item) => ({
-                type: item.type,
-                mealType: item.mealType?.trim() || null,
-                name: item.name.trim(),
-                notes: item.notes.trim() || null,
-                rating: item.rating > 0 ? item.rating : null,
-                link: item.link?.trim() || null,
-              })),
-          },
+          items: { create: flattenGroups(d.groups ?? []) },
         })),
       },
       photos: {

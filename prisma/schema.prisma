@@ -80,6 +80,7 @@ model DestItem {
   notes         String?
   rating        Int?
   link          String?
+  groupIndex    Int         @default(0)
   destinationId String
   destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
 }

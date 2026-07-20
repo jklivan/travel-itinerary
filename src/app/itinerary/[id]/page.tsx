@@ -19,11 +19,20 @@ function Stars({ rating }: { rating: number | null }) {
   )
 }
 
-const SECTIONS = [
-  { type: 'hotel',      label: 'Hotel',      icon: Hotel,    bg: 'bg-blue-50',   iconClass: 'text-blue-600' },
-  { type: 'food_drink', label: 'Food & Drink', icon: Utensils, bg: 'bg-orange-50', iconClass: 'text-orange-600' },
-  { type: 'activity',   label: 'Activities',  icon: Camera,   bg: 'bg-green-50',  iconClass: 'text-green-600' },
-] as const
+type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; notes?: string | null; rating?: number | null; link?: string | null; groupIndex?: number }
+
+function groupItems(items: DestItemRow[]) {
+  const map = new Map<number, { hotel: DestItemRow | null; food: DestItemRow[]; activities: DestItemRow[] }>()
+  for (const item of items) {
+    const gi = item.groupIndex ?? 0
+    if (!map.has(gi)) map.set(gi, { hotel: null, food: [], activities: [] })
+    const g = map.get(gi)!
+    if (item.type === 'hotel') g.hotel = item
+    else if (item.type === 'food_drink') g.food.push(item)
+    else if (item.type === 'activity') g.activities.push(item)
+  }
+  return [...map.entries()].sort(([a], [b]) => a - b).map(([, g]) => g)
+}
 
 export default async function ItineraryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -168,61 +177,91 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
 
           {/* Destinations */}
           {it.destinations.length > 0 && (
-            <div className="space-y-4 mb-5">
-              {it.destinations.map((dest) => (
-                <div key={dest.id}>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
-                    <MapPin size={14} className="text-blue-600" />
-                    {dest.name}{dest.country ? `, ${dest.country}` : ''}
-                  </h3>
-                  <div className="space-y-2">
-                    {SECTIONS.map(({ type, label, icon: Icon, bg, iconClass }) => {
-                      const items = dest.items.filter((it) => it.type === type)
-                      if (items.length === 0) return null
-                      return (
-                        <div key={type} className={`${bg} rounded-lg p-3`}>
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <Icon size={14} className={iconClass} />
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</p>
-                          </div>
-                          <div className="space-y-2">
-                            {items.map((item) => (
-                              <div key={item.id}>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-sm font-medium text-gray-900">{item.name}</span>
-                                  {item.type === 'food_drink' && (item as { mealType?: string | null }).mealType && (
-                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                      (item as { mealType?: string | null }).mealType === 'lunch'
-                                        ? 'bg-orange-100 text-orange-700'
-                                        : (item as { mealType?: string | null }).mealType === 'dinner'
-                                        ? 'bg-purple-100 text-purple-700'
-                                        : 'bg-blue-100 text-blue-700'
-                                    }`}>
-                                      {(item as { mealType?: string | null }).mealType === 'lunch' ? '☀️ Lunch'
-                                        : (item as { mealType?: string | null }).mealType === 'dinner' ? '🌙 Dinner'
-                                        : '🍹 Drinks'}
-                                    </span>
-                                  )}
-                                  {!isGuide && <Stars rating={item.rating} />}
+            <div className="space-y-5 mb-5">
+              {it.destinations.map((dest) => {
+                const groups = groupItems(dest.items as DestItemRow[])
+                const multiStay = groups.length > 1
+                return (
+                  <div key={dest.id}>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+                      <MapPin size={14} className="text-blue-600" />
+                      {dest.name}{dest.country ? `, ${dest.country}` : ''}
+                    </h3>
+                    <div className="space-y-3">
+                      {groups.map((group, gi) => (
+                        <div key={gi} className={multiStay ? 'rounded-xl border border-gray-200 overflow-hidden' : 'space-y-2'}>
+                          {multiStay && group.hotel && (
+                            <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Stay {gi + 1}</p>
+                            </div>
+                          )}
+                          <div className={multiStay ? 'p-3 space-y-2' : 'space-y-2'}>
+                            {group.hotel && (
+                              <div className="bg-blue-50 rounded-lg p-3">
+                                <div className="flex items-center gap-1.5 mb-1.5">
+                                  <Hotel size={14} className="text-blue-600" />
+                                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Hotel</p>
                                 </div>
-                                {item.notes && (
-                                  <p className="text-xs text-gray-500 italic mt-0.5">{item.notes}</p>
-                                )}
-                                {item.link && (
-                                  <a href={item.link} target="_blank" rel="noopener noreferrer"
-                                    className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">
-                                    🔗 Official site
-                                  </a>
-                                )}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm font-medium text-gray-900">{group.hotel.name}</span>
+                                  {!isGuide && <Stars rating={group.hotel.rating ?? null} />}
+                                </div>
+                                {group.hotel.notes && <p className="text-xs text-gray-500 italic mt-0.5">{group.hotel.notes}</p>}
+                                {group.hotel.link && <a href={group.hotel.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
                               </div>
-                            ))}
+                            )}
+                            {group.food.length > 0 && (
+                              <div className="bg-orange-50 rounded-lg p-3">
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  <Utensils size={14} className="text-orange-600" />
+                                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Food & Drink</p>
+                                </div>
+                                <div className="space-y-2">
+                                  {group.food.map(item => (
+                                    <div key={item.id}>
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                                        {item.mealType && (
+                                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${item.mealType === 'lunch' ? 'bg-orange-100 text-orange-700' : item.mealType === 'dinner' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                                            {item.mealType === 'lunch' ? '☀️ Lunch' : item.mealType === 'dinner' ? '🌙 Dinner' : '🍹 Drinks'}
+                                          </span>
+                                        )}
+                                        {!isGuide && <Stars rating={item.rating ?? null} />}
+                                      </div>
+                                      {item.notes && <p className="text-xs text-gray-500 italic mt-0.5">{item.notes}</p>}
+                                      {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {group.activities.length > 0 && (
+                              <div className="bg-green-50 rounded-lg p-3">
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  <Camera size={14} className="text-green-600" />
+                                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Activities</p>
+                                </div>
+                                <div className="space-y-2">
+                                  {group.activities.map(item => (
+                                    <div key={item.id}>
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                                        {!isGuide && <Stars rating={item.rating ?? null} />}
+                                      </div>
+                                      {item.notes && <p className="text-xs text-gray-500 italic mt-0.5">{item.notes}</p>}
+                                      {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
-                      )
-                    })}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 
