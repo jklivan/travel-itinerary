@@ -335,15 +335,9 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
 
             {sections.map(({ type, label, icon, btnLabel }) => (
               <div key={type} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                    {icon} {label}
-                  </p>
-                  <button type="button" onClick={() => addItem(destIdx, type)}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-medium">
-                    {btnLabel}
-                  </button>
-                </div>
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                  {icon} {label}
+                </p>
                 {byType(dest, type).length === 0 && (
                   <p className="text-xs text-gray-600 italic">None added yet.</p>
                 )}
@@ -360,6 +354,10 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                     ))
                   }
                 </div>
+                <button type="button" onClick={() => addItem(destIdx, type)}
+                  className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">
+                  {btnLabel}
+                </button>
               </div>
             ))}
           </div>
