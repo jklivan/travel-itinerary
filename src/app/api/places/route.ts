@@ -13,21 +13,33 @@ export async function GET(req: NextRequest) {
 
   if (!q || q.length < 2) return Response.json([])
 
-  // Use legacy Places Autocomplete API (more widely enabled)
-  const placeType =
-    type === 'hotel' || type === 'restaurant' || type === 'activity'
-      ? 'establishment'
-      : '(cities)'
+  const body: Record<string, unknown> = {
+    input: q,
+    languageCode: 'en',
+  }
 
-  const url = new URL('https://maps.googleapis.com/maps/api/place/autocomplete/json')
-  url.searchParams.set('input', q)
-  url.searchParams.set('key', API_KEY)
-  url.searchParams.set('types', placeType)
-  url.searchParams.set('language', 'en')
+  // Add type filtering only where safe
+  if (type === 'hotel') {
+    body.includedPrimaryTypes = ['lodging']
+  } else if (type === 'restaurant') {
+    body.includedPrimaryTypes = ['restaurant']
+  }
+  // destination and activity: no filter, let Google return best matches
 
   let res: Response
   try {
-    res = await fetch(url.toString())
+    res = await fetch(
+      'https://places.googleapis.com/v1/places:autocomplete',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': API_KEY,
+          'X-Goog-FieldMask': '*',
+        },
+        body: JSON.stringify(body),
+      }
+    )
   } catch (err) {
     console.error('[places] fetch error:', err)
     return Response.json([])
@@ -35,24 +47,27 @@ export async function GET(req: NextRequest) {
 
   const data = await res.json()
 
-  if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-    console.error('[places] API error:', data.status, data.error_message)
+  if (!res.ok) {
+    console.error('[places] API error:', JSON.stringify(data))
     return Response.json([])
   }
 
-  type Prediction = {
-    description: string
-    structured_formatting: {
-      main_text: string
-      secondary_text?: string
+  type Suggestion = {
+    placePrediction?: {
+      text?: { text: string }
+      structuredFormat?: {
+        mainText?: { text: string }
+        secondaryText?: { text: string }
+      }
     }
   }
 
-  const suggestions = (data.predictions ?? []).slice(0, 6).map((p: Prediction) => ({
-    label: p.description,
-    main: p.structured_formatting.main_text,
-    secondary: p.structured_formatting.secondary_text ?? '',
-  }))
+  const suggestions = (data.suggestions ?? []).slice(0, 6).map((s: Suggestion) => {
+    const p = s.placePrediction ?? {}
+    const main = p.structuredFormat?.mainText?.text ?? p.text?.text ?? ''
+    const secondary = p.structuredFormat?.secondaryText?.text ?? ''
+    return { label: p.text?.text ?? main, main, secondary }
+  })
 
   return Response.json(suggestions)
 }
