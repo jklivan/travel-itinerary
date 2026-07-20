@@ -47,38 +47,40 @@ export default async function FeedPage({
     orderBy: { createdAt: 'desc' },
     include: {
       user: { select: { name: true } },
-      destinations: { orderBy: { order: 'asc' } },
+      destinations: { orderBy: { order: 'asc' }, include: { items: true } },
       photos: { take: 1 },
     },
   })
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
-      <div className="mb-8 flex items-end justify-between flex-wrap gap-4">
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {searchQuery ? `"${searchQuery}"` : isFriends ? 'Friends' : 'Explore'}
-          </h1>
-          <p className="text-gray-900 mt-1">
+          <h1 className="text-2xl font-bold text-gray-900">
             {searchQuery
-              ? <Link href="/" className="text-indigo-500 hover:underline text-sm">← Clear search</Link>
+              ? `"${searchQuery}"`
+              : isFriends ? 'Friends' : 'Explore'}
+          </h1>
+          <p className="text-gray-600 text-sm mt-0.5">
+            {searchQuery
+              ? <Link href="/" className="text-indigo-500 hover:underline">← Clear search</Link>
               : isFriends
-              ? 'Itineraries from people you follow.'
-              : 'Discover trips planned by travellers around the world.'}
+              ? 'Itineraries from people you follow'
+              : 'Discover trips from around the world'}
           </p>
         </div>
 
         {session?.user && (
-          <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium">
+          <div className="flex gap-1 bg-white rounded-xl p-1 text-sm font-medium shadow-sm border border-gray-200">
             <Link href="/"
               className={`px-4 py-1.5 rounded-lg transition-colors ${
-                isFriends ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-700 hover:text-gray-900'
+                isFriends ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-700 hover:text-gray-900'
               }`}>
               Friends
             </Link>
             <Link href="/?view=explore"
               className={`px-4 py-1.5 rounded-lg transition-colors ${
-                isExplore ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-700 hover:text-gray-900'
+                isExplore ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-700 hover:text-gray-900'
               }`}>
               Explore
             </Link>
@@ -105,14 +107,12 @@ export default async function FeedPage({
               key={it.id}
               id={it.id}
               title={it.title}
-              description={it.description}
               startDate={it.startDate}
               endDate={it.endDate}
               audience={it.audience}
               authorName={it.user.name}
               destinations={it.destinations}
               coverPhoto={it.photos[0]?.url ?? null}
-              createdAt={it.createdAt}
             />
           ))}
         </div>
