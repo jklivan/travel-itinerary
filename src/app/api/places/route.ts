@@ -21,10 +21,8 @@ export async function GET(req: NextRequest) {
   // Add type filtering only where safe
   if (type === 'hotel') {
     body.includedPrimaryTypes = ['lodging']
-  } else if (type === 'restaurant') {
-    body.includedPrimaryTypes = ['restaurant']
   }
-  // destination and activity: no filter, let Google return best matches
+  // restaurant, destination, activity: no type filter — too broad to restrict
 
   let res: Response
   try {
