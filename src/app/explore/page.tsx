@@ -6,8 +6,8 @@ import ItineraryCard from '@/components/ItineraryCard'
 import { MapPin, Globe, ChevronRight } from 'lucide-react'
 
 const TRIP_TYPE_META: Record<string, { label: string; emoji: string; desc: string }> = {
-  family: { label: 'Family Friendly', emoji: '👨‍👩‍👧', desc: 'Great for all ages' },
-  adult:  { label: 'Adults Only',     emoji: '🍷',      desc: 'Curated for adults' },
+  family: { label: 'Family', emoji: '👨‍👩‍👧', desc: 'Great for all ages' },
+  adult:  { label: 'Adults', emoji: '🍷',   desc: 'Curated for adults' },
   guide:  { label: 'Guides',          emoji: '📖',      desc: 'Expert recommendations' },
 }
 

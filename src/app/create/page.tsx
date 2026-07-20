@@ -420,7 +420,7 @@ export default function CreatePage() {
               <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${isAdult ? 'translate-x-5' : 'translate-x-1'}`} />
             </div>
             <span className="text-sm text-gray-900">
-              Adults only{isAdult ? <span className="ml-1 text-rose-600 font-medium">(18+)</span> : ''}
+              Adults{isAdult ? <span className="ml-1 text-rose-600 font-medium"></span> : ' & Family'}
             </span>
           </label>
           <label className="flex items-center gap-3 cursor-pointer select-none">

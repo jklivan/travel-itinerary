@@ -109,7 +109,7 @@ export default function ItineraryCard({
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                   audience === 'adult' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'
                 }`}>
-                  {audience === 'adult' ? 'Adults Only' : 'Family'}
+                  {audience === 'adult' ? 'Adults' : 'Family'}
                 </span>
               )}
               {!isGuide && (

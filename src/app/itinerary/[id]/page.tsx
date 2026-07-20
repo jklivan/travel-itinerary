@@ -163,7 +163,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                 <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                   it.audience === 'adult' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'
                 }`}>
-                  {it.audience === 'adult' ? 'Adults Only' : 'Family Friendly'}
+                  {it.audience === 'adult' ? 'Adults' : 'Family'}
                 </span>
               )}
             </div>

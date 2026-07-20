@@ -246,7 +246,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
           <div onClick={() => setIsAdult(v => !v)} className={`w-10 h-6 rounded-full transition-colors relative ${isAdult ? 'bg-rose-500' : 'bg-gray-200'}`}>
             <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${isAdult ? 'translate-x-5' : 'translate-x-1'}`} />
           </div>
-          <span className="text-sm text-gray-900">Adults only{isAdult ? <span className="ml-1 text-rose-600 font-medium">(18+)</span> : ''}</span>
+          <span className="text-sm text-gray-900">Adults{isAdult ? '' : ' & Family'}</span>
         </label>
         <label className="flex items-center gap-3 cursor-pointer select-none">
           <div onClick={() => setIsPrivate(v => !v)} className={`w-10 h-6 rounded-full transition-colors relative ${isPrivate ? 'bg-gray-700' : 'bg-gray-200'}`}>
