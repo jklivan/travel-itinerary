@@ -8,7 +8,7 @@ type Props = {
   value: string
   onChange: (val: string) => void
   onSelect?: (main: string, secondary: string) => void
-  type?: 'destination' | 'hotel' | 'restaurant'
+  type?: 'destination' | 'hotel' | 'restaurant' | 'activity'
   placeholder?: string
   className?: string
 }
