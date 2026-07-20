@@ -159,11 +159,9 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                   {d.name}{d.country ? `, ${d.country}` : ''}
                 </span>
               ))}
-              {!isGuide && (
-                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                  it.audience === 'adult' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'
-                }`}>
-                  {it.audience === 'adult' ? 'Adults' : 'Family'}
+              {!isGuide && it.audience === 'family' && (
+                <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-800">
+                  Family Friendly
                 </span>
               )}
             </div>

@@ -105,13 +105,11 @@ export default function ItineraryCard({
                 <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-800">
                   📖 Guide
                 </span>
-              ) : (
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  audience === 'adult' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'
-                }`}>
-                  {audience === 'adult' ? 'Adults' : 'Family'}
+              ) : audience === 'family' ? (
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-800">
+                  Family Friendly
                 </span>
-              )}
+              ) : null}
               {!isGuide && (
                 <span className="text-xs text-gray-400">{days} day{days !== 1 ? 's' : ''}</span>
               )}
