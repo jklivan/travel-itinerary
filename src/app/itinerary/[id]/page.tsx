@@ -223,8 +223,21 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                                       <div className="flex items-center gap-2 flex-wrap">
                                         <span className="text-sm font-medium text-gray-900">{item.name}</span>
                                         {item.mealType && (
-                                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${item.mealType === 'lunch' ? 'bg-orange-100 text-orange-700' : item.mealType === 'dinner' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                                            {item.mealType === 'lunch' ? '☀️ Lunch' : item.mealType === 'dinner' ? '🌙 Dinner' : '🍹 Drinks'}
+                                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                            item.mealType === 'breakfast' ? 'bg-yellow-100 text-yellow-700' :
+                                            item.mealType === 'lunch'     ? 'bg-orange-100 text-orange-700' :
+                                            item.mealType === 'dinner'    ? 'bg-purple-100 text-purple-700' :
+                                            item.mealType === 'coffee'    ? 'bg-amber-100 text-amber-800' :
+                                            item.mealType === 'dessert'   ? 'bg-pink-100 text-pink-700' :
+                                            item.mealType === 'bakery'    ? 'bg-orange-50 text-orange-600' :
+                                            'bg-blue-100 text-blue-700'
+                                          }`}>
+                                            {item.mealType === 'breakfast' ? '🍳' :
+                                             item.mealType === 'lunch'     ? '☀️' :
+                                             item.mealType === 'dinner'    ? '🌙' :
+                                             item.mealType === 'coffee'    ? '☕' :
+                                             item.mealType === 'dessert'   ? '🍰' :
+                                             item.mealType === 'bakery'    ? '🥐' : '🍹'} {item.mealType.charAt(0).toUpperCase() + item.mealType.slice(1)}
                                           </span>
                                         )}
                                         {!isGuide && <Stars rating={item.rating ?? null} />}

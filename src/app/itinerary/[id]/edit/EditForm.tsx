@@ -48,7 +48,17 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   )
 }
 
-const MEAL_TYPES = ['lunch', 'dinner', 'drinks'] as const
+const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] as const
+
+const MEAL_TYPE_META: Record<string, { emoji: string; active: string; pill: string }> = {
+  breakfast: { emoji: '🍳', active: 'bg-yellow-500 text-white border-yellow-500', pill: 'bg-yellow-100 text-yellow-700' },
+  lunch:     { emoji: '☀️', active: 'bg-orange-500 text-white border-orange-500', pill: 'bg-orange-100 text-orange-700' },
+  dinner:    { emoji: '🌙', active: 'bg-purple-600 text-white border-purple-600', pill: 'bg-purple-100 text-purple-700' },
+  drinks:    { emoji: '🍹', active: 'bg-blue-500 text-white border-blue-500',     pill: 'bg-blue-100 text-blue-700' },
+  coffee:    { emoji: '☕', active: 'bg-amber-700 text-white border-amber-700',   pill: 'bg-amber-100 text-amber-800' },
+  dessert:   { emoji: '🍰', active: 'bg-pink-500 text-white border-pink-500',     pill: 'bg-pink-100 text-pink-700' },
+  bakery:    { emoji: '🥐', active: 'bg-orange-400 text-white border-orange-400', pill: 'bg-orange-50 text-orange-600' },
+}
 
 function FoodRow({ item, index, onUpdate, onRemove, showRating }: {
   item: FoodItem; index: number
@@ -69,12 +79,15 @@ function FoodRow({ item, index, onUpdate, onRemove, showRating }: {
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
       <div className="flex gap-1 flex-wrap">
-        {MEAL_TYPES.map(mt => (
-          <button key={mt} type="button" onClick={() => onUpdate('mealType', item.mealType === mt ? '' : mt)}
-            className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${item.mealType === mt ? mt === 'lunch' ? 'bg-orange-500 text-white border-orange-500' : mt === 'dinner' ? 'bg-purple-600 text-white border-purple-600' : 'bg-blue-500 text-white border-blue-500' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
-            {mt === 'lunch' ? '☀️' : mt === 'dinner' ? '🌙' : '🍹'} {mt}
-          </button>
-        ))}
+        {MEAL_TYPES.map(mt => {
+          const meta = MEAL_TYPE_META[mt]
+          return (
+            <button key={mt} type="button" onClick={() => onUpdate('mealType', item.mealType === mt ? '' : mt)}
+              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${item.mealType === mt ? meta.active : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+              {meta.emoji} {mt}
+            </button>
+          )
+        })}
       </div>
       {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
       <div className="grid gap-2">
