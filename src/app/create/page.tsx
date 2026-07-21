@@ -45,13 +45,13 @@ async function extractTextFromFile(file: File): Promise<string> {
 type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number }
 type ActivityItem = { name: string; notes: string; link: string; rating: number }
 type StayGroup    = { hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number; food: FoodItem[]; activities: ActivityItem[] }
-type Destination  = { name: string; country: string; groups: StayGroup[] }
+type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
 type UploadedPhoto = { url: string; caption: string }
 
 const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0 })
 const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0 })
 const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, food: [], activities: [] })
-const emptyDest     = (): Destination  => ({ name: '', country: '', groups: [emptyGroup()] })
+const emptyDest     = (): Destination  => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
 
 const inputClass =
   'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
@@ -234,7 +234,7 @@ export default function CreatePage() {
   // ── Destinations ──────────────────────────────────────────────────────────
   function addDest() { setDestinations(d => [...d, emptyDest()]) }
   function removeDest(i: number) { setDestinations(d => d.filter((_, idx) => idx !== i)) }
-  function updateDest(i: number, field: 'name' | 'country', val: string) {
+  function updateDest(i: number, field: 'name' | 'country' | 'notes', val: string) {
     setDestinations(d => d.map((dest, idx) => idx === i ? { ...dest, [field]: val } : dest))
   }
   function updGroup(di: number, gi: number, fn: (g: StayGroup) => StayGroup) {
@@ -468,6 +468,14 @@ export default function CreatePage() {
                   <button type="button" onClick={() => removeDest(di)} className="mt-1 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
                 )}
               </div>
+
+              <textarea
+                value={dest.notes}
+                onChange={e => updateDest(di, 'notes', e.target.value)}
+                rows={2}
+                className={inputClass}
+                placeholder="Overview / notes for this destination (optional)"
+              />
 
               {/* Stays */}
               {dest.groups.map((group, gi) => (

@@ -181,10 +181,13 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                 const multiStay = groups.length > 1
                 return (
                   <div key={dest.id}>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
                       <MapPin size={14} className="text-blue-600" />
                       {dest.name}{dest.country ? `, ${dest.country}` : ''}
                     </h3>
+                    {dest.notes && (
+                      <p className="text-xs text-gray-500 italic mb-3 border-l-2 border-blue-200 pl-2">{dest.notes}</p>
+                    )}
                     <div className="space-y-3">
                       {groups.map((group, gi) => (
                         <div key={gi} className={multiStay ? 'rounded-xl border border-gray-200 overflow-hidden' : 'space-y-2'}>

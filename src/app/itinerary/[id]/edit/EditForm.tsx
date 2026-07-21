@@ -7,7 +7,7 @@ import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number }
 type ActivityItem = { name: string; notes: string; link: string; rating: number }
 type StayGroup    = { hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number; food: FoodItem[]; activities: ActivityItem[] }
-type Destination  = { name: string; country: string; groups: StayGroup[] }
+type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
 type UploadedPhoto = { url: string; caption: string }
 
 type ItineraryData = {
@@ -23,6 +23,7 @@ type ItineraryData = {
   destinations: {
     name: string
     country: string | null
+    notes: string | null
     items: { type: string; mealType?: string | null; name: string; notes: string | null; rating: number | null; link: string | null; groupIndex?: number }[]
   }[]
   photos: { url: string; caption: string | null }[]
@@ -114,7 +115,7 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
 const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0 })
 const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0 })
 const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, food: [], activities: [] })
-const emptyDest     = (): Destination  => ({ name: '', country: '', groups: [emptyGroup()] })
+const emptyDest     = (): Destination  => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
 
 function itemsToGroups(items: ItineraryData['destinations'][0]['items']): StayGroup[] {
   const byGi = new Map<number, typeof items>()
@@ -151,7 +152,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   const [notes, setNotes] = useState(itinerary.notes ?? '')
   const [destinations, setDestinations] = useState<Destination[]>(
     itinerary.destinations.length > 0
-      ? itinerary.destinations.map(d => ({ name: d.name, country: d.country ?? '', groups: itemsToGroups(d.items) }))
+      ? itinerary.destinations.map(d => ({ name: d.name, country: d.country ?? '', notes: d.notes ?? '', groups: itemsToGroups(d.items) }))
       : [emptyDest()]
   )
   const [photos, setPhotos] = useState<UploadedPhoto[]>(itinerary.photos.map(p => ({ url: p.url, caption: p.caption ?? '' })))
@@ -161,7 +162,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
 
   function addDest() { setDestinations(d => [...d, emptyDest()]) }
   function removeDest(i: number) { setDestinations(d => d.filter((_, idx) => idx !== i)) }
-  function updateDest(i: number, field: 'name' | 'country', val: string) {
+  function updateDest(i: number, field: 'name' | 'country' | 'notes', val: string) {
     setDestinations(d => d.map((dest, idx) => idx === i ? { ...dest, [field]: val } : dest))
   }
   function updGroup(di: number, gi: number, fn: (g: StayGroup) => StayGroup) {
@@ -291,6 +292,14 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 <button type="button" onClick={() => removeDest(di)} className="mt-1 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
               )}
             </div>
+
+            <textarea
+              value={dest.notes}
+              onChange={e => updateDest(di, 'notes', e.target.value)}
+              rows={2}
+              className={inputClass}
+              placeholder="Overview / notes for this destination (optional)"
+            />
 
             {/* Stays */}
             {dest.groups.map((group, gi) => (

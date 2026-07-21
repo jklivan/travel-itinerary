@@ -13,7 +13,7 @@ type StayGroup = {
   hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number
   food: FoodInput[]; activities: ActivityInput[]
 }
-type DestInput = { name: string; country: string; groups: StayGroup[] }
+type DestInput = { name: string; country: string; notes: string; groups: StayGroup[] }
 
 type ItemRow = { type: string; name: string; notes: string | null; link: string | null; rating: number | null; mealType: string | null; groupIndex: number }
 
@@ -87,6 +87,7 @@ export async function createItinerary(
         create: destinations.map((d, i) => ({
           name: d.name,
           country: d.country || null,
+          notes: d.notes?.trim() || null,
           order: i,
           items: { create: flattenGroups(d.groups ?? []) },
         })),
@@ -144,6 +145,7 @@ export async function updateItinerary(
         create: destinations.map((d, i) => ({
           name: d.name,
           country: d.country || null,
+          notes: d.notes?.trim() || null,
           order: i,
           items: { create: flattenGroups(d.groups ?? []) },
         })),

@@ -64,6 +64,7 @@ model Destination {
   id          String     @id @default(cuid())
   name        String
   country     String?
+  notes       String?
   order       Int        @default(0)
   itineraryId String
   itinerary   Itinerary  @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
