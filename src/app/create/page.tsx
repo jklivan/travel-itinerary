@@ -446,10 +446,7 @@ export default function CreatePage() {
 
         {/* ── Destinations ───────────────────────────────────────────── */}
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900 text-lg">Destinations</h2>
-            <button type="button" onClick={addDest} className="text-sm text-blue-600 hover:text-blue-800 font-medium">+ Add destination</button>
-          </div>
+          <h2 className="font-semibold text-gray-900 text-lg">Destinations</h2>
 
           {destinations.map((dest, di) => (
             <div key={di} className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
@@ -522,6 +519,11 @@ export default function CreatePage() {
               </button>
             </div>
           ))}
+
+          <button type="button" onClick={addDest}
+            className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-xl py-3 transition-colors">
+            + Add destination
+          </button>
         </section>
 
         {/* ── Notes ──────────────────────────────────────────────────── */}
