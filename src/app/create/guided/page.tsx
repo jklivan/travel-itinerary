@@ -222,7 +222,12 @@ export default function GuidedCreatePage() {
   }
 
   function buildDestinations() {
-    return dests.map(d => ({
+    // Include current in-progress destination so draft saves capture it
+    const all: GuidedDest[] = [...dests]
+    if (curDest.name.trim()) {
+      all.push({ id: 'current', name: curDest.name, country: curDest.country, items: curItems })
+    }
+    return all.map(d => ({
       name: d.name, country: d.country, notes: '',
       groups: [{
         hotelName: d.items.find(i => i.type === 'hotel')?.name ?? '',
@@ -361,12 +366,18 @@ export default function GuidedCreatePage() {
                 </div>
               )}
 
-              {/* Done button */}
+              {/* Done + draft buttons */}
               {!activeInput && (
-                <button type="button" onClick={finishDest}
-                  className="w-full py-3 rounded-xl bg-gray-900 text-white font-semibold hover:bg-gray-700 transition-colors text-sm flex items-center justify-center gap-2">
-                  Done with {curDest.name} <ArrowRight size={15} />
-                </button>
+                <div className="space-y-2">
+                  <button type="button" onClick={finishDest}
+                    className="w-full py-3 rounded-xl bg-gray-900 text-white font-semibold hover:bg-gray-700 transition-colors text-sm flex items-center justify-center gap-2">
+                    Done with {curDest.name} <ArrowRight size={15} />
+                  </button>
+                  <button form="gf" type="submit" name="isDraft" value="1" disabled={pending}
+                    className="w-full py-2.5 rounded-xl border-2 border-gray-200 text-gray-500 text-sm font-medium hover:border-gray-300 transition-colors disabled:opacity-60">
+                    {pending ? 'Saving…' : 'Save as Draft'}
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -374,11 +385,13 @@ export default function GuidedCreatePage() {
 
         {/* ── MORE card ───────────────────────────────────────────────────── */}
         {phase === 'more' && (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5">
-            <p className="font-semibold text-gray-900 mb-1">
-              {dests.length === 1 ? `${dests[0].name} added! 🎉` : `${dests.length} destinations added!`}
-            </p>
-            <p className="text-sm text-gray-500 mb-5">Going anywhere else, or ready to finish?</p>
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 space-y-3">
+            <div>
+              <p className="font-semibold text-gray-900 mb-1">
+                {dests.length === 1 ? `${dests[0].name} added! 🎉` : `${dests.length} destinations added!`}
+              </p>
+              <p className="text-sm text-gray-500">Going anywhere else, or ready to finish?</p>
+            </div>
             <div className="flex gap-3">
               <button type="button" onClick={() => setPhase('dest')}
                 className="flex-1 py-3 rounded-xl border-2 border-blue-200 text-blue-700 text-sm font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
@@ -389,6 +402,10 @@ export default function GuidedCreatePage() {
                 Finish <ArrowRight size={15} />
               </button>
             </div>
+            <button form="gf" type="submit" name="isDraft" value="1" disabled={pending}
+              className="w-full py-2.5 rounded-xl border-2 border-gray-200 text-gray-500 text-sm font-medium hover:border-gray-300 transition-colors disabled:opacity-60">
+              {pending ? 'Saving…' : 'Save as Draft'}
+            </button>
           </div>
         )}
 
