@@ -288,7 +288,7 @@ export default async function UserProfilePage({
             </div>
           )}
         </>
-      ) : null}
+      )}
     </div>
   )
 }
