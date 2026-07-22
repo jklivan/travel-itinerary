@@ -3,14 +3,16 @@
 import { useActionState, useState } from 'react'
 import { createItinerary } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
-import { MapPin, Hotel, Utensils, Camera, Star, ArrowRight, Plus, Check } from 'lucide-react'
+import { MapPin, Hotel, Utensils, Camera, Star, ArrowRight, Plus, Check, X } from 'lucide-react'
 import Link from 'next/link'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+type ItemType = 'hotel' | 'food_drink' | 'activity'
+
 type GuidedItem = {
   id: string
-  type: 'hotel' | 'food_drink' | 'activity'
+  type: ItemType
   name: string
   mealType: string
   rating: number
@@ -24,7 +26,7 @@ type GuidedDest = {
   items: GuidedItem[]
 }
 
-type Phase = 'dest' | 'hotel' | 'food' | 'activity' | 'more' | 'details'
+type Phase = 'dest' | 'building' | 'more' | 'details'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -42,41 +44,9 @@ const MEAL_ACTIVE: Record<string, string> = {
   bakery:    'bg-orange-400 text-white border-orange-400',
 }
 
-function uid() { return Math.random().toString(36).slice(2) }
-
 const inputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white'
 
-// ── Step progress strip ───────────────────────────────────────────────────────
-
-const STEPS: { phase: Phase; label: string }[] = [
-  { phase: 'dest',    label: 'Where' },
-  { phase: 'hotel',   label: 'Stay' },
-  { phase: 'food',    label: 'Eat' },
-  { phase: 'activity',label: 'Do' },
-  { phase: 'details', label: 'Finish' },
-]
-
-function ProgressBar({ phase }: { phase: Phase }) {
-  const idx = STEPS.findIndex(s => s.phase === phase)
-  return (
-    <div className="flex items-center justify-center gap-1 mb-6">
-      {STEPS.map((s, i) => (
-        <div key={s.phase} className="flex items-center gap-1">
-          <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold transition-all ${
-            i < idx ? 'bg-blue-600 text-white' :
-            i === idx ? 'bg-blue-600 text-white ring-4 ring-blue-100' :
-            'bg-gray-100 text-gray-400'
-          }`}>
-            {i < idx ? <Check size={12} /> : i + 1}
-          </div>
-          {i < STEPS.length - 1 && (
-            <div className={`w-6 h-0.5 ${i < idx ? 'bg-blue-600' : 'bg-gray-200'}`} />
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
+function uid() { return Math.random().toString(36).slice(2) }
 
 // ── Star rating ───────────────────────────────────────────────────────────────
 
@@ -92,7 +62,90 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   )
 }
 
-// ── Completed destination summary card ────────────────────────────────────────
+// ── Added item row ────────────────────────────────────────────────────────────
+
+function AddedRow({ item, onRemove }: { item: GuidedItem; onRemove: () => void }) {
+  const icon = item.type === 'hotel' ? <Hotel size={13} className="text-blue-500 shrink-0" />
+    : item.type === 'food_drink' ? <Utensils size={13} className="text-orange-500 shrink-0" />
+    : <Camera size={13} className="text-green-500 shrink-0" />
+
+  return (
+    <div className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 gap-2">
+      <div className="flex items-center gap-2 min-w-0">
+        {icon}
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            {item.mealType && <span className="text-xs text-gray-500">{MEAL_EMOJI[item.mealType]} {item.mealType}</span>}
+            {item.rating > 0 && <span className="text-xs text-yellow-500">{'★'.repeat(item.rating)}</span>}
+            {item.notes && <span className="text-xs text-gray-400 truncate">{item.notes}</span>}
+          </div>
+        </div>
+      </div>
+      <button onClick={onRemove} className="text-gray-300 hover:text-red-400 text-lg leading-none shrink-0">×</button>
+    </div>
+  )
+}
+
+// ── Inline item form ──────────────────────────────────────────────────────────
+
+function ItemForm({ type, onAdd, onClose }: {
+  type: ItemType
+  onAdd: (item: Omit<GuidedItem, 'id'>) => void
+  onClose: () => void
+}) {
+  const [name, setName] = useState('')
+  const [mealType, setMealType] = useState('')
+  const [rating, setRating] = useState(0)
+  const [notes, setNotes] = useState('')
+
+  const cfg = {
+    hotel:     { color: 'bg-blue-50 border-blue-200',   label: 'Hotel / Accommodation', placeholder: 'Hotel name', placeType: 'hotel' as const },
+    food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',         placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const },
+    activity:  { color: 'bg-green-50 border-green-200',  label: 'Activity',              placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const },
+  }[type]
+
+  function submit() {
+    if (!name.trim()) return
+    onAdd({ type, name: name.trim(), mealType, rating, notes: notes.trim() })
+    setName(''); setMealType(''); setRating(0); setNotes('')
+  }
+
+  return (
+    <div className={`rounded-2xl border ${cfg.color} p-4 space-y-3`}>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{cfg.label}</p>
+        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <X size={16} />
+        </button>
+      </div>
+      <PlacesAutocomplete value={name} onChange={setName} type={cfg.placeType}
+        placeholder={cfg.placeholder} className={inputCls} />
+      {type === 'food_drink' && (
+        <div className="flex flex-wrap gap-1.5">
+          {MEAL_TYPES.map(mt => (
+            <button key={mt} type="button" onClick={() => setMealType(mealType === mt ? '' : mt)}
+              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${mealType === mt ? MEAL_ACTIVE[mt] : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+              {MEAL_EMOJI[mt]} {mt}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="space-y-1">
+        <p className="text-xs text-gray-500">Rate it</p>
+        <StarRating value={rating} onChange={setRating} />
+      </div>
+      <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
+        placeholder="📝 Notes (optional)" className={inputCls} />
+      <button type="button" onClick={submit} disabled={!name.trim()}
+        className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+        <Check size={14} /> Add
+      </button>
+    </div>
+  )
+}
+
+// ── Completed destination summary ─────────────────────────────────────────────
 
 function DestSummary({ dest, onRemove }: { dest: GuidedDest; onRemove: () => void }) {
   const hotel = dest.items.find(i => i.type === 'hotel')
@@ -116,14 +169,14 @@ function DestSummary({ dest, onRemove }: { dest: GuidedDest; onRemove: () => voi
           <div className="flex items-center gap-1.5">
             <Hotel size={12} className="text-blue-500 shrink-0" />
             <span className="truncate">{hotel.name}</span>
-            {hotel.rating > 0 && <span className="text-yellow-500">{'★'.repeat(hotel.rating)}</span>}
+            {hotel.rating > 0 && <span className="text-yellow-500 ml-1">{'★'.repeat(hotel.rating)}</span>}
           </div>
         )}
         {food.map(f => (
           <div key={f.id} className="flex items-center gap-1.5">
             <Utensils size={12} className="text-orange-500 shrink-0" />
             <span className="truncate">{f.name}</span>
-            {f.mealType && <span className="text-gray-400">{MEAL_EMOJI[f.mealType]}</span>}
+            {f.mealType && <span className="text-gray-400 ml-1">{MEAL_EMOJI[f.mealType]}</span>}
           </div>
         ))}
         {acts.map(a => (
@@ -138,141 +191,34 @@ function DestSummary({ dest, onRemove }: { dest: GuidedDest; onRemove: () => voi
   )
 }
 
-// ── Card shell ────────────────────────────────────────────────────────────────
-
-function Card({ color, icon, title, subtitle, children }: {
-  color: string; icon: React.ReactNode; title: string; subtitle?: string; children: React.ReactNode
-}) {
-  return (
-    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-      <div className={`${color} px-5 py-4`}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/30 flex items-center justify-center">
-            {icon}
-          </div>
-          <div>
-            <h2 className="font-bold text-white text-base">{title}</h2>
-            {subtitle && <p className="text-white/70 text-xs mt-0.5">{subtitle}</p>}
-          </div>
-        </div>
-      </div>
-      <div className="p-5">{children}</div>
-    </div>
-  )
-}
-
-function NavButtons({ onSkip, onNext, nextLabel = 'Next', nextDisabled = false, skipLabel = 'Skip' }: {
-  onSkip?: () => void; onNext: () => void; nextLabel?: string; nextDisabled?: boolean; skipLabel?: string
-}) {
-  return (
-    <div className="flex gap-3 mt-5">
-      {onSkip && (
-        <button type="button" onClick={onSkip}
-          className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-sm font-medium text-gray-500 hover:border-gray-300 transition-colors">
-          {skipLabel}
-        </button>
-      )}
-      <button type="button" onClick={onNext} disabled={nextDisabled}
-        className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
-        {nextLabel} <ArrowRight size={15} />
-      </button>
-    </div>
-  )
-}
-
-// ── Added item row (within a step) ────────────────────────────────────────────
-
-function AddedRow({ item, onRemove }: { item: GuidedItem; onRemove: () => void }) {
-  return (
-    <div className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 gap-2">
-      <div className="flex items-center gap-2 min-w-0">
-        <Check size={14} className="text-green-500 shrink-0" />
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-          <div className="flex items-center gap-2 flex-wrap">
-            {item.mealType && <span className="text-xs text-gray-500">{MEAL_EMOJI[item.mealType]} {item.mealType}</span>}
-            {item.rating > 0 && (
-              <span className="text-xs text-yellow-500">{'★'.repeat(item.rating)}</span>
-            )}
-            {item.notes && <span className="text-xs text-gray-400 truncate">{item.notes}</span>}
-          </div>
-        </div>
-      </div>
-      <button onClick={onRemove} className="text-gray-300 hover:text-red-400 text-lg leading-none shrink-0">×</button>
-    </div>
-  )
-}
-
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function GuidedCreatePage() {
   const [formState, action, pending] = useActionState(createItinerary, undefined)
 
-  // Completed destinations
   const [dests, setDests] = useState<GuidedDest[]>([])
-
-  // Current destination being built
   const [curDest, setCurDest] = useState({ name: '', country: '' })
   const [curItems, setCurItems] = useState<GuidedItem[]>([])
-
-  // Current step
+  const [activeInput, setActiveInput] = useState<ItemType | null>(null)
   const [phase, setPhase] = useState<Phase>('dest')
 
-  // Current input values (reset between steps)
-  const [hotelName, setHotelName] = useState('')
-  const [hotelRating, setHotelRating] = useState(0)
-  const [hotelNotes, setHotelNotes] = useState('')
-
-  const [foodName, setFoodName] = useState('')
-  const [foodMeal, setFoodMeal] = useState('')
-  const [foodRating, setFoodRating] = useState(0)
-  const [foodNotes, setFoodNotes] = useState('')
-
-  const [actName, setActName] = useState('')
-  const [actRating, setActRating] = useState(0)
-  const [actNotes, setActNotes] = useState('')
-
-  // Details
   const [title, setTitle] = useState('')
   const [postType, setPostType] = useState<'itinerary' | 'guide'>('itinerary')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [isAdult, setIsAdult] = useState(false)
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
-
-  function addHotel() {
-    if (!hotelName.trim()) return
-    setCurItems(i => [...i, { id: uid(), type: 'hotel', name: hotelName.trim(), mealType: '', rating: hotelRating, notes: hotelNotes.trim() }])
-    setHotelName(''); setHotelRating(0); setHotelNotes('')
-  }
-
-  function addFood() {
-    if (!foodName.trim()) return
-    setCurItems(i => [...i, { id: uid(), type: 'food_drink', name: foodName.trim(), mealType: foodMeal, rating: foodRating, notes: foodNotes.trim() }])
-    setFoodName(''); setFoodMeal(''); setFoodRating(0); setFoodNotes('')
-  }
-
-  function addActivity() {
-    if (!actName.trim()) return
-    setCurItems(i => [...i, { id: uid(), type: 'activity', name: actName.trim(), mealType: '', rating: actRating, notes: actNotes.trim() }])
-    setActName(''); setActRating(0); setActNotes('')
+  function addItem(item: Omit<GuidedItem, 'id'>) {
+    setCurItems(i => [...i, { ...item, id: uid() }])
+    setActiveInput(null)
   }
 
   function finishDest() {
-    const dest: GuidedDest = { id: uid(), name: curDest.name, country: curDest.country, items: curItems }
-    setDests(d => [...d, dest])
+    setDests(d => [...d, { id: uid(), name: curDest.name, country: curDest.country, items: curItems }])
     setCurDest({ name: '', country: '' })
     setCurItems([])
+    setActiveInput(null)
     setPhase('more')
-  }
-
-  function startNewDest() {
-    setPhase('dest')
-  }
-
-  function goToDetails() {
-    setPhase('details')
   }
 
   function buildDestinations() {
@@ -290,11 +236,7 @@ export default function GuidedCreatePage() {
   }
 
   const resolvedTitle = title.trim() || (dests[0]?.name ? `Trip to ${dests[0].name}` : 'Untitled Trip')
-  const curFoodItems  = curItems.filter(i => i.type === 'food_drink')
-  const curActItems   = curItems.filter(i => i.type === 'activity')
-  const hasHotel      = curItems.some(i => i.type === 'hotel')
-
-  // ── Render ───────────────────────────────────────────────────────────────
+  const hasHotel = curItems.some(i => i.type === 'hotel')
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 pb-36">
@@ -302,7 +244,6 @@ export default function GuidedCreatePage() {
       <h1 className="text-xl font-bold text-gray-900 mb-1">Step by step</h1>
       <p className="text-sm text-gray-500 mb-6">Build your trip one card at a time.</p>
 
-      {/* Hidden form */}
       <form id="gf" action={action}>
         <input type="hidden" name="title" value={resolvedTitle} />
         <input type="hidden" name="postType" value={postType} />
@@ -314,21 +255,26 @@ export default function GuidedCreatePage() {
         <input type="hidden" name="photos" value="[]" />
       </form>
 
-      {/* Progress */}
-      {phase !== 'more' && <ProgressBar phase={phase} />}
-
       <div className="space-y-4">
 
-        {/* ── Completed destinations ──────────────────────────────────────── */}
+        {/* Completed destinations */}
         {dests.map(d => (
           <DestSummary key={d.id} dest={d} onRemove={() => setDests(ds => ds.filter(x => x.id !== d.id))} />
         ))}
 
         {/* ── DEST card ───────────────────────────────────────────────────── */}
         {phase === 'dest' && (
-          <Card color="bg-gradient-to-r from-blue-600 to-blue-500" icon={<MapPin size={20} className="text-white" />}
-            title="Where are you going?" subtitle="Start by adding a destination">
-            <div className="space-y-3">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/25 flex items-center justify-center">
+                <MapPin size={20} className="text-white" />
+              </div>
+              <div>
+                <h2 className="font-bold text-white">Where are you going?</h2>
+                <p className="text-white/70 text-xs mt-0.5">Start by adding a destination</p>
+              </div>
+            </div>
+            <div className="p-5 space-y-3">
               <PlacesAutocomplete
                 value={curDest.name}
                 onChange={v => setCurDest(d => ({ ...d, name: v }))}
@@ -339,139 +285,91 @@ export default function GuidedCreatePage() {
                 onChange={e => setCurDest(d => ({ ...d, country: e.target.value }))}
                 placeholder="Country" className={inputCls}
               />
-              <NavButtons
-                onNext={() => setPhase('hotel')}
-                nextLabel="Next — Where to stay"
-                nextDisabled={!curDest.name.trim()}
-              />
+              <button type="button"
+                disabled={!curDest.name.trim()}
+                onClick={() => setPhase('building')}
+                className="w-full py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2 text-sm">
+                Next <ArrowRight size={15} />
+              </button>
             </div>
-          </Card>
+          </div>
         )}
 
-        {/* ── HOTEL card ──────────────────────────────────────────────────── */}
-        {phase === 'hotel' && (
-          <Card color="bg-gradient-to-r from-blue-500 to-indigo-500" icon={<Hotel size={20} className="text-white" />}
-            title={`Stay in ${curDest.name}`} subtitle="Where did you sleep?">
-            <div className="space-y-3">
-              {hasHotel && (
-                <div className="space-y-2 mb-2">
-                  {curItems.filter(i => i.type === 'hotel').map(item => (
-                    <AddedRow key={item.id} item={item} onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))} />
+        {/* ── BUILDING card ────────────────────────────────────────────────── */}
+        {phase === 'building' && (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            {/* Destination header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-3 flex items-center gap-2">
+              <MapPin size={15} className="text-white/80" />
+              <span className="font-bold text-white text-sm">
+                {curDest.name}{curDest.country ? `, ${curDest.country}` : ''}
+              </span>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Added items list */}
+              {curItems.length > 0 && (
+                <div className="space-y-2">
+                  {curItems.map(item => (
+                    <AddedRow key={item.id} item={item}
+                      onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))} />
                   ))}
                 </div>
               )}
-              {!hasHotel && (
-                <>
-                  <PlacesAutocomplete
-                    value={hotelName} onChange={setHotelName} type="hotel"
-                    placeholder="Hotel name (optional)" className={inputCls}
-                  />
-                  <div className="space-y-1">
-                    <p className="text-xs text-gray-500">Rate it</p>
-                    <StarRating value={hotelRating} onChange={setHotelRating} />
-                  </div>
-                  <input type="text" value={hotelNotes} onChange={e => setHotelNotes(e.target.value)}
-                    placeholder="📝 Notes (optional)" className={inputCls} />
-                  {hotelName.trim() && (
-                    <button type="button" onClick={addHotel}
-                      className="w-full py-2 rounded-xl bg-indigo-50 text-indigo-700 text-sm font-medium hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2">
-                      <Plus size={14} /> Add hotel
-                    </button>
-                  )}
-                </>
-              )}
-              <NavButtons
-                onSkip={() => setPhase('food')}
-                onNext={() => setPhase('food')}
-                nextLabel="Next — Food & Drink"
-                skipLabel="Skip"
-              />
-            </div>
-          </Card>
-        )}
 
-        {/* ── FOOD card ───────────────────────────────────────────────────── */}
-        {phase === 'food' && (
-          <Card color="bg-gradient-to-r from-orange-500 to-orange-400" icon={<Utensils size={20} className="text-white" />}
-            title={`Eat in ${curDest.name}`} subtitle="Restaurants, bars, cafés…">
-            <div className="space-y-3">
-              {curFoodItems.length > 0 && (
-                <div className="space-y-2 mb-2">
-                  {curFoodItems.map(item => (
-                    <AddedRow key={item.id} item={item} onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))} />
-                  ))}
-                </div>
+              {/* Active input form */}
+              {activeInput && (
+                <ItemForm
+                  type={activeInput}
+                  onAdd={addItem}
+                  onClose={() => setActiveInput(null)}
+                />
               )}
-              <PlacesAutocomplete
-                value={foodName} onChange={setFoodName} type="restaurant"
-                placeholder="e.g. Ramen Ichiran, Rooftop bar…" className={inputCls}
-              />
-              <div className="flex flex-wrap gap-1.5">
-                {MEAL_TYPES.map(mt => (
-                  <button key={mt} type="button" onClick={() => setFoodMeal(foodMeal === mt ? '' : mt)}
-                    className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${foodMeal === mt ? MEAL_ACTIVE[mt] : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
-                    {MEAL_EMOJI[mt]} {mt}
+
+              {/* Option buttons — always visible when no form open */}
+              {!activeInput && (
+                <div className="grid grid-cols-3 gap-2">
+                  <button type="button"
+                    onClick={() => setActiveInput('hotel')}
+                    disabled={hasHotel}
+                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-blue-200 text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                    <Hotel size={20} />
+                    <span className="text-xs font-semibold">
+                      {hasHotel ? 'Hotel ✓' : '+ Hotel'}
+                    </span>
                   </button>
-                ))}
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs text-gray-500">Rate it</p>
-                <StarRating value={foodRating} onChange={setFoodRating} />
-              </div>
-              <input type="text" value={foodNotes} onChange={e => setFoodNotes(e.target.value)}
-                placeholder="📝 Notes (optional)" className={inputCls} />
-              {foodName.trim() && (
-                <button type="button" onClick={addFood}
-                  className="w-full py-2 rounded-xl bg-orange-50 text-orange-700 text-sm font-medium hover:bg-orange-100 transition-colors flex items-center justify-center gap-2">
-                  <Plus size={14} /> Add {curFoodItems.length > 0 ? 'another' : 'place'}
-                </button>
-              )}
-              <NavButtons
-                onSkip={() => setPhase('activity')}
-                onNext={() => setPhase('activity')}
-                nextLabel="Next — Activities"
-                skipLabel={curFoodItems.length > 0 ? 'Done with food' : 'Skip'}
-              />
-            </div>
-          </Card>
-        )}
-
-        {/* ── ACTIVITY card ────────────────────────────────────────────────── */}
-        {phase === 'activity' && (
-          <Card color="bg-gradient-to-r from-green-600 to-green-500" icon={<Camera size={20} className="text-white" />}
-            title={`Things to do in ${curDest.name}`} subtitle="Sights, tours, experiences…">
-            <div className="space-y-3">
-              {curActItems.length > 0 && (
-                <div className="space-y-2 mb-2">
-                  {curActItems.map(item => (
-                    <AddedRow key={item.id} item={item} onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))} />
-                  ))}
+                  <button type="button"
+                    onClick={() => setActiveInput('food_drink')}
+                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-orange-200 text-orange-600 hover:border-orange-400 hover:bg-orange-50 transition-all">
+                    <Utensils size={20} />
+                    <span className="text-xs font-semibold">
+                      {curItems.filter(i => i.type === 'food_drink').length > 0
+                        ? `+ Restaurant`
+                        : '+ Food / Drink'}
+                    </span>
+                  </button>
+                  <button type="button"
+                    onClick={() => setActiveInput('activity')}
+                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-green-200 text-green-600 hover:border-green-400 hover:bg-green-50 transition-all">
+                    <Camera size={20} />
+                    <span className="text-xs font-semibold">
+                      {curItems.filter(i => i.type === 'activity').length > 0
+                        ? '+ Activity'
+                        : '+ Activity'}
+                    </span>
+                  </button>
                 </div>
               )}
-              <PlacesAutocomplete
-                value={actName} onChange={setActName} type="activity"
-                placeholder="e.g. Eiffel Tower, Temple tour…" className={inputCls}
-              />
-              <div className="space-y-1">
-                <p className="text-xs text-gray-500">Rate it</p>
-                <StarRating value={actRating} onChange={setActRating} />
-              </div>
-              <input type="text" value={actNotes} onChange={e => setActNotes(e.target.value)}
-                placeholder="📝 Notes (optional)" className={inputCls} />
-              {actName.trim() && (
-                <button type="button" onClick={addActivity}
-                  className="w-full py-2 rounded-xl bg-green-50 text-green-700 text-sm font-medium hover:bg-green-100 transition-colors flex items-center justify-center gap-2">
-                  <Plus size={14} /> Add {curActItems.length > 0 ? 'another' : 'activity'}
+
+              {/* Done button */}
+              {!activeInput && (
+                <button type="button" onClick={finishDest}
+                  className="w-full py-3 rounded-xl bg-gray-900 text-white font-semibold hover:bg-gray-700 transition-colors text-sm flex items-center justify-center gap-2">
+                  Done with {curDest.name} <ArrowRight size={15} />
                 </button>
               )}
-              <NavButtons
-                onSkip={finishDest}
-                onNext={finishDest}
-                nextLabel="Done with this destination"
-                skipLabel={curActItems.length > 0 ? 'Done with activities' : 'Skip'}
-              />
             </div>
-          </Card>
+          </div>
         )}
 
         {/* ── MORE card ───────────────────────────────────────────────────── */}
@@ -482,11 +380,11 @@ export default function GuidedCreatePage() {
             </p>
             <p className="text-sm text-gray-500 mb-5">Going anywhere else, or ready to finish?</p>
             <div className="flex gap-3">
-              <button type="button" onClick={startNewDest}
+              <button type="button" onClick={() => setPhase('dest')}
                 className="flex-1 py-3 rounded-xl border-2 border-blue-200 text-blue-700 text-sm font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
                 <Plus size={15} /> Add destination
               </button>
-              <button type="button" onClick={goToDetails}
+              <button type="button" onClick={() => setPhase('details')}
                 className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
                 Finish <ArrowRight size={15} />
               </button>
@@ -498,11 +396,10 @@ export default function GuidedCreatePage() {
         {phase === 'details' && (
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
             <div className="bg-gradient-to-r from-gray-800 to-gray-700 px-5 py-4">
-              <h2 className="font-bold text-white text-base">One last thing</h2>
+              <h2 className="font-bold text-white">One last thing</h2>
               <p className="text-white/70 text-xs mt-0.5">Give your trip a name and dates</p>
             </div>
             <div className="p-5 space-y-4">
-              {/* Post type */}
               <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium">
                 <button type="button" onClick={() => setPostType('itinerary')}
                   className={`flex-1 py-1.5 rounded-lg transition-colors ${postType === 'itinerary' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600'}`}>
@@ -513,13 +410,11 @@ export default function GuidedCreatePage() {
                   📖 Guide
                 </button>
               </div>
-
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Title</label>
                 <input type="text" value={title} onChange={e => setTitle(e.target.value)}
                   placeholder={resolvedTitle} className={inputCls} />
               </div>
-
               {postType === 'itinerary' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -532,7 +427,6 @@ export default function GuidedCreatePage() {
                   </div>
                 </div>
               )}
-
               <label className="flex items-center gap-3 cursor-pointer select-none">
                 <div onClick={() => setIsAdult(v => !v)}
                   className={`w-10 h-6 rounded-full transition-colors relative ${!isAdult ? 'bg-green-500' : 'bg-gray-200'}`}>
@@ -558,6 +452,7 @@ export default function GuidedCreatePage() {
             </div>
           </div>
         )}
+
       </div>
     </div>
   )
