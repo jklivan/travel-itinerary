@@ -3,12 +3,13 @@
 import { useActionState, useState } from 'react'
 import { createItinerary } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
-import { MapPin, Hotel, Utensils, Camera, Star, ArrowRight, Plus, Check, X } from 'lucide-react'
+import { MapPin, Hotel, Utensils, Camera, Star, ArrowRight, Plus, Check, X, FileText, ImageIcon } from 'lucide-react'
 import Link from 'next/link'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type ItemType = 'hotel' | 'food_drink' | 'activity'
+type ActiveInput = ItemType | 'notes' | 'photos' | null
 
 type GuidedItem = {
   id: string
@@ -23,8 +24,11 @@ type GuidedDest = {
   id: string
   name: string
   country: string
+  notes: string
   items: GuidedItem[]
 }
+
+type UploadedPhoto = { url: string; caption: string }
 
 type Phase = 'dest' | 'building' | 'more' | 'details'
 
@@ -185,7 +189,8 @@ function DestSummary({ dest, onRemove }: { dest: GuidedDest; onRemove: () => voi
             <span className="truncate">{a.name}</span>
           </div>
         ))}
-        {dest.items.length === 0 && <span className="text-gray-400 italic">No items added</span>}
+        {dest.notes && <p className="text-gray-500 italic mt-1">📝 {dest.notes}</p>}
+        {dest.items.length === 0 && !dest.notes && <span className="text-gray-400 italic">No items added</span>}
       </div>
     </div>
   )
@@ -199,7 +204,10 @@ export default function GuidedCreatePage() {
   const [dests, setDests] = useState<GuidedDest[]>([])
   const [curDest, setCurDest] = useState({ name: '', country: '' })
   const [curItems, setCurItems] = useState<GuidedItem[]>([])
-  const [activeInput, setActiveInput] = useState<ItemType | null>(null)
+  const [curNotes, setCurNotes] = useState('')
+  const [photos, setPhotos] = useState<UploadedPhoto[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [activeInput, setActiveInput] = useState<ActiveInput>(null)
   const [phase, setPhase] = useState<Phase>('dest')
 
   const [title, setTitle] = useState('')
@@ -214,21 +222,36 @@ export default function GuidedCreatePage() {
   }
 
   function finishDest() {
-    setDests(d => [...d, { id: uid(), name: curDest.name, country: curDest.country, items: curItems }])
+    setDests(d => [...d, { id: uid(), name: curDest.name, country: curDest.country, notes: curNotes, items: curItems }])
     setCurDest({ name: '', country: '' })
     setCurItems([])
+    setCurNotes('')
     setActiveInput(null)
     setPhase('more')
+  }
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files
+    if (!files?.length) return
+    setUploading(true)
+    for (const file of Array.from(files)) {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      if (res.ok) { const { url } = await res.json(); setPhotos(p => [...p, { url, caption: '' }]) }
+    }
+    setUploading(false)
+    e.target.value = ''
   }
 
   function buildDestinations() {
     // Include current in-progress destination so draft saves capture it
     const all: GuidedDest[] = [...dests]
     if (curDest.name.trim()) {
-      all.push({ id: 'current', name: curDest.name, country: curDest.country, items: curItems })
+      all.push({ id: 'current', name: curDest.name, country: curDest.country, notes: curNotes, items: curItems })
     }
     return all.map(d => ({
-      name: d.name, country: d.country, notes: '',
+      name: d.name, country: d.country, notes: d.notes,
       groups: [{
         hotelName: d.items.find(i => i.type === 'hotel')?.name ?? '',
         hotelNotes: d.items.find(i => i.type === 'hotel')?.notes ?? '',
@@ -257,7 +280,7 @@ export default function GuidedCreatePage() {
         <input type="hidden" name="audience" value={isAdult ? 'adult' : 'family'} />
         <input type="hidden" name="visibility" value="public" />
         <input type="hidden" name="destinations" value={JSON.stringify(buildDestinations())} />
-        <input type="hidden" name="photos" value="[]" />
+        <input type="hidden" name="photos" value={JSON.stringify(photos)} />
       </form>
 
       <div className="space-y-4">
@@ -323,12 +346,65 @@ export default function GuidedCreatePage() {
               )}
 
               {/* Active input form */}
-              {activeInput && (
+              {(activeInput === 'hotel' || activeInput === 'food_drink' || activeInput === 'activity') && (
                 <ItemForm
                   type={activeInput}
                   onAdd={addItem}
                   onClose={() => setActiveInput(null)}
                 />
+              )}
+
+              {/* Notes inline form */}
+              {activeInput === 'notes' && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Overall Notes</p>
+                    <button type="button" onClick={() => setActiveInput(null)} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+                  </div>
+                  <textarea
+                    value={curNotes}
+                    onChange={e => setCurNotes(e.target.value)}
+                    rows={3}
+                    placeholder="General notes, tips, or summary for this destination…"
+                    className={inputCls}
+                  />
+                  <button type="button" onClick={() => setActiveInput(null)}
+                    className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors flex items-center justify-center gap-2">
+                    <Check size={14} /> Save Notes
+                  </button>
+                </div>
+              )}
+
+              {/* Photos inline form */}
+              {activeInput === 'photos' && (
+                <div className="rounded-2xl border border-purple-200 bg-purple-50 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Photos</p>
+                    <button type="button" onClick={() => setActiveInput(null)} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+                  </div>
+                  {photos.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {photos.map((photo, i) => (
+                        <div key={i} className="relative group">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={photo.url} alt="" className="w-full h-20 object-cover rounded-lg" />
+                          <button type="button" onClick={() => setPhotos(p => p.filter((_, idx) => idx !== i))}
+                            className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <label className={`flex flex-col items-center justify-center border-2 border-dashed border-purple-300 rounded-xl p-5 cursor-pointer hover:border-purple-400 transition-colors ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                    <ImageIcon size={22} className="text-purple-400 mb-1" />
+                    <span className="text-sm font-medium text-purple-700">{uploading ? 'Uploading…' : 'Click to upload photos'}</span>
+                    <span className="text-xs text-purple-400 mt-0.5">JPG, PNG, WEBP</span>
+                    <input type="file" accept="image/*" multiple className="sr-only" onChange={handlePhotoUpload} disabled={uploading} />
+                  </label>
+                  <button type="button" onClick={() => setActiveInput(null)}
+                    className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors flex items-center justify-center gap-2">
+                    <Check size={14} /> Done
+                  </button>
+                </div>
               )}
 
               {/* Option buttons — always visible when no form open */}
@@ -339,29 +415,31 @@ export default function GuidedCreatePage() {
                     disabled={hasHotel}
                     className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-blue-200 text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
                     <Hotel size={20} />
-                    <span className="text-xs font-semibold">
-                      {hasHotel ? 'Hotel ✓' : '+ Hotel'}
-                    </span>
+                    <span className="text-xs font-semibold">{hasHotel ? 'Hotel ✓' : '+ Hotel'}</span>
                   </button>
                   <button type="button"
                     onClick={() => setActiveInput('food_drink')}
                     className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-orange-200 text-orange-600 hover:border-orange-400 hover:bg-orange-50 transition-all">
                     <Utensils size={20} />
-                    <span className="text-xs font-semibold">
-                      {curItems.filter(i => i.type === 'food_drink').length > 0
-                        ? `+ Restaurant`
-                        : '+ Food / Drink'}
-                    </span>
+                    <span className="text-xs font-semibold">+ Food / Drink</span>
                   </button>
                   <button type="button"
                     onClick={() => setActiveInput('activity')}
                     className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-green-200 text-green-600 hover:border-green-400 hover:bg-green-50 transition-all">
                     <Camera size={20} />
-                    <span className="text-xs font-semibold">
-                      {curItems.filter(i => i.type === 'activity').length > 0
-                        ? '+ Activity'
-                        : '+ Activity'}
-                    </span>
+                    <span className="text-xs font-semibold">+ Activity</span>
+                  </button>
+                  <button type="button"
+                    onClick={() => setActiveInput('notes')}
+                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-amber-200 text-amber-600 hover:border-amber-400 hover:bg-amber-50 transition-all">
+                    <FileText size={20} />
+                    <span className="text-xs font-semibold">{curNotes ? 'Notes ✓' : '+ Notes'}</span>
+                  </button>
+                  <button type="button"
+                    onClick={() => setActiveInput('photos')}
+                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-purple-200 text-purple-600 hover:border-purple-400 hover:bg-purple-50 transition-all">
+                    <ImageIcon size={20} />
+                    <span className="text-xs font-semibold">{photos.length > 0 ? `Photos (${photos.length})` : '+ Photos'}</span>
                   </button>
                 </div>
               )}
