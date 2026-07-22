@@ -587,10 +587,16 @@ export default function CreatePage() {
           )}
         </section>
 
-        <button type="submit" disabled={pending || uploading}
-          className="w-full bg-indigo-600 text-white font-semibold py-3 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-60 text-base">
-          {pending ? 'Publishing…' : 'Publish Itinerary'}
-        </button>
+        <div className="flex gap-3">
+          <button type="submit" name="isDraft" value="1" disabled={pending || uploading}
+            className="flex-1 bg-white text-gray-700 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-colors disabled:opacity-60 text-base">
+            {pending ? 'Saving…' : 'Save as Draft'}
+          </button>
+          <button type="submit" disabled={pending || uploading}
+            className="flex-1 bg-indigo-600 text-white font-semibold py-3 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-60 text-base">
+            {pending ? 'Publishing…' : 'Publish'}
+          </button>
+        </div>
       </form>
     </div>
   )

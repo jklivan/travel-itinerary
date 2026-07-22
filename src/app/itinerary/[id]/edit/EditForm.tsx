@@ -230,7 +230,12 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       {/* Basic Info */}
       <section className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">Basic Info</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold text-gray-900">Basic Info</h2>
+            {itinerary.visibility === 'draft' && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Draft</span>
+            )}
+          </div>
           <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium">
             <button type="button" onClick={() => setPostType('itinerary')}
               className={`px-3 py-1.5 rounded-lg transition-colors ${postType === 'itinerary' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
@@ -404,9 +409,13 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       </section>
 
       <div className="flex gap-3">
+        <button type="submit" name="isDraft" value="1" disabled={pending || uploading}
+          className="flex-1 bg-white text-gray-700 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-colors disabled:opacity-60 text-base">
+          {pending ? 'Saving…' : 'Save as Draft'}
+        </button>
         <button type="submit" disabled={pending || uploading}
           className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60 text-base">
-          {pending ? 'Saving…' : 'Save changes'}
+          {pending ? 'Saving…' : itinerary.visibility === 'draft' ? 'Publish' : 'Save changes'}
         </button>
       </div>
     </form>

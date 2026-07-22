@@ -40,12 +40,13 @@ export default async function UserProfilePage({
   const isOwn = session?.user?.id === user.id
   const viewerId = session?.user?.id ?? null
   const showBucket = tab === 'bucket'
+  const showDrafts = tab === 'drafts' && isOwn
 
-  const [itineraries, bucketItems, followRecord, followerCount, followingCount, viewerBucketIds] = await Promise.all([
+  const [itineraries, drafts, bucketItems, followRecord, followerCount, followingCount, viewerBucketIds] = await Promise.all([
     prisma.itinerary.findMany({
       where: {
         userId: id,
-        ...(isOwn ? {} : { visibility: 'public' }),
+        ...(isOwn ? { visibility: { not: 'draft' } } : { visibility: 'public' }),
       },
       orderBy: { createdAt: 'desc' },
       include: {
@@ -53,6 +54,16 @@ export default async function UserProfilePage({
         photos: { take: 1 },
       },
     }),
+    isOwn
+      ? prisma.itinerary.findMany({
+          where: { userId: id, visibility: 'draft' },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            destinations: { orderBy: { order: 'asc' }, include: { items: true } },
+            photos: { take: 1 },
+          },
+        })
+      : Promise.resolve([]),
     // Bucket list — only fetch if viewing own profile or if tab=bucket and isOwn
     isOwn
       ? prisma.bucketListItem.findMany({
@@ -166,11 +177,54 @@ export default async function UserProfilePage({
               </span>
             )}
           </Link>
+          <Link
+            href={`/user/${id}?tab=drafts`}
+            className={`px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+              showDrafts ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Drafts
+            {drafts.length > 0 && (
+              <span className={`text-xs rounded-full px-1.5 py-0.5 font-bold ${
+                showDrafts ? 'bg-amber-400 text-white' : 'bg-gray-100 text-gray-600'
+              }`}>
+                {drafts.length}
+              </span>
+            )}
+          </Link>
         </div>
       )}
 
       {/* Content */}
-      {!showBucket ? (
+      {showDrafts ? (
+        <>
+          <h2 className="font-semibold text-gray-900 text-sm mb-3">Drafts</h2>
+          {drafts.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-md p-8 text-center">
+              <p className="text-gray-500 italic text-sm">No drafts yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {drafts.map((it) => (
+                <ItineraryCard
+                  key={it.id}
+                  id={it.id}
+                  postType={it.postType}
+                  title={it.title}
+                  startDate={it.startDate}
+                  endDate={it.endDate}
+                  audience={it.audience}
+                  authorName={user.name}
+                  destinations={it.destinations}
+                  coverPhoto={it.photos[0]?.url ?? null}
+                  currentUserId={viewerId}
+                  isOwn={true}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      ) : !showBucket ? (
         <>
           <h2 className="font-semibold text-gray-900 text-sm mb-3">
             {isOwn ? 'Your itineraries' : 'Itineraries'}
@@ -234,7 +288,7 @@ export default async function UserProfilePage({
             </div>
           )}
         </>
-      )}
+      ) : null}
     </div>
   )
 }

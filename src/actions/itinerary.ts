@@ -40,7 +40,8 @@ function parseFormData(formData: FormData) {
   const endDateStr = formData.get('endDate') as string
   const postType = (formData.get('postType') as string) || 'itinerary'
   const audience = (formData.get('audience') as string) || 'family'
-  const visibility = (formData.get('visibility') as string) || 'public'
+  const isDraft = formData.get('isDraft') === '1'
+  const visibility = isDraft ? 'draft' : ((formData.get('visibility') as string) || 'public')
   const notes = (formData.get('notes') as string)?.trim() || null
   const destinations: DestInput[] = formData.get('destinations')
     ? JSON.parse(formData.get('destinations') as string)
@@ -48,7 +49,7 @@ function parseFormData(formData: FormData) {
   const photos: { url: string; caption: string }[] = formData.get('photos')
     ? JSON.parse(formData.get('photos') as string)
     : []
-  return { postType, title, description, startDateStr, endDateStr, audience, visibility, notes, destinations, photos }
+  return { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, destinations, photos }
 }
 
 export async function createItinerary(
@@ -58,19 +59,19 @@ export async function createItinerary(
   const session = await auth()
   if (!session?.user?.id) return { error: 'You must be logged in.' }
 
-  const { postType, title, description, startDateStr, endDateStr, audience, visibility, notes, destinations, photos } =
+  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, destinations, photos } =
     parseFormData(formData)
 
   if (!title) return { error: 'Title is required.' }
 
-  // Dates are required for itineraries, optional for guides
+  // Dates required for itineraries — unless saving as draft
   const isGuide = postType === 'guide'
-  if (!isGuide && (!startDateStr || !endDateStr)) return { error: 'Start and end dates are required.' }
+  if (!isDraft && !isGuide && (!startDateStr || !endDateStr)) return { error: 'Start and end dates are required.' }
 
   const today = new Date()
   const startDate = startDateStr ? new Date(startDateStr) : today
   const endDate = endDateStr ? new Date(endDateStr) : today
-  if (endDate < startDate) return { error: 'End date must be after start date.' }
+  if (!isDraft && endDate < startDate) return { error: 'End date must be after start date.' }
 
   const itinerary = await prisma.itinerary.create({
     data: {
@@ -113,18 +114,18 @@ export async function updateItinerary(
   const existing = await prisma.itinerary.findUnique({ where: { id } })
   if (!existing || existing.userId !== session.user.id) return { error: 'Not found.' }
 
-  const { postType, title, description, startDateStr, endDateStr, audience, visibility, notes, destinations, photos } =
+  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, destinations, photos } =
     parseFormData(formData)
 
   if (!title) return { error: 'Title is required.' }
 
   const isGuide = postType === 'guide'
-  if (!isGuide && (!startDateStr || !endDateStr)) return { error: 'Start and end dates are required.' }
+  if (!isDraft && !isGuide && (!startDateStr || !endDateStr)) return { error: 'Start and end dates are required.' }
 
   const today = new Date()
   const startDate = startDateStr ? new Date(startDateStr) : today
   const endDate = endDateStr ? new Date(endDateStr) : today
-  if (endDate < startDate) return { error: 'End date must be after start date.' }
+  if (!isDraft && endDate < startDate) return { error: 'End date must be after start date.' }
 
   // Delete existing destinations (cascades to items) and photos, then recreate
   await prisma.destination.deleteMany({ where: { itineraryId: id } })

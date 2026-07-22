@@ -55,7 +55,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
   const isOwn = session?.user?.id === it.user.id
   const isGuide = it.postType === 'guide'
 
-  if (it.visibility === 'private' && !isOwn) notFound()
+  if ((it.visibility === 'private' || it.visibility === 'draft') && !isOwn) notFound()
 
   const [followRecord, bucketItem] = await Promise.all([
     session?.user?.id && !isOwn
@@ -92,6 +92,13 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
           </div>
         )}
 
+        {it.visibility === 'draft' && (
+          <div className="px-5 pt-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 font-medium">
+              Draft — only visible to you. <Link href={`/itinerary/${it.id}/edit`} className="underline">Edit &amp; publish</Link>
+            </div>
+          </div>
+        )}
         <div className="p-5">
           {/* Header: author + follow */}
           <div className="flex items-center justify-between mb-4">
