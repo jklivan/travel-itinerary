@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Hotel, Utensils, Camera, MapPin } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import BucketButton from './BucketButton'
 
 type DestItem = { type: string; name: string }
@@ -26,19 +26,11 @@ const COVER_COLORS = [
   '#C0392B', '#1A6BAB', '#7B2D8B', '#1E8449',
   '#CA6F1E', '#A93226', '#117A65', '#1A5276',
 ]
-const AVATAR_COLORS = [
-  '#6366F1', '#8B5CF6', '#EC4899', '#14B8A6',
-  '#F59E0B', '#EF4444', '#10B981', '#3B82F6',
-]
 
 function hashPick(str: string, arr: string[]) {
   let h = 0
   for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0
   return arr[Math.abs(h) % arr.length]
-}
-
-function getInitials(name: string) {
-  return name.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
 function tripDays(start: Date, end: Date) {
@@ -51,8 +43,6 @@ export default function ItineraryCard({
 }: Props) {
   const isGuide = postType === 'guide'
   const coverColor = hashPick(title, COVER_COLORS)
-  const avatarColor = hashPick(authorName, AVATAR_COLORS)
-  const initials = getInitials(authorName)
   const days = tripDays(startDate, endDate)
 
   const primaryDest = destinations[0]
@@ -60,106 +50,67 @@ export default function ItineraryCard({
     ? `${primaryDest.name}${primaryDest.country ? `, ${primaryDest.country}` : ''}`
     : null
 
-  const allItems = destinations.flatMap((d) => d.items)
-  const hotels     = allItems.filter((i) => i.type === 'hotel').slice(0, 1)
-  const food       = allItems.filter((i) => i.type === 'food_drink').slice(0, 2)
-  const activities = allItems.filter((i) => i.type === 'activity').slice(0, 2)
-  const hasItems   = hotels.length > 0 || food.length > 0 || activities.length > 0
-
   const showBucket = !isOwn
 
   return (
-    <Link href={`/itinerary/${id}`} className="block">
-        <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200">
-
-          {/* Author row */}
-          <div className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0"
-                style={{ backgroundColor: avatarColor }}
-              >
-                {initials}
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900 text-sm">{authorName}</p>
-                {location && (
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <MapPin className="w-3 h-3 shrink-0" />
-                    {location}
-                  </p>
-                )}
-                {showBucket && (
-                  <div className="mt-1.5">
-                    <BucketButton
-                      itineraryId={id}
-                      initialBucketed={isBucketed}
-                      isLoggedIn={!!currentUserId}
-                    />
-                  </div>
-                )}
-              </div>
+    <Link href={`/itinerary/${id}`} className="block shrink-0 w-44 snap-center">
+      <div
+        className="bg-white rounded p-3 pb-8 hover:scale-[1.02] transition-transform duration-200"
+        style={{ boxShadow: '2px 4px 18px rgba(0,0,0,0.18)' }}
+      >
+        {/* Square photo */}
+        <div
+          className="relative w-full aspect-square overflow-hidden mb-3"
+          style={{ backgroundColor: coverColor }}
+        >
+          {coverPhoto && (
+            <Image src={coverPhoto} alt={title} fill className="object-cover" />
+          )}
+          {!coverPhoto && (
+            <div className="w-full h-full flex items-center justify-center">
+              <MapPin size={28} className="text-white/30" />
             </div>
-            <div className="flex flex-col items-end gap-1">
-              {isGuide ? (
-                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-800">
-                  📖 Guide
-                </span>
-              ) : audience === 'family' ? (
-                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-800">
-                  Family Friendly
-                </span>
-              ) : null}
-              {!isGuide && (
-                <span className="text-xs text-gray-400">{days} day{days !== 1 ? 's' : ''}</span>
-              )}
-            </div>
-          </div>
+          )}
 
-          {/* Cover image */}
-          <div className="relative h-52" style={{ backgroundColor: coverColor }}>
-            {coverPhoto && (
-              <Image src={coverPhoto} alt={title} fill className="object-cover" />
+          {/* Badges */}
+          <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
+            {isGuide && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-black/50 text-white">📖 Guide</span>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-3">
-              <h2 className="text-lg font-bold text-white leading-snug">{title}</h2>
-            </div>
+            {!isGuide && audience === 'family' && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-black/50 text-white">👨‍👩‍👧 Family</span>
+            )}
           </div>
 
-          {/* Content sections */}
-          {hasItems && (
-            <div className="p-4 space-y-2">
-              {hotels.length > 0 && (
-                <div className="flex items-start gap-2 bg-blue-50 rounded-lg p-2.5">
-                  <Hotel className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Hotel</p>
-                    <p className="text-sm text-gray-900 truncate">{hotels[0].name}</p>
-                  </div>
-                </div>
-              )}
-              {food.length > 0 && (
-                <div className="flex items-start gap-2 bg-orange-50 rounded-lg p-2.5">
-                  <Utensils className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Food & Drink</p>
-                    <p className="text-sm text-gray-900 truncate">{food.map((f) => f.name).join(' · ')}</p>
-                  </div>
-                </div>
-              )}
-              {activities.length > 0 && (
-                <div className="flex items-start gap-2 bg-green-50 rounded-lg p-2.5">
-                  <Camera className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Activities</p>
-                    <p className="text-sm text-gray-900 truncate">{activities.map((a) => a.name).join(' · ')}</p>
-                  </div>
-                </div>
-              )}
+          {/* Bucket button */}
+          {showBucket && (
+            <div className="absolute top-1.5 right-1.5">
+              <BucketButton
+                itineraryId={id}
+                initialBucketed={isBucketed}
+                isLoggedIn={!!currentUserId}
+              />
             </div>
           )}
         </div>
-      </Link>
+
+        {/* Caption */}
+        <div className="px-0.5">
+          <h2 className="font-bold text-gray-900 text-sm leading-snug line-clamp-2">{title}</h2>
+          {location && (
+            <p className="text-[11px] text-gray-500 flex items-center gap-0.5 mt-0.5 truncate">
+              <MapPin size={9} className="shrink-0 text-gray-400" />
+              {location}
+            </p>
+          )}
+          <div className="flex items-center justify-between mt-1">
+            <p className="text-[11px] text-gray-400 truncate mr-2">{authorName}</p>
+            {!isGuide && (
+              <span className="text-[11px] text-gray-400 shrink-0">{days}d</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </Link>
   )
 }

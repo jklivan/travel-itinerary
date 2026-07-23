@@ -53,7 +53,7 @@ function ItineraryList({
     )
   }
   return (
-    <div className="space-y-5">
+    <div className="flex overflow-x-auto gap-4 pb-4 -mx-4 px-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden">
       {itineraries.map((it) => (
         <ItineraryCard
           key={it.id}
