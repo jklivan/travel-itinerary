@@ -2,9 +2,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { MapPin, Clock } from 'lucide-react'
 import BucketButton from './BucketButton'
-import { Caveat } from 'next/font/google'
+import { Caveat, Kalam } from 'next/font/google'
 
 const caveat = Caveat({ subsets: ['latin'] })
+const kalam = Kalam({ subsets: ['latin'], weight: '400' })
 
 type DestItem = { type: string; name: string }
 type Destination = { name: string; country: string | null; items: DestItem[] }
@@ -147,7 +148,7 @@ export default function ItineraryCard({
             >
               {initials}
             </div>
-            <span className={`${caveat.className} text-sm text-gray-500 truncate`}>
+            <span className={`${kalam.className} text-sm text-gray-500 truncate`}>
               {authorName}
             </span>
           </div>
