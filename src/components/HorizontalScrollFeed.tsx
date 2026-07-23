@@ -40,8 +40,8 @@ export default function HorizontalScrollFeed({ children }: { children: React.Rea
           key={i}
           className={`snap-center shrink-0 transition-all duration-300 ease-out ${
             i === activeIndex
-              ? 'scale-105 opacity-100'
-              : 'scale-90 opacity-55'
+              ? 'scale-105 opacity-100 rotate-0'
+              : `scale-90 opacity-55 ${i % 2 === 0 ? 'rotate-2' : '-rotate-2'}`
           }`}
         >
           {child}
