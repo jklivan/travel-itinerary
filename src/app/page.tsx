@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import ItineraryCard from '@/components/ItineraryCard'
+import HorizontalScrollFeed from '@/components/HorizontalScrollFeed'
 import Link from 'next/link'
 
 export default async function FeedPage({
@@ -89,7 +90,7 @@ export default async function FeedPage({
           </p>
         </div>
       ) : (
-        <div className="flex overflow-x-auto gap-4 pb-4 -mx-4 px-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden">
+        <HorizontalScrollFeed>
           {itineraries.map((it) => (
             <ItineraryCard
               key={it.id}
@@ -107,7 +108,7 @@ export default async function FeedPage({
               isBucketed={bucketSet.has(it.id)}
             />
           ))}
-        </div>
+        </HorizontalScrollFeed>
       )}
     </div>
   )

@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ItineraryCard from '@/components/ItineraryCard'
+import HorizontalScrollFeed from '@/components/HorizontalScrollFeed'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
 import { MapPin, Users } from 'lucide-react'
 
@@ -204,7 +205,7 @@ export default async function UserProfilePage({
               <p className="text-gray-500 italic text-sm">No drafts yet.</p>
             </div>
           ) : (
-            <div className="flex overflow-x-auto gap-4 pb-4 -mx-4 px-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden">
+            <HorizontalScrollFeed>
               {drafts.map((it) => (
                 <ItineraryCard
                   key={it.id}
@@ -221,7 +222,7 @@ export default async function UserProfilePage({
                   isOwn={true}
                 />
               ))}
-            </div>
+            </HorizontalScrollFeed>
           )}
         </>
       ) : !showBucket ? (
@@ -234,7 +235,7 @@ export default async function UserProfilePage({
               <p className="text-gray-500 italic text-sm">No public itineraries yet.</p>
             </div>
           ) : (
-            <div className="flex overflow-x-auto gap-4 pb-4 -mx-4 px-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden">
+            <HorizontalScrollFeed>
               {itineraries.map((it) => (
                 <ItineraryCard
                   key={it.id}
@@ -251,7 +252,7 @@ export default async function UserProfilePage({
                   isBucketed={viewerBucketSet.has(it.id)}
                 />
               ))}
-            </div>
+            </HorizontalScrollFeed>
           )}
         </>
       ) : (
@@ -268,7 +269,7 @@ export default async function UserProfilePage({
               </p>
             </div>
           ) : (
-            <div className="flex overflow-x-auto gap-4 pb-4 -mx-4 px-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden">
+            <HorizontalScrollFeed>
               {bucketItems.map((item) => (
                 <ItineraryCard
                   key={item.id}
@@ -285,7 +286,7 @@ export default async function UserProfilePage({
                   isBucketed={ownBucketSet.has(item.itinerary.id)}
                 />
               ))}
-            </div>
+            </HorizontalScrollFeed>
           )}
         </>
       )}

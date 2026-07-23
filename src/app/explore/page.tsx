@@ -3,6 +3,7 @@ import type { ItineraryWhereInput } from '@/generated/prisma/models/Itinerary'
 import { auth } from '@/auth'
 import Link from 'next/link'
 import ItineraryCard from '@/components/ItineraryCard'
+import HorizontalScrollFeed from '@/components/HorizontalScrollFeed'
 import { MapPin, Globe, ChevronRight } from 'lucide-react'
 
 const TRIP_TYPE_META: Record<string, { label: string; emoji: string; desc: string }> = {
@@ -53,7 +54,7 @@ function ItineraryList({
     )
   }
   return (
-    <div className="flex overflow-x-auto gap-4 pb-4 -mx-4 px-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden">
+    <HorizontalScrollFeed>
       {itineraries.map((it) => (
         <ItineraryCard
           key={it.id}
@@ -71,7 +72,7 @@ function ItineraryList({
           isBucketed={bucketSet.has(it.id)}
         />
       ))}
-    </div>
+    </HorizontalScrollFeed>
   )
 }
 
