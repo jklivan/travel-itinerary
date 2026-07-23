@@ -23,7 +23,7 @@ async function fetchItineraries(
       include: {
         user: { select: { name: true, id: true } },
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
-        photos: { take: 1 },
+        photos: { take: 1, orderBy: { isStock: 'asc' } },
       },
     }),
     userId

@@ -52,7 +52,7 @@ export default async function UserProfilePage({
       orderBy: { createdAt: 'desc' },
       include: {
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
-        photos: { take: 1 },
+        photos: { take: 1, orderBy: { isStock: 'asc' } },
       },
     }),
     isOwn
@@ -61,7 +61,7 @@ export default async function UserProfilePage({
           orderBy: { createdAt: 'desc' },
           include: {
             destinations: { orderBy: { order: 'asc' }, include: { items: true } },
-            photos: { take: 1 },
+            photos: { take: 1, orderBy: { isStock: 'asc' } },
           },
         })
       : Promise.resolve([]),
@@ -75,7 +75,7 @@ export default async function UserProfilePage({
               include: {
                 user: { select: { id: true, name: true } },
                 destinations: { orderBy: { order: 'asc' }, include: { items: true } },
-                photos: { take: 1 },
+                photos: { take: 1, orderBy: { isStock: 'asc' } },
               },
             },
           },

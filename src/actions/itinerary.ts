@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { fetchStockPhoto } from '@/lib/stockPhoto'
 
 export type ItineraryState = { error?: string } | undefined
 
@@ -73,6 +74,15 @@ export async function createItinerary(
   const endDate = endDateStr ? new Date(endDateStr) : today
   if (!isDraft && endDate < startDate) return { error: 'End date must be after start date.' }
 
+  // Fetch stock photo if user didn't upload one
+  const photosToSave: { url: string; caption: string | null; isStock: boolean }[] =
+    photos.map((p) => ({ url: p.url, caption: p.caption || null, isStock: false }))
+  if (photosToSave.length === 0 && destinations.length > 0) {
+    const query = `${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`
+    const stockUrl = await fetchStockPhoto(query)
+    if (stockUrl) photosToSave.push({ url: stockUrl, caption: null, isStock: true })
+  }
+
   const itinerary = await prisma.itinerary.create({
     data: {
       postType,
@@ -94,7 +104,7 @@ export async function createItinerary(
         })),
       },
       photos: {
-        create: photos.map((p) => ({ url: p.url, caption: p.caption || null })),
+        create: photosToSave,
       },
     },
   })
@@ -131,6 +141,15 @@ export async function updateItinerary(
   await prisma.destination.deleteMany({ where: { itineraryId: id } })
   await prisma.photo.deleteMany({ where: { itineraryId: id } })
 
+  // Fetch stock photo if user didn't upload one
+  const photosToSave: { url: string; caption: string | null; isStock: boolean }[] =
+    photos.map((p) => ({ url: p.url, caption: p.caption || null, isStock: false }))
+  if (photosToSave.length === 0 && destinations.length > 0) {
+    const query = `${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`
+    const stockUrl = await fetchStockPhoto(query)
+    if (stockUrl) photosToSave.push({ url: stockUrl, caption: null, isStock: true })
+  }
+
   await prisma.itinerary.update({
     where: { id },
     data: {
@@ -152,7 +171,7 @@ export async function updateItinerary(
         })),
       },
       photos: {
-        create: photos.map((p) => ({ url: p.url, caption: p.caption || null })),
+        create: photosToSave,
       },
     },
   })

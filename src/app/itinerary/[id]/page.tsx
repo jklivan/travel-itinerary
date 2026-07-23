@@ -46,7 +46,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
         orderBy: { order: 'asc' },
         include: { items: true },
       },
-      photos: true,
+      photos: { orderBy: { isStock: 'asc' } },
     },
   })
 
@@ -296,12 +296,12 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
             </div>
           )}
 
-          {/* Additional photos */}
-          {it.photos.length > 1 && (
+          {/* Additional photos — exclude stock cover */}
+          {it.photos.filter(p => !p.isStock).length > 1 && (
             <div>
               <h2 className="text-sm font-semibold text-gray-700 mb-2">Photos</h2>
               <div className="grid grid-cols-3 gap-2">
-                {it.photos.slice(1).map((photo) => (
+                {it.photos.filter(p => !p.isStock).slice(1).map((photo) => (
                   <div key={photo.id} className="space-y-1">
                     <div className="relative h-24 rounded-lg overflow-hidden bg-gray-100">
                       <Image src={photo.url} alt={photo.caption ?? ''} fill className="object-cover" />

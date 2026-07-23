@@ -90,6 +90,7 @@ model Photo {
   id          String    @id @default(cuid())
   url         String
   caption     String?
+  isStock     Boolean   @default(false)
   itineraryId String
   itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
 }
