@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 import { createItinerary } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import { MapPin, Hotel, Utensils, Camera, Star, ArrowRight, Plus, Check, X, FileText, ImageIcon } from 'lucide-react'
+import TagPicker from '@/components/TagPicker'
 import Link from 'next/link'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -211,6 +212,7 @@ export default function GuidedCreatePage() {
   const [phase, setPhase] = useState<Phase>('dest')
 
   const [title, setTitle] = useState('')
+  const [tags, setTags] = useState<string[]>([])
   const [postType, setPostType] = useState<'itinerary' | 'guide'>('itinerary')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -281,6 +283,7 @@ export default function GuidedCreatePage() {
         <input type="hidden" name="visibility" value="public" />
         <input type="hidden" name="destinations" value={JSON.stringify(buildDestinations())} />
         <input type="hidden" name="photos" value={JSON.stringify(photos)} />
+        <input type="hidden" name="tags" value={JSON.stringify(tags)} />
       </form>
 
       <div className="space-y-4">
@@ -522,6 +525,11 @@ export default function GuidedCreatePage() {
                   </div>
                 </div>
               )}
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-2">Tags</p>
+                <TagPicker selected={tags} onChange={setTags} />
+              </div>
+
               <label className="flex items-center gap-3 cursor-pointer select-none">
                 <div onClick={() => setIsAdult(v => !v)}
                   className={`w-10 h-6 rounded-full transition-colors relative ${!isAdult ? 'bg-green-500' : 'bg-gray-200'}`}>

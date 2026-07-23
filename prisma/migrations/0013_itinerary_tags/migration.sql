@@ -1,0 +1,1 @@
+ALTER TABLE "Itinerary" ADD COLUMN "tags" TEXT[] NOT NULL DEFAULT '{}';

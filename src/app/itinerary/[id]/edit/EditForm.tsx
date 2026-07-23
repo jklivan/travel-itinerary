@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import { updateItinerary } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
+import TagPicker from '@/components/TagPicker'
 
 type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number }
 type ActivityItem = { name: string; notes: string; link: string; rating: number }
@@ -21,6 +22,7 @@ type ItineraryData = {
   visibility: string
   notes: string | null
   highlights: string | null
+  tags: string[]
   destinations: {
     name: string
     country: string | null
@@ -165,6 +167,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   const [isPrivate, setIsPrivate] = useState(itinerary.visibility === 'private')
   const [notes, setNotes] = useState(itinerary.notes ?? '')
   const [highlights, setHighlights] = useState(itinerary.highlights ?? '')
+  const [tags, setTags] = useState<string[]>(itinerary.tags ?? [])
   const [destinations, setDestinations] = useState<Destination[]>(
     itinerary.destinations.length > 0
       ? itinerary.destinations.map(d => ({ name: d.name, country: d.country ?? '', notes: d.notes ?? '', groups: itemsToGroups(d.items) }))
@@ -376,6 +379,14 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
           className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-xl py-3 transition-colors">
           + Add destination
         </button>
+      </section>
+
+      {/* Tags */}
+      <input type="hidden" name="tags" value={JSON.stringify(tags)} />
+      <section className="bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 className="font-semibold text-gray-900 mb-1">Tags</h2>
+        <p className="text-xs text-gray-500 mb-3">Pick what best describes this trip</p>
+        <TagPicker selected={tags} onChange={setTags} />
       </section>
 
       {/* Highlights */}

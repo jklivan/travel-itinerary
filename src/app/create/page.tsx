@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import { createItinerary } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
+import TagPicker from '@/components/TagPicker'
 
 async function extractTextFromFile(file: File): Promise<string> {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
@@ -161,6 +162,7 @@ export default function CreatePage() {
   const [isAdult, setIsAdult] = useState(false)
   const [isPrivate, setIsPrivate] = useState(false)
   const [notes, setNotes] = useState('')
+  const [tags, setTags] = useState<string[]>([])
   const [destinations, setDestinations] = useState<Destination[]>([emptyDest()])
   const [photos, setPhotos] = useState<UploadedPhoto[]>([])
   const [uploading, setUploading] = useState(false)
@@ -545,6 +547,14 @@ export default function CreatePage() {
             className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-xl py-3 transition-colors">
             + Add destination
           </button>
+        </section>
+
+        {/* ── Tags ───────────────────────────────────────────────────── */}
+        <input type="hidden" name="tags" value={JSON.stringify(tags)} />
+        <section className="bg-white rounded-2xl border border-gray-200 p-6">
+          <h2 className="font-semibold text-gray-900 mb-1">Tags</h2>
+          <p className="text-xs text-gray-500 mb-3">Pick what best describes this trip</p>
+          <TagPicker selected={tags} onChange={setTags} />
         </section>
 
         {/* ── Highlights ─────────────────────────────────────────────── */}

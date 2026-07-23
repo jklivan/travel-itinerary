@@ -42,6 +42,7 @@ model Itinerary {
   visibility   String           @default("public")
   notes        String?
   highlights   String?
+  tags         String[] @default([])
   userId       String
   user         User             @relation(fields: [userId], references: [id])
   destinations Destination[]

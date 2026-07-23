@@ -45,13 +45,14 @@ function parseFormData(formData: FormData) {
   const visibility = isDraft ? 'draft' : ((formData.get('visibility') as string) || 'public')
   const notes = (formData.get('notes') as string)?.trim() || null
   const highlights = (formData.get('highlights') as string)?.trim() || null
+  const tags: string[] = formData.get('tags') ? JSON.parse(formData.get('tags') as string) : []
   const destinations: DestInput[] = formData.get('destinations')
     ? JSON.parse(formData.get('destinations') as string)
     : []
   const photos: { url: string; caption: string }[] = formData.get('photos')
     ? JSON.parse(formData.get('photos') as string)
     : []
-  return { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, destinations, photos }
+  return { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, destinations, photos }
 }
 
 export async function createItinerary(
@@ -61,7 +62,7 @@ export async function createItinerary(
   const session = await auth()
   if (!session?.user?.id) return { error: 'You must be logged in.' }
 
-  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, destinations, photos } =
+  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, destinations, photos } =
     parseFormData(formData)
 
   if (!title) return { error: 'Title is required.' }
@@ -95,6 +96,7 @@ export async function createItinerary(
       visibility,
       notes,
       highlights,
+      tags,
       userId: session.user.id,
       destinations: {
         create: destinations.map((d, i) => ({
@@ -126,7 +128,7 @@ export async function updateItinerary(
   const existing = await prisma.itinerary.findUnique({ where: { id } })
   if (!existing || existing.userId !== session.user.id) return { error: 'Not found.' }
 
-  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, destinations, photos } =
+  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, destinations, photos } =
     parseFormData(formData)
 
   if (!title) return { error: 'Title is required.' }
@@ -165,6 +167,7 @@ export async function updateItinerary(
       visibility,
       notes,
       highlights,
+      tags,
       destinations: {
         create: destinations.map((d, i) => ({
           name: d.name,

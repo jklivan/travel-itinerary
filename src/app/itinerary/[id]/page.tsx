@@ -8,6 +8,7 @@ import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/
 import { generateHighlights } from '@/lib/generateHighlights'
 import { Hotel, Utensils, Camera, MapPin, Star } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
+import { tagMeta } from '@/lib/tags'
 
 function Stars({ rating }: { rating: number | null }) {
   if (!rating) return null
@@ -186,6 +187,18 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
               )}
             </div>
             <h1 className="text-2xl font-bold text-gray-900 leading-tight">{it.title}</h1>
+            {it.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {it.tags.map((tag) => {
+                  const meta = tagMeta(tag)
+                  return meta ? (
+                    <span key={tag} className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full font-medium">
+                      {meta.emoji} {meta.label}
+                    </span>
+                  ) : null
+                })}
+              </div>
+            )}
             {it.description && (
               <p className="text-gray-600 mt-2 text-sm italic border-l-4 border-blue-200 pl-3">
                 &ldquo;{it.description}&rdquo;
