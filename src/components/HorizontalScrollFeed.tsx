@@ -13,11 +13,13 @@ export default function HorizontalScrollFeed({ children }: { children: React.Rea
 
     function update() {
       const c = containerRef.current!
-      const center = c.scrollLeft + c.offsetWidth / 2
+      const cRect = c.getBoundingClientRect()
+      const center = cRect.left + cRect.width / 2
       const kids = Array.from(c.children) as HTMLElement[]
       let ci = 0, cd = Infinity
       kids.forEach((k, i) => {
-        const d = Math.abs(k.offsetLeft + k.offsetWidth / 2 - center)
+        const kRect = k.getBoundingClientRect()
+        const d = Math.abs(kRect.left + kRect.width / 2 - center)
         if (d < cd) { cd = d; ci = i }
       })
       setActiveIndex(ci)

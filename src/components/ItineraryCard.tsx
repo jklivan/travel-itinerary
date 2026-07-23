@@ -53,7 +53,7 @@ export default function ItineraryCard({
   const showBucket = !isOwn
 
   return (
-    <Link href={`/itinerary/${id}`} className="block w-44">
+    <Link href={`/itinerary/${id}`} className="block w-[clamp(160px,44vw,300px)]">
       <div
         className="bg-white rounded p-3 pb-8 hover:scale-[1.02] transition-transform duration-200"
         style={{ boxShadow: '2px 4px 18px rgba(0,0,0,0.18)' }}
