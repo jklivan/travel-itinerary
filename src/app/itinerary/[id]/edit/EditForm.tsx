@@ -20,6 +20,7 @@ type ItineraryData = {
   audience: string
   visibility: string
   notes: string | null
+  highlights: string | null
   destinations: {
     name: string
     country: string | null
@@ -163,6 +164,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   const [isAdult, setIsAdult] = useState(itinerary.audience === 'adult')
   const [isPrivate, setIsPrivate] = useState(itinerary.visibility === 'private')
   const [notes, setNotes] = useState(itinerary.notes ?? '')
+  const [highlights, setHighlights] = useState(itinerary.highlights ?? '')
   const [destinations, setDestinations] = useState<Destination[]>(
     itinerary.destinations.length > 0
       ? itinerary.destinations.map(d => ({ name: d.name, country: d.country ?? '', notes: d.notes ?? '', groups: itemsToGroups(d.items) }))
@@ -374,6 +376,13 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
           className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-xl py-3 transition-colors">
           + Add destination
         </button>
+      </section>
+
+      {/* Highlights */}
+      <section className="bg-amber-50 rounded-2xl border border-amber-200 p-6">
+        <h2 className="font-semibold text-gray-900 mb-1">✨ Highlights</h2>
+        <p className="text-xs text-gray-500 mb-3">Your personal trip summary. Leave blank and we&apos;ll auto-generate one from your 5-star picks.</p>
+        <textarea name="highlights" rows={3} className={inputClass} placeholder="The ramen at Ichiran was life-changing…" value={highlights} onChange={e => setHighlights(e.target.value)} />
       </section>
 
       {/* Notes */}

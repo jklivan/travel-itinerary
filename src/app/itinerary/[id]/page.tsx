@@ -3,7 +3,9 @@ import { auth } from '@/auth'
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { unstable_cache } from 'next/cache'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
+import { generateHighlights } from '@/lib/generateHighlights'
 import { Hotel, Utensils, Camera, MapPin, Star } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 
@@ -71,6 +73,17 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
   ])
   const followStatus = followRecord?.status ?? 'none'
   const isBucketed = !!bucketItem
+
+  // Highlights: user-written takes priority, otherwise AI-generate from 5-star items
+  let highlights = it.highlights ?? null
+  if (!highlights) {
+    const cached = unstable_cache(
+      () => generateHighlights(it.title, it.destinations),
+      [`highlights-${it.id}`],
+      { revalidate: 86400 * 7 }
+    )
+    highlights = await cached()
+  }
 
   function fmtShort(d: Date) {
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -179,6 +192,17 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
               </p>
             )}
           </div>
+
+          {/* Highlights */}
+          {highlights && (
+            <div className="mb-5 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 p-4">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-base">✨</span>
+                <h2 className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Highlights</h2>
+              </div>
+              <p className="text-sm text-gray-700 leading-relaxed italic">{highlights}</p>
+            </div>
+          )}
 
           {/* Destinations */}
           {it.destinations.length > 0 && (

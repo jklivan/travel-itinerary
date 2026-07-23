@@ -15,7 +15,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
         orderBy: { order: 'asc' },
         include: { items: true },
       },
-      photos: true,
+      photos: { where: { isStock: false } },
     },
   })
 

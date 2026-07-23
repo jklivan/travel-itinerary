@@ -44,13 +44,14 @@ function parseFormData(formData: FormData) {
   const isDraft = formData.get('isDraft') === '1'
   const visibility = isDraft ? 'draft' : ((formData.get('visibility') as string) || 'public')
   const notes = (formData.get('notes') as string)?.trim() || null
+  const highlights = (formData.get('highlights') as string)?.trim() || null
   const destinations: DestInput[] = formData.get('destinations')
     ? JSON.parse(formData.get('destinations') as string)
     : []
   const photos: { url: string; caption: string }[] = formData.get('photos')
     ? JSON.parse(formData.get('photos') as string)
     : []
-  return { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, destinations, photos }
+  return { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, destinations, photos }
 }
 
 export async function createItinerary(
@@ -60,7 +61,7 @@ export async function createItinerary(
   const session = await auth()
   if (!session?.user?.id) return { error: 'You must be logged in.' }
 
-  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, destinations, photos } =
+  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, destinations, photos } =
     parseFormData(formData)
 
   if (!title) return { error: 'Title is required.' }
@@ -93,6 +94,7 @@ export async function createItinerary(
       audience,
       visibility,
       notes,
+      highlights,
       userId: session.user.id,
       destinations: {
         create: destinations.map((d, i) => ({
@@ -124,7 +126,7 @@ export async function updateItinerary(
   const existing = await prisma.itinerary.findUnique({ where: { id } })
   if (!existing || existing.userId !== session.user.id) return { error: 'Not found.' }
 
-  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, destinations, photos } =
+  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, destinations, photos } =
     parseFormData(formData)
 
   if (!title) return { error: 'Title is required.' }
@@ -140,6 +142,7 @@ export async function updateItinerary(
   // Delete existing destinations (cascades to items) and photos, then recreate
   await prisma.destination.deleteMany({ where: { itineraryId: id } })
   await prisma.photo.deleteMany({ where: { itineraryId: id } })
+  revalidatePath(`/itinerary/${id}`)
 
   // Fetch stock photo if user didn't upload one
   const photosToSave: { url: string; caption: string | null; isStock: boolean }[] =
@@ -161,6 +164,7 @@ export async function updateItinerary(
       audience,
       visibility,
       notes,
+      highlights,
       destinations: {
         create: destinations.map((d, i) => ({
           name: d.name,

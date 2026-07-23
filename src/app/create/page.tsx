@@ -547,6 +547,14 @@ export default function CreatePage() {
           </button>
         </section>
 
+        {/* ── Highlights ─────────────────────────────────────────────── */}
+        <section className="bg-amber-50 rounded-2xl border border-amber-200 p-6">
+          <h2 className="font-semibold text-gray-900 mb-1">✨ Highlights</h2>
+          <p className="text-xs text-gray-500 mb-3">Your personal trip summary. Leave blank and we&apos;ll auto-generate one from your 5-star picks.</p>
+          <textarea name="highlights" rows={3} className={inputClass}
+            placeholder="The ramen at Ichiran was life-changing, and watching the sunrise from Fushimi Inari made the early wake-up completely worth it…" />
+        </section>
+
         {/* ── Notes ──────────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-gray-200 p-6">
           <h2 className="font-semibold text-gray-900 mb-4">General Notes</h2>

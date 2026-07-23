@@ -41,6 +41,7 @@ model Itinerary {
   audience     String           @default("family")
   visibility   String           @default("public")
   notes        String?
+  highlights   String?
   userId       String
   user         User             @relation(fields: [userId], references: [id])
   destinations Destination[]
