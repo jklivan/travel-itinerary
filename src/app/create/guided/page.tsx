@@ -298,7 +298,7 @@ export default function GuidedCreatePage() {
                 <MapPin size={20} className="text-white" />
               </div>
               <div>
-                <h2 className="font-bold text-white">Where are you going?</h2>
+                <h2 className="font-bold text-white">Where did you go?</h2>
                 <p className="text-white/70 text-xs mt-0.5">Start by adding a destination</p>
               </div>
             </div>
@@ -468,7 +468,7 @@ export default function GuidedCreatePage() {
               <p className="font-semibold text-gray-900 mb-1">
                 {dests.length === 1 ? `${dests[0].name} added! 🎉` : `${dests.length} destinations added!`}
               </p>
-              <p className="text-sm text-gray-500">Going anywhere else, or ready to finish?</p>
+              <p className="text-sm text-gray-500">Anywhere else, or ready to finish?</p>
             </div>
             <div className="flex gap-3">
               <button type="button" onClick={() => setPhase('dest')}
