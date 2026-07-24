@@ -54,7 +54,7 @@ function parseFormData(formData: FormData) {
   const photos: { url: string; caption: string }[] = formData.get('photos')
     ? JSON.parse(formData.get('photos') as string)
     : []
-  return { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, destinations, photos }
+  return { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, destinations, photos }
 }
 
 export async function createItinerary(

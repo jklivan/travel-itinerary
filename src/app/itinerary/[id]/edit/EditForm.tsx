@@ -293,6 +293,13 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         </label>
       </section>
 
+      {/* Highlights */}
+      <section className="bg-amber-50 rounded-2xl border border-amber-200 p-6">
+        <h2 className="font-semibold text-gray-900 mb-1">✨ Highlights</h2>
+        <p className="text-xs text-gray-500 mb-3">Your personal trip summary. Leave blank and we&apos;ll auto-generate one from your 5-star picks.</p>
+        <textarea name="highlights" rows={3} className={inputClass} placeholder="The ramen at Ichiran was life-changing…" value={highlights} onChange={e => setHighlights(e.target.value)} />
+      </section>
+
       {/* Destinations */}
       <section className="space-y-4">
         <h2 className="font-semibold text-gray-900 text-lg">Destinations</h2>
@@ -408,13 +415,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
             </button>
           ))}
         </div>
-      </section>
-
-      {/* Highlights */}
-      <section className="bg-amber-50 rounded-2xl border border-amber-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-1">✨ Highlights</h2>
-        <p className="text-xs text-gray-500 mb-3">Your personal trip summary. Leave blank and we&apos;ll auto-generate one from your 5-star picks.</p>
-        <textarea name="highlights" rows={3} className={inputClass} placeholder="The ramen at Ichiran was life-changing…" value={highlights} onChange={e => setHighlights(e.target.value)} />
       </section>
 
       {/* Notes */}
