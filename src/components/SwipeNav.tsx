@@ -32,41 +32,31 @@ export default function SwipeNav({
 
   return (
     <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      <div className="flex items-center justify-between mb-5">
-        <Link href="/" className="text-sm text-blue-600 hover:underline">
-          ← Back to feed
+      {/* Back link */}
+      <Link href="/" className="text-sm text-blue-600 hover:underline mb-5 inline-block">
+        ← Back to feed
+      </Link>
+
+      {/* Fixed side arrows */}
+      {prevId && (
+        <Link
+          href={`/itinerary/${prevId}`}
+          aria-label="Previous itinerary"
+          className="fixed left-2 top-1/2 -translate-y-1/2 z-50 flex items-center justify-center w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm shadow-md text-gray-600 hover:text-gray-900 hover:bg-white transition-colors"
+        >
+          <ChevronLeft size={20} />
         </Link>
-        {(prevId || nextId) && (
-          <div className="flex items-center gap-1">
-            {prevId ? (
-              <Link
-                href={`/itinerary/${prevId}`}
-                className="p-1.5 rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-                aria-label="Previous itinerary"
-              >
-                <ChevronLeft size={18} />
-              </Link>
-            ) : (
-              <span className="p-1.5 text-gray-300 cursor-not-allowed">
-                <ChevronLeft size={18} />
-              </span>
-            )}
-            {nextId ? (
-              <Link
-                href={`/itinerary/${nextId}`}
-                className="p-1.5 rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-                aria-label="Next itinerary"
-              >
-                <ChevronRight size={18} />
-              </Link>
-            ) : (
-              <span className="p-1.5 text-gray-300 cursor-not-allowed">
-                <ChevronRight size={18} />
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+      )}
+      {nextId && (
+        <Link
+          href={`/itinerary/${nextId}`}
+          aria-label="Next itinerary"
+          className="fixed right-2 top-1/2 -translate-y-1/2 z-50 flex items-center justify-center w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm shadow-md text-gray-600 hover:text-gray-900 hover:bg-white transition-colors"
+        >
+          <ChevronRight size={20} />
+        </Link>
+      )}
+
       {children}
     </div>
   )
