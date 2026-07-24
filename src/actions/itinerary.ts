@@ -76,15 +76,8 @@ export async function createItinerary(
   const endDate = endDateStr ? new Date(endDateStr) : today
   if (!isDraft && endDate < startDate) return { error: 'End date must be after start date.' }
 
-  // Fetch stock photo if user didn't upload one
-  const photosToSave: { url: string; caption: string | null; isStock: boolean }[] =
-    photos.map((p) => ({ url: p.url, caption: p.caption || null, isStock: false }))
-  if (photosToSave.length === 0 && destinations.length > 0) {
-    const query = `${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`
-    const stockUrl = await fetchStockPhoto(query)
-    if (stockUrl) photosToSave.push({ url: stockUrl, caption: null, isStock: true })
-  }
-
+  // Save itinerary first — stock photo fetch happens after so a slow API
+  // can never prevent the itinerary from being saved
   const itinerary = await prisma.itinerary.create({
     data: {
       postType,
@@ -108,10 +101,19 @@ export async function createItinerary(
         })),
       },
       photos: {
-        create: photosToSave,
+        create: photos.map((p) => ({ url: p.url, caption: p.caption || null, isStock: false })),
       },
     },
   })
+
+  // Fetch stock photo after save — failure here doesn't affect the itinerary
+  if (photos.length === 0 && destinations.length > 0) {
+    const query = `${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`
+    const stockUrl = await fetchStockPhoto(query)
+    if (stockUrl) {
+      await prisma.photo.create({ data: { url: stockUrl, isStock: true, itineraryId: itinerary.id } })
+    }
+  }
 
   revalidatePath('/')
   redirect(`/itinerary/${itinerary.id}`)
@@ -146,15 +148,6 @@ export async function updateItinerary(
   await prisma.photo.deleteMany({ where: { itineraryId: id } })
   revalidatePath(`/itinerary/${id}`)
 
-  // Fetch stock photo if user didn't upload one
-  const photosToSave: { url: string; caption: string | null; isStock: boolean }[] =
-    photos.map((p) => ({ url: p.url, caption: p.caption || null, isStock: false }))
-  if (photosToSave.length === 0 && destinations.length > 0) {
-    const query = `${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`
-    const stockUrl = await fetchStockPhoto(query)
-    if (stockUrl) photosToSave.push({ url: stockUrl, caption: null, isStock: true })
-  }
-
   await prisma.itinerary.update({
     where: { id },
     data: {
@@ -178,10 +171,19 @@ export async function updateItinerary(
         })),
       },
       photos: {
-        create: photosToSave,
+        create: photos.map((p) => ({ url: p.url, caption: p.caption || null, isStock: false })),
       },
     },
   })
+
+  // Fetch stock photo after save — failure here doesn't affect the itinerary
+  if (photos.length === 0 && destinations.length > 0) {
+    const query = `${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`
+    const stockUrl = await fetchStockPhoto(query)
+    if (stockUrl) {
+      await prisma.photo.create({ data: { url: stockUrl, isStock: true, itineraryId: id } })
+    }
+  }
 
   revalidatePath('/')
   revalidatePath(`/itinerary/${id}`)
