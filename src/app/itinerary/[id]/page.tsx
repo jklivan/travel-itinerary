@@ -9,6 +9,7 @@ import { generateHighlights } from '@/lib/generateHighlights'
 import { Hotel, Utensils, Camera, MapPin, Star } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import { tagMeta } from '@/lib/tags'
+import SwipeNav from '@/components/SwipeNav'
 
 function Stars({ rating }: { rating: number | null }) {
   if (!rating) return null
@@ -60,6 +61,19 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
 
   if ((it.visibility === 'private' || it.visibility === 'draft') && !isOwn) notFound()
 
+  // Adjacent itineraries for swipe navigation (same author, same visibility rules)
+  const userItineraries = await prisma.itinerary.findMany({
+    where: {
+      userId: it.user.id,
+      ...(isOwn ? {} : { visibility: 'public' }),
+    },
+    orderBy: { startDate: 'desc' },
+    select: { id: true },
+  })
+  const currentIndex = userItineraries.findIndex((i) => i.id === id)
+  const prevId = currentIndex > 0 ? userItineraries[currentIndex - 1].id : null
+  const nextId = currentIndex < userItineraries.length - 1 ? userItineraries[currentIndex + 1].id : null
+
   const [followRecord, bucketItem] = await Promise.all([
     session?.user?.id && !isOwn
       ? prisma.follow.findUnique({
@@ -94,10 +108,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <Link href="/" className="text-sm text-blue-600 hover:underline mb-5 inline-block">
-        ← Back to feed
-      </Link>
-
+      <SwipeNav prevId={prevId} nextId={nextId}>
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
         {/* Cover photo */}
         {it.photos.length > 0 && (
@@ -353,6 +364,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
           )}
         </div>
       </div>
+      </SwipeNav>
     </div>
   )
 }
