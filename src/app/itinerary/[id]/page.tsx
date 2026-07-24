@@ -202,6 +202,13 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
               )}
             </div>
             <h1 className="text-2xl font-bold text-gray-900 leading-tight">{it.title}</h1>
+            {it.budget && it.budget > 0 && (
+              <div className="flex items-center gap-0.5 mt-1">
+                {[1,2,3,4,5].map((n) => (
+                  <span key={n} className={`text-sm font-medium ${n <= it.budget! ? 'text-green-600' : 'text-gray-200'}`}>$</span>
+                ))}
+              </div>
+            )}
             {it.tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {it.tags.map((tag) => {

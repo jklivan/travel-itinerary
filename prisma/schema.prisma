@@ -43,6 +43,7 @@ model Itinerary {
   notes        String?
   highlights   String?
   tags         String[] @default([])
+  budget       Int?
   userId       String
   user         User             @relation(fields: [userId], references: [id])
   destinations Destination[]

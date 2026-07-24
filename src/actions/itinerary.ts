@@ -46,6 +46,8 @@ function parseFormData(formData: FormData) {
   const notes = (formData.get('notes') as string)?.trim() || null
   const highlights = (formData.get('highlights') as string)?.trim() || null
   const tags: string[] = formData.get('tags') ? JSON.parse(formData.get('tags') as string) : []
+  const budgetRaw = parseInt(formData.get('budget') as string)
+  const budget = budgetRaw >= 1 && budgetRaw <= 5 ? budgetRaw : null
   const destinations: DestInput[] = formData.get('destinations')
     ? JSON.parse(formData.get('destinations') as string)
     : []
@@ -62,7 +64,7 @@ export async function createItinerary(
   const session = await auth()
   if (!session?.user?.id) return { error: 'You must be logged in.' }
 
-  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, destinations, photos } =
+  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, destinations, photos } =
     parseFormData(formData)
 
   if (!title) return { error: 'Title is required.' }
@@ -90,6 +92,7 @@ export async function createItinerary(
       notes,
       highlights,
       tags,
+      budget,
       userId: session.user.id,
       destinations: {
         create: destinations.map((d, i) => ({
@@ -130,7 +133,7 @@ export async function updateItinerary(
   const existing = await prisma.itinerary.findUnique({ where: { id } })
   if (!existing || existing.userId !== session.user.id) return { error: 'Not found.' }
 
-  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, destinations, photos } =
+  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, destinations, photos } =
     parseFormData(formData)
 
   if (!title) return { error: 'Title is required.' }
@@ -161,6 +164,7 @@ export async function updateItinerary(
       notes,
       highlights,
       tags,
+      budget,
       destinations: {
         create: destinations.map((d, i) => ({
           name: d.name,

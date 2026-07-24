@@ -217,6 +217,7 @@ export default function GuidedCreatePage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [isAdult, setIsAdult] = useState(false)
+  const [budget, setBudget] = useState(0)
 
   function addItem(item: Omit<GuidedItem, 'id'>) {
     setCurItems(i => [...i, { ...item, id: uid() }])
@@ -284,6 +285,7 @@ export default function GuidedCreatePage() {
         <input type="hidden" name="destinations" value={JSON.stringify(buildDestinations())} />
         <input type="hidden" name="photos" value={JSON.stringify(photos)} />
         <input type="hidden" name="tags" value={JSON.stringify(tags)} />
+        {budget > 0 && <input type="hidden" name="budget" value={budget} />}
       </form>
 
       <div className="space-y-4">
@@ -528,6 +530,22 @@ export default function GuidedCreatePage() {
               <div>
                 <p className="text-xs font-medium text-gray-500 mb-2">Tags</p>
                 <TagPicker selected={tags} onChange={setTags} />
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-2">Budget</p>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setBudget(budget === n ? 0 : n)}
+                      className={`text-base px-1 transition-colors ${n <= budget ? 'text-green-600' : 'text-gray-300'}`}
+                    >
+                      $
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <label className="flex items-center gap-3 cursor-pointer select-none">

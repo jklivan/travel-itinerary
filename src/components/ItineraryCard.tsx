@@ -17,6 +17,7 @@ type Props = {
   startDate: Date
   endDate: Date
   audience: string
+  budget?: number | null
   authorName: string
   destinations: Destination[]
   coverPhoto: string | null
@@ -57,7 +58,7 @@ function tripDays(start: Date, end: Date) {
 }
 
 export default function ItineraryCard({
-  id, postType = 'itinerary', title, startDate, endDate, audience, authorName, destinations, coverPhoto,
+  id, postType = 'itinerary', title, startDate, endDate, audience, budget, authorName, destinations, coverPhoto,
   currentUserId, isOwn, isBucketed = false,
 }: Props) {
   const isGuide = postType === 'guide'
@@ -148,9 +149,16 @@ export default function ItineraryCard({
             >
               {initials}
             </div>
-            <span className={`${kalam.className} text-sm text-gray-500 truncate`}>
+            <span className={`${kalam.className} text-sm text-gray-500 truncate flex-1`}>
               {authorName}
             </span>
+            {budget && budget > 0 && (
+              <span className="text-[10px] font-medium tracking-tight shrink-0">
+                {[1,2,3,4,5].map((n) => (
+                  <span key={n} className={n <= budget ? 'text-green-600' : 'text-gray-200'}>$</span>
+                ))}
+              </span>
+            )}
           </div>
         </div>
       </div>

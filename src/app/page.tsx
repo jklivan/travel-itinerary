@@ -100,6 +100,7 @@ export default async function FeedPage({
               startDate={it.startDate}
               endDate={it.endDate}
               audience={it.audience}
+              budget={it.budget}
               authorName={it.user.name}
               destinations={it.destinations}
               coverPhoto={it.photos[0]?.url ?? null}
