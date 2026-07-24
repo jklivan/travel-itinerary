@@ -31,7 +31,7 @@ export default async function FeedPage({
       where: {
         OR: [
           { visibility: 'public' },
-          ...(userId ? [{ userId }] : []),
+          ...(userId ? [{ userId, visibility: 'private' }] : []),
         ],
         ...(isFriends && userIdFilter ? { userId: userIdFilter } : {}),
         ...(searchQuery ? {
