@@ -189,3 +189,16 @@ export async function updateItinerary(
   revalidatePath(`/itinerary/${id}`)
   redirect(`/itinerary/${id}`)
 }
+
+export async function deleteItinerary(id: string): Promise<{ error?: string }> {
+  const session = await auth()
+  if (!session?.user?.id) return { error: 'You must be logged in.' }
+
+  const existing = await prisma.itinerary.findUnique({ where: { id } })
+  if (!existing || existing.userId !== session.user.id) return { error: 'Not found.' }
+
+  await prisma.itinerary.delete({ where: { id } })
+  revalidatePath('/')
+  revalidatePath(`/user/${session.user.id}`)
+  redirect('/')
+}

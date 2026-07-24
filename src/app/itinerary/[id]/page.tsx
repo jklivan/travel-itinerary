@@ -10,6 +10,7 @@ import { Hotel, Utensils, Camera, MapPin, Star } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import { tagMeta } from '@/lib/tags'
 import SwipeNav from '@/components/SwipeNav'
+import DeleteButton from '@/components/DeleteButton'
 
 function Stars({ rating }: { rating: number | null }) {
   if (!rating) return null
@@ -150,10 +151,13 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                 />
               )}
               {isOwn && (
-                <Link href={`/itinerary/${it.id}/edit`}
-                  className="text-xs font-medium px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:border-blue-300 hover:text-blue-600 transition-colors">
-                  Edit
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link href={`/itinerary/${it.id}/edit`}
+                    className="text-xs font-medium px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:border-blue-300 hover:text-blue-600 transition-colors">
+                    Edit
+                  </Link>
+                  <DeleteButton id={it.id} />
+                </div>
               )}
               {session?.user && !isOwn && (
                 <form action={async () => {
