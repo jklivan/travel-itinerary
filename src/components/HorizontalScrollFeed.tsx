@@ -5,6 +5,7 @@ import { useRef, useEffect, useState, Children } from 'react'
 export default function HorizontalScrollFeed({ children }: { children: React.ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [activeIndex, setActiveIndex] = useState(0)
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   const items = Children.toArray(children)
 
   useEffect(() => {
@@ -26,9 +27,12 @@ export default function HorizontalScrollFeed({ children }: { children: React.Rea
     }
 
     el.addEventListener('scroll', update, { passive: true })
-    update()
+    // Wait for layout before measuring
+    requestAnimationFrame(update)
     return () => el.removeEventListener('scroll', update)
   }, [])
+
+  const displayIndex = hoveredIndex ?? activeIndex
 
   return (
     <div
@@ -38,8 +42,10 @@ export default function HorizontalScrollFeed({ children }: { children: React.Rea
       {items.map((child, i) => (
         <div
           key={i}
+          onMouseEnter={() => setHoveredIndex(i)}
+          onMouseLeave={() => setHoveredIndex(null)}
           className={`snap-center shrink-0 transition-all duration-300 ease-out ${
-            i === activeIndex
+            i === displayIndex
               ? 'scale-105 opacity-100 rotate-0'
               : `scale-90 opacity-55 ${i % 2 === 0 ? 'rotate-2' : '-rotate-2'}`
           }`}
