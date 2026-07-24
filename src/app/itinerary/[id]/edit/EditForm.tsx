@@ -300,6 +300,25 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         <textarea name="highlights" rows={3} className={inputClass} placeholder="The ramen at Ichiran was life-changing…" value={highlights} onChange={e => setHighlights(e.target.value)} />
       </section>
 
+      {/* Budget */}
+      {budget > 0 && <input type="hidden" name="budget" value={budget} />}
+      <section className="bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 className="font-semibold text-gray-900 mb-1">Budget</h2>
+        <p className="text-xs text-gray-500 mb-3">How expensive was this trip?</p>
+        <div className="flex gap-2">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setBudget(budget === n ? 0 : n)}
+              className={`text-xl px-1 transition-colors ${n <= budget ? 'text-green-600' : 'text-gray-300'}`}
+            >
+              $
+            </button>
+          ))}
+        </div>
+      </section>
+
       {/* Destinations */}
       <section className="space-y-4">
         <h2 className="font-semibold text-gray-900 text-lg">Destinations</h2>
@@ -396,25 +415,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         <h2 className="font-semibold text-gray-900 mb-1">Tags</h2>
         <p className="text-xs text-gray-500 mb-3">Pick what best describes this trip</p>
         <TagPicker selected={tags} onChange={setTags} />
-      </section>
-
-      {/* Budget */}
-      {budget > 0 && <input type="hidden" name="budget" value={budget} />}
-      <section className="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-1">Budget</h2>
-        <p className="text-xs text-gray-500 mb-3">How expensive was this trip?</p>
-        <div className="flex gap-2">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => setBudget(budget === n ? 0 : n)}
-              className={`text-xl px-1 transition-colors ${n <= budget ? 'text-green-600' : 'text-gray-300'}`}
-            >
-              $
-            </button>
-          ))}
-        </div>
       </section>
 
       {/* Notes */}

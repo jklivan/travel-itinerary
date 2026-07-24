@@ -532,6 +532,14 @@ export default function GuidedCreatePage() {
                 <TagPicker selected={tags} onChange={setTags} />
               </div>
 
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <div onClick={() => setIsAdult(v => !v)}
+                  className={`w-10 h-6 rounded-full transition-colors relative ${!isAdult ? 'bg-green-500' : 'bg-gray-200'}`}>
+                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${!isAdult ? 'translate-x-5' : 'translate-x-1'}`} />
+                </div>
+                <span className="text-sm text-gray-900">Family friendly</span>
+              </label>
+
               <div>
                 <p className="text-xs font-medium text-gray-500 mb-2">Budget</p>
                 <div className="flex gap-1">
@@ -547,14 +555,6 @@ export default function GuidedCreatePage() {
                   ))}
                 </div>
               </div>
-
-              <label className="flex items-center gap-3 cursor-pointer select-none">
-                <div onClick={() => setIsAdult(v => !v)}
-                  className={`w-10 h-6 rounded-full transition-colors relative ${!isAdult ? 'bg-green-500' : 'bg-gray-200'}`}>
-                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${!isAdult ? 'translate-x-5' : 'translate-x-1'}`} />
-                </div>
-                <span className="text-sm text-gray-900">Family friendly</span>
-              </label>
 
               {formState?.error && (
                 <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{formState.error}</p>
