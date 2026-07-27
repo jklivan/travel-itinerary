@@ -16,20 +16,21 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: 'asc' },
   })
 
-  return Response.json(
-    itineraries.map((it) => ({
-      id: it.id,
-      title: it.title,
-      visibility: it.visibility,
-      createdAt: it.createdAt,
-      startDate: it.startDate,
-      tags: it.tags,
-      destinations: it.destinations.map((d) => ({
-        name: d.name,
-        country: d.country,
-        items: d.items.map((i) => ({ type: i.type, name: i.name, rating: i.rating })),
-      })),
+  const data = itineraries.map((it) => ({
+    id: it.id,
+    title: it.title,
+    visibility: it.visibility,
+    createdAt: it.createdAt,
+    startDate: it.startDate,
+    tags: it.tags,
+    destinations: it.destinations.map((d) => ({
+      name: d.name,
+      country: d.country,
+      items: d.items.map((i) => ({ type: i.type, name: i.name, rating: i.rating })),
     })),
-    null, 2
-  )
+  }))
+
+  return new Response(JSON.stringify(data, null, 2), {
+    headers: { 'Content-Type': 'application/json' },
+  })
 }
