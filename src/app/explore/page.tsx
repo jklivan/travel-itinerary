@@ -9,6 +9,7 @@ import { parseSearchQuery, type ParsedQuery } from '@/lib/parseSearchQuery'
 import { tagMeta, TAGS } from '@/lib/tags'
 import { MapPin, Globe, ChevronRight } from 'lucide-react'
 import { Caveat } from 'next/font/google'
+import ExploreMap from '@/components/ExploreMap'
 
 const caveat = Caveat({ subsets: ['latin'] })
 
@@ -111,6 +112,7 @@ export default async function ExplorePage({
   searchParams,
 }: {
   searchParams: Promise<{ country?: string; city?: string; type?: string; q?: string; view?: string; tag?: string }>
+
 }) {
   const { country, city, type, q, view, tag } = await searchParams
   const session = await auth()
@@ -328,13 +330,35 @@ export default async function ExplorePage({
 
   // ── view=map ───────────────────────────────────────────────────────────────
   if (view === 'map') {
+    const mapDests = await prisma.destination.findMany({
+      where: {
+        lat: { not: null },
+        lng: { not: null },
+        itinerary: { visibility: 'public' },
+        items: { some: {} },
+      },
+      select: {
+        lat: true, lng: true, name: true, country: true,
+        itinerary: { select: { id: true, title: true } },
+      },
+    })
+    const pins = mapDests.map((d) => ({
+      lat: d.lat!,
+      lng: d.lng!,
+      destName: d.name,
+      country: d.country,
+      itineraryId: d.itinerary.id,
+      itineraryTitle: d.itinerary.title,
+    }))
+
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
-        <div className="text-center py-24">
-          <p className="text-5xl mb-4">🗺️</p>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Map</h2>
-          <p className="text-sm text-gray-400">Coming soon</p>
+      <div className="flex flex-col" style={{ height: 'calc(100dvh - 3.5rem)' }}>
+        <div className="px-4 py-3 flex items-center justify-between border-b border-gray-100 bg-white shrink-0">
+          <Link href="/explore" className="text-sm text-blue-600 hover:underline">← Explore</Link>
+          <span className="text-sm text-gray-400">{pins.length} place{pins.length !== 1 ? 's' : ''} mapped</span>
+        </div>
+        <div className="flex-1 min-h-0">
+          <ExploreMap pins={pins} />
         </div>
       </div>
     )

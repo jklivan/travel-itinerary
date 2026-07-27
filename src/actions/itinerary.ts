@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { fetchStockPhoto } from '@/lib/stockPhoto'
 import { generateTags } from '@/lib/generateTags'
+import { geocode } from '@/lib/geocode'
 
 export type ItineraryState = { error?: string } | undefined
 
@@ -56,6 +57,20 @@ function parseFormData(formData: FormData) {
     ? JSON.parse(formData.get('photos') as string)
     : []
   return { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, destinations, photos }
+}
+
+async function geocodeItineraryDests(itineraryId: string): Promise<void> {
+  const dests = await prisma.destination.findMany({
+    where: { itineraryId },
+    select: { id: true, name: true, country: true },
+  })
+  for (const dest of dests) {
+    const query = `${dest.name}${dest.country ? `, ${dest.country}` : ''}`
+    const coords = await geocode(query)
+    if (coords) {
+      await prisma.destination.update({ where: { id: dest.id }, data: coords })
+    }
+  }
 }
 
 export async function createItinerary(
@@ -110,7 +125,7 @@ export async function createItinerary(
     },
   })
 
-  // Run stock photo fetch and tag generation in parallel after save
+  // Run stock photo fetch, tag generation, and geocoding in parallel after save
   await Promise.all([
     photos.length === 0 && destinations.length > 0
       ? fetchStockPhoto(`${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`)
@@ -128,6 +143,7 @@ export async function createItinerary(
         })), audience)
           .then((autoTags) => autoTags.length > 0 ? prisma.itinerary.update({ where: { id: itinerary.id }, data: { tags: autoTags } }) : null)
       : null,
+    geocodeItineraryDests(itinerary.id),
   ])
 
   revalidatePath('/')
@@ -192,14 +208,14 @@ export async function updateItinerary(
     },
   })
 
-  // Fetch stock photo after save — failure here doesn't affect the itinerary
-  if (photos.length === 0 && destinations.length > 0) {
-    const query = `${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`
-    const stockUrl = await fetchStockPhoto(query)
-    if (stockUrl) {
-      await prisma.photo.create({ data: { url: stockUrl, isStock: true, itineraryId: id } })
-    }
-  }
+  // Fetch stock photo and geocode destinations after save
+  await Promise.all([
+    photos.length === 0 && destinations.length > 0
+      ? fetchStockPhoto(`${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`)
+          .then((url) => url ? prisma.photo.create({ data: { url, isStock: true, itineraryId: id } }) : null)
+      : null,
+    geocodeItineraryDests(id),
+  ])
 
   revalidatePath('/')
   revalidatePath(`/itinerary/${id}`)
