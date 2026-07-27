@@ -91,17 +91,17 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
   const followStatus = followRecord?.status ?? 'none'
   const isBucketed = !!bucketItem
 
-  // Tags: user-set takes priority, otherwise AI-generate from itinerary content
+  // Tags: user-set takes priority, otherwise AI-generate and persist to DB
   let displayTags = it.tags
   let autoTagged = false
   if (displayTags.length === 0) {
-    const cachedTags = unstable_cache(
-      () => generateTags(it.title, it.destinations, it.audience),
-      [`tags-${it.id}`],
-      { revalidate: 86400 * 7 }
-    )
-    displayTags = await cachedTags()
-    autoTagged = displayTags.length > 0
+    const generated = await generateTags(it.title, it.destinations, it.audience)
+    if (generated.length > 0) {
+      displayTags = generated
+      autoTagged = true
+      // Save so they're searchable — fire and forget, don't block render
+      prisma.itinerary.update({ where: { id }, data: { tags: generated } }).catch(() => {})
+    }
   }
 
   // Highlights: user-written takes priority, otherwise AI-generate from 5-star items
