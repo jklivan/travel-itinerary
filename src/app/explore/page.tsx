@@ -4,6 +4,9 @@ import { auth } from '@/auth'
 import Link from 'next/link'
 import ItineraryCard from '@/components/ItineraryCard'
 import HorizontalScrollFeed from '@/components/HorizontalScrollFeed'
+import ExploreSearchBar from '@/components/ExploreSearchBar'
+import { parseSearchQuery, type ParsedQuery } from '@/lib/parseSearchQuery'
+import { tagMeta } from '@/lib/tags'
 import { MapPin, Globe, ChevronRight } from 'lucide-react'
 
 const TRIP_TYPE_META: Record<string, { label: string; emoji: string; desc: string }> = {
@@ -77,14 +80,72 @@ function ItineraryList({
   )
 }
 
+function SearchFiltersDisplay({ parsed }: { parsed: ParsedQuery }) {
+  const chips: string[] = []
+  if (parsed.audience === 'family') chips.push('👨‍👩‍👧 Family')
+  if (parsed.audience === 'adult') chips.push('🍷 Adults')
+  if (parsed.postType === 'guide') chips.push('📖 Guides')
+  if (parsed.maxBudget) chips.push('$'.repeat(parsed.maxBudget) + ' or less')
+  for (const tag of parsed.tags) {
+    const m = tagMeta(tag)
+    if (m) chips.push(`${m.emoji} ${m.label}`)
+  }
+  if (parsed.locationTerms.length > 0) chips.push(`📍 ${parsed.locationTerms.slice(0, 3).join(', ')}${parsed.locationTerms.length > 3 ? '…' : ''}`)
+  if (chips.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-2 mb-4">
+      {chips.map((c) => (
+        <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-medium">{c}</span>
+      ))}
+    </div>
+  )
+}
+
 export default async function ExplorePage({
   searchParams,
 }: {
-  searchParams: Promise<{ country?: string; city?: string; type?: string }>
+  searchParams: Promise<{ country?: string; city?: string; type?: string; q?: string }>
 }) {
-  const { country, city, type } = await searchParams
+  const { country, city, type, q } = await searchParams
   const session = await auth()
   const userId = session?.user?.id ?? null
+
+  // ── Natural language search ────────────────────────────────────────────────
+  if (q) {
+    const parsed = await parseSearchQuery(q)
+
+    const where: ItineraryWhereInput = {}
+    if (parsed.audience) where.audience = parsed.audience
+    if (parsed.postType) where.postType = parsed.postType
+    if (parsed.tags.length > 0) where.tags = { hasSome: parsed.tags }
+    if (parsed.maxBudget) where.budget = { lte: parsed.maxBudget }
+    if (parsed.locationTerms.length > 0) {
+      where.destinations = {
+        some: {
+          OR: parsed.locationTerms.flatMap((term) => [
+            { name: { contains: term, mode: 'insensitive' } },
+            { country: { contains: term, mode: 'insensitive' } },
+          ]),
+        },
+      }
+    }
+
+    const { itineraries, bucketSet } = await fetchItineraries(where, userId)
+
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">
+          ← Explore
+        </Link>
+        <ExploreSearchBar />
+        <SearchFiltersDisplay parsed={parsed} />
+        <p className="text-sm text-gray-500 mb-4">
+          {itineraries.length} result{itineraries.length !== 1 ? 's' : ''} for &ldquo;{q}&rdquo;
+        </p>
+        <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
+      </div>
+    )
+  }
 
   // ── City view ──────────────────────────────────────────────────────────────
   if (country && city) {
@@ -216,10 +277,12 @@ export default async function ExplorePage({
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <div className="mb-6">
+      <div className="mb-4">
         <h2 className="text-xl font-bold text-gray-900">Explore</h2>
         <p className="text-sm text-gray-500">Discover destinations and trip types</p>
       </div>
+
+      <ExploreSearchBar />
 
       {/* Trip types */}
       <section className="mb-8">
