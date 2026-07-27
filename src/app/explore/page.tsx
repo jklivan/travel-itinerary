@@ -139,12 +139,23 @@ export default async function ExplorePage({
     }
 
     console.log('[search] query:', q)
-    console.log('[search] parsed:', JSON.stringify(parsed))
-    console.log('[search] where:', JSON.stringify(where))
+    console.log('[search] locationTerms:', parsed.locationTerms.join(' | '))
+    console.log('[search] tags:', parsed.tags.join(' | '))
+    console.log('[search] audience:', parsed.audience, 'budget:', parsed.maxBudget)
+
+    // Diagnostic: show all public destination name/country pairs
+    const allDests = await prisma.destination.findMany({
+      where: { itinerary: { visibility: 'public' } },
+      select: { name: true, country: true },
+    })
+    console.log('[search] all destinations:', allDests.map(d => `"${d.name}" / "${d.country}"`).join(' | '))
 
     const { itineraries, bucketSet } = await fetchItineraries(where, userId)
 
-    console.log('[search] results:', itineraries.length, itineraries.map(i => i.id + ' ' + i.title))
+    console.log('[search] result count:', itineraries.length)
+    for (const it of itineraries) {
+      console.log('[search] match:', it.title, '|', it.destinations.map(d => `${d.name} / ${d.country}`).join(', '))
+    }
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
