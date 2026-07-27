@@ -5,6 +5,7 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { fetchStockPhoto } from '@/lib/stockPhoto'
+import { generateTags } from '@/lib/generateTags'
 
 export type ItineraryState = { error?: string } | undefined
 
@@ -109,14 +110,17 @@ export async function createItinerary(
     },
   })
 
-  // Fetch stock photo after save — failure here doesn't affect the itinerary
-  if (photos.length === 0 && destinations.length > 0) {
-    const query = `${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`
-    const stockUrl = await fetchStockPhoto(query)
-    if (stockUrl) {
-      await prisma.photo.create({ data: { url: stockUrl, isStock: true, itineraryId: itinerary.id } })
-    }
-  }
+  // Run stock photo fetch and tag generation in parallel after save
+  await Promise.all([
+    photos.length === 0 && destinations.length > 0
+      ? fetchStockPhoto(`${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`)
+          .then((url) => url ? prisma.photo.create({ data: { url, isStock: true, itineraryId: itinerary.id } }) : null)
+      : null,
+    tags.length === 0
+      ? generateTags(title, itinerary.destinations, audience)
+          .then((autoTags) => autoTags.length > 0 ? prisma.itinerary.update({ where: { id: itinerary.id }, data: { tags: autoTags } }) : null)
+      : null,
+  ])
 
   revalidatePath('/')
   redirect(`/itinerary/${itinerary.id}`)

@@ -6,7 +6,6 @@ import { notFound } from 'next/navigation'
 import { unstable_cache } from 'next/cache'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
 import { generateHighlights } from '@/lib/generateHighlights'
-import { generateTags } from '@/lib/generateTags'
 import { Hotel, Utensils, Camera, MapPin, Star } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import { tagMeta } from '@/lib/tags'
@@ -91,18 +90,8 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
   const followStatus = followRecord?.status ?? 'none'
   const isBucketed = !!bucketItem
 
-  // Tags: user-set takes priority, otherwise AI-generate and persist to DB
-  let displayTags = it.tags
-  let autoTagged = false
-  if (displayTags.length === 0) {
-    const generated = await generateTags(it.title, it.destinations, it.audience)
-    if (generated.length > 0) {
-      displayTags = generated
-      autoTagged = true
-      // Save so they're searchable — fire and forget, don't block render
-      prisma.itinerary.update({ where: { id }, data: { tags: generated } }).catch(() => {})
-    }
-  }
+  const displayTags = it.tags
+  const autoTagged = false
 
   // Highlights: user-written takes priority, otherwise AI-generate from 5-star items
   let highlights = it.highlights ?? null
