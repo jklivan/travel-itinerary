@@ -30,7 +30,7 @@ export default function ExploreSearchBar() {
         ref={inputRef}
         type="text"
         defaultValue={current}
-        placeholder="Try "family trip in Europe" or "cheap beach vacation"…"
+        placeholder={'Try \u201cfamily trip in Europe\u201d or \u201ccheap beach vacation\u201d\u2026'}
         className="w-full pl-10 pr-24 py-3 rounded-xl border border-gray-300 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm"
       />
       <button
