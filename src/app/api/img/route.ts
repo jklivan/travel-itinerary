@@ -16,17 +16,12 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const blob = await get(url, { access: 'private' })
-    if (!blob) return new Response('Not found', { status: 404 })
+    const result = await get(url, { access: 'private' })
+    if (!result) return new Response('Not found', { status: 404 })
 
-    const res = await fetch(blob.url, {
-      headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
-    })
-    if (!res.ok) return new Response('Blob fetch failed', { status: 502 })
-
-    return new Response(res.body, {
+    return new Response(result.stream, {
       headers: {
-        'Content-Type': res.headers.get('Content-Type') ?? 'image/jpeg',
+        'Content-Type': result.headers.get('Content-Type') ?? result.blob.contentType ?? 'image/jpeg',
         'Cache-Control': 'public, max-age=31536000, immutable',
       },
     })
