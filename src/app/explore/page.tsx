@@ -6,19 +6,29 @@ import ItineraryCard from '@/components/ItineraryCard'
 import HorizontalScrollFeed from '@/components/HorizontalScrollFeed'
 import ExploreSearchBar from '@/components/ExploreSearchBar'
 import { parseSearchQuery, type ParsedQuery } from '@/lib/parseSearchQuery'
-import { tagMeta } from '@/lib/tags'
+import { tagMeta, TAGS } from '@/lib/tags'
 import { MapPin, Globe, ChevronRight } from 'lucide-react'
+import { Caveat } from 'next/font/google'
 
+const caveat = Caveat({ subsets: ['latin'] })
+
+// ── Trip type meta (kept for ?type= URLs) ─────────────────────────────────────
 const TRIP_TYPE_META: Record<string, { label: string; emoji: string; desc: string }> = {
   family: { label: 'Family', emoji: '👨‍👩‍👧', desc: 'Great for all ages' },
   adult:  { label: 'Adults', emoji: '🍷',   desc: 'Curated for adults' },
-  guide:  { label: 'Guides',          emoji: '📖',      desc: 'Expert recommendations' },
+  guide:  { label: 'Guides', emoji: '📖',   desc: 'Expert recommendations' },
 }
 
-async function fetchItineraries(
-  where: ItineraryWhereInput,
-  userId: string | null
-) {
+// ── Nav polaroid definitions ───────────────────────────────────────────────────
+const NAV_CARDS = [
+  { key: 'tags',     href: '/explore?view=tags',     emoji: '🏷️', title: 'Browse by Type', desc: 'Filter by vibe',        bg: '#C4782A', tape: 'rgba(255,243,148,0.88)', rot: '-1.5deg' },
+  { key: 'hotspots', href: '/explore?view=hotspots', emoji: '🔥', title: 'Hot Spots',      desc: "What's trending",       bg: '#B03020', tape: 'rgba(255,210,210,0.88)', rot:  '1.5deg' },
+  { key: 'recs',     href: '/explore?view=recs',     emoji: '⭐', title: 'Expert Recs',    desc: 'Curated picks',          bg: '#1A4F7A', tape: 'rgba(200,232,255,0.88)', rot: '-0.5deg' },
+  { key: 'map',      href: '/explore?view=map',      emoji: '🗺️', title: 'Map',            desc: 'Explore destinations',  bg: '#0F7A65', tape: 'rgba(210,255,220,0.88)', rot:  '2.0deg' },
+]
+
+// ── Shared helpers ─────────────────────────────────────────────────────────────
+async function fetchItineraries(where: ItineraryWhereInput, userId: string | null) {
   const [itineraries, bucketIds] = await Promise.all([
     prisma.itinerary.findMany({
       where: { visibility: 'public', destinations: { some: { items: { some: {} } } }, ...where },
@@ -33,16 +43,11 @@ async function fetchItineraries(
       ? prisma.bucketListItem.findMany({ where: { userId }, select: { itineraryId: true } })
       : Promise.resolve([]),
   ])
-  return {
-    itineraries,
-    bucketSet: new Set(bucketIds.map((b) => b.itineraryId)),
-  }
+  return { itineraries, bucketSet: new Set(bucketIds.map((b) => b.itineraryId)) }
 }
 
 function ItineraryList({
-  itineraries,
-  bucketSet,
-  userId,
+  itineraries, bucketSet, userId,
 }: {
   itineraries: Awaited<ReturnType<typeof fetchItineraries>>['itineraries']
   bucketSet: Set<string>
@@ -101,21 +106,20 @@ function SearchFiltersDisplay({ parsed }: { parsed: ParsedQuery }) {
   )
 }
 
+// ── Main page ──────────────────────────────────────────────────────────────────
 export default async function ExplorePage({
   searchParams,
 }: {
-  searchParams: Promise<{ country?: string; city?: string; type?: string; q?: string }>
+  searchParams: Promise<{ country?: string; city?: string; type?: string; q?: string; view?: string; tag?: string }>
 }) {
-  const { country, city, type, q } = await searchParams
+  const { country, city, type, q, view, tag } = await searchParams
   const session = await auth()
   const userId = session?.user?.id ?? null
 
   // ── Natural language search ────────────────────────────────────────────────
   if (q) {
     const parsed = await parseSearchQuery(q)
-
     const where: ItineraryWhereInput = {}
-
     if (parsed.postType) where.postType = parsed.postType
     if (parsed.audience) where.audience = parsed.audience
     if (parsed.tags.length > 0) where.tags = { hasSome: parsed.tags }
@@ -136,7 +140,6 @@ export default async function ExplorePage({
     console.log('[search] tags:', parsed.tags.join(' | '))
     console.log('[search] audience:', parsed.audience, 'budget:', parsed.maxBudget)
 
-    // Diagnostic: show all public destination name/country pairs
     const allDests = await prisma.destination.findMany({
       where: { itinerary: { visibility: 'public' } },
       select: { name: true, country: true },
@@ -144,7 +147,6 @@ export default async function ExplorePage({
     console.log('[search] all destinations:', allDests.map(d => `"${d.name}" / "${d.country}"`).join(' | '))
 
     const { itineraries, bucketSet } = await fetchItineraries(where, userId)
-
     console.log('[search] result count:', itineraries.length)
     for (const it of itineraries) {
       console.log('[search] match:', it.title, '|', it.destinations.map(d => `${d.name} / ${d.country}`).join(', '))
@@ -152,14 +154,32 @@ export default async function ExplorePage({
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">
-          ← Explore
-        </Link>
+        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
         <ExploreSearchBar />
         <SearchFiltersDisplay parsed={parsed} />
         <p className="text-sm text-gray-500 mb-4">
           {itineraries.length} result{itineraries.length !== 1 ? 's' : ''} for &ldquo;{q}&rdquo;
         </p>
+        <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
+      </div>
+    )
+  }
+
+  // ── Tag-filtered results ───────────────────────────────────────────────────
+  if (tag) {
+    const meta = tagMeta(tag)
+    const { itineraries, bucketSet } = await fetchItineraries({ tags: { has: tag } }, userId)
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <Link href="/explore?view=tags" className="text-sm text-blue-600 hover:underline mb-5 inline-block">
+          ← Browse by Type
+        </Link>
+        <div className="mb-5">
+          <h2 className="text-xl font-bold text-gray-900">
+            {meta ? `${meta.emoji} ${meta.label}` : tag}
+          </h2>
+          <p className="text-sm text-gray-500">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
+        </div>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
       </div>
     )
@@ -173,10 +193,7 @@ export default async function ExplorePage({
     )
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link
-          href={`/explore?country=${encodeURIComponent(country)}`}
-          className="text-sm text-blue-600 hover:underline mb-5 inline-block"
-        >
+        <Link href={`/explore?country=${encodeURIComponent(country)}`} className="text-sm text-blue-600 hover:underline mb-5 inline-block">
           ← {country}
         </Link>
         <div className="mb-5">
@@ -184,9 +201,7 @@ export default async function ExplorePage({
             <MapPin size={18} className="text-blue-600" />
             {city}, {country}
           </h2>
-          <p className="text-sm text-gray-500">
-            {itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}
-          </p>
+          <p className="text-sm text-gray-500">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
       </div>
@@ -200,26 +215,18 @@ export default async function ExplorePage({
       select: { name: true },
     })
     const cityMap = new Map<string, number>()
-    for (const d of destinations) {
-      cityMap.set(d.name, (cityMap.get(d.name) ?? 0) + 1)
-    }
-    const cities = [...cityMap.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([name, count]) => ({ name, count }))
+    for (const d of destinations) cityMap.set(d.name, (cityMap.get(d.name) ?? 0) + 1)
+    const cities = [...cityMap.entries()].sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count }))
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">
-          ← Explore
-        </Link>
+        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
         <div className="mb-6">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Globe size={18} className="text-blue-600" />
             {country}
           </h2>
-          <p className="text-sm text-gray-500">
-            {cities.length} destination{cities.length !== 1 ? 's' : ''}
-          </p>
+          <p className="text-sm text-gray-500">{cities.length} destination{cities.length !== 1 ? 's' : ''}</p>
         </div>
         {cities.length === 0 ? (
           <p className="text-sm text-gray-500 italic">No destinations yet.</p>
@@ -233,12 +240,8 @@ export default async function ExplorePage({
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-semibold text-gray-900 text-sm group-hover:text-blue-600 transition-colors">
-                      {name}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {count} trip{count !== 1 ? 's' : ''}
-                    </p>
+                    <p className="font-semibold text-gray-900 text-sm group-hover:text-blue-600 transition-colors">{name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{count} trip{count !== 1 ? 's' : ''}</p>
                   </div>
                   <ChevronRight size={16} className="text-gray-400 group-hover:text-blue-500 transition-colors" />
                 </div>
@@ -250,110 +253,136 @@ export default async function ExplorePage({
     )
   }
 
-  // ── Trip type view ─────────────────────────────────────────────────────────
+  // ── Trip type view (legacy ?type= URLs) ────────────────────────────────────
   if (type && TRIP_TYPE_META[type]) {
     const where =
       type === 'family' ? { audience: 'family' } :
       type === 'adult'  ? { audience: 'adult' }  :
-      type === 'guide'  ? { postType: 'guide' }  :
-      {}
+      type === 'guide'  ? { postType: 'guide' }  : {}
     const { itineraries, bucketSet } = await fetchItineraries(where, userId)
     const meta = TRIP_TYPE_META[type]
-
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">
-          ← Explore
-        </Link>
+        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
         <div className="mb-5">
-          <h2 className="text-xl font-bold text-gray-900">
-            {meta.emoji} {meta.label}
-          </h2>
-          <p className="text-sm text-gray-500">
-            {itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}
-          </p>
+          <h2 className="text-xl font-bold text-gray-900">{meta.emoji} {meta.label}</h2>
+          <p className="text-sm text-gray-500">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
       </div>
     )
   }
 
-  // ── Top-level explore ──────────────────────────────────────────────────────
-  const allDestinations = await prisma.destination.findMany({
-    where: { itinerary: { visibility: 'public' }, items: { some: {} } },
-    select: { country: true },
-  })
-  const countryMap = new Map<string, number>()
-  for (const d of allDestinations) {
-    if (d.country) {
-      countryMap.set(d.country, (countryMap.get(d.country) ?? 0) + 1)
-    }
+  // ── view=tags ──────────────────────────────────────────────────────────────
+  if (view === 'tags') {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
+        <h2 className="text-xl font-bold text-gray-900 mb-1">Browse by Type</h2>
+        <p className="text-sm text-gray-500 mb-6">Pick a vibe to explore trips</p>
+        <div className="grid grid-cols-3 gap-3">
+          {TAGS.map((t) => (
+            <Link
+              key={t.id}
+              href={`/explore?tag=${t.id}`}
+              className="bg-white rounded-xl border border-gray-200 p-4 text-center hover:border-blue-300 hover:shadow-md transition-all group"
+            >
+              <div className="text-2xl mb-1.5">{t.emoji}</div>
+              <p className="text-xs font-semibold text-gray-900 group-hover:text-blue-600 transition-colors leading-tight">
+                {t.label}
+              </p>
+            </Link>
+          ))}
+        </div>
+      </div>
+    )
   }
-  const countries = [...countryMap.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([name, count]) => ({ name, count }))
 
+  // ── view=hotspots ──────────────────────────────────────────────────────────
+  if (view === 'hotspots') {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
+        <div className="text-center py-24">
+          <p className="text-5xl mb-4">🔥</p>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Hot Spots</h2>
+          <p className="text-sm text-gray-400">Coming soon</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── view=recs ──────────────────────────────────────────────────────────────
+  if (view === 'recs') {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
+        <div className="text-center py-24">
+          <p className="text-5xl mb-4">⭐</p>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Expert Recs</h2>
+          <p className="text-sm text-gray-400">Coming soon</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── view=map ───────────────────────────────────────────────────────────────
+  if (view === 'map') {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
+        <div className="text-center py-24">
+          <p className="text-5xl mb-4">🗺️</p>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Map</h2>
+          <p className="text-sm text-gray-400">Coming soon</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Top-level explore ──────────────────────────────────────────────────────
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <div className="mb-4">
+      <div className="mb-5">
         <h2 className="text-xl font-bold text-gray-900">Explore</h2>
-        <p className="text-sm text-gray-500">Discover destinations and trip types</p>
+        <p className="text-sm text-gray-500">Discover trips around the world</p>
       </div>
 
       <ExploreSearchBar />
 
-      {/* Trip types */}
-      <section className="mb-8">
-        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Browse by Trip Type</h3>
-        <div className="grid grid-cols-3 gap-3">
-          {Object.entries(TRIP_TYPE_META).map(([key, { label, emoji, desc }]) => (
-            <Link
-              key={key}
-              href={`/explore?type=${key}`}
-              className="bg-white rounded-xl border border-gray-200 p-4 text-center hover:border-blue-300 hover:shadow-md transition-all group"
+      <div className="grid grid-cols-2 gap-5 mt-2">
+        {NAV_CARDS.map((card) => (
+          <Link key={card.key} href={card.href} className="block relative pt-5 group">
+            {/* Tape */}
+            <div
+              className="absolute top-1 left-1/2 z-10 w-12 h-6 rounded-[2px]"
+              style={{
+                backgroundColor: card.tape,
+                transform: `translateX(-50%) rotate(${card.rot})`,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.10)',
+              }}
+            />
+            {/* Card */}
+            <div
+              className="bg-white rounded-[3px] px-4 pt-4 pb-5 transition-transform duration-150 group-hover:-translate-y-1"
+              style={{ boxShadow: '2px 5px 18px rgba(0,0,0,0.14)' }}
             >
-              <div className="text-2xl mb-1">{emoji}</div>
-              <p className="text-xs font-semibold text-gray-900 group-hover:text-blue-600 transition-colors leading-tight">
-                {label}
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* Countries */}
-      <section>
-        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Browse by Destination</h3>
-        {countries.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-            <p className="text-3xl mb-3">🌍</p>
-            <p className="text-sm text-gray-500">No destinations yet — be the first to post!</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {countries.map(({ name, count }) => (
-              <Link
-                key={name}
-                href={`/explore?country=${encodeURIComponent(name)}`}
-                className="bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 hover:shadow-md transition-all group"
+              {/* Photo area */}
+              <div
+                className="w-full aspect-[4/3] flex items-center justify-center text-5xl mb-3 rounded-[2px]"
+                style={{ backgroundColor: card.bg }}
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-gray-900 text-sm group-hover:text-blue-600 transition-colors">
-                      {name}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {count} destination{count !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                  <ChevronRight size={16} className="text-gray-400 group-hover:text-blue-500 transition-colors" />
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
+                {card.emoji}
+              </div>
+              {/* Caption */}
+              <h3 className={`${caveat.className} text-xl text-gray-900 leading-tight`}>
+                {card.title}
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">{card.desc}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
     </div>
   )
 }
