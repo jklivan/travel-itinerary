@@ -241,7 +241,11 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                 <span className="text-base">✨</span>
                 <h2 className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Highlights</h2>
               </div>
-              <p className="text-sm text-gray-700 leading-relaxed italic">{highlights}</p>
+              <ul className="space-y-1">
+                {highlights.split('\n').map((line, i) => (
+                  <li key={i} className="text-sm text-gray-700">{line}</li>
+                ))}
+              </ul>
             </div>
           )}
 
