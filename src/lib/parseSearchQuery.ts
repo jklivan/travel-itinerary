@@ -7,7 +7,7 @@ export type ParsedQuery = {
   postType: 'guide' | null
   tags: string[]
   maxBudget: number | null
-  locationTerms: string[]  // country/city names to OR-search across destinations
+  locationTerms: string[]
 }
 
 const TAG_IDS = [
@@ -16,13 +16,11 @@ const TAG_IDS = [
   'road-trip', 'romantic', 'shopping', 'wildlife',
 ]
 
-export async function parseSearchQuery(query: string): Promise<ParsedQuery> {
-  const fallback: ParsedQuery = {
-    audience: null, postType: null, tags: [], maxBudget: null,
-    locationTerms: [query],
-  }
+// Empty fallback — no filters means show everything rather than a broken search
+const EMPTY: ParsedQuery = { audience: null, postType: null, tags: [], maxBudget: null, locationTerms: [] }
 
-  if (!process.env.ANTHROPIC_API_KEY) return fallback
+export async function parseSearchQuery(query: string): Promise<ParsedQuery> {
+  if (!process.env.ANTHROPIC_API_KEY) return EMPTY
 
   try {
     const msg = await client.messages.create({
@@ -30,27 +28,31 @@ export async function parseSearchQuery(query: string): Promise<ParsedQuery> {
       max_tokens: 512,
       messages: [{
         role: 'user',
-        content: `Extract structured travel search filters from this query. Return only valid JSON, no explanation, no code fences.
+        content: `You are extracting travel search filters. Return ONLY a raw JSON object — no explanation, no markdown, no code fences.
 
-Query: "${query}"
+Fields to extract:
+- "audience": "family" or "adult" — only if explicitly mentioned (null otherwise)
+- "postType": "guide" — only if the user wants recommendations/guides rather than personal trip stories (null otherwise)
+- "tags": array of tag IDs that match the vibe. Choose from: ${TAG_IDS.join(', ')}
+- "maxBudget": 1–5 integer (1=backpacker, 3=mid-range, 5=luxury). Infer from words like budget/cheap/affordable/luxury/splurge. null if unclear.
+- "locationTerms": THIS IS THE MOST IMPORTANT FIELD. Include every country and city that is mentioned or clearly implied:
+    • Named countries → include them directly (e.g. "France", "Japan")
+    • Named cities → include the city AND its country (e.g. "Tokyo", "Japan")
+    • Named regions/areas → expand to their component countries:
+        Europe → France, Italy, Spain, Germany, Portugal, Greece, Netherlands, Austria, Croatia, Switzerland, UK, Ireland, Belgium, Denmark, Sweden, Norway
+        Southeast Asia → Thailand, Vietnam, Indonesia, Philippines, Malaysia, Singapore, Cambodia
+        Asia → Japan, China, South Korea, Thailand, Vietnam, Indonesia, India
+        Caribbean → Dominican Republic, Jamaica, Bahamas, Cuba, Barbados, Saint Lucia
+        Latin America → Mexico, Colombia, Peru, Argentina, Brazil, Chile, Costa Rica
+        Middle East → UAE, Israel, Jordan, Turkey, Morocco
+    • Implied locations (e.g. "safari" implies Kenya, Tanzania, South Africa; "Alps" implies Switzerland, Austria, France)
+    • If no location is mentioned or implied, return []
 
-Return a JSON object with these fields (omit or null if not mentioned):
-- audience: "family" or "adult" (null if unspecified)
-- postType: "guide" (only if user wants guides/recommendations, not trips; null otherwise)
-- tags: array of matching tag IDs from this list: ${TAG_IDS.join(', ')}
-- maxBudget: integer 1–5 (1=very cheap, 5=luxury; null if unspecified; infer from words like "budget", "cheap", "luxury", "splurge")
-- locationTerms: array of specific country or city names to search for. If the user says a region like "Europe", expand to the most common European countries. If they say "Asia", expand to common Asian countries. Keep city names as-is.
-
-Examples:
-"family trip in europe" → {"audience":"family","postType":null,"tags":[],"maxBudget":null,"locationTerms":["France","Italy","Spain","Germany","Portugal","Greece","Netherlands","Austria","Croatia","Switzerland"]}
-"cheap beach vacation" → {"audience":null,"postType":null,"tags":["beach"],"maxBudget":2,"locationTerms":[]}
-"foodie guide to tokyo" → {"audience":null,"postType":"guide","tags":["food"],"maxBudget":null,"locationTerms":["Tokyo","Japan"]}
-"romantic luxury trip" → {"audience":null,"postType":null,"tags":["romantic","luxury"],"maxBudget":5,"locationTerms":[]}`,
+Input: ${query}`,
       }],
     })
 
     const raw = msg.content[0].type === 'text' ? msg.content[0].text.trim() : ''
-    // Strip markdown code fences if Claude wrapped the JSON
     const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
     console.log('[parseSearch] raw:', text)
     const parsed = JSON.parse(text)
@@ -62,7 +64,7 @@ Examples:
       locationTerms: Array.isArray(parsed.locationTerms) ? parsed.locationTerms.filter(Boolean) : [],
     }
   } catch (err) {
-    console.error('[parseSearch] failed, using fallback. Error:', err)
-    return fallback
+    console.error('[parseSearch] parse failed:', err)
+    return EMPTY
   }
 }
