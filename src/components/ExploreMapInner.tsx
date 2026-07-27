@@ -1,7 +1,8 @@
 'use client'
 import 'leaflet/dist/leaflet.css'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Tooltip } from 'react-leaflet'
 import L from 'leaflet'
+import { useRouter } from 'next/navigation'
 
 // Custom pin icon — avoids webpack image-path issues with Leaflet's default
 const pinIcon = (count: number) =>
@@ -36,6 +37,7 @@ export type MapPin = {
 }
 
 export default function ExploreMapInner({ pins }: { pins: MapPin[] }) {
+  const router = useRouter()
   // Cluster pins at the same approximate location
   const clusters = new Map<string, MapPin[]>()
   for (const pin of pins) {
@@ -65,26 +67,39 @@ export default function ExploreMapInner({ pins }: { pins: MapPin[] }) {
       />
       {[...clusters.entries()].map(([key, group]) => {
         const [lat, lng] = key.split(',').map(Number)
+        const { destName, country } = group[0]
+        const cityUrl = `/explore?country=${encodeURIComponent(country ?? '')}&city=${encodeURIComponent(destName)}`
+        const isCluster = group.length > 1
+
         return (
-          <Marker key={key} position={[lat, lng]} icon={pinIcon(group.length)}>
-            <Popup maxWidth={220}>
-              <div className="text-sm space-y-2">
-                {group.map((pin, i) => (
-                  <div key={i} className={i > 0 ? 'pt-2 border-t border-gray-100' : ''}>
-                    <p className="font-semibold text-gray-900">
-                      {pin.destName}{pin.country ? `, ${pin.country}` : ''}
-                    </p>
-                    <p className="text-gray-500 text-xs mt-0.5 leading-snug">{pin.itineraryTitle}</p>
-                    <a
-                      href={`/itinerary/${pin.itineraryId}`}
-                      className="text-blue-600 text-xs hover:underline mt-1 inline-block"
-                    >
-                      View trip →
-                    </a>
-                  </div>
-                ))}
-              </div>
-            </Popup>
+          <Marker
+            key={key}
+            position={[lat, lng]}
+            icon={pinIcon(group.length)}
+            eventHandlers={isCluster ? { click: () => router.push(cityUrl) } : undefined}
+          >
+            {isCluster ? (
+              <Tooltip direction="top" offset={[0, -14]} opacity={0.92}>
+                <span className="text-xs font-semibold">
+                  {destName}{country ? `, ${country}` : ''} · {group.length} trips
+                </span>
+              </Tooltip>
+            ) : (
+              <Popup maxWidth={220}>
+                <div className="text-sm">
+                  <p className="font-semibold text-gray-900">
+                    {destName}{country ? `, ${country}` : ''}
+                  </p>
+                  <p className="text-gray-500 text-xs mt-0.5 leading-snug">{group[0].itineraryTitle}</p>
+                  <a
+                    href={`/itinerary/${group[0].itineraryId}`}
+                    className="text-blue-600 text-xs hover:underline mt-1 inline-block"
+                  >
+                    View trip →
+                  </a>
+                </div>
+              </Popup>
+            )}
           </Marker>
         )
       })}
