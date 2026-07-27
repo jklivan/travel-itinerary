@@ -16,7 +16,6 @@ const TAG_IDS = [
   'road-trip', 'romantic', 'shopping', 'wildlife',
 ]
 
-// Empty fallback — no filters means show everything rather than a broken search
 const EMPTY: ParsedQuery = { audience: null, postType: null, tags: [], maxBudget: null, locationTerms: [] }
 
 export async function parseSearchQuery(query: string): Promise<ParsedQuery> {
@@ -26,45 +25,71 @@ export async function parseSearchQuery(query: string): Promise<ParsedQuery> {
     const msg = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 512,
-      messages: [{
-        role: 'user',
-        content: `You are extracting travel search filters. Return ONLY a raw JSON object — no explanation, no markdown, no code fences.
-
-Fields to extract:
-- "audience": "family" or "adult" — only if explicitly mentioned (null otherwise)
-- "postType": "guide" — only if the user wants recommendations/guides rather than personal trip stories (null otherwise)
-- "tags": array of tag IDs that match the vibe. Choose from: ${TAG_IDS.join(', ')}
-- "maxBudget": 1–5 integer (1=backpacker, 3=mid-range, 5=luxury). Infer from words like budget/cheap/affordable/luxury/splurge. null if unclear.
-- "locationTerms": THIS IS THE MOST IMPORTANT FIELD. Include every country and city that is mentioned or clearly implied:
-    • Named countries → include them directly (e.g. "France", "Japan")
-    • Named cities → include the city AND its country (e.g. "Tokyo", "Japan")
-    • Named regions/areas → expand to their component countries:
-        Europe → France, Italy, Spain, Germany, Portugal, Greece, Netherlands, Austria, Croatia, Switzerland, UK, Ireland, Belgium, Denmark, Sweden, Norway
-        Southeast Asia → Thailand, Vietnam, Indonesia, Philippines, Malaysia, Singapore, Cambodia
-        Asia → Japan, China, South Korea, Thailand, Vietnam, Indonesia, India
-        Caribbean → Dominican Republic, Jamaica, Bahamas, Cuba, Barbados, Saint Lucia
-        Latin America → Mexico, Colombia, Peru, Argentina, Brazil, Chile, Costa Rica
-        Middle East → UAE, Israel, Jordan, Turkey, Morocco
-    • Implied locations (e.g. "safari" implies Kenya, Tanzania, South Africa; "Alps" implies Switzerland, Austria, France)
-    • If no location is mentioned or implied, return []
-
-Input: ${query}`,
+      tools: [{
+        name: 'extract_filters',
+        description: 'Extract structured travel search filters from a natural language query.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            audience: {
+              type: 'string',
+              enum: ['family', 'adult'],
+              description: 'Target audience — only set if explicitly mentioned.',
+            },
+            postType: {
+              type: 'string',
+              enum: ['guide'],
+              description: 'Set to "guide" only if the user wants recommendation guides, not personal trip stories.',
+            },
+            tags: {
+              type: 'array',
+              items: { type: 'string', enum: TAG_IDS },
+              description: 'Tags that match the trip vibe.',
+            },
+            maxBudget: {
+              type: 'integer',
+              minimum: 1,
+              maximum: 5,
+              description: '1=backpacker, 3=mid-range, 5=luxury. Infer from words like budget/cheap/luxury/splurge.',
+            },
+            locationTerms: {
+              type: 'array',
+              items: { type: 'string' },
+              description: `Every country and city mentioned or clearly implied. Rules:
+- Named country → include it (e.g. "France")
+- Named city → include city AND its country (e.g. ["Tokyo", "Japan"])
+- Europe → France, Italy, Spain, Germany, Portugal, Greece, Netherlands, Austria, Croatia, Switzerland, UK, Ireland
+- Southeast Asia → Thailand, Vietnam, Indonesia, Philippines, Malaysia, Singapore, Cambodia
+- Asia → Japan, China, South Korea, Thailand, Vietnam, Indonesia, India
+- Caribbean → Dominican Republic, Jamaica, Bahamas, Cuba, Barbados, Saint Lucia
+- Latin America → Mexico, Colombia, Peru, Argentina, Brazil, Chile, Costa Rica
+- Middle East → UAE, Israel, Jordan, Turkey, Morocco
+- Implied: "safari" → Kenya, Tanzania, South Africa; "Alps" → Switzerland, Austria, France; "Amalfi" → Italy
+- No location mentioned → empty array`,
+            },
+          },
+          required: ['tags', 'locationTerms'],
+        },
       }],
+      tool_choice: { type: 'tool', name: 'extract_filters' },
+      messages: [{ role: 'user', content: query }],
     })
 
-    const raw = msg.content[0].type === 'text' ? msg.content[0].text.trim() : ''
-    const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
-    console.log('[parseSearch] raw:', text)
-    const parsed = JSON.parse(text)
+    const block = msg.content.find((b) => b.type === 'tool_use')
+    if (!block || block.type !== 'tool_use') return EMPTY
+
+    const input = block.input as Record<string, unknown>
+    console.log('[parseSearch] extracted:', JSON.stringify(input))
+
     return {
-      audience: parsed.audience ?? null,
-      postType: parsed.postType ?? null,
-      tags: Array.isArray(parsed.tags) ? parsed.tags.filter((t: string) => TAG_IDS.includes(t)) : [],
-      maxBudget: parsed.maxBudget ?? null,
-      locationTerms: Array.isArray(parsed.locationTerms) ? parsed.locationTerms.filter(Boolean) : [],
+      audience: (input.audience as 'family' | 'adult') ?? null,
+      postType: (input.postType as 'guide') ?? null,
+      tags: Array.isArray(input.tags) ? (input.tags as string[]).filter((t) => TAG_IDS.includes(t)) : [],
+      maxBudget: typeof input.maxBudget === 'number' ? input.maxBudget : null,
+      locationTerms: Array.isArray(input.locationTerms) ? (input.locationTerms as string[]).filter(Boolean) : [],
     }
   } catch (err) {
-    console.error('[parseSearch] parse failed:', err)
+    console.error('[parseSearch] failed:', err)
     return EMPTY
   }
 }
