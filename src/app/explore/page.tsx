@@ -21,7 +21,7 @@ async function fetchItineraries(
 ) {
   const [itineraries, bucketIds] = await Promise.all([
     prisma.itinerary.findMany({
-      where: { visibility: 'public', ...where },
+      where: { visibility: 'public', destinations: { some: { items: { some: {} } } }, ...where },
       orderBy: { createdAt: 'desc' },
       include: {
         user: { select: { name: true, id: true } },
@@ -196,7 +196,7 @@ export default async function ExplorePage({
   // ── Country view ───────────────────────────────────────────────────────────
   if (country) {
     const destinations = await prisma.destination.findMany({
-      where: { country, itinerary: { visibility: 'public' } },
+      where: { country, itinerary: { visibility: 'public' }, items: { some: {} } },
       select: { name: true },
     })
     const cityMap = new Map<string, number>()
@@ -280,7 +280,7 @@ export default async function ExplorePage({
 
   // ── Top-level explore ──────────────────────────────────────────────────────
   const allDestinations = await prisma.destination.findMany({
-    where: { itinerary: { visibility: 'public' } },
+    where: { itinerary: { visibility: 'public' }, items: { some: {} } },
     select: { country: true },
   })
   const countryMap = new Map<string, number>()

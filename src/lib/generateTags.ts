@@ -18,6 +18,9 @@ export async function generateTags(
 ): Promise<string[]> {
   if (!process.env.ANTHROPIC_API_KEY) return []
 
+  const totalItems = destinations.reduce((sum, d) => sum + d.items.length, 0)
+  if (destinations.length === 0 || totalItems === 0) return []
+
   const destLines = destinations.length > 0
     ? destinations.map((d) => {
         const loc = `${d.name}${d.country ? `, ${d.country}` : ''}`
