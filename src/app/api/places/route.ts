@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 
-const API_KEY = process.env.GOOGLE_PLACES_API_KEY
+const API_KEY = process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_PLACES_API
 
 export async function GET(req: NextRequest) {
   if (!API_KEY) {
