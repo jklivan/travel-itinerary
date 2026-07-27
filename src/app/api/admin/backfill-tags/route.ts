@@ -19,12 +19,15 @@ export async function POST(req: NextRequest) {
   let skipped = 0
 
   for (const it of itineraries) {
+    const destSummary = it.destinations.map(d => `${d.name} (${d.items.length} items)`).join(', ')
+    console.log(`[backfill-tags] processing: "${it.title}" | dests: ${destSummary || 'none'}`)
     const tags = await generateTags(it.title, it.destinations, it.audience)
     if (tags.length > 0) {
       await prisma.itinerary.update({ where: { id: it.id }, data: { tags } })
-      console.log(`[backfill-tags] ${it.title} → ${tags.join(', ')}`)
+      console.log(`[backfill-tags] tagged: "${it.title}" → ${tags.join(', ')}`)
       tagged++
     } else {
+      console.log(`[backfill-tags] skipped: "${it.title}" — no tags generated`)
       skipped++
     }
   }
