@@ -20,8 +20,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const blob = await put(file.name, file, { access: 'public' })
-    return Response.json({ url: blob.url })
+    const blob = await put(file.name, file, { access: 'private' })
+    const proxyUrl = `/api/img?url=${encodeURIComponent(blob.url)}`
+    return Response.json({ url: proxyUrl })
   } catch (err) {
     console.error('[upload] blob put failed:', err)
     return Response.json({ error: 'Upload failed' }, { status: 500 })
