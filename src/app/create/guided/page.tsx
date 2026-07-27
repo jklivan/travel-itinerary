@@ -258,6 +258,7 @@ export default function GuidedCreatePage() {
       groups: [{
         hotelName: d.items.find(i => i.type === 'hotel')?.name ?? '',
         hotelNotes: d.items.find(i => i.type === 'hotel')?.notes ?? '',
+        hotelAddress: '',
         hotelLink: '',
         hotelRating: d.items.find(i => i.type === 'hotel')?.rating ?? 0,
         food: d.items.filter(i => i.type === 'food_drink').map(i => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating })),

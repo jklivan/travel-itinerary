@@ -24,7 +24,7 @@ function Stars({ rating }: { rating: number | null }) {
   )
 }
 
-type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; notes?: string | null; rating?: number | null; link?: string | null; groupIndex?: number }
+type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; notes?: string | null; address?: string | null; rating?: number | null; link?: string | null; groupIndex?: number }
 
 function groupItems(items: DestItemRow[]) {
   const map = new Map<number, { hotel: DestItemRow | null; food: DestItemRow[]; activities: DestItemRow[] }>()
@@ -280,6 +280,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                                   {!isGuide && <Stars rating={group.hotel.rating ?? null} />}
                                 </div>
                                 {group.hotel.notes && <p className="text-xs text-gray-500 italic mt-0.5">{group.hotel.notes}</p>}
+                                {group.hotel.address && <p className="text-xs text-gray-500 mt-0.5">📍 {group.hotel.address}</p>}
                                 {group.hotel.link && <a href={group.hotel.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
                               </div>
                             )}

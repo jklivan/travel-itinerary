@@ -84,6 +84,7 @@ model DestItem {
   mealType      String?
   name          String
   notes         String?
+  address       String?
   rating        Int?
   link          String?
   groupIndex    Int         @default(0)
