@@ -117,7 +117,15 @@ export async function createItinerary(
           .then((url) => url ? prisma.photo.create({ data: { url, isStock: true, itineraryId: itinerary.id } }) : null)
       : null,
     tags.length === 0
-      ? generateTags(title, itinerary.destinations, audience)
+      ? generateTags(title, destinations.map((d) => ({
+          name: d.name,
+          country: d.country || null,
+          items: (d.groups ?? []).flatMap((g) => [
+            ...(g.hotelName?.trim() ? [{ type: 'hotel', name: g.hotelName.trim(), notes: g.hotelNotes?.trim() || null }] : []),
+            ...(g.food ?? []).filter((f) => f.name?.trim()).map((f) => ({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null })),
+            ...(g.activities ?? []).filter((a) => a.name?.trim()).map((a) => ({ type: 'activity', name: a.name.trim(), notes: a.notes?.trim() || null })),
+          ]),
+        })), audience)
           .then((autoTags) => autoTags.length > 0 ? prisma.itinerary.update({ where: { id: itinerary.id }, data: { tags: autoTags } }) : null)
       : null,
   ])
