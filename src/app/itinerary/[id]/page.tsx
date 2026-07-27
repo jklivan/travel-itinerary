@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation'
 import { unstable_cache } from 'next/cache'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
 import { generateHighlights } from '@/lib/generateHighlights'
+import { generateTags } from '@/lib/generateTags'
 import { Hotel, Utensils, Camera, MapPin, Star } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import { tagMeta } from '@/lib/tags'
@@ -89,6 +90,19 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
   ])
   const followStatus = followRecord?.status ?? 'none'
   const isBucketed = !!bucketItem
+
+  // Tags: user-set takes priority, otherwise AI-generate from itinerary content
+  let displayTags = it.tags
+  let autoTagged = false
+  if (displayTags.length === 0) {
+    const cachedTags = unstable_cache(
+      () => generateTags(it.title, it.destinations, it.audience),
+      [`tags-${it.id}`],
+      { revalidate: 86400 * 7 }
+    )
+    displayTags = await cachedTags()
+    autoTagged = displayTags.length > 0
+  }
 
   // Highlights: user-written takes priority, otherwise AI-generate from 5-star items
   let highlights = it.highlights ?? null
@@ -209,9 +223,9 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                 ))}
               </div>
             )}
-            {it.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {it.tags.map((tag) => {
+            {displayTags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2 items-center">
+                {displayTags.map((tag) => {
                   const meta = tagMeta(tag)
                   return meta ? (
                     <span key={tag} className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full font-medium">
@@ -219,6 +233,9 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                     </span>
                   ) : null
                 })}
+                {autoTagged && (
+                  <span className="text-[10px] text-gray-400 italic">✨ auto-tagged</span>
+                )}
               </div>
             )}
             {it.description && (
