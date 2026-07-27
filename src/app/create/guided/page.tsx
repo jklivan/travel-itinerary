@@ -237,14 +237,20 @@ export default function GuidedCreatePage() {
     const files = e.target.files
     if (!files?.length) return
     setUploading(true)
-    for (const file of Array.from(files)) {
-      const fd = new FormData()
-      fd.append('file', file)
-      const res = await fetch('/api/upload', { method: 'POST', body: fd })
-      if (res.ok) { const { url } = await res.json(); setPhotos(p => [...p, { url, caption: '' }]) }
+    try {
+      for (const file of Array.from(files)) {
+        const fd = new FormData()
+        fd.append('file', file)
+        const res = await fetch('/api/upload', { method: 'POST', body: fd })
+        if (res.ok) { const { url } = await res.json(); setPhotos(p => [...p, { url, caption: '' }]) }
+        else { console.error('[upload] failed:', res.status, await res.text().catch(() => '')) }
+      }
+    } catch (err) {
+      console.error('[upload] error:', err)
+    } finally {
+      setUploading(false)
+      e.target.value = ''
     }
-    setUploading(false)
-    e.target.value = ''
   }
 
   function buildDestinations() {

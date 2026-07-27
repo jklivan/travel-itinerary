@@ -19,6 +19,11 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'Invalid file type' }, { status: 400 })
   }
 
-  const blob = await put(file.name, file, { access: 'public' })
-  return Response.json({ url: blob.url })
+  try {
+    const blob = await put(file.name, file, { access: 'public' })
+    return Response.json({ url: blob.url })
+  } catch (err) {
+    console.error('[upload] blob put failed:', err)
+    return Response.json({ error: 'Upload failed' }, { status: 500 })
+  }
 }

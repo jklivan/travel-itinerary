@@ -218,16 +218,22 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
     const files = e.target.files
     if (!files?.length) return
     setUploading(true)
-    const uploaded: UploadedPhoto[] = []
-    for (const file of Array.from(files)) {
-      const fd = new FormData()
-      fd.append('file', file)
-      const res = await fetch('/api/upload', { method: 'POST', body: fd })
-      if (res.ok) { const { url } = await res.json(); uploaded.push({ url, caption: '' }) }
+    try {
+      const uploaded: UploadedPhoto[] = []
+      for (const file of Array.from(files)) {
+        const fd = new FormData()
+        fd.append('file', file)
+        const res = await fetch('/api/upload', { method: 'POST', body: fd })
+        if (res.ok) { const { url } = await res.json(); uploaded.push({ url, caption: '' }) }
+        else { console.error('[upload] failed:', res.status, await res.text().catch(() => '')) }
+      }
+      setPhotos(p => [...p, ...uploaded])
+    } catch (err) {
+      console.error('[upload] error:', err)
+    } finally {
+      setUploading(false)
+      e.target.value = ''
     }
-    setPhotos(p => [...p, ...uploaded])
-    setUploading(false)
-    e.target.value = ''
   }
   function removePhoto(i: number) { setPhotos(p => p.filter((_, idx) => idx !== i)) }
   function updateCaption(i: number, val: string) { setPhotos(p => p.map((ph, idx) => idx === i ? { ...ph, caption: val } : ph)) }
