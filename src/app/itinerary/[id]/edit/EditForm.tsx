@@ -391,6 +391,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                           <span className="ml-1.5 text-gray-400">· Google price level</span>
                         </p>
                       )}
+                      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600">Rate it!</span><StarRating value={group.hotelRating} onChange={v => updateHotel(di, gi, 'hotelRating', String(v))} /></div>}
                       <input type="text" value={group.hotelNotes} onChange={e => updateHotel(di, gi, 'hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
                       <input type="text" value={group.hotelAddress} onChange={e => updateHotel(di, gi, 'hotelAddress', e.target.value)} className={subInputClass} placeholder="📍 Address (optional — for Airbnbs, apartments…)" />
                       <input type="url" value={group.hotelLink} onChange={e => updateHotel(di, gi, 'hotelLink', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />

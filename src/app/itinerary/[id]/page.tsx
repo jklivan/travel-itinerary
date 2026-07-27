@@ -286,6 +286,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                                       {'$'.repeat(group.hotel.priceLevel)}
                                     </span>
                                   )}
+                                  {!isGuide && <Stars rating={group.hotel.rating ?? null} />}
                                 </div>
                                 {group.hotel.notes && <p className="text-xs text-gray-500 italic mt-0.5">{group.hotel.notes}</p>}
                                 {group.hotel.address && <p className="text-xs text-gray-500 mt-0.5">📍 {group.hotel.address}</p>}
