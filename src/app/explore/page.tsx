@@ -138,7 +138,13 @@ export default async function ExplorePage({
       if (parsed.maxBudget) where.budget = { lte: parsed.maxBudget }
     }
 
+    console.log('[search] query:', q)
+    console.log('[search] parsed:', JSON.stringify(parsed))
+    console.log('[search] where:', JSON.stringify(where))
+
     const { itineraries, bucketSet } = await fetchItineraries(where, userId)
+
+    console.log('[search] results:', itineraries.length, itineraries.map(i => i.id + ' ' + i.title))
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
