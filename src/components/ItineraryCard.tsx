@@ -69,10 +69,22 @@ export default function ItineraryCard({
   const tapeRotation = hashPick(title, TAPE_ROTATIONS)
   const days = tripDays(startDate, endDate)
 
-  const primaryDest = destinations[0]
-  const location = primaryDest
-    ? `${primaryDest.name}${primaryDest.country ? `, ${primaryDest.country}` : ''}`
-    : null
+  function locationLabel(dests: Destination[]): string | null {
+    if (dests.length === 0) return null
+    if (dests.length === 1) {
+      const d = dests[0]
+      return `${d.name}${d.country ? `, ${d.country}` : ''}`
+    }
+    if (dests.length <= 3) {
+      return dests.map((d) => d.name).join(' · ')
+    }
+    const countries = [...new Set(dests.map((d) => d.country).filter(Boolean))] as string[]
+    if (countries.length === 0) return dests.map((d) => d.name).slice(0, 3).join(' · ') + '…'
+    if (countries.length <= 4) return countries.join(' · ')
+    return countries.slice(0, 3).join(' · ') + ` +${countries.length - 3}`
+  }
+
+  const location = locationLabel(destinations)
 
   const showBucket = !isOwn
 
