@@ -27,10 +27,10 @@ export async function parseSearchQuery(query: string): Promise<ParsedQuery> {
   try {
     const msg = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 256,
+      max_tokens: 512,
       messages: [{
         role: 'user',
-        content: `Extract structured travel search filters from this query. Return only valid JSON, no explanation.
+        content: `Extract structured travel search filters from this query. Return only valid JSON, no explanation, no code fences.
 
 Query: "${query}"
 
@@ -49,7 +49,10 @@ Examples:
       }],
     })
 
-    const text = msg.content[0].type === 'text' ? msg.content[0].text.trim() : ''
+    const raw = msg.content[0].type === 'text' ? msg.content[0].text.trim() : ''
+    // Strip markdown code fences if Claude wrapped the JSON
+    const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+    console.log('[parseSearch] raw:', text)
     const parsed = JSON.parse(text)
     return {
       audience: parsed.audience ?? null,
@@ -58,7 +61,8 @@ Examples:
       maxBudget: parsed.maxBudget ?? null,
       locationTerms: Array.isArray(parsed.locationTerms) ? parsed.locationTerms.filter(Boolean) : [],
     }
-  } catch {
+  } catch (err) {
+    console.error('[parseSearch] failed, using fallback. Error:', err)
     return fallback
   }
 }
