@@ -116,13 +116,11 @@ export default async function ExplorePage({
 
     const where: ItineraryWhereInput = {}
 
-    // postType is always a hard filter (guides vs itineraries is unambiguous)
     if (parsed.postType) where.postType = parsed.postType
-
+    if (parsed.audience) where.audience = parsed.audience
+    if (parsed.tags.length > 0) where.tags = { hasSome: parsed.tags }
+    if (parsed.maxBudget) where.budget = { lte: parsed.maxBudget }
     if (parsed.locationTerms.length > 0) {
-      // Location is the primary intent — use it as the hard filter.
-      // Audience and tags are not AND-ed in because most itineraries lack
-      // complete metadata, so combining them would exclude too many results.
       where.destinations = {
         some: {
           OR: parsed.locationTerms.flatMap((term) => [
@@ -131,11 +129,6 @@ export default async function ExplorePage({
           ]),
         },
       }
-    } else {
-      // No location specified — audience and tags become the primary filters.
-      if (parsed.audience) where.audience = parsed.audience
-      if (parsed.tags.length > 0) where.tags = { hasSome: parsed.tags }
-      if (parsed.maxBudget) where.budget = { lte: parsed.maxBudget }
     }
 
     console.log('[search] query:', q)
