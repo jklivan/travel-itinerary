@@ -52,6 +52,7 @@ export async function GET(req: NextRequest) {
 
   type Suggestion = {
     placePrediction?: {
+      placeId?: string
       text?: { text: string }
       structuredFormat?: {
         mainText?: { text: string }
@@ -64,7 +65,7 @@ export async function GET(req: NextRequest) {
     const p = s.placePrediction ?? {}
     const main = p.structuredFormat?.mainText?.text ?? p.text?.text ?? ''
     const secondary = p.structuredFormat?.secondaryText?.text ?? ''
-    return { label: p.text?.text ?? main, main, secondary }
+    return { label: p.text?.text ?? main, main, secondary, placeId: p.placeId ?? null }
   })
 
   return Response.json(suggestions)

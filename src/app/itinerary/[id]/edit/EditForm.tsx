@@ -4,10 +4,11 @@ import { useActionState, useState } from 'react'
 import { updateItinerary } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import TagPicker from '@/components/TagPicker'
+import DeleteButton from '@/components/DeleteButton'
 
 type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number }
 type ActivityItem = { name: string; notes: string; link: string; rating: number }
-type StayGroup    = { hotelName: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; food: FoodItem[]; activities: ActivityItem[] }
+type StayGroup    = { hotelName: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; food: FoodItem[]; activities: ActivityItem[] }
 type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
 type UploadedPhoto = { url: string; caption: string }
 
@@ -131,7 +132,7 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
 
 const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0 })
 const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0 })
-const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, food: [], activities: [] })
+const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, food: [], activities: [] })
 const emptyDest     = (): Destination  => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
 
 function itemsToGroups(items: ItineraryData['destinations'][0]['items']): StayGroup[] {
@@ -150,6 +151,7 @@ function itemsToGroups(items: ItineraryData['destinations'][0]['items']): StayGr
       hotelAddress: hotel?.address ?? '',
       hotelLink: hotel?.link ?? '',
       hotelRating: hotel?.rating ?? 0,
+      hotelPriceLevel: (hotel as { priceLevel?: number | null } | undefined)?.priceLevel ?? null,
       food: grpItems.filter(i => i.type === 'food_drink').map(f => ({ name: f.name, mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0 })),
       activities: grpItems.filter(i => i.type === 'activity').map(a => ({ name: a.name, notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0 })),
     }
@@ -193,6 +195,13 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   function removeGroup(di: number, gi: number) { setDestinations(d => d.map((dest, i) => i !== di ? dest : { ...dest, groups: dest.groups.filter((_, j) => j !== gi) })) }
   function updateHotel(di: number, gi: number, field: keyof StayGroup, val: string) {
     updGroup(di, gi, g => ({ ...g, [field]: field === 'hotelRating' ? Number(val) : val }))
+  }
+  async function fetchHotelPriceLevel(di: number, gi: number, placeId: string) {
+    try {
+      const res = await fetch(`/api/place-details?id=${encodeURIComponent(placeId)}`)
+      const { priceLevel } = await res.json()
+      if (priceLevel !== null) updGroup(di, gi, g => ({ ...g, hotelPriceLevel: priceLevel }))
+    } catch { /* ignore */ }
   }
   function addFood(di: number, gi: number) { updGroup(di, gi, g => ({ ...g, food: [...g.food, emptyFood()] })) }
   function removeFood(di: number, gi: number, ii: number) { updGroup(di, gi, g => ({ ...g, food: g.food.filter((_, j) => j !== ii) })) }
@@ -368,12 +377,20 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                     <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">🏨 Hotel / Accommodation</p>
                     <PlacesAutocomplete
                       value={group.hotelName}
-                      onChange={val => updateHotel(di, gi, 'hotelName', val)}
+                      onChange={val => { updateHotel(di, gi, 'hotelName', val); if (!val) updGroup(di, gi, g => ({ ...g, hotelPriceLevel: null })) }}
+                      onSelect={(_, __, placeId) => { if (placeId) fetchHotelPriceLevel(di, gi, placeId) }}
                       type="hotel"
                       placeholder="Hotel name (optional)"
                       className={inputClass}
                     />
                     {group.hotelName && (<>
+                      {group.hotelPriceLevel !== null && (
+                        <p className="text-xs text-gray-500">
+                          {'$'.repeat(group.hotelPriceLevel)}
+                          <span className="text-gray-300">{'$'.repeat(4 - group.hotelPriceLevel)}</span>
+                          <span className="ml-1.5 text-gray-400">· Google price level</span>
+                        </p>
+                      )}
                       {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600">Rate it!</span><StarRating value={group.hotelRating} onChange={v => updateHotel(di, gi, 'hotelRating', String(v))} /></div>}
                       <input type="text" value={group.hotelNotes} onChange={e => updateHotel(di, gi, 'hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
                       <input type="text" value={group.hotelAddress} onChange={e => updateHotel(di, gi, 'hotelAddress', e.target.value)} className={subInputClass} placeholder="📍 Address (optional — for Airbnbs, apartments…)" />
@@ -456,10 +473,26 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
           className="flex-1 bg-white text-gray-700 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-colors disabled:opacity-60 text-base">
           {pending ? 'Saving…' : 'Save as Draft'}
         </button>
-        <button type="submit" disabled={pending || uploading}
-          className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60 text-base">
-          {pending ? 'Saving…' : itinerary.visibility === 'draft' ? 'Publish' : 'Save changes'}
-        </button>
+        {(() => {
+          const hasItems = destinations.some(d =>
+            d.groups.some(g =>
+              g.hotelName.trim() ||
+              g.food.some(f => f.name.trim()) ||
+              g.activities.some(a => a.name.trim())
+            )
+          )
+          const label = itinerary.visibility === 'draft' ? 'Publish' : 'Save changes'
+          return (
+            <button type="submit" disabled={pending || uploading || !hasItems}
+              title={!hasItems ? 'Add at least one hotel, restaurant, or activity first' : undefined}
+              className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60 text-base">
+              {pending ? 'Saving…' : label}
+            </button>
+          )
+        })()}
+      </div>
+      <div className="flex justify-center pt-1">
+        <DeleteButton id={itinerary.id} />
       </div>
     </form>
   )

@@ -24,7 +24,7 @@ function Stars({ rating }: { rating: number | null }) {
   )
 }
 
-type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; notes?: string | null; address?: string | null; rating?: number | null; link?: string | null; groupIndex?: number }
+type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; link?: string | null; groupIndex?: number }
 
 function groupItems(items: DestItemRow[]) {
   const map = new Map<number, { hotel: DestItemRow | null; food: DestItemRow[]; activities: DestItemRow[] }>()
@@ -281,6 +281,11 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="text-sm font-medium text-gray-900">{group.hotel.name}</span>
+                                  {group.hotel.priceLevel != null && (
+                                    <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">
+                                      {'$'.repeat(group.hotel.priceLevel)}
+                                    </span>
+                                  )}
                                   {!isGuide && <Stars rating={group.hotel.rating ?? null} />}
                                 </div>
                                 {group.hotel.notes && <p className="text-xs text-gray-500 italic mt-0.5">{group.hotel.notes}</p>}

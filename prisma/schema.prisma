@@ -86,6 +86,7 @@ model DestItem {
   notes         String?
   address       String?
   rating        Int?
+  priceLevel    Int?
   link          String?
   groupIndex    Int         @default(0)
   destinationId String

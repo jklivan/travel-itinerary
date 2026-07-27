@@ -10,6 +10,7 @@ import { tagMeta, TAGS } from '@/lib/tags'
 import { MapPin, Globe, ChevronRight } from 'lucide-react'
 import { Caveat } from 'next/font/google'
 import ExploreMap from '@/components/ExploreMap'
+import TagBrowser from '@/components/TagBrowser'
 
 const caveat = Caveat({ subsets: ['latin'] })
 
@@ -111,10 +112,10 @@ function SearchFiltersDisplay({ parsed }: { parsed: ParsedQuery }) {
 export default async function ExplorePage({
   searchParams,
 }: {
-  searchParams: Promise<{ country?: string; city?: string; type?: string; q?: string; view?: string; tag?: string }>
+  searchParams: Promise<{ country?: string; city?: string; type?: string; q?: string; view?: string; tag?: string; tags?: string }>
 
 }) {
-  const { country, city, type, q, view, tag } = await searchParams
+  const { country, city, type, q, view, tag, tags: tagsParam } = await searchParams
   const session = await auth()
   const userId = session?.user?.id ?? null
 
@@ -277,25 +278,25 @@ export default async function ExplorePage({
 
   // ── view=tags ──────────────────────────────────────────────────────────────
   if (view === 'tags') {
+    const selectedTags = tagsParam ? tagsParam.split(',').filter(Boolean) : []
+    const { itineraries, bucketSet } = selectedTags.length > 0
+      ? await fetchItineraries({ tags: { hasSome: selectedTags } }, userId)
+      : { itineraries: [], bucketSet: new Set<string>() }
+
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
         <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Browse by Type</h2>
-        <p className="text-sm text-gray-500 mb-6">Pick a vibe to explore trips</p>
-        <div className="grid grid-cols-3 gap-3">
-          {TAGS.map((t) => (
-            <Link
-              key={t.id}
-              href={`/explore?tag=${t.id}`}
-              className="bg-white rounded-xl border border-gray-200 p-4 text-center hover:border-blue-300 hover:shadow-md transition-all group"
-            >
-              <div className="text-2xl mb-1.5">{t.emoji}</div>
-              <p className="text-xs font-semibold text-gray-900 group-hover:text-blue-600 transition-colors leading-tight">
-                {t.label}
-              </p>
-            </Link>
-          ))}
-        </div>
+        <p className="text-sm text-gray-500 mb-4">Pick one or more vibes</p>
+        <TagBrowser selected={selectedTags} />
+        {selectedTags.length > 0 && (
+          <div className="mt-6">
+            <p className="text-sm text-gray-500 mb-4">
+              {itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}
+            </p>
+            <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
+          </div>
+        )}
       </div>
     )
   }

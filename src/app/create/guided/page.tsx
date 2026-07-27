@@ -566,10 +566,18 @@ export default function GuidedCreatePage() {
                   className="flex-1 bg-white text-gray-700 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-colors disabled:opacity-60 text-sm">
                   {pending ? 'Saving…' : 'Save as Draft'}
                 </button>
-                <button form="gf" type="submit" disabled={pending}
-                  className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60 text-sm">
-                  {pending ? 'Publishing…' : 'Publish'}
-                </button>
+                {(() => {
+                  const hasItems =
+                    dests.some(d => d.items.length > 0) ||
+                    curItems.length > 0
+                  return (
+                    <button form="gf" type="submit" disabled={pending || !hasItems}
+                      title={!hasItems ? 'Add at least one hotel, restaurant, or activity first' : undefined}
+                      className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60 text-sm">
+                      {pending ? 'Publishing…' : 'Publish'}
+                    </button>
+                  )
+                })()}
               </div>
             </div>
           </div>

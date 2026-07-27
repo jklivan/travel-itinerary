@@ -13,24 +13,24 @@ export type ItineraryState = { error?: string } | undefined
 type FoodInput = { name: string; mealType?: string; notes: string; rating: number; link: string }
 type ActivityInput = { name: string; notes: string; rating: number; link: string }
 type StayGroup = {
-  hotelName: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number
+  hotelName: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel?: number | null
   food: FoodInput[]; activities: ActivityInput[]
 }
 type DestInput = { name: string; country: string; notes: string; groups: StayGroup[] }
 
-type ItemRow = { type: string; name: string; notes: string | null; address: string | null; link: string | null; rating: number | null; mealType: string | null; groupIndex: number }
+type ItemRow = { type: string; name: string; notes: string | null; address: string | null; link: string | null; rating: number | null; priceLevel: number | null; mealType: string | null; groupIndex: number }
 
 function flattenGroups(groups: StayGroup[]): ItemRow[] {
   return groups.flatMap((g, gi) => {
     const rows: ItemRow[] = []
     if (g.hotelName?.trim()) {
-      rows.push({ type: 'hotel', name: g.hotelName.trim(), notes: g.hotelNotes?.trim() || null, address: g.hotelAddress?.trim() || null, link: g.hotelLink?.trim() || null, rating: g.hotelRating > 0 ? g.hotelRating : null, mealType: null, groupIndex: gi })
+      rows.push({ type: 'hotel', name: g.hotelName.trim(), notes: g.hotelNotes?.trim() || null, address: g.hotelAddress?.trim() || null, link: g.hotelLink?.trim() || null, rating: g.hotelRating > 0 ? g.hotelRating : null, priceLevel: g.hotelPriceLevel ?? null, mealType: null, groupIndex: gi })
     }
     for (const f of g.food ?? []) {
-      if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, mealType: f.mealType?.trim() || null, groupIndex: gi })
+      if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: null, mealType: f.mealType?.trim() || null, groupIndex: gi })
     }
     for (const a of g.activities ?? []) {
-      if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, mealType: null, groupIndex: gi })
+      if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, mealType: null, groupIndex: gi })
     }
     return rows
   })
@@ -93,6 +93,12 @@ export async function createItinerary(
   const startDate = startDateStr ? new Date(startDateStr) : today
   const endDate = endDateStr ? new Date(endDateStr) : today
   if (!isDraft && endDate < startDate) return { error: 'End date must be after start date.' }
+
+  // Publishing requires at least one item
+  if (!isDraft) {
+    const totalItems = destinations.flatMap(d => flattenGroups(d.groups ?? [])).length
+    if (totalItems === 0) return { error: 'Add at least one hotel, restaurant, or activity before publishing.' }
+  }
 
   // Save itinerary first — stock photo fetch happens after so a slow API
   // can never prevent the itinerary from being saved
@@ -173,6 +179,12 @@ export async function updateItinerary(
   const startDate = startDateStr ? new Date(startDateStr) : today
   const endDate = endDateStr ? new Date(endDateStr) : today
   if (!isDraft && endDate < startDate) return { error: 'End date must be after start date.' }
+
+  // Publishing requires at least one item
+  if (!isDraft) {
+    const totalItems = destinations.flatMap(d => flattenGroups(d.groups ?? [])).length
+    if (totalItems === 0) return { error: 'Add at least one hotel, restaurant, or activity before publishing.' }
+  }
 
   // Delete existing destinations (cascades to items) and photos, then recreate
   await prisma.destination.deleteMany({ where: { itineraryId: id } })

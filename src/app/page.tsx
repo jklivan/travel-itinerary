@@ -33,6 +33,7 @@ export default async function FeedPage({
           { visibility: 'public' },
           ...(userId ? [{ userId, visibility: 'private' }] : []),
         ],
+        destinations: { some: { items: { some: {} } } },
         ...(isFriends && userIdFilter ? { userId: userIdFilter } : {}),
         ...(searchQuery ? {
           destinations: {

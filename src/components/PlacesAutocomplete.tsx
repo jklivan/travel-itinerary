@@ -2,12 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 
-type Suggestion = { label: string; main: string; secondary: string }
+type Suggestion = { label: string; main: string; secondary: string; placeId: string | null }
 
 type Props = {
   value: string
   onChange: (val: string) => void
-  onSelect?: (main: string, secondary: string) => void
+  onSelect?: (main: string, secondary: string, placeId?: string | null) => void
   type?: 'destination' | 'hotel' | 'restaurant' | 'activity'
   placeholder?: string
   className?: string
@@ -41,7 +41,7 @@ export default function PlacesAutocomplete({
 
   function pick(s: Suggestion) {
     onChange(s.main)
-    onSelect?.(s.main, s.secondary)
+    onSelect?.(s.main, s.secondary, s.placeId)
     setSuggestions([])
     setOpen(false)
   }
