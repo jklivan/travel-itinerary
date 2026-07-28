@@ -291,7 +291,9 @@ export default function CreatePage() {
     try {
       const uploaded: UploadedPhoto[] = []
       for (const file of Array.from(files)) {
-        const blob = await upload(file.name, file, {
+        const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : ''
+        const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
+        const blob = await upload(uniqueName, file, {
           access: 'private',
           handleUploadUrl: '/api/upload',
         })
