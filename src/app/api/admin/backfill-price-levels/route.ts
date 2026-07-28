@@ -40,47 +40,56 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // ?pass=google|claude|all (default: all)
+  const pass = req.nextUrl.searchParams.get('pass') ?? 'all'
+
   const items = await prisma.destItem.findMany({
     where: { type: { in: ['hotel', 'food_drink'] }, priceLevel: null, name: { not: '' } },
     include: { destination: { select: { name: true, country: true } } },
   })
 
-  console.log(`[backfill-price-levels] ${items.length} items to process`)
+  console.log(`[backfill-price-levels] ${items.length} items to process (pass=${pass})`)
+  console.log(`[backfill-price-levels] ANTHROPIC_API_KEY set: ${!!process.env.ANTHROPIC_API_KEY}`)
 
   let updated = 0
   let skipped = 0
   const results: string[] = []
 
-  // Pass 1: Google Places
-  const googleMissed: typeof items = []
-  for (const item of items) {
-    const context = [item.destination.name, item.destination.country].filter(Boolean).join(', ')
-    const price = await searchGooglePrice(item.name, context)
-    if (price !== null) {
-      await prisma.destItem.update({ where: { id: item.id }, data: { priceLevel: price } })
-      const msg = `✓ ${item.name} (${item.type}) → ${'$'.repeat(price)} [google]`
-      console.log(`[backfill-price-levels] ${msg}`)
-      results.push(msg)
-      updated++
-    } else {
-      googleMissed.push(item)
+  let claudeInput = items
+
+  // Google pass (only when requested, skip if we know these already failed Google)
+  if (pass === 'google' || pass === 'all') {
+    claudeInput = []
+    for (const item of items) {
+      const context = [item.destination.name, item.destination.country].filter(Boolean).join(', ')
+      const price = await searchGooglePrice(item.name, context)
+      if (price !== null) {
+        await prisma.destItem.update({ where: { id: item.id }, data: { priceLevel: price } })
+        const msg = `✓ ${item.name} (${item.type}) → ${'$'.repeat(price)} [google]`
+        console.log(`[backfill-price-levels] ${msg}`)
+        results.push(msg)
+        updated++
+      } else {
+        claudeInput.push(item)
+      }
+      await new Promise(r => setTimeout(r, 150))
     }
-    await new Promise(r => setTimeout(r, 150))
   }
 
-  // Pass 2: Claude inference for everything Google missed
-  if (googleMissed.length > 0) {
-    console.log(`[backfill-price-levels] ${googleMissed.length} items going to Claude inference`)
+  // Claude pass
+  if ((pass === 'claude' || pass === 'all') && claudeInput.length > 0) {
+    console.log(`[backfill-price-levels] sending ${claudeInput.length} items to Claude`)
     const inferred = await inferPriceLevels(
-      googleMissed.map(item => ({
+      claudeInput.map(item => ({
         id: item.id,
         name: item.name,
         type: item.type as 'hotel' | 'food_drink',
         destination: [item.destination.name, item.destination.country].filter(Boolean).join(', '),
       }))
     )
+    console.log(`[backfill-price-levels] Claude returned ${inferred.size} results`)
 
-    for (const item of googleMissed) {
+    for (const item of claudeInput) {
       const price = inferred.get(item.id)
       if (price != null) {
         await prisma.destItem.update({ where: { id: item.id }, data: { priceLevel: price } })
@@ -90,12 +99,14 @@ export async function POST(req: NextRequest) {
         updated++
       } else {
         const msg = `- ${item.name} (${item.type}) → no price level`
-        console.log(`[backfill-price-levels] ${msg}`)
         results.push(msg)
         skipped++
       }
     }
   }
 
-  return Response.json({ updated, skipped, total: items.length, results })
+  return Response.json({
+    updated, skipped, total: items.length, results,
+    debug: { anthropicKeySet: !!process.env.ANTHROPIC_API_KEY, pass }
+  })
 }
