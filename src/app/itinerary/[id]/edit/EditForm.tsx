@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState, useRef, useEffect } from 'react'
+import { upload } from '@vercel/blob/client'
 import { updateItinerary } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import TagPicker from '@/components/TagPicker'
@@ -225,11 +226,12 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
     try {
       const uploaded: UploadedPhoto[] = []
       for (const file of Array.from(files)) {
-        const fd = new FormData()
-        fd.append('file', file)
-        const res = await fetch('/api/upload', { method: 'POST', body: fd })
-        if (res.ok) { const { url } = await res.json(); uploaded.push({ url, caption: '' }) }
-        else { console.error('[upload] failed:', res.status, await res.text().catch(() => '')) }
+        const blob = await upload(file.name, file, {
+          access: 'private',
+          handleUploadUrl: '/api/upload',
+        })
+        const proxyUrl = `/api/img?url=${encodeURIComponent(blob.url)}`
+        uploaded.push({ url: proxyUrl, caption: '' })
       }
       setPhotos(p => [...p, ...uploaded])
     } catch (err) {

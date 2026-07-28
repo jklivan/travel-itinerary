@@ -1,30 +1,33 @@
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 import { auth } from '@/auth'
-import { put } from '@vercel/blob'
 import { NextRequest } from 'next/server'
 
-export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session?.user) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+export async function POST(req: NextRequest): Promise<Response> {
+  const body = (await req.json()) as HandleUploadBody
 
-  const formData = await req.formData()
-  const file = formData.get('file') as File | null
-  if (!file) {
-    return Response.json({ error: 'No file provided' }, { status: 400 })
-  }
-
-  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf']
-  if (!allowed.includes(file.type)) {
-    return Response.json({ error: 'Invalid file type' }, { status: 400 })
+  // Only authenticate token-generation requests — upload-completed callbacks
+  // come from Vercel Blob servers and have no user session.
+  if (body.type === 'blob.generate-client-token') {
+    const session = await auth()
+    if (!session?.user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
   }
 
   try {
-    const blob = await put(file.name, file, { access: 'private' })
-    const proxyUrl = `/api/img?url=${encodeURIComponent(blob.url)}`
-    return Response.json({ url: proxyUrl })
-  } catch (err) {
-    console.error('[upload] blob put failed:', err)
-    return Response.json({ error: 'Upload failed' }, { status: 500 })
+    const jsonResponse = await handleUpload({
+      body,
+      request: req,
+      onBeforeGenerateToken: async () => ({
+        allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+        maximumSizeInBytes: 10 * 1024 * 1024,
+      }),
+      onUploadCompleted: async () => {
+        // no-op: proxy URL is constructed on the client from blob.url
+      },
+    })
+    return Response.json(jsonResponse)
+  } catch (error) {
+    return Response.json({ error: (error as Error).message }, { status: 400 })
   }
 }
