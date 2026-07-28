@@ -349,7 +349,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         <h2 className="font-semibold text-gray-900 mb-1">Budget</h2>
         <p className="text-xs text-gray-500 mb-3">How expensive was this trip?</p>
         <div className="flex gap-2">
-          {[1, 2, 3, 4, 5].map((n) => (
+          {[1, 2, 3, 4].map((n) => (
             <button
               key={n}
               type="button"

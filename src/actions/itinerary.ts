@@ -50,7 +50,7 @@ function parseFormData(formData: FormData) {
   const highlights = (formData.get('highlights') as string)?.trim() || null
   const tags: string[] = formData.get('tags') ? JSON.parse(formData.get('tags') as string) : []
   const budgetRaw = parseInt(formData.get('budget') as string)
-  const budget = budgetRaw >= 1 && budgetRaw <= 5 ? budgetRaw : null
+  const budget = budgetRaw >= 1 && budgetRaw <= 4 ? budgetRaw : null
   const destinations: DestInput[] = formData.get('destinations')
     ? JSON.parse(formData.get('destinations') as string)
     : []
