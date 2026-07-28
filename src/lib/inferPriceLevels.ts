@@ -22,7 +22,7 @@ export async function inferPriceLevels(
       max_tokens: 1024,
       tools: [{
         name: 'set_price_levels',
-        description: 'Set price levels (1–4) for a list of hotels and restaurants based on general knowledge.',
+        description: 'Set price levels for a list of hotels and restaurants based on general knowledge. Hotels use 1–5 scale; restaurants use 1–4 scale.',
         input_schema: {
           type: 'object' as const,
           properties: {
@@ -32,7 +32,7 @@ export async function inferPriceLevels(
                 type: 'object',
                 properties: {
                   index: { type: 'number', description: '1-based index from the input list' },
-                  level: { type: 'number', enum: [1, 2, 3, 4], description: '1=$, 2=$$, 3=$$$, 4=$$$$' },
+                  level: { type: 'number', enum: [1, 2, 3, 4, 5], description: 'Hotels: 1=budget(<$150/night), 2=mid($150-350), 3=upscale($350-600), 4=luxury($600-1000), 5=ultra-luxury($1000+). Restaurants: 1=budget, 2=moderate, 3=upscale, 4=luxury.' },
                 },
                 required: ['index', 'level'],
               },
@@ -45,7 +45,7 @@ export async function inferPriceLevels(
       tool_choice: { type: 'tool', name: 'set_price_levels' },
       messages: [{
         role: 'user',
-        content: `Estimate price level (1=budget, 2=moderate, 3=upscale, 4=luxury) for each place based on your knowledge. Only include entries you're confident about.\n\n${list}`,
+        content: `Estimate price level for each place. Hotels: 1=budget(<$150/night), 2=mid($150-350), 3=upscale($350-600), 4=luxury($600-1000), 5=ultra-luxury($1000+/night). Restaurants: 1=budget, 2=moderate, 3=upscale, 4=luxury. Only include entries you're confident about.\n\n${list}`,
       }],
     })
 
@@ -56,7 +56,8 @@ export async function inferPriceLevels(
     const input = block.input as { levels: { index: number; level: number }[] }
     for (const { index, level } of input.levels) {
       const place = places[index - 1]
-      if (place && level >= 1 && level <= 4) results.set(place.id, level)
+      const maxLevel = place?.type === 'hotel' ? 5 : 4
+      if (place && level >= 1 && level <= maxLevel) results.set(place.id, level)
     }
     return { results, stopReason: msg.stop_reason }
   } catch (e) {

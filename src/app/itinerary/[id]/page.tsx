@@ -297,7 +297,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                                 {group.hotel.priceLevel != null && (
                                   <p className="text-xs font-medium text-green-700 mt-0.5">
                                     {'$'.repeat(group.hotel.priceLevel)}
-                                    <span className="text-gray-300">{'$'.repeat(4 - group.hotel.priceLevel)}</span>
+                                    <span className="text-gray-300">{'$'.repeat(5 - group.hotel.priceLevel)}</span>
                                   </p>
                                 )}
                                 {group.hotel.notes && <p className="text-xs text-gray-500 italic mt-0.5">{group.hotel.notes}</p>}

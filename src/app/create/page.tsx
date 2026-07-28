@@ -46,13 +46,13 @@ async function extractTextFromFile(file: File): Promise<string> {
 
 type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null }
 type ActivityItem = { name: string; notes: string; link: string; rating: number }
-type StayGroup    = { hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; food: FoodItem[]; activities: ActivityItem[] }
+type StayGroup    = { hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; food: FoodItem[]; activities: ActivityItem[] }
 type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
 type UploadedPhoto = { url: string; caption: string }
 
 const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0, priceLevel: null })
 const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0 })
-const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, food: [], activities: [] })
+const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', food: [], activities: [] })
 const emptyDest     = (): Destination  => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
 
 const inputClass =
@@ -85,6 +85,14 @@ const MEAL_TYPE_META: Record<string, { emoji: string; active: string; pill: stri
   coffee:    { emoji: '☕', active: 'bg-amber-700 text-white border-amber-700',   pill: 'bg-amber-100 text-amber-800' },
   dessert:   { emoji: '🍰', active: 'bg-pink-500 text-white border-pink-500',     pill: 'bg-pink-100 text-pink-700' },
   bakery:    { emoji: '🥐', active: 'bg-orange-400 text-white border-orange-400', pill: 'bg-orange-50 text-orange-600' },
+}
+
+function nightlyRateToTier(rate: number): number {
+  if (rate < 150) return 1
+  if (rate < 350) return 2
+  if (rate < 600) return 3
+  if (rate < 1000) return 4
+  return 5
 }
 
 function FoodRow({ item, index, onUpdate, onRemove, showRating, onSelectPlace }: {
@@ -220,7 +228,7 @@ export default function CreatePage() {
           const acts   = items.filter(i => i.type === 'activity').map(a => ({ name: a.name ?? '', notes: a.notes ?? '', link: a.link ?? '', rating: 0 }))
           const groups: StayGroup[] = hotels.length === 0
             ? [{ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, food, activities: acts }]
-            : hotels.map((h, hi) => ({ hotelName: h.name ?? '', hotelNotes: h.notes ?? '', hotelLink: h.link ?? '', hotelRating: 0, hotelPriceLevel: null, food: hi === 0 ? food : [], activities: hi === 0 ? acts : [] }))
+            : hotels.map((h, hi) => ({ hotelName: h.name ?? '', hotelNotes: h.notes ?? '', hotelLink: h.link ?? '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', food: hi === 0 ? food : [], activities: hi === 0 ? acts : [] }))
           return { name: d.name ?? '', country: d.country ?? '', groups }
         })
       )
@@ -544,18 +552,33 @@ export default function CreatePage() {
                       <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">🏨 Hotel / Accommodation</p>
                       <PlacesAutocomplete
                         value={group.hotelName}
-                        onChange={val => { updateHotel(di, gi, 'hotelName', val); if (!val) updGroup(di, gi, g => ({ ...g, hotelPriceLevel: null })) }}
+                        onChange={val => { updateHotel(di, gi, 'hotelName', val); if (!val) updGroup(di, gi, g => ({ ...g, hotelPriceLevel: null, hotelNightlyRate: '' })) }}
                         onSelect={(_, __, placeId) => { if (placeId) fetchHotelPriceLevel(di, gi, placeId) }}
                         type="hotel"
                         placeholder="Hotel name (optional)"
                         className={inputClass}
                       />
                       {group.hotelName && (<>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 shrink-0">$/night</span>
+                          <input
+                            type="number" min="0" step="1"
+                            value={group.hotelNightlyRate}
+                            onChange={e => {
+                              const val = e.target.value
+                              updGroup(di, gi, g => {
+                                const rate = parseFloat(val)
+                                return { ...g, hotelNightlyRate: val, hotelPriceLevel: val && !isNaN(rate) && rate > 0 ? nightlyRateToTier(rate) : g.hotelPriceLevel }
+                              })
+                            }}
+                            className={subInputClass}
+                            placeholder="What did you pay per night? (optional)"
+                          />
+                        </div>
                         {group.hotelPriceLevel !== null && (
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-green-700 font-medium">
                             {'$'.repeat(group.hotelPriceLevel)}
-                            <span className="text-gray-300">{'$'.repeat(4 - group.hotelPriceLevel)}</span>
-                            <span className="ml-1.5 text-gray-400">· Google price level</span>
+                            <span className="text-gray-300">{'$'.repeat(5 - group.hotelPriceLevel)}</span>
                           </p>
                         )}
                         {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600">Rate it!</span><StarRating value={group.hotelRating} onChange={v => updateHotel(di, gi, 'hotelRating', String(v))} /></div>}
