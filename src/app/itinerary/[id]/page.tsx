@@ -8,6 +8,7 @@ import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/
 import { generateHighlights } from '@/lib/generateHighlights'
 import { Hotel, Utensils, Camera, MapPin, Star } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
+import PhotoStrip from '@/components/PhotoStrip'
 import { tagMeta } from '@/lib/tags'
 import SwipeNav from '@/components/SwipeNav'
 import DeleteButton from '@/components/DeleteButton'
@@ -119,27 +120,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
           const userPhotos = it.photos.filter(p => !p.isStock)
           const stockPhoto = it.photos.find(p => p.isStock)
           if (userPhotos.length > 0) {
-            return (
-              <div className="relative">
-                <div className="flex overflow-x-auto snap-x snap-mandatory h-64 bg-gray-100 scrollbar-hide">
-                  {userPhotos.map((photo) => (
-                    <div key={photo.id} className="relative flex-none w-full snap-center h-64">
-                      <Image src={photo.url} alt={photo.caption ?? it.title} fill className="object-cover" priority />
-                      {photo.caption && (
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-4 py-3">
-                          <p className="text-white text-xs font-medium drop-shadow">{photo.caption}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {userPhotos.length > 1 && (
-                  <div className="absolute bottom-2 right-3 bg-black/40 text-white text-xs px-2 py-0.5 rounded-full">
-                    1–{userPhotos.length}
-                  </div>
-                )}
-              </div>
-            )
+            return <PhotoStrip photos={userPhotos} title={it.title} />
           }
           if (stockPhoto) {
             return (
