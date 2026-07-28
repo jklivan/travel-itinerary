@@ -112,6 +112,33 @@ export default async function FeedPage({
           ))}
         </HorizontalScrollFeed>
       )}
+
+      {/* Expert Recs */}
+      {!searchQuery && (
+        <div className="mt-10">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-gray-900">Expert Recs</h2>
+            <p className="text-sm text-gray-500">Curated picks from travel experts</p>
+          </div>
+          <div className="flex gap-5 overflow-x-auto pb-4 -mx-4 px-4 [&::-webkit-scrollbar]:hidden">
+            {[
+              { rotate: '-rotate-2' },
+              { rotate: 'rotate-1' },
+              { rotate: '-rotate-1' },
+              { rotate: 'rotate-2' },
+              { rotate: '-rotate-1' },
+            ].map((p, i) => (
+              <div key={i} className={`flex-none w-36 bg-white shadow-md p-2.5 pb-9 ${p.rotate}`}>
+                <div className="w-full aspect-square bg-gray-100" />
+                <div className="mt-3 space-y-1.5">
+                  <div className="h-2 bg-gray-200 rounded w-4/5" />
+                  <div className="h-2 bg-gray-100 rounded w-3/5" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
