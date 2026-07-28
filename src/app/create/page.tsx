@@ -220,7 +220,7 @@ export default function CreatePage() {
         data.destinations.map((d: { name?: string; country?: string; items?: { type: string; mealType?: string; name: string; notes?: string; link?: string }[] }) => {
           const items = Array.isArray(d.items) ? d.items : []
           const hotels = items.filter(i => i.type === 'hotel')
-          const food   = items.filter(i => i.type === 'food_drink').map(f => ({ name: f.name ?? '', mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: 0, priceLevel: null }))
+          const food   = items.filter(i => i.type === 'food_drink').map(f => ({ name: f.name ?? '', mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: 0, priceLevel: null, familyFriendly: null }))
           const acts   = items.filter(i => i.type === 'activity').map(a => ({ name: a.name ?? '', notes: a.notes ?? '', link: a.link ?? '', rating: 0 }))
           const groups: StayGroup[] = hotels.length === 0
             ? [{ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', food, activities: acts }]
