@@ -21,6 +21,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       onBeforeGenerateToken: async () => ({
         allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
         maximumSizeInBytes: 10 * 1024 * 1024,
+        addRandomSuffix: true,
       }),
       onUploadCompleted: async () => {
         // no-op: proxy URL is constructed on the client from blob.url
