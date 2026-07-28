@@ -71,7 +71,7 @@ async function inferMissingPriceLevels(itineraryId: string): Promise<void> {
     include: { destination: { select: { name: true, country: true } } },
   })
   if (items.length === 0) return
-  const inferred = await inferPriceLevels(
+  const { results: inferred } = await inferPriceLevels(
     items.map(item => ({
       id: item.id,
       name: item.name,

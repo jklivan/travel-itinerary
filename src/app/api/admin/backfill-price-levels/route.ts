@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
   // Claude pass
   if ((pass === 'claude' || pass === 'all') && claudeInput.length > 0) {
     console.log(`[backfill-price-levels] sending ${claudeInput.length} items to Claude`)
-    const inferred = await inferPriceLevels(
+    const { results: inferred, error: claudeError, stopReason } = await inferPriceLevels(
       claudeInput.map(item => ({
         id: item.id,
         name: item.name,
@@ -87,7 +87,8 @@ export async function POST(req: NextRequest) {
         destination: [item.destination.name, item.destination.country].filter(Boolean).join(', '),
       }))
     )
-    console.log(`[backfill-price-levels] Claude returned ${inferred.size} results`)
+    console.log(`[backfill-price-levels] Claude returned ${inferred.size} results, error=${claudeError}, stopReason=${stopReason}`)
+    if (claudeError) results.push(`[claude error] ${claudeError} (stopReason=${stopReason})`)
 
     for (const item of claudeInput) {
       const price = inferred.get(item.id)

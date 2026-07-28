@@ -4,9 +4,13 @@ const client = new Anthropic()
 
 type PlaceInput = { id: string; name: string; type: 'hotel' | 'food_drink'; destination: string }
 
-export async function inferPriceLevels(places: PlaceInput[]): Promise<Map<string, number>> {
+export async function inferPriceLevels(
+  places: PlaceInput[]
+): Promise<{ results: Map<string, number>; error?: string; stopReason?: string | null }> {
   const results = new Map<string, number>()
-  if (!process.env.ANTHROPIC_API_KEY || places.length === 0) return results
+  if (!process.env.ANTHROPIC_API_KEY || places.length === 0) {
+    return { results, error: 'No API key or empty input' }
+  }
 
   const list = places.map((p, i) =>
     `${i + 1}. "${p.name}" — ${p.type === 'hotel' ? 'hotel' : 'restaurant/bar'} in ${p.destination}`
@@ -46,13 +50,16 @@ export async function inferPriceLevels(places: PlaceInput[]): Promise<Map<string
     })
 
     const block = msg.content.find((b) => b.type === 'tool_use')
-    if (!block || block.type !== 'tool_use') return results
+    if (!block || block.type !== 'tool_use') {
+      return { results, error: 'No tool_use block', stopReason: msg.stop_reason }
+    }
     const input = block.input as { levels: { index: number; level: number }[] }
     for (const { index, level } of input.levels) {
       const place = places[index - 1]
       if (place && level >= 1 && level <= 4) results.set(place.id, level)
     }
-  } catch { /* ignore */ }
-
-  return results
+    return { results, stopReason: msg.stop_reason }
+  } catch (e) {
+    return { results, error: String(e) }
+  }
 }
