@@ -114,12 +114,42 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
     <div className="max-w-2xl mx-auto px-4 py-6">
       <SwipeNav prevId={prevId} nextId={nextId}>
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
-        {/* Cover photo */}
-        {it.photos.length > 0 && (
-          <div className="relative h-64 w-full bg-gray-100">
-            <Image src={it.photos[0].url} alt={it.title} fill className="object-cover" priority />
-          </div>
-        )}
+        {/* Photo strip — user photos scroll horizontally; stock photo as fallback cover */}
+        {(() => {
+          const userPhotos = it.photos.filter(p => !p.isStock)
+          const stockPhoto = it.photos.find(p => p.isStock)
+          if (userPhotos.length > 0) {
+            return (
+              <div className="relative">
+                <div className="flex overflow-x-auto snap-x snap-mandatory h-64 bg-gray-100 scrollbar-hide">
+                  {userPhotos.map((photo) => (
+                    <div key={photo.id} className="relative flex-none w-full snap-center h-64">
+                      <Image src={photo.url} alt={photo.caption ?? it.title} fill className="object-cover" priority />
+                      {photo.caption && (
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-4 py-3">
+                          <p className="text-white text-xs font-medium drop-shadow">{photo.caption}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {userPhotos.length > 1 && (
+                  <div className="absolute bottom-2 right-3 bg-black/40 text-white text-xs px-2 py-0.5 rounded-full">
+                    1–{userPhotos.length}
+                  </div>
+                )}
+              </div>
+            )
+          }
+          if (stockPhoto) {
+            return (
+              <div className="relative h-64 w-full bg-gray-100">
+                <Image src={stockPhoto.url} alt={it.title} fill className="object-cover" priority />
+              </div>
+            )
+          }
+          return null
+        })()}
 
         {it.visibility === 'draft' && (
           <div className="px-5 pt-4">
@@ -378,24 +408,6 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
             </div>
           )}
 
-          {/* Additional photos — exclude stock cover */}
-          {it.photos.filter(p => !p.isStock).length > 1 && (
-            <div>
-              <h2 className="text-sm font-semibold text-gray-700 mb-2">Photos</h2>
-              <div className="grid grid-cols-3 gap-2">
-                {it.photos.filter(p => !p.isStock).slice(1).map((photo) => (
-                  <div key={photo.id} className="space-y-1">
-                    <div className="relative h-24 rounded-lg overflow-hidden bg-gray-100">
-                      <Image src={photo.url} alt={photo.caption ?? ''} fill className="object-cover" />
-                    </div>
-                    {photo.caption && (
-                      <p className="text-xs text-gray-500 text-center">{photo.caption}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
       </SwipeNav>
