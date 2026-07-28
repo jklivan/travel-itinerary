@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useState, useRef, useEffect } from 'react'
 import { createItinerary } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import TagPicker from '@/components/TagPicker'
@@ -165,6 +165,10 @@ export default function CreatePage() {
   const [tags, setTags] = useState<string[]>([])
   const [destinations, setDestinations] = useState<Destination[]>([emptyDest()])
   const [photos, setPhotos] = useState<UploadedPhoto[]>([])
+  const photosInputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (photosInputRef.current) photosInputRef.current.value = JSON.stringify(photos)
+  }, [photos])
   const [uploading, setUploading] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState<string | null>(null)
@@ -396,7 +400,7 @@ export default function CreatePage() {
 
       <form action={action} className="space-y-8">
         <input type="hidden" name="destinations" value={JSON.stringify(destinations)} />
-        <input type="hidden" name="photos" value={JSON.stringify(photos)} />
+        <input type="hidden" name="photos" ref={photosInputRef} defaultValue="[]" />
         <input type="hidden" name="audience" value={isAdult ? 'adult' : 'family'} />
         <input type="hidden" name="visibility" value={isPrivate ? 'private' : 'public'} />
         <input type="hidden" name="postType" value={postType} />

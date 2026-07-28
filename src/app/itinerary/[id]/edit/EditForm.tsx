@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useState, useRef, useEffect } from 'react'
 import { updateItinerary } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import TagPicker from '@/components/TagPicker'
@@ -179,6 +179,10 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       : [emptyDest()]
   )
   const [photos, setPhotos] = useState<UploadedPhoto[]>(itinerary.photos.map(p => ({ url: p.url, caption: p.caption ?? '' })))
+  const photosInputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (photosInputRef.current) photosInputRef.current.value = JSON.stringify(photos)
+  }, [photos])
   const [uploading, setUploading] = useState(false)
 
   const showRating = postType === 'itinerary'
@@ -241,7 +245,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   return (
     <form action={action} className="space-y-8">
       <input type="hidden" name="destinations" value={JSON.stringify(destinations)} />
-      <input type="hidden" name="photos" value={JSON.stringify(photos)} />
+      <input type="hidden" name="photos" ref={photosInputRef} defaultValue={JSON.stringify(photos)} />
       <input type="hidden" name="audience" value={isAdult ? 'adult' : 'family'} />
       <input type="hidden" name="visibility" value={isPrivate ? 'private' : 'public'} />
       <input type="hidden" name="postType" value={postType} />
