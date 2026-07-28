@@ -164,10 +164,21 @@ export default function CreatePage() {
   const [tags, setTags] = useState<string[]>([])
   const [destinations, setDestinations] = useState<Destination[]>([emptyDest()])
   const [photos, setPhotos] = useState<UploadedPhoto[]>([])
-  const photosInputRef = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    if (photosInputRef.current) photosInputRef.current.value = JSON.stringify(photos)
-  }, [photos])
+  const photosInputRef    = useRef<HTMLInputElement>(null)
+  const titleRef          = useRef<HTMLInputElement>(null)
+  const descriptionRef    = useRef<HTMLInputElement>(null)
+  const startDateRef      = useRef<HTMLInputElement>(null)
+  const endDateRef        = useRef<HTMLInputElement>(null)
+  const notesRef          = useRef<HTMLInputElement>(null)
+  const highlightsRef     = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { if (photosInputRef.current)  photosInputRef.current.value  = JSON.stringify(photos) }, [photos])
+  useEffect(() => { if (titleRef.current)         titleRef.current.value         = title }, [title])
+  useEffect(() => { if (descriptionRef.current)   descriptionRef.current.value   = description }, [description])
+  useEffect(() => { if (startDateRef.current)     startDateRef.current.value     = startDate }, [startDate])
+  useEffect(() => { if (endDateRef.current)       endDateRef.current.value       = endDate }, [endDate])
+  useEffect(() => { if (notesRef.current)         notesRef.current.value         = notes }, [notes])
+  useEffect(() => { if (highlightsRef.current)    highlightsRef.current.value    = highlights }, [highlights])
   const [uploading, setUploading] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState<string | null>(null)
@@ -346,12 +357,12 @@ export default function CreatePage() {
         <input type="hidden" name="visibility" value={isPrivate ? 'private' : 'public'} />
         <input type="hidden" name="postType" value={postType} />
         <input type="hidden" name="tags" value={JSON.stringify(tags)} />
-        <input type="hidden" name="title" value={title} />
-        <input type="hidden" name="description" value={description} />
-        <input type="hidden" name="startDate" value={startDate} />
-        <input type="hidden" name="endDate" value={endDate} />
-        <input type="hidden" name="notes" value={notes} />
-        <input type="hidden" name="highlights" value={highlights} />
+        <input type="hidden" name="title"       ref={titleRef}       defaultValue="" />
+        <input type="hidden" name="description" ref={descriptionRef} defaultValue="" />
+        <input type="hidden" name="startDate"   ref={startDateRef}   defaultValue="" />
+        <input type="hidden" name="endDate"     ref={endDateRef}     defaultValue="" />
+        <input type="hidden" name="notes"       ref={notesRef}       defaultValue="" />
+        <input type="hidden" name="highlights"  ref={highlightsRef}  defaultValue="" />
 
         {state?.error && (
           <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{state.error}</p>
