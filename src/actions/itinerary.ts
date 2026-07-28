@@ -203,15 +203,12 @@ export async function createItineraryDirect(input: {
 
   const { title, description, startDate: startDateStr, endDate: endDateStr, postType, audience, visibility, isDraft, notes, highlights, tags, destinations, photos } = input
 
-  if (!title?.trim()) return { error: `Title is required. [server received: "${input.title}", type=${typeof input.title}]` }
-
-  const isGuide = postType === 'guide'
-  if (!isDraft && !isGuide && (!startDateStr || !endDateStr)) return { error: 'Start and end dates are required.' }
+  const resolvedTitle = title?.trim() || (input.destinations?.[0]?.name ? `Trip to ${input.destinations[0].name}` : 'My Trip')
 
   const today = new Date()
   const startDate = startDateStr ? new Date(startDateStr) : today
   const endDate = endDateStr ? new Date(endDateStr) : today
-  if (!isDraft && endDate < startDate) return { error: 'End date must be after start date.' }
+  if (startDateStr && endDateStr && endDate < startDate) return { error: 'End date must be after start date.' }
 
   if (!isDraft) {
     const totalItems = destinations.flatMap(d => flattenGroups(d.groups ?? [])).length
@@ -220,7 +217,7 @@ export async function createItineraryDirect(input: {
 
   const itinerary = await prisma.itinerary.create({
     data: {
-      postType, title: title.trim(), description: description?.trim() || null,
+      postType, title: resolvedTitle, description: description?.trim() || null,
       startDate, endDate, audience, visibility,
       notes: notes?.trim() || null, highlights: highlights?.trim() || null, tags, budget: null,
       userId: session.user.id,
@@ -235,7 +232,7 @@ export async function createItineraryDirect(input: {
           .then((url) => url ? prisma.photo.create({ data: { url, isStock: true, itineraryId: itinerary.id } }) : null)
       : null,
     tags.length === 0
-      ? generateTags(title.trim(), destinations.map((d) => ({
+      ? generateTags(resolvedTitle, destinations.map((d) => ({
           name: d.name, country: d.country || null,
           items: (d.groups ?? []).flatMap((g) => [
             ...(g.hotelName?.trim() ? [{ type: 'hotel', name: g.hotelName.trim(), notes: g.hotelNotes?.trim() || null }] : []),
