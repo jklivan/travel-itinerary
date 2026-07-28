@@ -87,6 +87,7 @@ model DestItem {
   address       String?
   rating        Int?
   priceLevel    Int?
+  familyFriendly Boolean?
   link          String?
   groupIndex    Int         @default(0)
   destinationId String

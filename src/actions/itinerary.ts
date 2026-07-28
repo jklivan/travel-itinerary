@@ -7,11 +7,11 @@ import { revalidatePath } from 'next/cache'
 import { fetchStockPhoto } from '@/lib/stockPhoto'
 import { generateTags } from '@/lib/generateTags'
 import { geocode } from '@/lib/geocode'
-import { inferPriceLevels } from '@/lib/inferPriceLevels'
+import { inferPlaceAttributes } from '@/lib/inferPriceLevels'
 
 export type ItineraryState = { error?: string } | undefined
 
-type FoodInput = { name: string; mealType?: string; notes: string; rating: number; link: string; priceLevel?: number | null }
+type FoodInput = { name: string; mealType?: string; notes: string; rating: number; link: string; priceLevel?: number | null; familyFriendly?: boolean | null }
 type ActivityInput = { name: string; notes: string; rating: number; link: string }
 type StayGroup = {
   hotelName: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel?: number | null
@@ -19,19 +19,19 @@ type StayGroup = {
 }
 type DestInput = { name: string; country: string; notes: string; groups: StayGroup[] }
 
-type ItemRow = { type: string; name: string; notes: string | null; address: string | null; link: string | null; rating: number | null; priceLevel: number | null; mealType: string | null; groupIndex: number }
+type ItemRow = { type: string; name: string; notes: string | null; address: string | null; link: string | null; rating: number | null; priceLevel: number | null; familyFriendly: boolean | null; mealType: string | null; groupIndex: number }
 
 function flattenGroups(groups: StayGroup[]): ItemRow[] {
   return groups.flatMap((g, gi) => {
     const rows: ItemRow[] = []
     if (g.hotelName?.trim()) {
-      rows.push({ type: 'hotel', name: g.hotelName.trim(), notes: g.hotelNotes?.trim() || null, address: g.hotelAddress?.trim() || null, link: g.hotelLink?.trim() || null, rating: g.hotelRating > 0 ? g.hotelRating : null, priceLevel: g.hotelPriceLevel ?? null, mealType: null, groupIndex: gi })
+      rows.push({ type: 'hotel', name: g.hotelName.trim(), notes: g.hotelNotes?.trim() || null, address: g.hotelAddress?.trim() || null, link: g.hotelLink?.trim() || null, rating: g.hotelRating > 0 ? g.hotelRating : null, priceLevel: g.hotelPriceLevel ?? null, familyFriendly: null, mealType: null, groupIndex: gi })
     }
     for (const f of g.food ?? []) {
-      if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: f.priceLevel ?? null, mealType: f.mealType?.trim() || null, groupIndex: gi })
+      if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: f.priceLevel ?? null, familyFriendly: f.familyFriendly ?? null, mealType: f.mealType?.trim() || null, groupIndex: gi })
     }
     for (const a of g.activities ?? []) {
-      if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, mealType: null, groupIndex: gi })
+      if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, mealType: null, groupIndex: gi })
     }
     return rows
   })
@@ -60,18 +60,18 @@ function parseFormData(formData: FormData) {
   return { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, destinations, photos }
 }
 
-async function inferMissingPriceLevels(itineraryId: string): Promise<void> {
+async function inferMissingAttributes(itineraryId: string): Promise<void> {
   const items = await prisma.destItem.findMany({
     where: {
       destination: { itineraryId },
       type: { in: ['hotel', 'food_drink'] },
-      priceLevel: null,
+      OR: [{ priceLevel: null }, { type: 'food_drink', familyFriendly: null }],
       name: { not: '' },
     },
     include: { destination: { select: { name: true, country: true } } },
   })
   if (items.length === 0) return
-  const { results: inferred } = await inferPriceLevels(
+  const { priceLevels, familyFriendly } = await inferPlaceAttributes(
     items.map(item => ({
       id: item.id,
       name: item.name,
@@ -79,8 +79,15 @@ async function inferMissingPriceLevels(itineraryId: string): Promise<void> {
       destination: [item.destination.name, item.destination.country].filter(Boolean).join(', '),
     }))
   )
-  for (const [id, priceLevel] of inferred) {
-    await prisma.destItem.update({ where: { id }, data: { priceLevel } })
+  for (const item of items) {
+    const priceLevel = priceLevels.get(item.id)
+    const ff = familyFriendly.get(item.id)
+    const data: { priceLevel?: number; familyFriendly?: boolean } = {}
+    if (priceLevel !== undefined && item.priceLevel === null) data.priceLevel = priceLevel
+    if (ff !== undefined && item.type === 'food_drink' && item.familyFriendly === null) data.familyFriendly = ff
+    if (Object.keys(data).length > 0) {
+      await prisma.destItem.update({ where: { id: item.id }, data })
+    }
   }
 }
 
@@ -175,7 +182,7 @@ export async function createItinerary(
           .then((autoTags) => autoTags.length > 0 ? prisma.itinerary.update({ where: { id: itinerary.id }, data: { tags: autoTags } }) : null)
       : null,
     geocodeItineraryDests(itinerary.id),
-    inferMissingPriceLevels(itinerary.id),
+    inferMissingAttributes(itinerary.id),
   ])
 
   revalidatePath('/')
@@ -253,7 +260,7 @@ export async function updateItinerary(
           .then((url) => url ? prisma.photo.create({ data: { url, isStock: true, itineraryId: id } }) : null)
       : null,
     geocodeItineraryDests(id),
-    inferMissingPriceLevels(id),
+    inferMissingAttributes(id),
   ])
 
   revalidatePath('/')

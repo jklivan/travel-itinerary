@@ -41,13 +41,13 @@ async function extractTextFromFile(file: File): Promise<string> {
   })
 }
 
-type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null }
+type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null }
 type ActivityItem = { name: string; notes: string; link: string; rating: number }
 type StayGroup    = { hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; food: FoodItem[]; activities: ActivityItem[] }
 type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
 type UploadedPhoto = { url: string; caption: string }
 
-const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0, priceLevel: null })
+const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null })
 const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0 })
 const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', food: [], activities: [] })
 const emptyDest     = (): Destination  => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
@@ -88,9 +88,10 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   )
 }
 
-function FoodRow({ item, index, onUpdate, onRemove, showRating, onSelectPlace }: {
+function FoodRow({ item, index, onUpdate, onUpdateFF, onRemove, showRating, onSelectPlace }: {
   item: FoodItem; index: number
-  onUpdate: (field: keyof Omit<FoodItem, 'priceLevel'>, val: string) => void
+  onUpdate: (field: keyof Omit<FoodItem, 'priceLevel' | 'familyFriendly'>, val: string) => void
+  onUpdateFF: (val: boolean | null) => void
   onRemove: () => void; showRating: boolean
   onSelectPlace?: (placeId: string | null) => void
 }) {
@@ -111,11 +112,17 @@ function FoodRow({ item, index, onUpdate, onRemove, showRating, onSelectPlace }:
           </button>
         ))}
       </div>
-      {item.priceLevel != null && (
-        <p className="text-xs text-green-700 font-medium">
-          {'$'.repeat(item.priceLevel)}<span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
-        </p>
-      )}
+      <div className="flex items-center gap-3 flex-wrap">
+        {item.priceLevel != null && (
+          <p className="text-xs text-green-700 font-medium">
+            {'$'.repeat(item.priceLevel)}<span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
+          </p>
+        )}
+        <button type="button" onClick={() => onUpdateFF(item.familyFriendly === true ? null : true)}
+          className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.familyFriendly === true ? 'bg-green-500 text-white border-green-500' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+          👨‍👩‍👧 Family friendly
+        </button>
+      </div>
       {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
       <div className="grid gap-2">
         <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
@@ -284,6 +291,9 @@ export default function CreatePage() {
   }
   function setFoodPriceLevel(di: number, gi: number, ii: number, val: number | null) {
     updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, priceLevel: val }) }))
+  }
+  function setFoodFamilyFriendly(di: number, gi: number, ii: number, val: boolean | null) {
+    updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, familyFriendly: val }) }))
   }
   async function fetchFoodPriceLevel(di: number, gi: number, ii: number, placeId: string) {
     try {
@@ -542,7 +552,7 @@ export default function CreatePage() {
                       <div className="space-y-2">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🍜 Food & Drink</p>
                         {group.food.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
-                        <div className="space-y-3">{group.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, ii, f, v)} onRemove={() => removeFood(di, gi, ii)} onSelectPlace={id => id ? fetchFoodPriceLevel(di, gi, ii, id) : setFoodPriceLevel(di, gi, ii, null)} />)}</div>
+                        <div className="space-y-3">{group.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, ii, v)} onRemove={() => removeFood(di, gi, ii)} onSelectPlace={id => id ? fetchFoodPriceLevel(di, gi, ii, id) : setFoodPriceLevel(di, gi, ii, null)} />)}</div>
                         <button type="button" onClick={() => addFood(di, gi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add food / drink</button>
                       </div>
                       {/* Activities */}

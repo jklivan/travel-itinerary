@@ -25,7 +25,7 @@ function Stars({ rating }: { rating: number | null }) {
   )
 }
 
-type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; link?: string | null; groupIndex?: number }
+type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number }
 
 function groupItems(items: DestItemRow[]) {
   const map = new Map<number, { hotel: DestItemRow | null; food: DestItemRow[]; activities: DestItemRow[] }>()
@@ -329,11 +329,17 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                                         )}
                                         {!isGuide && <Stars rating={item.rating ?? null} />}
                                       </div>
-                                      {item.priceLevel != null && (
-                                        <p className="text-xs font-medium text-green-700 mt-0.5">
-                                          {'$'.repeat(item.priceLevel)}
-                                          <span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
-                                        </p>
+                                      {(item.priceLevel != null || item.familyFriendly) && (
+                                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                          {item.priceLevel != null && (
+                                            <p className="text-xs font-medium text-green-700">
+                                              {'$'.repeat(item.priceLevel)}<span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
+                                            </p>
+                                          )}
+                                          {item.familyFriendly && (
+                                            <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">👨‍👩‍👧 Family friendly</span>
+                                          )}
+                                        </div>
                                       )}
                                       {item.notes && <p className="text-xs text-gray-500 italic mt-0.5">{item.notes}</p>}
                                       {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
