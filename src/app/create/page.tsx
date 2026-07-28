@@ -6,38 +6,29 @@ import { createItinerary } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import TagPicker from '@/components/TagPicker'
 
-async function extractTextFromFile(file: File): Promise<string> {
+// Returns either plain text (for txt/csv) or base64+mediaType (for pdf/xlsx)
+// All binary parsing happens server-side to avoid mobile compatibility issues
+async function readFileForUpload(file: File): Promise<{ text: string } | { base64: string; mediaType: string }> {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
   const mime = file.type
-
-  if (ext === 'pdf' || mime === 'application/pdf') {
-    const pdfjsLib = await import('pdfjs-dist')
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
-    const arrayBuffer = await file.arrayBuffer()
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-    const pages: string[] = []
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i)
-      const content = await page.getTextContent()
-      pages.push(content.items.map((item) => ('str' in item ? item.str : '')).join(' '))
-    }
-    return pages.join('\n\n')
-  }
-
-  if (ext === 'xlsx' || ext === 'xls' || mime.includes('spreadsheet') || mime.includes('excel')) {
-    const XLSX = await import('xlsx')
-    const arrayBuffer = await file.arrayBuffer()
-    const workbook = XLSX.read(arrayBuffer, { type: 'array' })
-    return workbook.SheetNames.map((name) =>
-      `Sheet: ${name}\n${XLSX.utils.sheet_to_csv(workbook.Sheets[name])}`
-    ).join('\n\n')
-  }
+  const isBinary = ext === 'pdf' || mime === 'application/pdf' ||
+    ext === 'xlsx' || ext === 'xls' || mime.includes('spreadsheet') || mime.includes('excel')
 
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = (e) => resolve((e.target?.result as string) ?? '')
+    if (isBinary) {
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string
+        const base64 = dataUrl.split(',')[1]
+        const mediaType = file.type || (ext === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        resolve({ base64, mediaType })
+      }
+      reader.readAsDataURL(file)
+    } else {
+      reader.onload = (e) => resolve({ text: (e.target?.result as string) ?? '' })
+      reader.readAsText(file)
+    }
     reader.onerror = () => reject(new Error('Failed to read file.'))
-    reader.readAsText(file)
   })
 }
 
@@ -190,8 +181,8 @@ export default function CreatePage() {
   function goBack() { setStep(STEPS[stepIndex - 1]) }
 
   // ── Import ────────────────────────────────────────────────────────────────
-  async function runExtraction(text: string) {
-    if (!text.trim()) throw new Error('No text to extract from.')
+  async function runExtraction(payload: { text: string } | { base64: string; mediaType: string }) {
+    if ('text' in payload && !payload.text.trim()) throw new Error('No text to extract from.')
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 45000)
     let res: Response
@@ -199,7 +190,7 @@ export default function CreatePage() {
       res = await fetch('/api/extract-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify(payload),
         signal: controller.signal,
       })
     } finally {
@@ -237,7 +228,7 @@ export default function CreatePage() {
     setExtracting(true)
     setExtractError(null)
     try {
-      await runExtraction(pasteText)
+      await runExtraction({ text: pasteText })
       setPasteMode(false)
       setPasteText('')
     } catch (err) {
@@ -253,8 +244,8 @@ export default function CreatePage() {
     setExtracting(true)
     setExtractError(null)
     try {
-      const text = await extractTextFromFile(file)
-      await runExtraction(text)
+      const payload = await readFileForUpload(file)
+      await runExtraction(payload)
     } catch (err) {
       setExtractError(err instanceof Error ? err.message : 'Something went wrong.')
     } finally {
