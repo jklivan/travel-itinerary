@@ -191,7 +191,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   const [notes, setNotes] = useState(itinerary.notes ?? '')
   const [highlights, setHighlights] = useState(itinerary.highlights ?? '')
   const [tags, setTags] = useState<string[]>(itinerary.tags ?? [])
-  const [budget, setBudget] = useState(itinerary.budget ?? 0)
   const [destinations, setDestinations] = useState<Destination[]>(
     itinerary.destinations.length > 0
       ? itinerary.destinations.map(d => ({ name: d.name, country: d.country ?? '', notes: d.notes ?? '', groups: itemsToGroups(d.items) }))
@@ -350,25 +349,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         <h2 className="font-semibold text-gray-900 mb-1">✨ Highlights</h2>
         <p className="text-xs text-gray-500 mb-3">Your personal trip summary. Leave blank and we&apos;ll auto-generate one from your 5-star picks.</p>
         <textarea name="highlights" rows={3} className={inputClass} placeholder="The ramen at Ichiran was life-changing…" value={highlights} onChange={e => setHighlights(e.target.value)} />
-      </section>
-
-      {/* Budget */}
-      {budget > 0 && <input type="hidden" name="budget" value={budget} />}
-      <section className="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-1">Budget</h2>
-        <p className="text-xs text-gray-500 mb-3">How expensive was this trip?</p>
-        <div className="flex gap-2">
-          {[1, 2, 3, 4].map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => setBudget(budget === n ? 0 : n)}
-              className={`text-xl px-1 transition-colors ${n <= budget ? 'text-green-600' : 'text-gray-300'}`}
-            >
-              $
-            </button>
-          ))}
-        </div>
       </section>
 
       {/* Destinations */}
