@@ -7,7 +7,7 @@ import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import TagPicker from '@/components/TagPicker'
 import DeleteButton from '@/components/DeleteButton'
 
-type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null }
+type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null }
 type ActivityItem = { name: string; notes: string; link: string; rating: number }
 type StayGroup    = { hotelName: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; food: FoodItem[]; activities: ActivityItem[] }
 type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
@@ -153,7 +153,7 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
   )
 }
 
-const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null })
+const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null })
 const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0 })
 const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', food: [], activities: [] })
 const emptyDest     = (): Destination  => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
@@ -176,7 +176,7 @@ function itemsToGroups(items: ItineraryData['destinations'][0]['items']): StayGr
       hotelRating: hotel?.rating ?? 0,
       hotelPriceLevel: (hotel as { priceLevel?: number | null } | undefined)?.priceLevel ?? null,
       hotelNightlyRate: '',
-      food: grpItems.filter(i => i.type === 'food_drink').map(f => ({ name: f.name, mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: f.priceLevel ?? null, familyFriendly: (f as { familyFriendly?: boolean | null }).familyFriendly ?? null })),
+      food: grpItems.filter(i => i.type === 'food_drink').map(f => ({ name: f.name, mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: f.priceLevel ?? null, familyFriendly: (f as { familyFriendly?: boolean | null }).familyFriendly ?? null, familyFriendlySource: (f as { familyFriendlySource?: string | null }).familyFriendlySource ?? null })),
       activities: grpItems.filter(i => i.type === 'activity').map(a => ({ name: a.name, notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0 })),
     }
   })
@@ -239,7 +239,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
     updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, priceLevel: val }) }))
   }
   function setFoodFamilyFriendly(di: number, gi: number, ii: number, val: boolean | null) {
-    updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, familyFriendly: val }) }))
+    updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, familyFriendly: val, familyFriendlySource: val !== null ? 'user' : null }) }))
   }
   async function fetchFoodPriceLevel(di: number, gi: number, ii: number, placeId: string) {
     try {

@@ -10,7 +10,11 @@ export async function POST(req: NextRequest) {
 
   const reset = req.nextUrl.searchParams.get('reset') === '1'
   if (reset) {
-    await prisma.destItem.updateMany({ where: { type: 'food_drink' }, data: { familyFriendly: null } })
+    // Only reset LLM-inferred values — never touch user-set ones
+    await prisma.destItem.updateMany({
+      where: { type: 'food_drink', familyFriendlySource: { not: 'user' } },
+      data: { familyFriendly: null, familyFriendlySource: null },
+    })
   }
 
   const items = await prisma.destItem.findMany({
@@ -46,8 +50,8 @@ export async function POST(req: NextRequest) {
       results.push(`- ${item.name} → no data`)
       continue
     }
-    const data: { familyFriendly?: boolean; priceLevel?: number } = {}
-    if (ff !== undefined) data.familyFriendly = ff
+    const data: { familyFriendly?: boolean; familyFriendlySource?: string; priceLevel?: number } = {}
+    if (ff !== undefined) { data.familyFriendly = ff; data.familyFriendlySource = 'llm' }
     if (price !== undefined && item.priceLevel === null) data.priceLevel = price
     await prisma.destItem.update({ where: { id: item.id }, data })
     const ffLabel = ff === undefined ? '' : ff ? ' 👨‍👩‍👧' : ' not-ff'

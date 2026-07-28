@@ -11,7 +11,7 @@ import { inferPlaceAttributes } from '@/lib/inferPriceLevels'
 
 export type ItineraryState = { error?: string } | undefined
 
-type FoodInput = { name: string; mealType?: string; notes: string; rating: number; link: string; priceLevel?: number | null; familyFriendly?: boolean | null }
+type FoodInput = { name: string; mealType?: string; notes: string; rating: number; link: string; priceLevel?: number | null; familyFriendly?: boolean | null; familyFriendlySource?: string | null }
 type ActivityInput = { name: string; notes: string; rating: number; link: string }
 type StayGroup = {
   hotelName: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel?: number | null
@@ -19,19 +19,19 @@ type StayGroup = {
 }
 type DestInput = { name: string; country: string; notes: string; groups: StayGroup[] }
 
-type ItemRow = { type: string; name: string; notes: string | null; address: string | null; link: string | null; rating: number | null; priceLevel: number | null; familyFriendly: boolean | null; mealType: string | null; groupIndex: number }
+type ItemRow = { type: string; name: string; notes: string | null; address: string | null; link: string | null; rating: number | null; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; mealType: string | null; groupIndex: number }
 
 function flattenGroups(groups: StayGroup[]): ItemRow[] {
   return groups.flatMap((g, gi) => {
     const rows: ItemRow[] = []
     if (g.hotelName?.trim()) {
-      rows.push({ type: 'hotel', name: g.hotelName.trim(), notes: g.hotelNotes?.trim() || null, address: g.hotelAddress?.trim() || null, link: g.hotelLink?.trim() || null, rating: g.hotelRating > 0 ? g.hotelRating : null, priceLevel: g.hotelPriceLevel ?? null, familyFriendly: null, mealType: null, groupIndex: gi })
+      rows.push({ type: 'hotel', name: g.hotelName.trim(), notes: g.hotelNotes?.trim() || null, address: g.hotelAddress?.trim() || null, link: g.hotelLink?.trim() || null, rating: g.hotelRating > 0 ? g.hotelRating : null, priceLevel: g.hotelPriceLevel ?? null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi })
     }
     for (const f of g.food ?? []) {
-      if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: f.priceLevel ?? null, familyFriendly: f.familyFriendly ?? null, mealType: f.mealType?.trim() || null, groupIndex: gi })
+      if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: f.priceLevel ?? null, familyFriendly: f.familyFriendly ?? null, familyFriendlySource: f.familyFriendlySource ?? null, mealType: f.mealType?.trim() || null, groupIndex: gi })
     }
     for (const a of g.activities ?? []) {
-      if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, mealType: null, groupIndex: gi })
+      if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi })
     }
     return rows
   })
@@ -82,9 +82,12 @@ async function inferMissingAttributes(itineraryId: string): Promise<void> {
   for (const item of items) {
     const priceLevel = priceLevels.get(item.id)
     const ff = familyFriendly.get(item.id)
-    const data: { priceLevel?: number; familyFriendly?: boolean } = {}
+    const data: { priceLevel?: number; familyFriendly?: boolean; familyFriendlySource?: string } = {}
     if (priceLevel !== undefined && item.priceLevel === null) data.priceLevel = priceLevel
-    if (ff !== undefined && item.type === 'food_drink' && item.familyFriendly === null) data.familyFriendly = ff
+    if (ff !== undefined && item.type === 'food_drink' && item.familyFriendly === null) {
+      data.familyFriendly = ff
+      data.familyFriendlySource = 'llm'
+    }
     if (Object.keys(data).length > 0) {
       await prisma.destItem.update({ where: { id: item.id }, data })
     }
