@@ -118,7 +118,7 @@ export async function createItinerary(
   const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, destinations, photos } =
     parseFormData(formData)
 
-  if (!title) return { error: `Title is required. [debug: title=${JSON.stringify(formData.get('title'))}, keys=${[...formData.keys()].join(',')}]` }
+  if (!title) return { error: 'Title is required.' }
 
   // Dates required for itineraries — unless saving as draft
   const isGuide = postType === 'guide'

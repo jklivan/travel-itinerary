@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { upload } from '@vercel/blob/client'
 import { createItinerary } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
@@ -149,7 +149,8 @@ const STEPS = ['start', 'basics', 'places', 'photos', 'details'] as const
 type Step = typeof STEPS[number]
 
 export default function CreatePage() {
-  const [state, action, pending] = useActionState(createItinerary, undefined)
+  const [formError, setFormError] = useState<string | undefined>()
+  const [pending, setPending] = useState(false)
   const [step, setStep] = useState<Step>('start')
 
   const [title, setTitle] = useState('')
@@ -164,21 +165,6 @@ export default function CreatePage() {
   const [tags, setTags] = useState<string[]>([])
   const [destinations, setDestinations] = useState<Destination[]>([emptyDest()])
   const [photos, setPhotos] = useState<UploadedPhoto[]>([])
-  const photosInputRef    = useRef<HTMLInputElement>(null)
-  const titleRef          = useRef<HTMLInputElement>(null)
-  const descriptionRef    = useRef<HTMLInputElement>(null)
-  const startDateRef      = useRef<HTMLInputElement>(null)
-  const endDateRef        = useRef<HTMLInputElement>(null)
-  const notesRef          = useRef<HTMLInputElement>(null)
-  const highlightsRef     = useRef<HTMLInputElement>(null)
-
-  useEffect(() => { if (photosInputRef.current)  photosInputRef.current.value  = JSON.stringify(photos) }, [photos])
-  useEffect(() => { if (titleRef.current)         titleRef.current.value         = title }, [title])
-  useEffect(() => { if (descriptionRef.current)   descriptionRef.current.value   = description }, [description])
-  useEffect(() => { if (startDateRef.current)     startDateRef.current.value     = startDate }, [startDate])
-  useEffect(() => { if (endDateRef.current)       endDateRef.current.value       = endDate }, [endDate])
-  useEffect(() => { if (notesRef.current)         notesRef.current.value         = notes }, [notes])
-  useEffect(() => { if (highlightsRef.current)    highlightsRef.current.value    = highlights }, [highlights])
   const [uploading, setUploading] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState<string | null>(null)
@@ -190,6 +176,29 @@ export default function CreatePage() {
 
   function goNext() { setStep(STEPS[stepIndex + 1]) }
   function goBack() { setStep(STEPS[stepIndex - 1]) }
+
+  // ── Submit ────────────────────────────────────────────────────────────────
+  async function handleSubmit(isDraft: boolean) {
+    setPending(true)
+    setFormError(undefined)
+    const fd = new FormData()
+    fd.set('title', title)
+    fd.set('description', description)
+    fd.set('startDate', startDate)
+    fd.set('endDate', endDate)
+    fd.set('notes', notes)
+    fd.set('highlights', highlights)
+    fd.set('destinations', JSON.stringify(destinations))
+    fd.set('photos', JSON.stringify(photos))
+    fd.set('audience', isAdult ? 'adult' : 'family')
+    fd.set('visibility', isPrivate ? 'private' : 'public')
+    fd.set('postType', postType)
+    fd.set('tags', JSON.stringify(tags))
+    if (isDraft) fd.set('isDraft', '1')
+    const result = await createItinerary(undefined, fd)
+    setPending(false)
+    if (result?.error) setFormError(result.error)
+  }
 
   // ── Import ────────────────────────────────────────────────────────────────
   async function runExtraction(payload: { text: string } | { base64: string; mediaType: string }) {
@@ -349,23 +358,9 @@ export default function CreatePage() {
         </div>
       )}
 
-      <form action={action}>
-        {/* Hidden inputs — always present so form submission works from any step */}
-        <input type="hidden" name="destinations" value={JSON.stringify(destinations)} />
-        <input type="hidden" name="photos" ref={photosInputRef} defaultValue="[]" />
-        <input type="hidden" name="audience" value={isAdult ? 'adult' : 'family'} />
-        <input type="hidden" name="visibility" value={isPrivate ? 'private' : 'public'} />
-        <input type="hidden" name="postType" value={postType} />
-        <input type="hidden" name="tags" value={JSON.stringify(tags)} />
-        <input type="hidden" name="title"       ref={titleRef}       defaultValue="" />
-        <input type="hidden" name="description" ref={descriptionRef} defaultValue="" />
-        <input type="hidden" name="startDate"   ref={startDateRef}   defaultValue="" />
-        <input type="hidden" name="endDate"     ref={endDateRef}     defaultValue="" />
-        <input type="hidden" name="notes"       ref={notesRef}       defaultValue="" />
-        <input type="hidden" name="highlights"  ref={highlightsRef}  defaultValue="" />
-
-        {state?.error && (
-          <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{state.error}</p>
+      <form onSubmit={e => e.preventDefault()}>
+        {formError && (
+          <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{formError}</p>
         )}
 
         {/* ── START ──────────────────────────────────────────────────────── */}
@@ -646,11 +641,11 @@ export default function CreatePage() {
             </section>
 
             <div className="flex gap-3 pt-2">
-              <button type="submit" name="isDraft" value="1" disabled={pending || uploading}
+              <button type="button" onClick={() => handleSubmit(true)} disabled={pending || uploading}
                 className="flex-1 bg-white text-gray-700 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-colors disabled:opacity-60">
                 {pending ? 'Saving…' : 'Save as Draft'}
               </button>
-              <button type="submit" disabled={pending || uploading || !hasItems}
+              <button type="button" onClick={() => handleSubmit(false)} disabled={pending || uploading || !hasItems}
                 title={!hasItems ? 'Add at least one hotel, restaurant, or activity first' : undefined}
                 className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60">
                 {pending ? 'Publishing…' : 'Publish'}
