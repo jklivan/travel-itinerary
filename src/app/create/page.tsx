@@ -10,7 +10,6 @@ async function extractTextFromFile(file: File): Promise<string> {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
   const mime = file.type
 
-  // PDF
   if (ext === 'pdf' || mime === 'application/pdf') {
     const pdfjsLib = await import('pdfjs-dist')
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
@@ -25,7 +24,6 @@ async function extractTextFromFile(file: File): Promise<string> {
     return pages.join('\n\n')
   }
 
-  // Excel
   if (ext === 'xlsx' || ext === 'xls' || mime.includes('spreadsheet') || mime.includes('excel')) {
     const XLSX = await import('xlsx')
     const arrayBuffer = await file.arrayBuffer()
@@ -35,7 +33,6 @@ async function extractTextFromFile(file: File): Promise<string> {
     ).join('\n\n')
   }
 
-  // CSV or plain text — read as-is
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = (e) => resolve((e.target?.result as string) ?? '')
@@ -55,36 +52,19 @@ const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rati
 const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', food: [], activities: [] })
 const emptyDest     = (): Destination  => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
 
-const inputClass =
-  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+const inputClass = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
 const labelClass = 'block text-sm font-medium text-gray-900 mb-1'
-
-function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  return (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button key={star} type="button"
-          onClick={() => onChange(value === star ? 0 : star)}
-          className="text-lg leading-none focus:outline-none"
-          aria-label={`${star} star${star !== 1 ? 's' : ''}`}>
-          <span className={star <= value ? 'text-yellow-400' : 'text-gray-300'}>★</span>
-        </button>
-      ))}
-    </div>
-  )
-}
-
 const subInputClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400'
-const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] as const
 
-const MEAL_TYPE_META: Record<string, { emoji: string; active: string; pill: string }> = {
-  breakfast: { emoji: '🍳', active: 'bg-yellow-500 text-white border-yellow-500', pill: 'bg-yellow-100 text-yellow-700' },
-  lunch:     { emoji: '☀️', active: 'bg-orange-500 text-white border-orange-500', pill: 'bg-orange-100 text-orange-700' },
-  dinner:    { emoji: '🌙', active: 'bg-purple-600 text-white border-purple-600', pill: 'bg-purple-100 text-purple-700' },
-  drinks:    { emoji: '🍹', active: 'bg-blue-500 text-white border-blue-500',     pill: 'bg-blue-100 text-blue-700' },
-  coffee:    { emoji: '☕', active: 'bg-amber-700 text-white border-amber-700',   pill: 'bg-amber-100 text-amber-800' },
-  dessert:   { emoji: '🍰', active: 'bg-pink-500 text-white border-pink-500',     pill: 'bg-pink-100 text-pink-700' },
-  bakery:    { emoji: '🥐', active: 'bg-orange-400 text-white border-orange-400', pill: 'bg-orange-50 text-orange-600' },
+const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] as const
+const MEAL_TYPE_META: Record<string, { emoji: string; active: string }> = {
+  breakfast: { emoji: '🍳', active: 'bg-yellow-500 text-white border-yellow-500' },
+  lunch:     { emoji: '☀️', active: 'bg-orange-500 text-white border-orange-500' },
+  dinner:    { emoji: '🌙', active: 'bg-purple-600 text-white border-purple-600' },
+  drinks:    { emoji: '🍹', active: 'bg-blue-500 text-white border-blue-500' },
+  coffee:    { emoji: '☕', active: 'bg-amber-700 text-white border-amber-700' },
+  dessert:   { emoji: '🍰', active: 'bg-pink-500 text-white border-pink-500' },
+  bakery:    { emoji: '🥐', active: 'bg-orange-400 text-white border-orange-400' },
 }
 
 function nightlyRateToTier(rate: number): number {
@@ -95,42 +75,45 @@ function nightlyRateToTier(rate: number): number {
   return 5
 }
 
+function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button key={star} type="button" onClick={() => onChange(value === star ? 0 : star)}
+          className="text-lg leading-none focus:outline-none" aria-label={`${star} star`}>
+          <span className={star <= value ? 'text-yellow-400' : 'text-gray-300'}>★</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function FoodRow({ item, index, onUpdate, onRemove, showRating, onSelectPlace }: {
   item: FoodItem; index: number
   onUpdate: (field: keyof Omit<FoodItem, 'priceLevel'>, val: string) => void
   onRemove: () => void; showRating: boolean
   onSelectPlace?: (placeId: string | null) => void
 }) {
-  const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
   return (
-    <div className={`rounded-xl border border-l-4 border-l-orange-400 ${rowBg} p-4 space-y-3`}>
+    <div className={`rounded-xl border border-l-4 border-l-orange-400 ${index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'} p-4 space-y-3`}>
       <div className="flex gap-2 items-start">
-        <PlacesAutocomplete
-          value={item.name}
+        <PlacesAutocomplete value={item.name}
           onChange={val => { onUpdate('name', val); if (!val) onSelectPlace?.(null) }}
           onSelect={(_, __, placeId) => { if (placeId) onSelectPlace?.(placeId) }}
-          type="restaurant"
-          placeholder="e.g. Ramen Ichiran, Rooftop bar, Street market"
-          className={inputClass}
-        />
+          type="restaurant" placeholder="e.g. Ramen Ichiran, Rooftop bar, Street market" className={inputClass} />
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
       <div className="flex gap-1 flex-wrap">
-        {MEAL_TYPES.map(mt => {
-          const meta = MEAL_TYPE_META[mt]
-          return (
-            <button key={mt} type="button" onClick={() => onUpdate('mealType', item.mealType === mt ? '' : mt)}
-              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${item.mealType === mt ? meta.active : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
-              {meta.emoji} {mt}
-            </button>
-          )
-        })}
+        {MEAL_TYPES.map(mt => (
+          <button key={mt} type="button" onClick={() => onUpdate('mealType', item.mealType === mt ? '' : mt)}
+            className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${item.mealType === mt ? MEAL_TYPE_META[mt].active : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+            {MEAL_TYPE_META[mt].emoji} {mt}
+          </button>
+        ))}
       </div>
       {item.priceLevel != null && (
-        <p className="text-xs text-gray-500">
-          {'$'.repeat(item.priceLevel)}
-          <span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
-          <span className="ml-1.5 text-gray-400">· Google price level</span>
+        <p className="text-xs text-green-700 font-medium">
+          {'$'.repeat(item.priceLevel)}<span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
         </p>
       )}
       {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
@@ -147,17 +130,11 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
   onUpdate: (field: keyof ActivityItem, val: string) => void
   onRemove: () => void; showRating: boolean
 }) {
-  const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
   return (
-    <div className={`rounded-xl border border-l-4 border-l-green-400 ${rowBg} p-4 space-y-3`}>
+    <div className={`rounded-xl border border-l-4 border-l-green-400 ${index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'} p-4 space-y-3`}>
       <div className="flex gap-2 items-start">
-        <PlacesAutocomplete
-          value={item.name}
-          onChange={val => onUpdate('name', val)}
-          type="activity"
-          placeholder="e.g. Temple tour, Hiking, Museum visit"
-          className={inputClass}
-        />
+        <PlacesAutocomplete value={item.name} onChange={val => onUpdate('name', val)}
+          type="activity" placeholder="e.g. Temple tour, Hiking, Museum visit" className={inputClass} />
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
       {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
@@ -169,8 +146,13 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
   )
 }
 
+// ── Steps ─────────────────────────────────────────────────────────────────────
+const STEPS = ['start', 'basics', 'places', 'photos', 'details'] as const
+type Step = typeof STEPS[number]
+
 export default function CreatePage() {
   const [state, action, pending] = useActionState(createItinerary, undefined)
+  const [step, setStep] = useState<Step>('start')
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -180,6 +162,7 @@ export default function CreatePage() {
   const [isAdult, setIsAdult] = useState(false)
   const [isPrivate, setIsPrivate] = useState(false)
   const [notes, setNotes] = useState('')
+  const [highlights, setHighlights] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [destinations, setDestinations] = useState<Destination[]>([emptyDest()])
   const [photos, setPhotos] = useState<UploadedPhoto[]>([])
@@ -193,7 +176,13 @@ export default function CreatePage() {
   const [pasteMode, setPasteMode] = useState(false)
   const [pasteText, setPasteText] = useState('')
 
-  // ── Shared extraction logic ───────────────────────────────────────────────
+  const showRating = postType === 'itinerary'
+  const stepIndex = STEPS.indexOf(step)
+
+  function goNext() { setStep(STEPS[stepIndex + 1]) }
+  function goBack() { setStep(STEPS[stepIndex - 1]) }
+
+  // ── Import ────────────────────────────────────────────────────────────────
   async function runExtraction(text: string) {
     if (!text.trim()) throw new Error('No text to extract from.')
     const controller = new AbortController()
@@ -227,15 +216,15 @@ export default function CreatePage() {
           const food   = items.filter(i => i.type === 'food_drink').map(f => ({ name: f.name ?? '', mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: 0, priceLevel: null }))
           const acts   = items.filter(i => i.type === 'activity').map(a => ({ name: a.name ?? '', notes: a.notes ?? '', link: a.link ?? '', rating: 0 }))
           const groups: StayGroup[] = hotels.length === 0
-            ? [{ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, food, activities: acts }]
+            ? [{ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', food, activities: acts }]
             : hotels.map((h, hi) => ({ hotelName: h.name ?? '', hotelNotes: h.notes ?? '', hotelLink: h.link ?? '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', food: hi === 0 ? food : [], activities: hi === 0 ? acts : [] }))
-          return { name: d.name ?? '', country: d.country ?? '', groups }
+          return { name: d.name ?? '', country: d.country ?? '', notes: '', groups }
         })
       )
     }
+    setStep('basics')
   }
 
-  // ── Paste text extraction ─────────────────────────────────────────────────
   async function handlePasteExtract() {
     if (!pasteText.trim()) return
     setExtracting(true)
@@ -251,7 +240,6 @@ export default function CreatePage() {
     }
   }
 
-  // ── Document import ───────────────────────────────────────────────────────
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -320,14 +308,10 @@ export default function CreatePage() {
       for (const file of Array.from(files)) {
         const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : ''
         const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
-        const blob = await upload(uniqueName, file, {
-          access: 'private',
-          handleUploadUrl: '/api/upload',
-        })
-        const proxyUrl = `/api/img?url=${encodeURIComponent(blob.url)}`
-        uploaded.push({ url: proxyUrl, caption: '' })
+        const blob = await upload(uniqueName, file, { access: 'private', handleUploadUrl: '/api/upload' })
+        uploaded.push({ url: `/api/img?url=${encodeURIComponent(blob.url)}`, caption: '' })
       }
-      setPhotos((p) => [...p, ...uploaded])
+      setPhotos(p => [...p, ...uploaded])
     } catch (err) {
       console.error('[upload] error:', err)
     } finally {
@@ -335,366 +319,347 @@ export default function CreatePage() {
       e.target.value = ''
     }
   }
-  function removePhoto(i: number) { setPhotos((p) => p.filter((_, idx) => idx !== i)) }
-  function updateCaption(i: number, val: string) {
-    setPhotos((p) => p.map((ph, idx) => idx === i ? { ...ph, caption: val } : ph))
-  }
+  function removePhoto(i: number) { setPhotos(p => p.filter((_, idx) => idx !== i)) }
+  function updateCaption(i: number, val: string) { setPhotos(p => p.map((ph, idx) => idx === i ? { ...ph, caption: val } : ph)) }
 
-  const showRating = postType === 'itinerary'
+  const hasItems = destinations.some(d => d.groups.some(g => g.hotelName.trim() || g.food.some(f => f.name.trim()) || g.activities.some(a => a.name.trim())))
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Post an Itinerary</h1>
-      <p className="text-gray-500 text-sm mb-6">Share your trip with the world.</p>
+    <div className="max-w-xl mx-auto px-4 py-8">
 
-      {/* ── Document Import ─────────────────────────────────────────────── */}
-      <div className="mb-8 bg-blue-50 border border-blue-200 rounded-2xl p-5">
-        <div className="flex items-start gap-3 mb-3">
-          <span className="text-2xl">📄</span>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-blue-900 text-sm">Import itinerary</p>
-            <p className="text-xs text-blue-600 mt-0.5">
-              Upload a file or paste text (email, notes, etc.) and we&apos;ll fill in the fields automatically.
-            </p>
-          </div>
+      {/* Progress bar (hidden on start step) */}
+      {step !== 'start' && (
+        <div className="mb-6 flex gap-1.5">
+          {(['basics', 'places', 'photos', 'details'] as const).map((s, i) => (
+            <div key={s} className={`h-1 flex-1 rounded-full transition-colors ${stepIndex > i + 1 ? 'bg-blue-500' : stepIndex === i + 1 ? 'bg-blue-500' : 'bg-gray-200'}`} />
+          ))}
         </div>
+      )}
 
-        {/* Buttons row */}
-        <div className="flex gap-2 mb-3">
-          <label className={`flex-1 text-center cursor-pointer rounded-lg px-4 py-2 text-sm font-medium transition-colors border ${
-            extracting
-              ? 'bg-blue-100 text-blue-300 border-blue-200 cursor-not-allowed'
-              : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-600 hover:text-white hover:border-blue-600'
-          }`}>
-            {extracting ? 'Extracting…' : '📎 Upload file'}
-            <input type="file"
-              accept=".pdf,.xlsx,.xls,.csv,.txt,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain"
-              className="sr-only"
-              onChange={handleImport} disabled={extracting} />
-          </label>
-          <button
-            type="button"
-            disabled={extracting}
-            onClick={() => { setPasteMode((v) => !v); setExtractError(null) }}
-            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors border ${
-              pasteMode
-                ? 'bg-blue-600 text-white border-blue-600'
-                : extracting
-                ? 'bg-blue-100 text-blue-300 border-blue-200 cursor-not-allowed'
-                : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-600 hover:text-white hover:border-blue-600'
-            }`}>
-            📋 Paste text
-          </button>
-        </div>
-
-        {/* Paste text area */}
-        {pasteMode && (
-          <div className="space-y-2">
-            <textarea
-              value={pasteText}
-              onChange={(e) => setPasteText(e.target.value)}
-              placeholder="Paste your itinerary text here — email confirmation, notes, booking details…"
-              rows={6}
-              className="w-full rounded-lg border border-blue-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white"
-            />
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handlePasteExtract}
-                disabled={extracting || !pasteText.trim()}
-                className="flex-1 bg-blue-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
-                {extracting ? 'Extracting…' : 'Extract itinerary'}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setPasteMode(false); setPasteText(''); setExtractError(null) }}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg transition-colors">
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        {extractError && (
-          <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
-            {extractError}
-          </p>
-        )}
-        {extracting && (
-          <p className="mt-2 text-xs text-blue-700 animate-pulse">Reading your itinerary…</p>
-        )}
-      </div>
-
-      <form action={action} className="space-y-8">
+      <form action={action}>
+        {/* Hidden inputs — always present so form submission works from any step */}
         <input type="hidden" name="destinations" value={JSON.stringify(destinations)} />
         <input type="hidden" name="photos" ref={photosInputRef} defaultValue="[]" />
         <input type="hidden" name="audience" value={isAdult ? 'adult' : 'family'} />
         <input type="hidden" name="visibility" value={isPrivate ? 'private' : 'public'} />
         <input type="hidden" name="postType" value={postType} />
+        <input type="hidden" name="tags" value={JSON.stringify(tags)} />
 
         {state?.error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-            {state.error}
-          </p>
+          <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{state.error}</p>
         )}
 
-        {/* ── Basic Info ─────────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Basic Info</h2>
+        {/* ── START ──────────────────────────────────────────────────────── */}
+        {step === 'start' && (
+          <div className="space-y-5">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">New post</h1>
+              <p className="text-sm text-gray-500">Share a trip or travel guide.</p>
+            </div>
+
+            {/* Import card */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+              <div>
+                <p className="font-semibold text-gray-900 mb-0.5">📄 Import</p>
+                <p className="text-xs text-gray-500">Upload a PDF, spreadsheet, or paste an email / booking confirmation — we&apos;ll fill everything in automatically.</p>
+              </div>
+
+              <div className="flex gap-2">
+                <label className={`flex-1 text-center cursor-pointer rounded-xl px-4 py-3 text-sm font-medium transition-colors border ${
+                  extracting ? 'bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-blue-600 hover:text-white hover:border-blue-600'
+                }`}>
+                  {extracting ? 'Reading…' : '📎 Upload file'}
+                  <input type="file"
+                    accept=".pdf,.xlsx,.xls,.csv,.txt,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain"
+                    className="sr-only" onChange={handleImport} disabled={extracting} />
+                </label>
+                <button type="button" disabled={extracting}
+                  onClick={() => { setPasteMode(v => !v); setExtractError(null) }}
+                  className={`flex-1 rounded-xl px-4 py-3 text-sm font-medium transition-colors border ${
+                    pasteMode ? 'bg-blue-600 text-white border-blue-600' :
+                    extracting ? 'bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed' :
+                    'bg-gray-50 text-gray-700 border-gray-200 hover:bg-blue-600 hover:text-white hover:border-blue-600'
+                  }`}>
+                  📋 Paste text
+                </button>
+              </div>
+
+              {pasteMode && (
+                <div className="space-y-2">
+                  <textarea value={pasteText} onChange={e => setPasteText(e.target.value)}
+                    placeholder="Paste your itinerary — email confirmation, notes, booking details…"
+                    rows={6}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                  <div className="flex gap-2">
+                    <button type="button" onClick={handlePasteExtract} disabled={extracting || !pasteText.trim()}
+                      className="flex-1 bg-blue-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
+                      {extracting ? 'Extracting…' : 'Extract itinerary'}
+                    </button>
+                    <button type="button" onClick={() => { setPasteMode(false); setPasteText(''); setExtractError(null) }}
+                      className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg transition-colors">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {extractError && (
+                <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{extractError}</p>
+              )}
+              {extracting && (
+                <p className="text-xs text-blue-600 animate-pulse">Reading your itinerary…</p>
+              )}
+            </div>
+
+            <button type="button" onClick={() => setStep('basics')}
+              className="w-full py-3.5 rounded-2xl border-2 border-dashed border-gray-300 text-sm font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
+              Start from scratch →
+            </button>
+          </div>
+        )}
+
+        {/* ── BASICS ─────────────────────────────────────────────────────── */}
+        {step === 'basics' && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+            <h2 className="font-semibold text-gray-900 text-lg">What are you posting?</h2>
+
             <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium">
               <button type="button" onClick={() => setPostType('itinerary')}
-                className={`px-3 py-1.5 rounded-lg transition-colors ${postType === 'itinerary' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
+                className={`flex-1 py-2 rounded-lg transition-colors ${postType === 'itinerary' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
                 ✈️ Itinerary
               </button>
               <button type="button" onClick={() => setPostType('guide')}
-                className={`px-3 py-1.5 rounded-lg transition-colors ${postType === 'guide' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
+                className={`flex-1 py-2 rounded-lg transition-colors ${postType === 'guide' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
                 📖 Guide
               </button>
             </div>
-          </div>
-          {postType === 'guide' && (
-            <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-              Guide mode — share your recommendations without dates or personal ratings.
-            </p>
-          )}
-          <div>
-            <label htmlFor="title" className={labelClass}>Title *</label>
-            <input id="title" name="title" type="text" required className={inputClass}
-              placeholder="e.g. 2 weeks through Southeast Asia"
-              value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-          <div>
-            <label htmlFor="description" className={labelClass}>Short description</label>
-            <textarea id="description" name="description" rows={2} className={inputClass}
-              placeholder="A brief summary of the trip…"
-              value={description} onChange={(e) => setDescription(e.target.value)} />
-          </div>
-          {postType === 'itinerary' && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="startDate" className={labelClass}>Start date *</label>
-                <input id="startDate" name="startDate" type="date" required className={inputClass}
-                  value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              </div>
-              <div>
-                <label htmlFor="endDate" className={labelClass}>End date *</label>
-                <input id="endDate" name="endDate" type="date" required className={inputClass}
-                  value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-              </div>
-            </div>
-          )}
-          <label className="flex items-center gap-3 cursor-pointer select-none">
-            <div
-              onClick={() => setIsAdult((v) => !v)}
-              className={`w-10 h-6 rounded-full transition-colors relative ${!isAdult ? 'bg-green-500' : 'bg-gray-200'}`}>
-              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${!isAdult ? 'translate-x-5' : 'translate-x-1'}`} />
-            </div>
-            <span className="text-sm text-gray-900">Family friendly</span>
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer select-none">
-            <div
-              onClick={() => setIsPrivate((v) => !v)}
-              className={`w-10 h-6 rounded-full transition-colors relative ${isPrivate ? 'bg-gray-700' : 'bg-gray-200'}`}>
-              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${isPrivate ? 'translate-x-5' : 'translate-x-1'}`} />
-            </div>
-            <span className="text-sm text-gray-900">
-              {isPrivate ? 'Private — only visible to you' : 'Public — visible to everyone'}
-            </span>
-          </label>
-        </section>
 
-        {/* ── Destinations ───────────────────────────────────────────── */}
-        <section className="space-y-4">
-          <h2 className="font-semibold text-gray-900 text-lg">Destinations</h2>
+            <div>
+              <label htmlFor="title" className={labelClass}>Title *</label>
+              <input id="title" name="title" type="text" required className={inputClass}
+                placeholder="e.g. 10 days in Japan" value={title} onChange={e => setTitle(e.target.value)} />
+            </div>
 
-          {destinations.map((dest, di) => (
-            <div key={di} className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-              {/* City / Country */}
-              <div className="flex gap-3 items-start">
-                <div className="flex-1 grid grid-cols-2 gap-3">
-                  <PlacesAutocomplete
-                    value={dest.name}
-                    onChange={val => updateDest(di, 'name', val)}
-                    onSelect={(main, secondary) => setDestinations(d => d.map((dst, idx) => idx === di ? { ...dst, name: main, country: secondary || dst.country } : dst))}
-                    type="destination"
-                    placeholder={`City / place${destinations.length > 1 ? ` ${di + 1}` : ''}`}
-                    className={inputClass}
-                  />
-                  <input type="text" value={dest.country} onChange={e => updateDest(di, 'country', e.target.value)}
-                    className={inputClass} placeholder="Country" />
+            <div>
+              <label htmlFor="description" className={labelClass}>Short description <span className="text-gray-400 font-normal">(optional)</span></label>
+              <textarea id="description" name="description" rows={2} className={inputClass}
+                placeholder="A quick summary…" value={description} onChange={e => setDescription(e.target.value)} />
+            </div>
+
+            {postType === 'itinerary' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="startDate" className={labelClass}>Start date *</label>
+                  <input id="startDate" name="startDate" type="date" required className={inputClass} value={startDate} onChange={e => setStartDate(e.target.value)} />
                 </div>
-                {destinations.length > 1 && (
-                  <button type="button" onClick={() => removeDest(di)} className="mt-1 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
-                )}
+                <div>
+                  <label htmlFor="endDate" className={labelClass}>End date *</label>
+                  <input id="endDate" name="endDate" type="date" required className={inputClass} value={endDate} onChange={e => setEndDate(e.target.value)} />
+                </div>
               </div>
+            )}
 
-              <textarea
-                value={dest.notes}
-                onChange={e => updateDest(di, 'notes', e.target.value)}
-                rows={2}
-                className={inputClass}
-                placeholder="Overview / notes for this destination (optional)"
-              />
+            <div className="space-y-3 pt-1">
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <div onClick={() => setIsAdult(v => !v)} className={`w-10 h-6 rounded-full transition-colors relative ${!isAdult ? 'bg-green-500' : 'bg-gray-200'}`}>
+                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${!isAdult ? 'translate-x-5' : 'translate-x-1'}`} />
+                </div>
+                <span className="text-sm text-gray-900">Family friendly</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <div onClick={() => setIsPrivate(v => !v)} className={`w-10 h-6 rounded-full transition-colors relative ${isPrivate ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${isPrivate ? 'translate-x-5' : 'translate-x-1'}`} />
+                </div>
+                <span className="text-sm text-gray-900">{isPrivate ? 'Private' : 'Public'}</span>
+              </label>
+            </div>
+          </div>
+        )}
 
-              {/* Stays */}
-              {dest.groups.map((group, gi) => (
-                <div key={gi} className="rounded-xl border border-gray-200 overflow-hidden">
-                  {dest.groups.length > 1 && (
-                    <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
-                      <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Stay {gi + 1}</span>
-                      <button type="button" onClick={() => removeGroup(di, gi)} className="text-xs text-red-400 hover:text-red-600 font-medium">Remove stay</button>
-                    </div>
+        {/* ── PLACES ─────────────────────────────────────────────────────── */}
+        {step === 'places' && (
+          <div className="space-y-4">
+            <h2 className="font-semibold text-gray-900 text-lg">Where did you go?</h2>
+
+            {destinations.map((dest, di) => (
+              <div key={di} className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+                <div className="flex gap-3 items-start">
+                  <div className="flex-1 grid grid-cols-2 gap-3">
+                    <PlacesAutocomplete value={dest.name}
+                      onChange={val => updateDest(di, 'name', val)}
+                      onSelect={(main, secondary) => setDestinations(d => d.map((dst, idx) => idx === di ? { ...dst, name: main, country: secondary || dst.country } : dst))}
+                      type="destination" placeholder={`City / place${destinations.length > 1 ? ` ${di + 1}` : ''}`} className={inputClass} />
+                    <input type="text" value={dest.country} onChange={e => updateDest(di, 'country', e.target.value)} className={inputClass} placeholder="Country" />
+                  </div>
+                  {destinations.length > 1 && (
+                    <button type="button" onClick={() => removeDest(di)} className="mt-1 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
                   )}
-                  <div className="p-4 space-y-4">
-                    {/* Hotel */}
-                    <div className="bg-blue-50 rounded-xl border border-l-4 border-l-blue-400 p-3 space-y-2">
-                      <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">🏨 Hotel / Accommodation</p>
-                      <PlacesAutocomplete
-                        value={group.hotelName}
-                        onChange={val => { updateHotel(di, gi, 'hotelName', val); if (!val) updGroup(di, gi, g => ({ ...g, hotelPriceLevel: null, hotelNightlyRate: '' })) }}
-                        onSelect={(_, __, placeId) => { if (placeId) fetchHotelPriceLevel(di, gi, placeId) }}
-                        type="hotel"
-                        placeholder="Hotel name (optional)"
-                        className={inputClass}
-                      />
-                      {group.hotelName && (<>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 shrink-0">$/night</span>
-                          <input
-                            type="number" min="0" step="1"
-                            value={group.hotelNightlyRate}
-                            onChange={e => {
-                              const val = e.target.value
-                              updGroup(di, gi, g => {
-                                const rate = parseFloat(val)
-                                return { ...g, hotelNightlyRate: val, hotelPriceLevel: val && !isNaN(rate) && rate > 0 ? nightlyRateToTier(rate) : g.hotelPriceLevel }
-                              })
-                            }}
-                            className={subInputClass}
-                            placeholder="What did you pay per night? (optional)"
-                          />
-                        </div>
-                        {group.hotelPriceLevel !== null && (
-                          <p className="text-xs text-green-700 font-medium">
-                            {'$'.repeat(group.hotelPriceLevel)}
-                            <span className="text-gray-300">{'$'.repeat(5 - group.hotelPriceLevel)}</span>
-                          </p>
-                        )}
-                        {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600">Rate it!</span><StarRating value={group.hotelRating} onChange={v => updateHotel(di, gi, 'hotelRating', String(v))} /></div>}
-                        <input type="text" value={group.hotelNotes} onChange={e => updateHotel(di, gi, 'hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
-                        <input type="url" value={group.hotelLink} onChange={e => updateHotel(di, gi, 'hotelLink', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
-                      </>)}
-                    </div>
-                    {/* Food & Drink */}
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🍜 Food & Drink</p>
-                      {group.food.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
-                      <div className="space-y-3">{group.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, ii, f, v)} onRemove={() => removeFood(di, gi, ii)} onSelectPlace={(id) => id ? fetchFoodPriceLevel(di, gi, ii, id) : setFoodPriceLevel(di, gi, ii, null)} />)}</div>
-                      <button type="button" onClick={() => addFood(di, gi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add food / drink</button>
-                    </div>
-                    {/* Activities */}
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🎯 Activities</p>
-                      {group.activities.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
-                      <div className="space-y-3">{group.activities.map((item, ii) => <ActivityRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, ii, f, v)} onRemove={() => removeActivity(di, gi, ii)} />)}</div>
-                      <button type="button" onClick={() => addActivity(di, gi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add activity</button>
+                </div>
+
+                <textarea value={dest.notes} onChange={e => updateDest(di, 'notes', e.target.value)} rows={2} className={inputClass} placeholder="Notes for this destination (optional)" />
+
+                {dest.groups.map((group, gi) => (
+                  <div key={gi} className="rounded-xl border border-gray-200 overflow-hidden">
+                    {dest.groups.length > 1 && (
+                      <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Stay {gi + 1}</span>
+                        <button type="button" onClick={() => removeGroup(di, gi)} className="text-xs text-red-400 hover:text-red-600 font-medium">Remove</button>
+                      </div>
+                    )}
+                    <div className="p-4 space-y-4">
+                      {/* Hotel */}
+                      <div className="bg-blue-50 rounded-xl border border-l-4 border-l-blue-400 p-3 space-y-2">
+                        <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">🏨 Hotel / Accommodation</p>
+                        <PlacesAutocomplete value={group.hotelName}
+                          onChange={val => { updateHotel(di, gi, 'hotelName', val); if (!val) updGroup(di, gi, g => ({ ...g, hotelPriceLevel: null, hotelNightlyRate: '' })) }}
+                          onSelect={(_, __, placeId) => { if (placeId) fetchHotelPriceLevel(di, gi, placeId) }}
+                          type="hotel" placeholder="Hotel name (optional)" className={inputClass} />
+                        {group.hotelName && (<>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500 shrink-0">$/night</span>
+                            <input type="number" min="0" step="1" value={group.hotelNightlyRate}
+                              onChange={e => {
+                                const val = e.target.value
+                                updGroup(di, gi, g => {
+                                  const rate = parseFloat(val)
+                                  return { ...g, hotelNightlyRate: val, hotelPriceLevel: val && !isNaN(rate) && rate > 0 ? nightlyRateToTier(rate) : g.hotelPriceLevel }
+                                })
+                              }}
+                              className={subInputClass} placeholder="What did you pay per night? (optional)" />
+                          </div>
+                          {group.hotelPriceLevel !== null && (
+                            <p className="text-xs text-green-700 font-medium">
+                              {'$'.repeat(group.hotelPriceLevel)}<span className="text-gray-300">{'$'.repeat(5 - group.hotelPriceLevel)}</span>
+                            </p>
+                          )}
+                          {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600">Rate it!</span><StarRating value={group.hotelRating} onChange={v => updateHotel(di, gi, 'hotelRating', String(v))} /></div>}
+                          <input type="text" value={group.hotelNotes} onChange={e => updateHotel(di, gi, 'hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
+                          <input type="url" value={group.hotelLink} onChange={e => updateHotel(di, gi, 'hotelLink', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
+                        </>)}
+                      </div>
+                      {/* Food */}
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🍜 Food & Drink</p>
+                        {group.food.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
+                        <div className="space-y-3">{group.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, ii, f, v)} onRemove={() => removeFood(di, gi, ii)} onSelectPlace={id => id ? fetchFoodPriceLevel(di, gi, ii, id) : setFoodPriceLevel(di, gi, ii, null)} />)}</div>
+                        <button type="button" onClick={() => addFood(di, gi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add food / drink</button>
+                      </div>
+                      {/* Activities */}
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🎯 Activities</p>
+                        {group.activities.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
+                        <div className="space-y-3">{group.activities.map((item, ii) => <ActivityRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, ii, f, v)} onRemove={() => removeActivity(di, gi, ii)} />)}</div>
+                        <button type="button" onClick={() => addActivity(di, gi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add activity</button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
 
-              <button type="button" onClick={() => addGroup(di)}
-                className="w-full text-sm text-gray-500 hover:text-blue-600 border border-dashed border-gray-300 hover:border-blue-300 rounded-xl py-3 transition-colors">
-                + Add another stay (different hotel)
+                <button type="button" onClick={() => addGroup(di)}
+                  className="w-full text-sm text-gray-500 hover:text-blue-600 border border-dashed border-gray-300 hover:border-blue-300 rounded-xl py-2.5 transition-colors">
+                  + Add another stay
+                </button>
+              </div>
+            ))}
+
+            <button type="button" onClick={addDest}
+              className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-2xl py-3 transition-colors">
+              + Add destination
+            </button>
+          </div>
+        )}
+
+        {/* ── PHOTOS ─────────────────────────────────────────────────────── */}
+        {step === 'photos' && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+            <div>
+              <h2 className="font-semibold text-gray-900 text-lg mb-1">Photos</h2>
+              <p className="text-xs text-gray-500">Add photos from your trip — they&apos;ll appear as a scrollable strip.</p>
+            </div>
+            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-8 cursor-pointer hover:border-blue-400 transition-colors">
+              <span className="text-2xl mb-2">📸</span>
+              <span className="text-sm font-medium text-gray-700">{uploading ? 'Uploading…' : 'Click to upload photos'}</span>
+              <span className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP, GIF</span>
+              <input type="file" accept="image/*" multiple className="sr-only" onChange={handlePhotoUpload} disabled={uploading} />
+            </label>
+            {photos.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {photos.map((photo, i) => (
+                  <div key={i} className="relative group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photo.url} alt="" className="w-full h-32 object-cover rounded-lg" />
+                    <button type="button" onClick={() => removePhoto(i)}
+                      className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                    <input type="text" value={photo.caption} onChange={e => updateCaption(i, e.target.value)}
+                      className="mt-1 w-full rounded border border-gray-200 px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      placeholder="Caption (optional)" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── DETAILS ────────────────────────────────────────────────────── */}
+        {step === 'details' && (
+          <div className="space-y-4">
+            <h2 className="font-semibold text-gray-900 text-lg">Finishing touches</h2>
+
+            <section className="bg-white rounded-2xl border border-gray-200 p-5">
+              <h3 className="font-medium text-gray-900 mb-1 text-sm">Tags</h3>
+              <p className="text-xs text-gray-500 mb-3">Pick what best describes this trip</p>
+              <TagPicker selected={tags} onChange={setTags} />
+            </section>
+
+            <section className="bg-amber-50 rounded-2xl border border-amber-200 p-5">
+              <h3 className="font-medium text-gray-900 mb-1 text-sm">✨ Highlights <span className="font-normal text-gray-400">(optional)</span></h3>
+              <p className="text-xs text-gray-500 mb-3">Leave blank and we&apos;ll auto-generate one from your 5-star picks.</p>
+              <textarea name="highlights" rows={3} className={inputClass}
+                value={highlights} onChange={e => setHighlights(e.target.value)}
+                placeholder="The ramen at Ichiran was life-changing…" />
+            </section>
+
+            <section className="bg-white rounded-2xl border border-gray-200 p-5">
+              <h3 className="font-medium text-gray-900 mb-3 text-sm">Notes <span className="font-normal text-gray-400">(optional)</span></h3>
+              <textarea name="notes" rows={3} className={inputClass}
+                value={notes} onChange={e => setNotes(e.target.value)}
+                placeholder="Tips, packing list, visa info…" />
+            </section>
+
+            <div className="flex gap-3 pt-2">
+              <button type="submit" name="isDraft" value="1" disabled={pending || uploading}
+                className="flex-1 bg-white text-gray-700 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-colors disabled:opacity-60">
+                {pending ? 'Saving…' : 'Save as Draft'}
               </button>
-            </div>
-          ))}
-
-          <button type="button" onClick={addDest}
-            className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-xl py-3 transition-colors">
-            + Add destination
-          </button>
-        </section>
-
-        {/* ── Tags ───────────────────────────────────────────────────── */}
-        <input type="hidden" name="tags" value={JSON.stringify(tags)} />
-        <section className="bg-white rounded-2xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-1">Tags</h2>
-          <p className="text-xs text-gray-500 mb-3">Pick what best describes this trip</p>
-          <TagPicker selected={tags} onChange={setTags} />
-        </section>
-
-        {/* ── Highlights ─────────────────────────────────────────────── */}
-        <section className="bg-amber-50 rounded-2xl border border-amber-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-1">✨ Highlights</h2>
-          <p className="text-xs text-gray-500 mb-3">Your personal trip summary. Leave blank and we&apos;ll auto-generate one from your 5-star picks.</p>
-          <textarea name="highlights" rows={3} className={inputClass}
-            placeholder="The ramen at Ichiran was life-changing, and watching the sunrise from Fushimi Inari made the early wake-up completely worth it…" />
-        </section>
-
-        {/* ── Notes ──────────────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">General Notes</h2>
-          <textarea name="notes" rows={3} className={inputClass}
-            placeholder="Tips, packing list, visa info, anything useful for other travellers…"
-            value={notes} onChange={(e) => setNotes(e.target.value)} />
-        </section>
-
-        {/* ── Photos ─────────────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900">Photos</h2>
-          <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-8 cursor-pointer hover:border-indigo-400 transition-colors">
-            <span className="text-2xl mb-2">📸</span>
-            <span className="text-sm font-medium text-gray-600">
-              {uploading ? 'Uploading…' : 'Click to upload photos'}
-            </span>
-            <span className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP, GIF</span>
-            <input type="file" accept="image/*" multiple className="sr-only"
-              onChange={handlePhotoUpload} disabled={uploading} />
-          </label>
-          {photos.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {photos.map((photo, i) => (
-                <div key={i} className="relative group">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo.url} alt="" className="w-full h-32 object-cover rounded-lg" />
-                  <button type="button" onClick={() => removePhoto(i)}
-                    className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    ×
-                  </button>
-                  <input type="text" value={photo.caption}
-                    onChange={(e) => updateCaption(i, e.target.value)}
-                    className="mt-1 w-full rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                    placeholder="Caption (optional)" />
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <div className="flex gap-3">
-          <button type="submit" name="isDraft" value="1" disabled={pending || uploading}
-            className="flex-1 bg-white text-gray-700 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-colors disabled:opacity-60 text-base">
-            {pending ? 'Saving…' : 'Save as Draft'}
-          </button>
-          {(() => {
-            const hasItems = destinations.some(d =>
-              d.groups.some(g =>
-                g.hotelName.trim() ||
-                g.food.some(f => f.name.trim()) ||
-                g.activities.some(a => a.name.trim())
-              )
-            )
-            return (
               <button type="submit" disabled={pending || uploading || !hasItems}
                 title={!hasItems ? 'Add at least one hotel, restaurant, or activity first' : undefined}
-                className="flex-1 bg-indigo-600 text-white font-semibold py-3 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-60 text-base">
+                className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60">
                 {pending ? 'Publishing…' : 'Publish'}
               </button>
-            )
-          })()}
-        </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Navigation ─────────────────────────────────────────────────── */}
+        {step !== 'start' && step !== 'details' && (
+          <div className="flex gap-3 mt-6">
+            <button type="button" onClick={goBack}
+              className="px-5 py-3 rounded-xl border border-gray-300 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors">
+              ← Back
+            </button>
+            <button type="button" onClick={goNext}
+              className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
+              Continue →
+            </button>
+          </div>
+        )}
+        {step === 'details' && (
+          <button type="button" onClick={goBack}
+            className="mt-4 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+            ← Back
+          </button>
+        )}
       </form>
     </div>
   )
