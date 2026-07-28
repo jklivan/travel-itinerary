@@ -203,7 +203,7 @@ export async function createItineraryDirect(input: {
 
   const { title, description, startDate: startDateStr, endDate: endDateStr, postType, audience, visibility, isDraft, notes, highlights, tags, destinations, photos } = input
 
-  if (!title?.trim()) return { error: 'Title is required.' }
+  if (!title?.trim()) return { error: `Title is required. [server received: "${input.title}", type=${typeof input.title}]` }
 
   const isGuide = postType === 'guide'
   if (!isDraft && !isGuide && (!startDateStr || !endDateStr)) return { error: 'Start and end dates are required.' }

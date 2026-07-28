@@ -181,6 +181,7 @@ export default function CreatePage() {
   async function handleSubmit(isDraft: boolean) {
     setPending(true)
     setFormError(undefined)
+    console.log('[handleSubmit] title=', JSON.stringify(title))
     const result = await createItineraryDirect({
       title, description, startDate, endDate, notes, highlights,
       destinations, photos, tags,
