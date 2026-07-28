@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { inferPriceLevels } from '@/lib/inferPriceLevels'
 
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_PLACES_API
-const FSQ_API_KEY = process.env.FOURSQUARE_API_KEY
 
 const PRICE_LEVEL_MAP: Record<string, number> = {
   PRICE_LEVEL_INEXPENSIVE:    1,
@@ -34,31 +34,6 @@ async function searchGooglePrice(name: string, context: string): Promise<number 
   }
 }
 
-async function searchFoursquarePrice(name: string, context: string): Promise<number | null> {
-  if (!FSQ_API_KEY) return null
-  try {
-    const params = new URLSearchParams({ query: name, near: context || name, limit: '1', fields: 'price' })
-    const res = await fetch(`https://api.foursquare.com/v3/places/search?${params}`, {
-      headers: { Authorization: FSQ_API_KEY },
-      signal: AbortSignal.timeout(5000),
-    })
-    if (!res.ok) return null
-    const data = await res.json() as { results?: { price?: number }[] }
-    const price = data.results?.[0]?.price
-    return price != null ? price : null
-  } catch {
-    return null
-  }
-}
-
-async function searchPlacePrice(name: string, context: string): Promise<{ price: number; source: string } | null> {
-  const google = await searchGooglePrice(name, context)
-  if (google !== null) return { price: google, source: 'google' }
-  const fsq = await searchFoursquarePrice(name, context)
-  if (fsq !== null) return { price: fsq, source: 'foursquare' }
-  return null
-}
-
 export async function POST(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get('secret')
   if (secret !== process.env.ADMIN_SECRET) {
@@ -76,25 +51,50 @@ export async function POST(req: NextRequest) {
   let skipped = 0
   const results: string[] = []
 
+  // Pass 1: Google Places
+  const googleMissed: typeof items = []
   for (const item of items) {
     const context = [item.destination.name, item.destination.country].filter(Boolean).join(', ')
-    const result = await searchPlacePrice(item.name, context)
-
-    if (result !== null) {
-      await prisma.destItem.update({ where: { id: item.id }, data: { priceLevel: result.price } })
-      const msg = `✓ ${item.name} (${item.type}) → ${'$'.repeat(result.price)} [${result.source}]`
+    const price = await searchGooglePrice(item.name, context)
+    if (price !== null) {
+      await prisma.destItem.update({ where: { id: item.id }, data: { priceLevel: price } })
+      const msg = `✓ ${item.name} (${item.type}) → ${'$'.repeat(price)} [google]`
       console.log(`[backfill-price-levels] ${msg}`)
       results.push(msg)
       updated++
     } else {
-      const msg = `- ${item.name} (${item.type}) → no price level`
-      console.log(`[backfill-price-levels] ${msg}`)
-      results.push(msg)
-      skipped++
+      googleMissed.push(item)
     }
-
-    // Brief pause between API calls
     await new Promise(r => setTimeout(r, 150))
+  }
+
+  // Pass 2: Claude inference for everything Google missed
+  if (googleMissed.length > 0) {
+    console.log(`[backfill-price-levels] ${googleMissed.length} items going to Claude inference`)
+    const inferred = await inferPriceLevels(
+      googleMissed.map(item => ({
+        id: item.id,
+        name: item.name,
+        type: item.type as 'hotel' | 'food_drink',
+        destination: [item.destination.name, item.destination.country].filter(Boolean).join(', '),
+      }))
+    )
+
+    for (const item of googleMissed) {
+      const price = inferred.get(item.id)
+      if (price != null) {
+        await prisma.destItem.update({ where: { id: item.id }, data: { priceLevel: price } })
+        const msg = `✓ ${item.name} (${item.type}) → ${'$'.repeat(price)} [claude]`
+        console.log(`[backfill-price-levels] ${msg}`)
+        results.push(msg)
+        updated++
+      } else {
+        const msg = `- ${item.name} (${item.type}) → no price level`
+        console.log(`[backfill-price-levels] ${msg}`)
+        results.push(msg)
+        skipped++
+      }
+    }
   }
 
   return Response.json({ updated, skipped, total: items.length, results })
