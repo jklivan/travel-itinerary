@@ -27,7 +27,7 @@ export async function inferPlaceAttributes(places: PlaceInput[]): Promise<InferR
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents: `Estimate attributes for each place. Hotels: price level 1=budget(<$150/night) to 5=ultra-luxury($1000+/night). Restaurants: price level 1=budget to 4=luxury, plus whether they are family-friendly (kid-friendly, casual dining — not bars, clubs, or fine dining). Only include entries you're confident about.\n\n${list}`,
       config: {
         tools: [
