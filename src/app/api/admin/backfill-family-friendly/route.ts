@@ -8,6 +8,11 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const reset = req.nextUrl.searchParams.get('reset') === '1'
+  if (reset) {
+    await prisma.destItem.updateMany({ where: { type: 'food_drink' }, data: { familyFriendly: null } })
+  }
+
   const items = await prisma.destItem.findMany({
     where: { type: 'food_drink', familyFriendly: null, name: { not: '' } },
     include: { destination: { select: { name: true, country: true } } },
@@ -53,5 +58,5 @@ export async function POST(req: NextRequest) {
     updated++
   }
 
-  return Response.json({ updated, total: items.length, results, debug: { anthropicKeySet: !!process.env.ANTHROPIC_API_KEY } })
+  return Response.json({ updated, total: items.length, results, debug: { googleKeySet: !!process.env.GOOGLE_API_KEY } })
 }
