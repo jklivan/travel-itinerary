@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-const API_KEY = process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_PLACES_API
+const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_PLACES_API
+const FSQ_API_KEY = process.env.FOURSQUARE_API_KEY
 
 const PRICE_LEVEL_MAP: Record<string, number> = {
   PRICE_LEVEL_INEXPENSIVE:    1,
@@ -10,14 +11,14 @@ const PRICE_LEVEL_MAP: Record<string, number> = {
   PRICE_LEVEL_VERY_EXPENSIVE: 4,
 }
 
-async function searchPlacePrice(name: string, context: string): Promise<number | null> {
-  if (!API_KEY) return null
+async function searchGooglePrice(name: string, context: string): Promise<number | null> {
+  if (!GOOGLE_API_KEY) return null
   try {
     const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Goog-Api-Key': API_KEY,
+        'X-Goog-Api-Key': GOOGLE_API_KEY,
         'X-Goog-FieldMask': 'places.priceLevel',
       },
       body: JSON.stringify({ textQuery: `${name} ${context}`.trim(), pageSize: 1 }),
@@ -31,6 +32,31 @@ async function searchPlacePrice(name: string, context: string): Promise<number |
   } catch {
     return null
   }
+}
+
+async function searchFoursquarePrice(name: string, context: string): Promise<number | null> {
+  if (!FSQ_API_KEY) return null
+  try {
+    const params = new URLSearchParams({ query: name, near: context || name, limit: '1', fields: 'price' })
+    const res = await fetch(`https://api.foursquare.com/v3/places/search?${params}`, {
+      headers: { Authorization: FSQ_API_KEY },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!res.ok) return null
+    const data = await res.json() as { results?: { price?: number }[] }
+    const price = data.results?.[0]?.price
+    return price != null ? price : null
+  } catch {
+    return null
+  }
+}
+
+async function searchPlacePrice(name: string, context: string): Promise<{ price: number; source: string } | null> {
+  const google = await searchGooglePrice(name, context)
+  if (google !== null) return { price: google, source: 'google' }
+  const fsq = await searchFoursquarePrice(name, context)
+  if (fsq !== null) return { price: fsq, source: 'foursquare' }
+  return null
 }
 
 export async function POST(req: NextRequest) {
@@ -52,11 +78,11 @@ export async function POST(req: NextRequest) {
 
   for (const item of items) {
     const context = [item.destination.name, item.destination.country].filter(Boolean).join(', ')
-    const priceLevel = await searchPlacePrice(item.name, context)
+    const result = await searchPlacePrice(item.name, context)
 
-    if (priceLevel !== null) {
-      await prisma.destItem.update({ where: { id: item.id }, data: { priceLevel } })
-      const msg = `✓ ${item.name} (${item.type}) → ${'$'.repeat(priceLevel)}`
+    if (result !== null) {
+      await prisma.destItem.update({ where: { id: item.id }, data: { priceLevel: result.price } })
+      const msg = `✓ ${item.name} (${item.type}) → ${'$'.repeat(result.price)} [${result.source}]`
       console.log(`[backfill-price-levels] ${msg}`)
       results.push(msg)
       updated++
