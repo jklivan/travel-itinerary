@@ -346,6 +346,12 @@ export default function CreatePage() {
         <input type="hidden" name="visibility" value={isPrivate ? 'private' : 'public'} />
         <input type="hidden" name="postType" value={postType} />
         <input type="hidden" name="tags" value={JSON.stringify(tags)} />
+        <input type="hidden" name="title" value={title} />
+        <input type="hidden" name="description" value={description} />
+        <input type="hidden" name="startDate" value={startDate} />
+        <input type="hidden" name="endDate" value={endDate} />
+        <input type="hidden" name="notes" value={notes} />
+        <input type="hidden" name="highlights" value={highlights} />
 
         {state?.error && (
           <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{state.error}</p>
@@ -438,13 +444,13 @@ export default function CreatePage() {
 
             <div>
               <label htmlFor="title" className={labelClass}>Title *</label>
-              <input id="title" name="title" type="text" required className={inputClass}
+              <input id="title" type="text" className={inputClass}
                 placeholder="e.g. 10 days in Japan" value={title} onChange={e => setTitle(e.target.value)} />
             </div>
 
             <div>
               <label htmlFor="description" className={labelClass}>Short description <span className="text-gray-400 font-normal">(optional)</span></label>
-              <textarea id="description" name="description" rows={2} className={inputClass}
+              <textarea id="description" rows={2} className={inputClass}
                 placeholder="A quick summary…" value={description} onChange={e => setDescription(e.target.value)} />
             </div>
 
@@ -452,11 +458,11 @@ export default function CreatePage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="startDate" className={labelClass}>Start date *</label>
-                  <input id="startDate" name="startDate" type="date" required className={inputClass} value={startDate} onChange={e => setStartDate(e.target.value)} />
+                  <input id="startDate" type="date" className={inputClass} value={startDate} onChange={e => setStartDate(e.target.value)} />
                 </div>
                 <div>
                   <label htmlFor="endDate" className={labelClass}>End date *</label>
-                  <input id="endDate" name="endDate" type="date" required className={inputClass} value={endDate} onChange={e => setEndDate(e.target.value)} />
+                  <input id="endDate" type="date" className={inputClass} value={endDate} onChange={e => setEndDate(e.target.value)} />
                 </div>
               </div>
             )}
@@ -616,14 +622,14 @@ export default function CreatePage() {
             <section className="bg-amber-50 rounded-2xl border border-amber-200 p-5">
               <h3 className="font-medium text-gray-900 mb-1 text-sm">✨ Highlights <span className="font-normal text-gray-400">(optional)</span></h3>
               <p className="text-xs text-gray-500 mb-3">Leave blank and we&apos;ll auto-generate one from your 5-star picks.</p>
-              <textarea name="highlights" rows={3} className={inputClass}
+              <textarea rows={3} className={inputClass}
                 value={highlights} onChange={e => setHighlights(e.target.value)}
                 placeholder="The ramen at Ichiran was life-changing…" />
             </section>
 
             <section className="bg-white rounded-2xl border border-gray-200 p-5">
               <h3 className="font-medium text-gray-900 mb-3 text-sm">Notes <span className="font-normal text-gray-400">(optional)</span></h3>
-              <textarea name="notes" rows={3} className={inputClass}
+              <textarea rows={3} className={inputClass}
                 value={notes} onChange={e => setNotes(e.target.value)}
                 placeholder="Tips, packing list, visa info…" />
             </section>
