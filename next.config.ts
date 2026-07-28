@@ -3,6 +3,11 @@ import path from 'path'
 
 const nextConfig: NextConfig = {
   images: {
+    localPatterns: [
+      {
+        pathname: '/api/img',
+      },
+    ],
     remotePatterns: [
       {
         protocol: 'https',
