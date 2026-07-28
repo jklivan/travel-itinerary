@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { upload } from '@vercel/blob/client'
-import { createItinerary } from '@/actions/itinerary'
+import { createItineraryDirect } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import TagPicker from '@/components/TagPicker'
 
@@ -181,21 +181,13 @@ export default function CreatePage() {
   async function handleSubmit(isDraft: boolean) {
     setPending(true)
     setFormError(undefined)
-    const fd = new FormData()
-    fd.set('title', title)
-    fd.set('description', description)
-    fd.set('startDate', startDate)
-    fd.set('endDate', endDate)
-    fd.set('notes', notes)
-    fd.set('highlights', highlights)
-    fd.set('destinations', JSON.stringify(destinations))
-    fd.set('photos', JSON.stringify(photos))
-    fd.set('audience', isAdult ? 'adult' : 'family')
-    fd.set('visibility', isPrivate ? 'private' : 'public')
-    fd.set('postType', postType)
-    fd.set('tags', JSON.stringify(tags))
-    if (isDraft) fd.set('isDraft', '1')
-    const result = await createItinerary(undefined, fd)
+    const result = await createItineraryDirect({
+      title, description, startDate, endDate, notes, highlights,
+      destinations, photos, tags,
+      postType, audience: isAdult ? 'adult' : 'family',
+      visibility: isPrivate ? 'private' : 'public',
+      isDraft,
+    })
     setPending(false)
     if (result?.error) setFormError(result.error)
   }

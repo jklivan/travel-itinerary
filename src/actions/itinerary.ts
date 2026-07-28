@@ -14,7 +14,7 @@ export type ItineraryState = { error?: string } | undefined
 type FoodInput = { name: string; mealType?: string; notes: string; rating: number; link: string; priceLevel?: number | null; familyFriendly?: boolean | null; familyFriendlySource?: string | null }
 type ActivityInput = { name: string; notes: string; rating: number; link: string }
 type StayGroup = {
-  hotelName: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel?: number | null
+  hotelName: string; hotelNotes: string; hotelAddress?: string; hotelLink: string; hotelRating: number; hotelPriceLevel?: number | null
   food: FoodInput[]; activities: ActivityInput[]
 }
 type DestInput = { name: string; country: string; notes: string; groups: StayGroup[] }
@@ -176,6 +176,67 @@ export async function createItinerary(
       ? generateTags(title, destinations.map((d) => ({
           name: d.name,
           country: d.country || null,
+          items: (d.groups ?? []).flatMap((g) => [
+            ...(g.hotelName?.trim() ? [{ type: 'hotel', name: g.hotelName.trim(), notes: g.hotelNotes?.trim() || null }] : []),
+            ...(g.food ?? []).filter((f) => f.name?.trim()).map((f) => ({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null })),
+            ...(g.activities ?? []).filter((a) => a.name?.trim()).map((a) => ({ type: 'activity', name: a.name.trim(), notes: a.notes?.trim() || null })),
+          ]),
+        })), audience)
+          .then((autoTags) => autoTags.length > 0 ? prisma.itinerary.update({ where: { id: itinerary.id }, data: { tags: autoTags } }) : null)
+      : null,
+    geocodeItineraryDests(itinerary.id),
+    inferMissingAttributes(itinerary.id),
+  ])
+
+  revalidatePath('/')
+  redirect(`/itinerary/${itinerary.id}`)
+}
+
+export async function createItineraryDirect(input: {
+  title: string; description: string; startDate: string; endDate: string
+  postType: string; audience: string; visibility: string; isDraft: boolean
+  notes: string; highlights: string; tags: string[]
+  destinations: DestInput[]; photos: { url: string; caption: string }[]
+}): Promise<ItineraryState> {
+  const session = await auth()
+  if (!session?.user?.id) return { error: 'You must be logged in.' }
+
+  const { title, description, startDate: startDateStr, endDate: endDateStr, postType, audience, visibility, isDraft, notes, highlights, tags, destinations, photos } = input
+
+  if (!title?.trim()) return { error: 'Title is required.' }
+
+  const isGuide = postType === 'guide'
+  if (!isDraft && !isGuide && (!startDateStr || !endDateStr)) return { error: 'Start and end dates are required.' }
+
+  const today = new Date()
+  const startDate = startDateStr ? new Date(startDateStr) : today
+  const endDate = endDateStr ? new Date(endDateStr) : today
+  if (!isDraft && endDate < startDate) return { error: 'End date must be after start date.' }
+
+  if (!isDraft) {
+    const totalItems = destinations.flatMap(d => flattenGroups(d.groups ?? [])).length
+    if (totalItems === 0) return { error: 'Add at least one hotel, restaurant, or activity before publishing.' }
+  }
+
+  const itinerary = await prisma.itinerary.create({
+    data: {
+      postType, title: title.trim(), description: description?.trim() || null,
+      startDate, endDate, audience, visibility,
+      notes: notes?.trim() || null, highlights: highlights?.trim() || null, tags, budget: null,
+      userId: session.user.id,
+      destinations: { create: destinations.map((d, i) => ({ name: d.name, country: d.country || null, notes: d.notes?.trim() || null, order: i, items: { create: flattenGroups(d.groups ?? []) } })) },
+      photos: { create: photos.map((p) => ({ url: p.url, caption: p.caption || null, isStock: false })) },
+    },
+  })
+
+  await Promise.all([
+    photos.length === 0 && destinations.length > 0
+      ? fetchStockPhoto(`${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`)
+          .then((url) => url ? prisma.photo.create({ data: { url, isStock: true, itineraryId: itinerary.id } }) : null)
+      : null,
+    tags.length === 0
+      ? generateTags(title.trim(), destinations.map((d) => ({
+          name: d.name, country: d.country || null,
           items: (d.groups ?? []).flatMap((g) => [
             ...(g.hotelName?.trim() ? [{ type: 'hotel', name: g.hotelName.trim(), notes: g.hotelNotes?.trim() || null }] : []),
             ...(g.food ?? []).filter((f) => f.name?.trim()).map((f) => ({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null })),
