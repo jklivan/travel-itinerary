@@ -10,7 +10,7 @@ import { geocode } from '@/lib/geocode'
 
 export type ItineraryState = { error?: string } | undefined
 
-type FoodInput = { name: string; mealType?: string; notes: string; rating: number; link: string }
+type FoodInput = { name: string; mealType?: string; notes: string; rating: number; link: string; priceLevel?: number | null }
 type ActivityInput = { name: string; notes: string; rating: number; link: string }
 type StayGroup = {
   hotelName: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel?: number | null
@@ -27,7 +27,7 @@ function flattenGroups(groups: StayGroup[]): ItemRow[] {
       rows.push({ type: 'hotel', name: g.hotelName.trim(), notes: g.hotelNotes?.trim() || null, address: g.hotelAddress?.trim() || null, link: g.hotelLink?.trim() || null, rating: g.hotelRating > 0 ? g.hotelRating : null, priceLevel: g.hotelPriceLevel ?? null, mealType: null, groupIndex: gi })
     }
     for (const f of g.food ?? []) {
-      if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: null, mealType: f.mealType?.trim() || null, groupIndex: gi })
+      if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: f.priceLevel ?? null, mealType: f.mealType?.trim() || null, groupIndex: gi })
     }
     for (const a of g.activities ?? []) {
       if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, mealType: null, groupIndex: gi })

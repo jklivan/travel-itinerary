@@ -281,13 +281,14 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="text-sm font-medium text-gray-900">{group.hotel.name}</span>
-                                  {group.hotel.priceLevel != null && (
-                                    <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">
-                                      {'$'.repeat(group.hotel.priceLevel)}
-                                    </span>
-                                  )}
                                   {!isGuide && <Stars rating={group.hotel.rating ?? null} />}
                                 </div>
+                                {group.hotel.priceLevel != null && (
+                                  <p className="text-xs font-medium text-green-700 mt-0.5">
+                                    {'$'.repeat(group.hotel.priceLevel)}
+                                    <span className="text-gray-300">{'$'.repeat(4 - group.hotel.priceLevel)}</span>
+                                  </p>
+                                )}
                                 {group.hotel.notes && <p className="text-xs text-gray-500 italic mt-0.5">{group.hotel.notes}</p>}
                                 {group.hotel.address && <p className="text-xs text-gray-500 mt-0.5">📍 {group.hotel.address}</p>}
                                 {group.hotel.link && <a href={group.hotel.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
@@ -324,6 +325,12 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                                         )}
                                         {!isGuide && <Stars rating={item.rating ?? null} />}
                                       </div>
+                                      {item.priceLevel != null && (
+                                        <p className="text-xs font-medium text-green-700 mt-0.5">
+                                          {'$'.repeat(item.priceLevel)}
+                                          <span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
+                                        </p>
+                                      )}
                                       {item.notes && <p className="text-xs text-gray-500 italic mt-0.5">{item.notes}</p>}
                                       {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
                                     </div>

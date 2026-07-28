@@ -7,7 +7,7 @@ import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import TagPicker from '@/components/TagPicker'
 import DeleteButton from '@/components/DeleteButton'
 
-type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number }
+type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null }
 type ActivityItem = { name: string; notes: string; link: string; rating: number }
 type StayGroup    = { hotelName: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; food: FoodItem[]; activities: ActivityItem[] }
 type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
@@ -30,7 +30,7 @@ type ItineraryData = {
     name: string
     country: string | null
     notes: string | null
-    items: { type: string; mealType?: string | null; name: string; notes: string | null; address?: string | null; rating: number | null; link: string | null; groupIndex?: number }[]
+    items: { type: string; mealType?: string | null; name: string; notes: string | null; address?: string | null; rating: number | null; priceLevel?: number | null; link: string | null; groupIndex?: number }[]
   }[]
   photos: { url: string; caption: string | null }[]
 }
@@ -66,10 +66,11 @@ const MEAL_TYPE_META: Record<string, { emoji: string; active: string; pill: stri
   bakery:    { emoji: '🥐', active: 'bg-orange-400 text-white border-orange-400', pill: 'bg-orange-50 text-orange-600' },
 }
 
-function FoodRow({ item, index, onUpdate, onRemove, showRating }: {
+function FoodRow({ item, index, onUpdate, onRemove, showRating, onSelectPlace }: {
   item: FoodItem; index: number
-  onUpdate: (field: keyof FoodItem, val: string) => void
+  onUpdate: (field: keyof Omit<FoodItem, 'priceLevel'>, val: string) => void
   onRemove: () => void; showRating: boolean
+  onSelectPlace?: (placeId: string | null) => void
 }) {
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
   return (
@@ -77,7 +78,8 @@ function FoodRow({ item, index, onUpdate, onRemove, showRating }: {
       <div className="flex gap-2 items-start">
         <PlacesAutocomplete
           value={item.name}
-          onChange={val => onUpdate('name', val)}
+          onChange={val => { onUpdate('name', val); if (!val) onSelectPlace?.(null) }}
+          onSelect={(_, __, placeId) => { if (placeId) onSelectPlace?.(placeId) }}
           type="restaurant"
           placeholder="e.g. Ramen Ichiran, Rooftop bar, Street market"
           className={inputClass}
@@ -95,6 +97,13 @@ function FoodRow({ item, index, onUpdate, onRemove, showRating }: {
           )
         })}
       </div>
+      {item.priceLevel != null && (
+        <p className="text-xs text-gray-500">
+          {'$'.repeat(item.priceLevel)}
+          <span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
+          <span className="ml-1.5 text-gray-400">· Google price level</span>
+        </p>
+      )}
       {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
       <div className="grid gap-2">
         <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
@@ -131,7 +140,7 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
   )
 }
 
-const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0 })
+const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0, priceLevel: null })
 const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0 })
 const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, food: [], activities: [] })
 const emptyDest     = (): Destination  => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
@@ -153,7 +162,7 @@ function itemsToGroups(items: ItineraryData['destinations'][0]['items']): StayGr
       hotelLink: hotel?.link ?? '',
       hotelRating: hotel?.rating ?? 0,
       hotelPriceLevel: (hotel as { priceLevel?: number | null } | undefined)?.priceLevel ?? null,
-      food: grpItems.filter(i => i.type === 'food_drink').map(f => ({ name: f.name, mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0 })),
+      food: grpItems.filter(i => i.type === 'food_drink').map(f => ({ name: f.name, mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: f.priceLevel ?? null })),
       activities: grpItems.filter(i => i.type === 'activity').map(a => ({ name: a.name, notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0 })),
     }
   })
@@ -210,8 +219,18 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   }
   function addFood(di: number, gi: number) { updGroup(di, gi, g => ({ ...g, food: [...g.food, emptyFood()] })) }
   function removeFood(di: number, gi: number, ii: number) { updGroup(di, gi, g => ({ ...g, food: g.food.filter((_, j) => j !== ii) })) }
-  function updateFood(di: number, gi: number, ii: number, field: keyof FoodItem, val: string) {
+  function updateFood(di: number, gi: number, ii: number, field: keyof Omit<FoodItem, 'priceLevel'>, val: string) {
     updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, [field]: field === 'rating' ? Number(val) : val }) }))
+  }
+  function setFoodPriceLevel(di: number, gi: number, ii: number, val: number | null) {
+    updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, priceLevel: val }) }))
+  }
+  async function fetchFoodPriceLevel(di: number, gi: number, ii: number, placeId: string) {
+    try {
+      const res = await fetch(`/api/place-details?id=${encodeURIComponent(placeId)}`)
+      const { priceLevel } = await res.json()
+      if (priceLevel !== null) setFoodPriceLevel(di, gi, ii, priceLevel)
+    } catch { /* ignore */ }
   }
   function addActivity(di: number, gi: number) { updGroup(di, gi, g => ({ ...g, activities: [...g.activities, emptyActivity()] })) }
   function removeActivity(di: number, gi: number, ii: number) { updGroup(di, gi, g => ({ ...g, activities: g.activities.filter((_, j) => j !== ii) })) }
@@ -415,7 +434,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                   <div className="space-y-2">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🍜 Food & Drink</p>
                     {group.food.length === 0 && <p className="text-xs text-gray-600 italic">None added yet.</p>}
-                    <div className="space-y-3">{group.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, ii, f, v)} onRemove={() => removeFood(di, gi, ii)} />)}</div>
+                    <div className="space-y-3">{group.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, ii, f, v)} onRemove={() => removeFood(di, gi, ii)} onSelectPlace={(id) => id ? fetchFoodPriceLevel(di, gi, ii, id) : setFoodPriceLevel(di, gi, ii, null)} />)}</div>
                     <button type="button" onClick={() => addFood(di, gi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add food / drink</button>
                   </div>
                   {/* Activities */}
