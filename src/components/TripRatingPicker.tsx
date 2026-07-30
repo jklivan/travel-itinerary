@@ -1,11 +1,11 @@
 'use client'
 
 export const TRIP_STAMPS = [
-  { value: 1, label: 'Hard pass',  bg: 'bg-slate-500',   border: 'border-slate-300'   },
-  { value: 2, label: 'Meh',        bg: 'bg-amber-400',   border: 'border-amber-300'   },
-  { value: 3, label: 'It was fun', bg: 'bg-emerald-500', border: 'border-emerald-300' },
-  { value: 4, label: 'Loved it',   bg: 'bg-blue-500',    border: 'border-blue-300'    },
-  { value: 5, label: 'Must go!',   bg: 'bg-rose-500',    border: 'border-rose-300'    },
+  { value: 1, label: 'Hard pass', bg: 'bg-slate-500',   border: 'border-slate-300',   text: 'text-slate-400'   },
+  { value: 2, label: 'Meh',       bg: 'bg-amber-400',   border: 'border-amber-300',   text: 'text-amber-400'   },
+  { value: 3, label: 'It was fun',bg: 'bg-emerald-500', border: 'border-emerald-300', text: 'text-emerald-400' },
+  { value: 4, label: 'Loved it',  bg: 'bg-blue-500',    border: 'border-blue-300',    text: 'text-blue-400'    },
+  { value: 5, label: 'Must go!',  bg: 'bg-rose-500',    border: 'border-rose-300',    text: 'text-rose-400'    },
 ]
 
 export function TripRatingPicker({
@@ -25,13 +25,16 @@ export function TripRatingPicker({
               type="button"
               onClick={() => onChange(value === stamp.value ? null : stamp.value)}
               title={stamp.label}
-              className={`w-full aspect-square rounded-full border-2 flex items-center justify-center transition-all duration-150 select-none text-xs font-bold ${
+              className={`w-full py-3 px-1 rounded-md border-2 flex flex-col items-center justify-center gap-0.5 transition-all duration-150 select-none ${
                 filled
-                  ? `${stamp.bg} border-transparent text-white shadow-sm`
-                  : `bg-white ${stamp.border} border-dashed text-gray-300 hover:border-gray-400`
+                  ? `${stamp.bg} border-transparent text-white -rotate-2 shadow-md`
+                  : `bg-white ${stamp.border} ${stamp.text} border-dashed hover:scale-105`
               }`}
             >
-              {stamp.value}
+              <span className="text-sm font-black leading-none">{stamp.value}</span>
+              <span className="text-[8px] font-bold uppercase tracking-wide leading-tight text-center whitespace-nowrap overflow-hidden w-full px-0.5" style={{ textOverflow: 'clip' }}>
+                {stamp.label}
+              </span>
             </button>
           </div>
         )
