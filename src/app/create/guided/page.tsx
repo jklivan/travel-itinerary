@@ -6,6 +6,7 @@ import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import { MapPin, Hotel, Utensils, Camera, Star, ArrowRight, Plus, Check, X, FileText, ImageIcon } from 'lucide-react'
 import TagPicker from '@/components/TagPicker'
 import Link from 'next/link'
+import { TripRatingPicker } from '@/components/TripRatingPicker'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -218,6 +219,7 @@ export default function GuidedCreatePage() {
   const [endDate, setEndDate] = useState('')
   const [isAdult, setIsAdult] = useState(false)
   const [budget, setBudget] = useState(0)
+  const [tripRating, setTripRating] = useState<number | null>(null)
 
   function addItem(item: Omit<GuidedItem, 'id'>) {
     setCurItems(i => [...i, { ...item, id: uid() }])
@@ -293,6 +295,7 @@ export default function GuidedCreatePage() {
         <input type="hidden" name="photos" value={JSON.stringify(photos)} />
         <input type="hidden" name="tags" value={JSON.stringify(tags)} />
         {budget > 0 && <input type="hidden" name="budget" value={budget} />}
+        {tripRating && <input type="hidden" name="tripRating" value={tripRating} />}
       </form>
 
       <div className="space-y-4">
@@ -562,6 +565,13 @@ export default function GuidedCreatePage() {
                   ))}
                 </div>
               </div>
+
+              {postType === 'itinerary' && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-2">Overall trip rating <span className="text-gray-400 font-normal">(optional)</span></p>
+                  <TripRatingPicker value={tripRating} onChange={setTripRating} />
+                </div>
+              )}
 
               {formState?.error && (
                 <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{formState.error}</p>
