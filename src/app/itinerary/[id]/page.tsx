@@ -117,6 +117,14 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
     highlights = await cached()
   }
 
+  const TRIP_RATINGS: Record<number, { emoji: string; label: string }> = {
+    1: { emoji: '😐', label: 'Hard pass' },
+    2: { emoji: '🤷', label: 'Meh' },
+    3: { emoji: '😄', label: 'It was fun!' },
+    4: { emoji: '🤩', label: 'Loved it' },
+    5: { emoji: '🔥', label: 'Must visit' },
+  }
+
   function fmtShort(d: Date) {
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
@@ -224,6 +232,11 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
               {!isGuide && it.audience === 'family' && (
                 <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-800">
                   Family Friendly
+                </span>
+              )}
+              {it.tripRating && TRIP_RATINGS[it.tripRating] && (
+                <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-700">
+                  {TRIP_RATINGS[it.tripRating].emoji} {TRIP_RATINGS[it.tripRating].label}
                 </span>
               )}
             </div>

@@ -47,6 +47,39 @@ const inputClass = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm t
 const labelClass = 'block text-sm font-medium text-gray-900 mb-1'
 const subInputClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400'
 
+const TRIP_RATINGS = [
+  { value: 1, emoji: '😐', label: 'Hard pass' },
+  { value: 2, emoji: '🤷', label: 'Meh' },
+  { value: 3, emoji: '😄', label: 'It was fun!' },
+  { value: 4, emoji: '🤩', label: 'Loved it' },
+  { value: 5, emoji: '🔥', label: 'Must visit' },
+] as const
+
+function TripRatingPicker({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
+  return (
+    <div className="flex gap-2 justify-between">
+      {TRIP_RATINGS.map(({ value: v, emoji, label }) => {
+        const selected = value === v
+        return (
+          <button
+            key={v}
+            type="button"
+            onClick={() => onChange(selected ? null : v)}
+            className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all ${
+              selected
+                ? 'border-blue-500 bg-blue-50 scale-105 shadow-sm'
+                : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
+            }`}
+          >
+            <span className="text-2xl leading-none">{emoji}</span>
+            <span className={`text-[10px] font-medium leading-tight text-center ${selected ? 'text-blue-700' : 'text-gray-500'}`}>{label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] as const
 const MEAL_TYPE_META: Record<string, { emoji: string; active: string }> = {
   breakfast: { emoji: '🍳', active: 'bg-yellow-500 text-white border-yellow-500' },
@@ -163,6 +196,7 @@ export default function CreatePage() {
   const [notes, setNotes] = useState('')
   const [highlights, setHighlights] = useState('')
   const [tags, setTags] = useState<string[]>([])
+  const [tripRating, setTripRating] = useState<number | null>(null)
   const [destinations, setDestinations] = useState<Destination[]>([emptyDest()])
   const [photos, setPhotos] = useState<UploadedPhoto[]>([])
   const [uploading, setUploading] = useState(false)
@@ -183,7 +217,7 @@ export default function CreatePage() {
     setFormError(undefined)
     const result = await createItineraryDirect({
       title, description, startDate, endDate, notes, highlights,
-      destinations, photos, tags,
+      destinations, photos, tags, tripRating,
       postType, audience: isAdult ? 'adult' : 'family',
       visibility: isPrivate ? 'private' : 'public',
       isDraft,
@@ -631,6 +665,14 @@ export default function CreatePage() {
                 value={notes} onChange={e => setNotes(e.target.value)}
                 placeholder="Tips, packing list, visa info…" />
             </section>
+
+            {postType === 'itinerary' && (
+              <section className="bg-white rounded-2xl border border-gray-200 p-5">
+                <h3 className="font-medium text-gray-900 mb-0.5 text-sm">Overall trip rating <span className="font-normal text-gray-400">(optional)</span></h3>
+                <p className="text-xs text-gray-500 mb-3">Would you go back?</p>
+                <TripRatingPicker value={tripRating} onChange={setTripRating} />
+              </section>
+            )}
 
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={() => handleSubmit(true)} disabled={pending || uploading}

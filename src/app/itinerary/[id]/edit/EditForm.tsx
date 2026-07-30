@@ -26,6 +26,7 @@ type ItineraryData = {
   highlights: string | null
   tags: string[]
   budget: number | null
+  tripRating: number | null
   destinations: {
     name: string
     country: string | null
@@ -50,6 +51,33 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
           <span className={star <= value ? 'text-yellow-400' : 'text-gray-300'}>★</span>
         </button>
       ))}
+    </div>
+  )
+}
+
+const TRIP_RATINGS = [
+  { value: 1, emoji: '😐', label: 'Hard pass' },
+  { value: 2, emoji: '🤷', label: 'Meh' },
+  { value: 3, emoji: '😄', label: 'It was fun!' },
+  { value: 4, emoji: '🤩', label: 'Loved it' },
+  { value: 5, emoji: '🔥', label: 'Must visit' },
+] as const
+
+function TripRatingPicker({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
+  return (
+    <div className="flex gap-2 justify-between">
+      {TRIP_RATINGS.map(({ value: v, emoji, label }) => {
+        const selected = value === v
+        return (
+          <button key={v} type="button" onClick={() => onChange(selected ? null : v)}
+            className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all ${
+              selected ? 'border-blue-500 bg-blue-50 scale-105 shadow-sm' : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
+            }`}>
+            <span className="text-2xl leading-none">{emoji}</span>
+            <span className={`text-[10px] font-medium leading-tight text-center ${selected ? 'text-blue-700' : 'text-gray-500'}`}>{label}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -196,6 +224,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   const [notes, setNotes] = useState(itinerary.notes ?? '')
   const [highlights, setHighlights] = useState(itinerary.highlights ?? '')
   const [tags, setTags] = useState<string[]>(itinerary.tags ?? [])
+  const [tripRating, setTripRating] = useState<number | null>(itinerary.tripRating ?? null)
   const [destinations, setDestinations] = useState<Destination[]>(
     itinerary.destinations.length > 0
       ? itinerary.destinations.map(d => ({ name: d.name, country: d.country ?? '', notes: d.notes ?? '', groups: itemsToGroups(d.items) }))
@@ -288,6 +317,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       <input type="hidden" name="audience" value={isAdult ? 'adult' : 'family'} />
       <input type="hidden" name="visibility" value={isPrivate ? 'private' : 'public'} />
       <input type="hidden" name="postType" value={postType} />
+      <input type="hidden" name="tripRating" value={tripRating ?? ''} />
 
       {state?.error && (
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{state.error}</p>
@@ -486,6 +516,15 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         <h2 className="font-semibold text-gray-900 mb-4">General Notes</h2>
         <textarea name="notes" rows={3} className={inputClass} placeholder="Tips, packing list, visa info…" value={notes} onChange={e => setNotes(e.target.value)} />
       </section>
+
+      {/* Trip Rating */}
+      {postType === 'itinerary' && (
+        <section className="bg-white rounded-2xl border border-gray-200 p-6">
+          <h2 className="font-semibold text-gray-900 mb-0.5">Overall trip rating <span className="font-normal text-gray-400 text-sm">(optional)</span></h2>
+          <p className="text-xs text-gray-500 mb-3">Would you go back?</p>
+          <TripRatingPicker value={tripRating} onChange={setTripRating} />
+        </section>
+      )}
 
       {/* Photos */}
       <section className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
