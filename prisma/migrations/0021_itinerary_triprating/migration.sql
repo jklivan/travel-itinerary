@@ -1,1 +1,1 @@
-ALTER TABLE "Itinerary" ADD COLUMN "tripRating" INTEGER;
+ALTER TABLE "Itinerary" ADD COLUMN IF NOT EXISTS "tripRating" INTEGER;
