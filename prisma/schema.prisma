@@ -16,6 +16,7 @@ model User {
   following      Follow[]         @relation("UserFollowing")
   followers      Follow[]         @relation("UserFollowers")
   bucketList     BucketListItem[]
+  comments       Comment[]
   createdAt      DateTime         @default(now())
 }
 
@@ -49,6 +50,7 @@ model Itinerary {
   destinations Destination[]
   photos       Photo[]
   bucketedBy   BucketListItem[]
+  comments     Comment[]
   createdAt    DateTime         @default(now())
 }
 
@@ -102,4 +104,17 @@ model Photo {
   isStock     Boolean   @default(false)
   itineraryId String
   itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+}
+
+model Comment {
+  id          String    @id @default(cuid())
+  content     String
+  userId      String
+  itineraryId String
+  parentId    String?
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  parent      Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Comment[] @relation("CommentReplies")
 }

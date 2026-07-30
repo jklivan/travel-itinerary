@@ -12,6 +12,7 @@ import PhotoStrip from '@/components/PhotoStrip'
 import { tagMeta } from '@/lib/tags'
 import SwipeNav from '@/components/SwipeNav'
 import DeleteButton from '@/components/DeleteButton'
+import Comments from '@/components/Comments'
 
 function Stars({ rating }: { rating: number | null }) {
   if (!rating) return null
@@ -76,7 +77,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
   const prevId = currentIndex > 0 ? userItineraries[currentIndex - 1].id : null
   const nextId = currentIndex < userItineraries.length - 1 ? userItineraries[currentIndex + 1].id : null
 
-  const [followRecord, bucketItem] = await Promise.all([
+  const [followRecord, bucketItem, comments] = await Promise.all([
     session?.user?.id && !isOwn
       ? prisma.follow.findUnique({
           where: { followerId_followingId: { followerId: session.user.id, followingId: it.user.id } },
@@ -87,6 +88,17 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
           where: { userId_itineraryId: { userId: session.user.id, itineraryId: id } },
         })
       : Promise.resolve(null),
+    prisma.comment.findMany({
+      where: { itineraryId: id, parentId: null },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        user: { select: { id: true, name: true } },
+        replies: {
+          orderBy: { createdAt: 'asc' },
+          include: { user: { select: { id: true, name: true } } },
+        },
+      },
+    }),
   ])
   const followStatus = followRecord?.status ?? 'none'
   const isBucketed = !!bucketItem
@@ -387,6 +399,13 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
               </div>
             </div>
           )}
+
+          <Comments
+            itineraryId={it.id}
+            initialComments={comments}
+            currentUserId={session?.user?.id}
+            isLoggedIn={!!session?.user}
+          />
 
         </div>
       </div>
