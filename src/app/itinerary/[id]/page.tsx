@@ -13,7 +13,7 @@ import { tagMeta } from '@/lib/tags'
 import SwipeNav from '@/components/SwipeNav'
 import DeleteButton from '@/components/DeleteButton'
 import Comments from '@/components/Comments'
-import { TRIP_STAMPS } from '@/components/TripRatingPicker'
+import { TRIP_STAMPS } from '@/lib/tripStamps'
 
 function Stars({ rating }: { rating: number | null }) {
   if (!rating) return null
