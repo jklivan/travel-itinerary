@@ -5,6 +5,7 @@ import { upload } from '@vercel/blob/client'
 import { createItineraryDirect } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import TagPicker from '@/components/TagPicker'
+import { TripRatingPicker } from '@/components/TripRatingPicker'
 
 // Returns either plain text (for txt/csv) or base64+mediaType (for pdf/xlsx)
 // All binary parsing happens server-side to avoid mobile compatibility issues
@@ -46,39 +47,6 @@ const emptyDest     = (): Destination  => ({ name: '', country: '', notes: '', g
 const inputClass = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
 const labelClass = 'block text-sm font-medium text-gray-900 mb-1'
 const subInputClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400'
-
-const TRIP_RATINGS = [
-  { value: 1, emoji: '😐', label: 'Hard pass' },
-  { value: 2, emoji: '🤷', label: 'Meh' },
-  { value: 3, emoji: '😄', label: 'It was fun!' },
-  { value: 4, emoji: '🤩', label: 'Loved it' },
-  { value: 5, emoji: '🔥', label: 'Must visit' },
-] as const
-
-function TripRatingPicker({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
-  return (
-    <div className="flex gap-2 justify-between">
-      {TRIP_RATINGS.map(({ value: v, emoji, label }) => {
-        const selected = value === v
-        return (
-          <button
-            key={v}
-            type="button"
-            onClick={() => onChange(selected ? null : v)}
-            className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all ${
-              selected
-                ? 'border-blue-500 bg-blue-50 scale-105 shadow-sm'
-                : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
-            }`}
-          >
-            <span className="text-2xl leading-none">{emoji}</span>
-            <span className={`text-[10px] font-medium leading-tight text-center ${selected ? 'text-blue-700' : 'text-gray-500'}`}>{label}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] as const
 const MEAL_TYPE_META: Record<string, { emoji: string; active: string }> = {

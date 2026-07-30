@@ -13,6 +13,7 @@ import { tagMeta } from '@/lib/tags'
 import SwipeNav from '@/components/SwipeNav'
 import DeleteButton from '@/components/DeleteButton'
 import Comments from '@/components/Comments'
+import { TRIP_STAMPS } from '@/components/TripRatingPicker'
 
 function Stars({ rating }: { rating: number | null }) {
   if (!rating) return null
@@ -115,14 +116,6 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
       { revalidate: 86400 * 7 }
     )
     highlights = await cached()
-  }
-
-  const TRIP_RATINGS: Record<number, { emoji: string; label: string }> = {
-    1: { emoji: '😐', label: 'Hard pass' },
-    2: { emoji: '🤷', label: 'Meh' },
-    3: { emoji: '😄', label: 'It was fun!' },
-    4: { emoji: '🤩', label: 'Loved it' },
-    5: { emoji: '🔥', label: 'Must visit' },
   }
 
   function fmtShort(d: Date) {
@@ -234,11 +227,14 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                   Family Friendly
                 </span>
               )}
-              {it.tripRating && TRIP_RATINGS[it.tripRating] && (
-                <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-700">
-                  {TRIP_RATINGS[it.tripRating].emoji} {TRIP_RATINGS[it.tripRating].label}
-                </span>
-              )}
+              {it.tripRating && (() => {
+                const stamp = TRIP_STAMPS.find(s => s.value === it.tripRating)
+                return stamp ? (
+                  <span className={`-rotate-2 inline-block text-xs px-3 py-1 rounded-full font-bold text-white ${stamp.bg}`}>
+                    {stamp.label}
+                  </span>
+                ) : null
+              })()}
             </div>
             <h1 className="text-2xl font-bold text-gray-900 leading-tight">{it.title}</h1>
             {displayTags.length > 0 && (
