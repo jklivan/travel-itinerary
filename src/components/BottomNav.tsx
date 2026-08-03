@@ -49,7 +49,7 @@ function BottomNavInner({ userId, pendingCount }: { userId: string | null; pendi
               <FileText size={18} className="text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900">Full form</p>
+              <p className="text-sm font-medium text-gray-900">Upload itinerary</p>
               <p className="text-xs text-gray-500 mt-0.5">Add everything at once</p>
             </div>
           </Link>
