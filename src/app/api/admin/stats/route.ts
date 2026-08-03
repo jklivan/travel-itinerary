@@ -7,17 +7,22 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const [totalUsers, usersWithItineraries, totalItineraries, totalPublic, totalSaves] = await Promise.all([
+  const [totalUsers, usersWithItineraries, totalItineraries, totalPublic, totalSaves, nonPublic] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { itineraries: { some: { visibility: 'public' } } } }),
     prisma.itinerary.count(),
     prisma.itinerary.count({ where: { visibility: 'public' } }),
     prisma.bucketListItem.count(),
+    prisma.itinerary.findMany({
+      where: { visibility: { not: 'public' } },
+      select: { id: true, title: true, visibility: true, user: { select: { name: true } } },
+    }),
   ])
 
   return Response.json({
     users: { total: totalUsers, withPublicItineraries: usersWithItineraries },
     itineraries: { total: totalItineraries, public: totalPublic },
     totalSaves,
+    nonPublic,
   })
 }
