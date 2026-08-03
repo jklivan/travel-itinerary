@@ -58,6 +58,7 @@ export default async function FeedPage({
         user: { select: { name: true, id: true } },
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
         photos: { take: 1, orderBy: { isStock: 'asc' } },
+        _count: { select: { bucketedBy: true } },
       },
     }),
     userId
@@ -115,6 +116,7 @@ export default async function FeedPage({
               currentUserId={userId}
               isOwn={it.user.id === userId}
               isBucketed={bucketSet.has(it.id)}
+              saveCount={it._count.bucketedBy}
             />
           ))}
         </HorizontalScrollFeed>

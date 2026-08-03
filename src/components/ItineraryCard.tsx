@@ -24,6 +24,7 @@ type Props = {
   currentUserId?: string | null
   isOwn?: boolean
   isBucketed?: boolean
+  saveCount?: number
 }
 
 const COVER_COLORS = [
@@ -59,7 +60,7 @@ function tripDays(start: Date, end: Date) {
 
 export default function ItineraryCard({
   id, postType = 'itinerary', title, startDate, endDate, audience, budget, authorName, destinations, coverPhoto,
-  currentUserId, isOwn, isBucketed = false,
+  currentUserId, isOwn, isBucketed = false, saveCount = 0,
 }: Props) {
   const isGuide = postType === 'guide'
   const coverColor = hashPick(title, COVER_COLORS)
@@ -164,13 +165,20 @@ export default function ItineraryCard({
             <span className={`${kalam.className} text-sm text-gray-500 truncate flex-1`}>
               {authorName}
             </span>
-            {budget && budget > 0 && (
-              <span className="text-[10px] font-medium tracking-tight shrink-0">
-                {[1,2,3,4,5].map((n) => (
-                  <span key={n} className={n <= budget ? 'text-green-600' : 'text-gray-200'}>$</span>
-                ))}
-              </span>
-            )}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {saveCount > 0 && (
+                <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                  🤍 {saveCount}
+                </span>
+              )}
+              {budget && budget > 0 && (
+                <span className="text-[10px] font-medium tracking-tight">
+                  {[1,2,3,4,5].map((n) => (
+                    <span key={n} className={n <= budget ? 'text-green-600' : 'text-gray-200'}>$</span>
+                  ))}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>

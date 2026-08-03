@@ -53,6 +53,7 @@ export default async function UserProfilePage({
       include: {
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
         photos: { take: 1, orderBy: { isStock: 'asc' } },
+        _count: { select: { bucketedBy: true } },
       },
     }),
     isOwn
@@ -62,6 +63,7 @@ export default async function UserProfilePage({
           include: {
             destinations: { orderBy: { order: 'asc' }, include: { items: true } },
             photos: { take: 1, orderBy: { isStock: 'asc' } },
+            _count: { select: { bucketedBy: true } },
           },
         })
       : Promise.resolve([]),
@@ -76,6 +78,7 @@ export default async function UserProfilePage({
                 user: { select: { id: true, name: true } },
                 destinations: { orderBy: { order: 'asc' }, include: { items: true } },
                 photos: { take: 1, orderBy: { isStock: 'asc' } },
+                _count: { select: { bucketedBy: true } },
               },
             },
           },
@@ -237,6 +240,7 @@ export default async function UserProfilePage({
                   coverPhoto={it.photos[0]?.url ?? null}
                   currentUserId={viewerId}
                   isOwn={true}
+                  saveCount={it._count.bucketedBy}
                 />
               ))}
             </HorizontalScrollFeed>
@@ -268,6 +272,7 @@ export default async function UserProfilePage({
                   currentUserId={viewerId}
                   isOwn={isOwn}
                   isBucketed={viewerBucketSet.has(it.id)}
+                  saveCount={it._count.bucketedBy}
                 />
               ))}
             </HorizontalScrollFeed>
@@ -303,6 +308,7 @@ export default async function UserProfilePage({
                   currentUserId={viewerId}
                   isOwn={item.itinerary.user.id === viewerId}
                   isBucketed={ownBucketSet.has(item.itinerary.id)}
+                  saveCount={item.itinerary._count.bucketedBy}
                 />
               ))}
             </HorizontalScrollFeed>

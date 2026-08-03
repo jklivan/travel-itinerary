@@ -39,6 +39,7 @@ async function fetchItineraries(where: ItineraryWhereInput, userId: string | nul
         user: { select: { name: true, id: true } },
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
         photos: { take: 1, orderBy: { isStock: 'asc' } },
+        _count: { select: { bucketedBy: true } },
       },
     }),
     userId
@@ -81,6 +82,7 @@ function ItineraryList({
           currentUserId={userId}
           isOwn={it.user.id === userId}
           isBucketed={bucketSet.has(it.id)}
+          saveCount={it._count.bucketedBy}
         />
       ))}
     </HorizontalScrollFeed>
