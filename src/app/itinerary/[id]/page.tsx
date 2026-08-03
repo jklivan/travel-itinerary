@@ -15,7 +15,7 @@ import DeleteButton from '@/components/DeleteButton'
 import Comments from '@/components/Comments'
 import { TRIP_STAMPS } from '@/lib/tripStamps'
 import ItineraryMap from '@/components/ItineraryMap'
-import type { DestPin } from '@/components/ItineraryMapInner'
+import type { ItemPin } from '@/components/ItineraryMapInner'
 
 function Stars({ rating }: { rating: number | null }) {
   if (!rating) return null
@@ -138,19 +138,18 @@ export default async function ItineraryPage({
     highlights = await cached()
   }
 
-  // Build map pins from geocoded destinations
-  const mapPins: DestPin[] = it.destinations
-    .filter(d => d.lat != null && d.lng != null)
-    .map(d => ({
-      id: d.id,
-      name: d.name,
-      country: d.country,
-      lat: d.lat!,
-      lng: d.lng!,
-      hotels: d.items.filter(i => i.type === 'hotel').map(i => i.name),
-      foodCount: d.items.filter(i => i.type === 'food_drink').length,
-      activityCount: d.items.filter(i => i.type === 'activity').length,
-    }))
+  // Build map pins from geocoded items
+  const mapPins: ItemPin[] = it.destinations.flatMap(d =>
+    d.items
+      .filter(i => i.lat != null && i.lng != null)
+      .map(i => ({
+        id: i.id,
+        name: i.name,
+        type: i.type as 'hotel' | 'food_drink' | 'activity',
+        lat: i.lat!,
+        lng: i.lng!,
+      }))
+  )
 
   function fmtShort(d: Date) {
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })

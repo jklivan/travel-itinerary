@@ -96,6 +96,8 @@ model DestItem {
   familyFriendlySource String?
   link          String?
   groupIndex    Int         @default(0)
+  lat           Float?
+  lng           Float?
   destinationId String
   destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
 }

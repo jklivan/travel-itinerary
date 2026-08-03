@@ -1,34 +1,38 @@
 'use client'
 import 'leaflet/dist/leaflet.css'
 import { useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 
-export type DestPin = {
+export type ItemPin = {
   id: string
   name: string
-  country: string | null
+  type: 'hotel' | 'food_drink' | 'activity'
   lat: number
   lng: number
-  hotels: string[]
-  foodCount: number
-  activityCount: number
 }
 
-function stopIcon(index: number) {
+const TYPE_STYLE: Record<string, { bg: string; emoji: string }> = {
+  hotel:      { bg: '#2563eb', emoji: '🏨' },
+  food_drink: { bg: '#ea580c', emoji: '🍴' },
+  activity:   { bg: '#16a34a', emoji: '📍' },
+}
+
+function itemIcon(type: string) {
+  const s = TYPE_STYLE[type] ?? TYPE_STYLE.activity
   return L.divIcon({
     className: '',
     html: `<div style="
-      width:28px;height:28px;
-      background:#2563eb;
+      width:26px;height:26px;
+      background:${s.bg};
       border-radius:50%;
-      border:2.5px solid white;
+      border:2px solid white;
       box-shadow:0 2px 6px rgba(0,0,0,0.35);
       display:flex;align-items:center;justify-content:center;
-      color:white;font-size:11px;font-weight:700;
-    ">${index + 1}</div>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
+      font-size:12px;line-height:1;
+    ">${s.emoji}</div>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
     popupAnchor: [0, -16],
   })
 }
@@ -37,7 +41,7 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
   const map = useMap()
   useEffect(() => {
     if (positions.length === 1) {
-      map.setView(positions[0], 11)
+      map.setView(positions[0], 14)
     } else if (positions.length > 1) {
       map.fitBounds(positions, { padding: [48, 48] })
     }
@@ -45,7 +49,7 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
   return null
 }
 
-export default function ItineraryMapInner({ pins }: { pins: DestPin[] }) {
+export default function ItineraryMapInner({ pins }: { pins: ItemPin[] }) {
   if (pins.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-400 text-sm">
@@ -63,7 +67,7 @@ export default function ItineraryMapInner({ pins }: { pins: DestPin[] }) {
   return (
     <MapContainer
       center={center}
-      zoom={4}
+      zoom={12}
       style={{ height: '100%', width: '100%' }}
       scrollWheelZoom
     >
@@ -72,29 +76,13 @@ export default function ItineraryMapInner({ pins }: { pins: DestPin[] }) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       />
       <FitBounds positions={positions} />
-      {positions.length > 1 && (
-        <Polyline positions={positions} color="#93c5fd" weight={2} dashArray="6 5" opacity={0.8} />
-      )}
-      {pins.map((pin, i) => (
-        <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={stopIcon(i)}>
-          <Popup maxWidth={220} minWidth={160}>
+      {pins.map(pin => (
+        <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={itemIcon(pin.type)}>
+          <Popup maxWidth={200} minWidth={140}>
             <div style={{ fontFamily: 'inherit' }}>
-              <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: '#111' }}>
-                {pin.name}{pin.country ? `, ${pin.country}` : ''}
+              <p style={{ fontWeight: 700, fontSize: 13, color: '#111', margin: 0 }}>
+                {TYPE_STYLE[pin.type]?.emoji ?? '📍'} {pin.name}
               </p>
-              {pin.hotels.map((h, j) => (
-                <p key={j} style={{ fontSize: 12, color: '#374151', margin: '2px 0' }}>🏨 {h}</p>
-              ))}
-              {pin.foodCount > 0 && (
-                <p style={{ fontSize: 12, color: '#374151', margin: '2px 0' }}>
-                  🍴 {pin.foodCount} restaurant{pin.foodCount !== 1 ? 's' : ''}
-                </p>
-              )}
-              {pin.activityCount > 0 && (
-                <p style={{ fontSize: 12, color: '#374151', margin: '2px 0' }}>
-                  📍 {pin.activityCount} activit{pin.activityCount !== 1 ? 'ies' : 'y'}
-                </p>
-              )}
             </div>
           </Popup>
         </Marker>
