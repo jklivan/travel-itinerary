@@ -400,7 +400,11 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                                         <span className="text-sm font-medium text-gray-900">{item.name}</span>
                                         {!isGuide && <Stars rating={item.rating ?? null} />}
                                       </div>
-                                      {item.notes && <p className="text-xs text-gray-500 italic mt-0.5">{item.notes}</p>}
+                                      {item.notes && (
+                                        <p className="text-xs text-gray-500 italic mt-0.5">
+                                          <span className="font-semibold not-italic">User notes: </span>{item.notes}
+                                        </p>
+                                      )}
                                       {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
                                     </div>
                                   ))}
