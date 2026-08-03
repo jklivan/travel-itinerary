@@ -29,7 +29,7 @@ function Stars({ rating }: { rating: number | null }) {
   )
 }
 
-type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number }
+type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number; tags?: string[] }
 
 function groupItems(items: DestItemRow[]) {
   const map = new Map<number, { hotel: DestItemRow | null; food: DestItemRow[]; activities: DestItemRow[] }>()
@@ -371,6 +371,13 @@ export default async function ItineraryPage({
                                     <span className="text-gray-300">{'$'.repeat(5 - group.hotel.priceLevel)}</span>
                                   </p>
                                 )}
+                                {group.hotel.tags && group.hotel.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1.5">
+                                    {group.hotel.tags.map(tag => (
+                                      <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">{tag}</span>
+                                    ))}
+                                  </div>
+                                )}
                                 {group.hotel.description && (
                                   <p className="text-xs text-gray-600 mt-1">
                                     <span className="font-semibold text-gray-500">Description: </span>{group.hotel.description}
@@ -426,6 +433,13 @@ export default async function ItineraryPage({
                                           {item.familyFriendly && (
                                             <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">👨‍👩‍👧 Family friendly</span>
                                           )}
+                                        </div>
+                                      )}
+                                      {item.tags && item.tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                          {item.tags.map(tag => (
+                                            <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">{tag}</span>
+                                          ))}
                                         </div>
                                       )}
                                       {item.description && (

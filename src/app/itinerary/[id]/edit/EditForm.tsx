@@ -8,9 +8,9 @@ import TagPicker from '@/components/TagPicker'
 import DeleteButton from '@/components/DeleteButton'
 import { TripRatingPicker } from '@/components/TripRatingPicker'
 
-type FoodItem     = { name: string; mealType: string; description: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null }
+type FoodItem     = { name: string; mealType: string; description: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null; tags: string[] }
 type ActivityItem = { name: string; notes: string; link: string; rating: number }
-type StayGroup    = { hotelName: string; hotelDescription: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; food: FoodItem[]; activities: ActivityItem[] }
+type StayGroup    = { hotelName: string; hotelDescription: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; food: FoodItem[]; activities: ActivityItem[] }
 type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
 type UploadedPhoto = { url: string; caption: string }
 
@@ -76,10 +76,11 @@ function nightlyRateToTier(rate: number): number {
   return 5
 }
 
-function FoodRow({ item, index, onUpdate, onUpdateFF, onRemove, showRating, onSelectPlace }: {
+function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, showRating, onSelectPlace }: {
   item: FoodItem; index: number
-  onUpdate: (field: keyof Omit<FoodItem, 'priceLevel' | 'familyFriendly'>, val: string) => void
+  onUpdate: (field: keyof Omit<FoodItem, 'priceLevel' | 'familyFriendly' | 'tags'>, val: string) => void
   onUpdateFF: (val: boolean | null) => void
+  onToggleTag: (tag: string) => void
   onRemove: () => void; showRating: boolean
   onSelectPlace?: (placeId: string | null) => void
 }) {
@@ -119,6 +120,14 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onRemove, showRating, onSe
           👨‍👩‍👧 Family friendly
         </button>
       </div>
+      <div className="flex flex-wrap gap-1.5">
+        {FOOD_TAGS.map(tag => (
+          <button key={tag} type="button" onClick={() => onToggleTag(tag)}
+            className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.tags.includes(tag) ? 'bg-orange-500 text-white border-orange-500' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+            {tag}
+          </button>
+        ))}
+      </div>
       {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
       <div className="grid gap-2">
         <input type="text" value={item.description} onChange={e => onUpdate('description', e.target.value)} className={subInputClass} placeholder="✨ Description (auto-generated if blank)" />
@@ -156,9 +165,12 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
   )
 }
 
-const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null })
+const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [] })
 const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0 })
-const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelDescription: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, food: [], activities: [] })
+const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelDescription: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], food: [], activities: [] })
+
+const FOOD_TAGS = ['Worth the Hype', 'Great Food', 'Hidden Gem', 'Local Favorite', "Can't-Miss", 'Good for Groups', 'Family Friendly', 'Great Cocktails', 'Great Ambiance', 'Lively', 'Romantic', 'Chic', 'Casual', 'Outdoor Dining', 'Great Views']
+const HOTEL_TAGS = ['Great Service', 'Worth the Splurge', 'Great Value', 'Hidden Gem', 'Boutique', 'Luxury', 'Romantic', 'Family-Friendly', 'Great Location', 'Great Views', 'Amazing Spa']
 const emptyDest     = (): Destination  => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
 
 function itemsToGroups(items: ItineraryData['destinations'][0]['items']): StayGroup[] {
@@ -182,7 +194,8 @@ function itemsToGroups(items: ItineraryData['destinations'][0]['items']): StayGr
       hotelNightlyRate: '',
       hotelLat: (hotel as { lat?: number | null } | undefined)?.lat ?? null,
       hotelLng: (hotel as { lng?: number | null } | undefined)?.lng ?? null,
-      food: grpItems.filter(i => i.type === 'food_drink').map(f => ({ name: f.name, mealType: f.mealType ?? '', description: (f as { description?: string | null }).description ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: f.priceLevel ?? null, familyFriendly: (f as { familyFriendly?: boolean | null }).familyFriendly ?? null, familyFriendlySource: (f as { familyFriendlySource?: string | null }).familyFriendlySource ?? null, lat: (f as { lat?: number | null }).lat ?? null, lng: (f as { lng?: number | null }).lng ?? null })),
+      hotelTags: (hotel as { tags?: string[] } | undefined)?.tags ?? [],
+      food: grpItems.filter(i => i.type === 'food_drink').map(f => ({ name: f.name, mealType: f.mealType ?? '', description: (f as { description?: string | null }).description ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: f.priceLevel ?? null, familyFriendly: (f as { familyFriendly?: boolean | null }).familyFriendly ?? null, familyFriendlySource: (f as { familyFriendlySource?: string | null }).familyFriendlySource ?? null, lat: (f as { lat?: number | null }).lat ?? null, lng: (f as { lng?: number | null }).lng ?? null, tags: (f as { tags?: string[] }).tags ?? [] })),
       activities: grpItems.filter(i => i.type === 'activity').map(a => ({ name: a.name, notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0 })),
     }
   })
@@ -259,6 +272,9 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       if (priceLevel !== null) setFoodPriceLevel(di, gi, ii, priceLevel)
       if (lat !== null) updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, lat, lng }) }))
     } catch { /* ignore */ }
+  }
+  function toggleFoodTag(di: number, gi: number, ii: number, tag: string) {
+    updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, tags: f.tags.includes(tag) ? f.tags.filter(t => t !== tag) : [...f.tags, tag] }) }))
   }
   function addActivity(di: number, gi: number) { updGroup(di, gi, g => ({ ...g, activities: [...g.activities, emptyActivity()] })) }
   function removeActivity(di: number, gi: number, ii: number) { updGroup(di, gi, g => ({ ...g, activities: g.activities.filter((_, j) => j !== ii) })) }
@@ -450,6 +466,14 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                         </p>
                       )}
                       {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600">Rate it!</span><StarRating value={group.hotelRating} onChange={v => updateHotel(di, gi, 'hotelRating', String(v))} /></div>}
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {HOTEL_TAGS.map(tag => (
+                          <button key={tag} type="button" onClick={() => updGroup(di, gi, g => ({ ...g, hotelTags: g.hotelTags.includes(tag) ? g.hotelTags.filter(t => t !== tag) : [...g.hotelTags, tag] }))}
+                            className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${group.hotelTags.includes(tag) ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
                       <input type="text" value={group.hotelDescription} onChange={e => updateHotel(di, gi, 'hotelDescription', e.target.value)} className={subInputClass} placeholder="✨ Description (auto-generated if blank)" />
                       <input type="text" value={group.hotelNotes} onChange={e => updateHotel(di, gi, 'hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
                       <input type="text" value={group.hotelAddress} onChange={e => updateHotel(di, gi, 'hotelAddress', e.target.value)} className={subInputClass} placeholder="📍 Address (optional — for Airbnbs, apartments…)" />
@@ -460,7 +484,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                   <div className="space-y-2">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🍜 Food & Drink</p>
                     {group.food.length === 0 && <p className="text-xs text-gray-600 italic">None added yet.</p>}
-                    <div className="space-y-3">{group.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, ii, v)} onRemove={() => removeFood(di, gi, ii)} onSelectPlace={(id) => id ? fetchFoodPriceLevel(di, gi, ii, id) : setFoodPriceLevel(di, gi, ii, null)} />)}</div>
+                    <div className="space-y-3">{group.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, ii, v)} onToggleTag={tag => toggleFoodTag(di, gi, ii, tag)} onRemove={() => removeFood(di, gi, ii)} onSelectPlace={(id) => id ? fetchFoodPriceLevel(di, gi, ii, id) : setFoodPriceLevel(di, gi, ii, null)} />)}</div>
                     <button type="button" onClick={() => addFood(di, gi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add food / drink</button>
                   </div>
                   {/* Activities */}
