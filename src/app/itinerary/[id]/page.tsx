@@ -14,6 +14,8 @@ import SwipeNav from '@/components/SwipeNav'
 import DeleteButton from '@/components/DeleteButton'
 import Comments from '@/components/Comments'
 import { TRIP_STAMPS } from '@/lib/tripStamps'
+import ItineraryMap from '@/components/ItineraryMap'
+import type { DestPin } from '@/components/ItineraryMapInner'
 
 function Stars({ rating }: { rating: number | null }) {
   if (!rating) return null
@@ -42,8 +44,16 @@ function groupItems(items: DestItemRow[]) {
   return [...map.entries()].sort(([a], [b]) => a - b).map(([, g]) => g)
 }
 
-export default async function ItineraryPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ItineraryPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ view?: string }>
+}) {
   const { id } = await params
+  const { view } = await searchParams
+  const showMap = view === 'map'
   const session = await auth()
 
   const it = await prisma.itinerary.findUnique({
@@ -127,6 +137,20 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
     )
     highlights = await cached()
   }
+
+  // Build map pins from geocoded destinations
+  const mapPins: DestPin[] = it.destinations
+    .filter(d => d.lat != null && d.lng != null)
+    .map(d => ({
+      id: d.id,
+      name: d.name,
+      country: d.country,
+      lat: d.lat!,
+      lng: d.lng!,
+      hotels: d.items.filter(i => i.type === 'hotel').map(i => i.name),
+      foodCount: d.items.filter(i => i.type === 'food_drink').length,
+      activityCount: d.items.filter(i => i.type === 'activity').length,
+    }))
 
   function fmtShort(d: Date) {
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -284,8 +308,32 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
             </div>
           )}
 
+          {/* Details / Map toggle */}
+          {mapPins.length > 0 && (
+            <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium mb-4 w-fit">
+              <Link
+                href={`/itinerary/${it.id}`}
+                className={`px-4 py-1.5 rounded-lg transition-colors ${!showMap ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Details
+              </Link>
+              <Link
+                href={`/itinerary/${it.id}?view=map`}
+                className={`px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${showMap ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                🗺️ Map
+              </Link>
+            </div>
+          )}
+
+          {showMap ? (
+            <div className="h-[60vh] rounded-xl overflow-hidden border border-gray-200 mb-5">
+              <ItineraryMap pins={mapPins} />
+            </div>
+          ) : null}
+
           {/* Destinations */}
-          {it.destinations.length > 0 && (
+          {!showMap && it.destinations.length > 0 && (
             <div className="space-y-5 mb-5">
               {it.destinations.map((dest) => {
                 const groups = groupItems(dest.items as DestItemRow[])
