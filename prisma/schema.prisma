@@ -12,6 +12,7 @@ model User {
   email          String           @unique
   name           String
   password       String
+  isPrivate      Boolean          @default(false)
   itineraries    Itinerary[]
   following      Follow[]         @relation("UserFollowing")
   followers      Follow[]         @relation("UserFollowers")

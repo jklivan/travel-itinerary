@@ -23,6 +23,10 @@ export default async function Navbar() {
               <span className="text-sm text-white/90 hidden sm:block font-medium truncate max-w-[100px]">
                 {session.user.name}
               </span>
+              <Link href="/settings"
+                className="text-xs text-white/80 hover:text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors hidden sm:block">
+                Settings
+              </Link>
               <form action={async () => {
                 'use server'
                 await signOut({ redirectTo: '/' })

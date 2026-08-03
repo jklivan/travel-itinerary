@@ -33,6 +33,13 @@ export default async function FeedPage({
           { visibility: 'public' },
           ...(userId ? [{ userId, visibility: 'private' }] : []),
         ],
+        // Explore feed: hide itineraries from private accounts (except own)
+        ...(isExplore ? {
+          OR: [
+            { user: { isPrivate: false } },
+            ...(userId ? [{ userId }] : []),
+          ],
+        } : {}),
         destinations: { some: { items: { some: {} } } },
         ...(isFriends && userIdFilter ? { userId: userIdFilter } : {}),
         ...(searchQuery ? {
