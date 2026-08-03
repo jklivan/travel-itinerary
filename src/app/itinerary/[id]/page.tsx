@@ -27,7 +27,7 @@ function Stars({ rating }: { rating: number | null }) {
   )
 }
 
-type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number }
+type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number }
 
 function groupItems(items: DestItemRow[]) {
   const map = new Map<number, { hotel: DestItemRow | null; food: DestItemRow[]; activities: DestItemRow[] }>()
@@ -314,6 +314,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                                     <span className="text-gray-300">{'$'.repeat(5 - group.hotel.priceLevel)}</span>
                                   </p>
                                 )}
+                                {group.hotel.description && <p className="text-xs text-gray-600 mt-1">{group.hotel.description}</p>}
                                 {group.hotel.notes && <p className="text-xs text-gray-500 italic mt-0.5">{group.hotel.notes}</p>}
                                 {group.hotel.address && <p className="text-xs text-gray-500 mt-0.5">📍 {group.hotel.address}</p>}
                                 {group.hotel.link && <a href={group.hotel.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
@@ -362,6 +363,7 @@ export default async function ItineraryPage({ params }: { params: Promise<{ id: 
                                           )}
                                         </div>
                                       )}
+                                      {item.description && <p className="text-xs text-gray-600 mt-1">{item.description}</p>}
                                       {item.notes && <p className="text-xs text-gray-500 italic mt-0.5">{item.notes}</p>}
                                       {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
                                     </div>

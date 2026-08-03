@@ -8,9 +8,9 @@ import TagPicker from '@/components/TagPicker'
 import DeleteButton from '@/components/DeleteButton'
 import { TripRatingPicker } from '@/components/TripRatingPicker'
 
-type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null }
+type FoodItem     = { name: string; mealType: string; description: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null }
 type ActivityItem = { name: string; notes: string; link: string; rating: number }
-type StayGroup    = { hotelName: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; food: FoodItem[]; activities: ActivityItem[] }
+type StayGroup    = { hotelName: string; hotelDescription: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; food: FoodItem[]; activities: ActivityItem[] }
 type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
 type UploadedPhoto = { url: string; caption: string }
 
@@ -32,7 +32,7 @@ type ItineraryData = {
     name: string
     country: string | null
     notes: string | null
-    items: { type: string; mealType?: string | null; name: string; notes: string | null; address?: string | null; rating: number | null; priceLevel?: number | null; link: string | null; groupIndex?: number }[]
+    items: { type: string; mealType?: string | null; name: string; description?: string | null; notes: string | null; address?: string | null; rating: number | null; priceLevel?: number | null; link: string | null; groupIndex?: number }[]
   }[]
   photos: { url: string; caption: string | null }[]
 }
@@ -121,6 +121,7 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onRemove, showRating, onSe
       </div>
       {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
       <div className="grid gap-2">
+        <input type="text" value={item.description} onChange={e => onUpdate('description', e.target.value)} className={subInputClass} placeholder="✨ Description (auto-generated if blank)" />
         <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
       </div>
@@ -155,9 +156,9 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
   )
 }
 
-const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null })
+const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null })
 const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0 })
-const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', food: [], activities: [] })
+const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelDescription: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', food: [], activities: [] })
 const emptyDest     = (): Destination  => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
 
 function itemsToGroups(items: ItineraryData['destinations'][0]['items']): StayGroup[] {
@@ -172,13 +173,14 @@ function itemsToGroups(items: ItineraryData['destinations'][0]['items']): StayGr
     const hotel = grpItems.find(i => i.type === 'hotel')
     return {
       hotelName: hotel?.name ?? '',
+      hotelDescription: (hotel as { description?: string | null } | undefined)?.description ?? '',
       hotelNotes: hotel?.notes ?? '',
       hotelAddress: hotel?.address ?? '',
       hotelLink: hotel?.link ?? '',
       hotelRating: hotel?.rating ?? 0,
       hotelPriceLevel: (hotel as { priceLevel?: number | null } | undefined)?.priceLevel ?? null,
       hotelNightlyRate: '',
-      food: grpItems.filter(i => i.type === 'food_drink').map(f => ({ name: f.name, mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: f.priceLevel ?? null, familyFriendly: (f as { familyFriendly?: boolean | null }).familyFriendly ?? null, familyFriendlySource: (f as { familyFriendlySource?: string | null }).familyFriendlySource ?? null })),
+      food: grpItems.filter(i => i.type === 'food_drink').map(f => ({ name: f.name, mealType: f.mealType ?? '', description: (f as { description?: string | null }).description ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: f.priceLevel ?? null, familyFriendly: (f as { familyFriendly?: boolean | null }).familyFriendly ?? null, familyFriendlySource: (f as { familyFriendlySource?: string | null }).familyFriendlySource ?? null })),
       activities: grpItems.filter(i => i.type === 'activity').map(a => ({ name: a.name, notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0 })),
     }
   })
@@ -441,6 +443,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                         </p>
                       )}
                       {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600">Rate it!</span><StarRating value={group.hotelRating} onChange={v => updateHotel(di, gi, 'hotelRating', String(v))} /></div>}
+                      <input type="text" value={group.hotelDescription} onChange={e => updateHotel(di, gi, 'hotelDescription', e.target.value)} className={subInputClass} placeholder="✨ Description (auto-generated if blank)" />
                       <input type="text" value={group.hotelNotes} onChange={e => updateHotel(di, gi, 'hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
                       <input type="text" value={group.hotelAddress} onChange={e => updateHotel(di, gi, 'hotelAddress', e.target.value)} className={subInputClass} placeholder="📍 Address (optional — for Airbnbs, apartments…)" />
                       <input type="url" value={group.hotelLink} onChange={e => updateHotel(di, gi, 'hotelLink', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />

@@ -86,6 +86,7 @@ model DestItem {
   type          String
   mealType      String?
   name          String
+  description   String?
   notes         String?
   address       String?
   rating        Int?

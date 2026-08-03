@@ -8,30 +8,31 @@ import { fetchStockPhoto } from '@/lib/stockPhoto'
 import { generateTags } from '@/lib/generateTags'
 import { geocode } from '@/lib/geocode'
 import { inferPlaceAttributes } from '@/lib/inferPriceLevels'
+import { generateDescriptions } from '@/lib/generateDescriptions'
 
 export type ItineraryState = { error?: string } | undefined
 
-type FoodInput = { name: string; mealType?: string; notes: string; rating: number; link: string; priceLevel?: number | null; familyFriendly?: boolean | null; familyFriendlySource?: string | null }
+type FoodInput = { name: string; mealType?: string; description?: string; notes: string; rating: number; link: string; priceLevel?: number | null; familyFriendly?: boolean | null; familyFriendlySource?: string | null }
 type ActivityInput = { name: string; notes: string; rating: number; link: string }
 type StayGroup = {
-  hotelName: string; hotelNotes: string; hotelAddress?: string; hotelLink: string; hotelRating: number; hotelPriceLevel?: number | null
+  hotelName: string; hotelDescription?: string; hotelNotes: string; hotelAddress?: string; hotelLink: string; hotelRating: number; hotelPriceLevel?: number | null
   food: FoodInput[]; activities: ActivityInput[]
 }
 type DestInput = { name: string; country: string; notes: string; groups: StayGroup[] }
 
-type ItemRow = { type: string; name: string; notes: string | null; address: string | null; link: string | null; rating: number | null; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; mealType: string | null; groupIndex: number }
+type ItemRow = { type: string; name: string; description: string | null; notes: string | null; address: string | null; link: string | null; rating: number | null; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; mealType: string | null; groupIndex: number }
 
 function flattenGroups(groups: StayGroup[]): ItemRow[] {
   return groups.flatMap((g, gi) => {
     const rows: ItemRow[] = []
     if (g.hotelName?.trim()) {
-      rows.push({ type: 'hotel', name: g.hotelName.trim(), notes: g.hotelNotes?.trim() || null, address: g.hotelAddress?.trim() || null, link: g.hotelLink?.trim() || null, rating: g.hotelRating > 0 ? g.hotelRating : null, priceLevel: g.hotelPriceLevel ?? null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi })
+      rows.push({ type: 'hotel', name: g.hotelName.trim(), description: g.hotelDescription?.trim() || null, notes: g.hotelNotes?.trim() || null, address: g.hotelAddress?.trim() || null, link: g.hotelLink?.trim() || null, rating: g.hotelRating > 0 ? g.hotelRating : null, priceLevel: g.hotelPriceLevel ?? null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi })
     }
     for (const f of g.food ?? []) {
-      if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: f.priceLevel ?? null, familyFriendly: f.familyFriendly ?? null, familyFriendlySource: f.familyFriendlySource ?? null, mealType: f.mealType?.trim() || null, groupIndex: gi })
+      if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), description: f.description?.trim() || null, notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: f.priceLevel ?? null, familyFriendly: f.familyFriendly ?? null, familyFriendlySource: f.familyFriendlySource ?? null, mealType: f.mealType?.trim() || null, groupIndex: gi })
     }
     for (const a of g.activities ?? []) {
-      if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi })
+      if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), description: null, notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi })
     }
     return rows
   })
@@ -60,6 +61,35 @@ function parseFormData(formData: FormData) {
     ? JSON.parse(formData.get('photos') as string)
     : []
   return { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, tripRating, destinations, photos }
+}
+
+async function generateMissingDescriptions(itineraryId: string): Promise<void> {
+  const items = await prisma.destItem.findMany({
+    where: {
+      destination: { itineraryId },
+      type: { in: ['hotel', 'food_drink'] },
+      description: null,
+      name: { not: '' },
+    },
+    include: { destination: { select: { name: true, country: true } } },
+  })
+  if (items.length === 0) return
+  const descriptionMap = await generateDescriptions(
+    items.map(item => ({
+      id: item.id,
+      name: item.name,
+      type: item.type as 'hotel' | 'food_drink',
+      destination: [item.destination.name, item.destination.country].filter(Boolean).join(', '),
+      mealType: item.mealType,
+      priceLevel: item.priceLevel,
+    }))
+  )
+  for (const item of items) {
+    const description = descriptionMap.get(item.id)
+    if (description) {
+      await prisma.destItem.update({ where: { id: item.id }, data: { description } })
+    }
+  }
 }
 
 async function inferMissingAttributes(itineraryId: string): Promise<void> {
@@ -169,7 +199,7 @@ export async function createItinerary(
     },
   })
 
-  // Run stock photo fetch, tag generation, geocoding, and price level inference in parallel after save
+  // Run stock photo fetch, tag generation, geocoding, price level inference, and description generation in parallel after save
   await Promise.all([
     photos.length === 0 && destinations.length > 0
       ? fetchStockPhoto(`${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`)
@@ -189,6 +219,7 @@ export async function createItinerary(
       : null,
     geocodeItineraryDests(itinerary.id),
     inferMissingAttributes(itinerary.id),
+    generateMissingDescriptions(itinerary.id),
   ])
 
   revalidatePath('/')
@@ -248,6 +279,7 @@ export async function createItineraryDirect(input: {
       : null,
     geocodeItineraryDests(itinerary.id),
     inferMissingAttributes(itinerary.id),
+    generateMissingDescriptions(itinerary.id),
   ])
 
   revalidatePath('/')
@@ -319,7 +351,7 @@ export async function updateItinerary(
     },
   })
 
-  // Fetch stock photo, geocode destinations, and infer missing price levels after save
+  // Fetch stock photo, geocode destinations, infer missing price levels, and generate descriptions after save
   await Promise.all([
     photos.length === 0 && destinations.length > 0
       ? fetchStockPhoto(`${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`)
@@ -327,6 +359,7 @@ export async function updateItinerary(
       : null,
     geocodeItineraryDests(id),
     inferMissingAttributes(id),
+    generateMissingDescriptions(id),
   ])
 
   revalidatePath('/')
