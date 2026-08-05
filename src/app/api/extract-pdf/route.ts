@@ -66,9 +66,12 @@ const EXTRACT_FUNCTION: OpenAI.Chat.ChatCompletionTool = {
   },
 }
 
-const EXTRACT_PROMPT = `You are extracting travel data from a document. The document can be anything travel-related: an itinerary, booking confirmations, reservation emails, hotel folios, notes, screenshots — anything. Extract every place, stay, meal, and experience that would belong in a travel itinerary.
+const EXTRACT_PROMPT = `Extract only confirmed or scheduled items from this travel document. It may be a professionally compiled itinerary, booking confirmation, reservation email, hotel folio, or trip notes.
 
-- Classify each item as "hotel" (any accommodation), "food_drink" (any restaurant, bar, cafe, dining reservation), or "activity" (anything else: tours, sights, spa, experiences).
+- Include a place only when it is actually booked, scheduled, attended, stayed at, or explicitly placed on the itinerary. For a professional itinerary, entries in its day-by-day schedule count as confirmed.
+- Exclude suggestions, recommendations, options, alternatives, "consider" lists, nearby places, and unselected restaurants or activities — even if they sound appealing.
+- Always include accommodation. Classify any hotel, resort, inn, villa, lodging, accommodation, or stay as "hotel", including when it appears in a document header or an accommodation section.
+- Classify each remaining item as "food_drink" (a confirmed restaurant, bar, cafe, or dining reservation) or "activity" (a confirmed tour, sight, spa, or experience).
 - For food_drink, infer mealType from the time if given: before 11am = breakfast, 11am–3pm = lunch, 3pm–6pm = drinks or coffee, after 6pm = dinner. Otherwise pick the best fit.
 - Rate 1–5 stars if any sentiment is expressed. Omit rating if none.
 - Put useful details (confirmation numbers, dress codes, notes) in the notes field.

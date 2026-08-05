@@ -93,7 +93,8 @@ const DOC_ACCEPT = '.pdf,.xlsx,.xls,.csv,.txt,.html,.htm,image/jpeg,image/png,im
 function mapExtractionDests(rawDests: RawDest[]): Destination[] {
   return rawDests.map((d) => {
     const items = Array.isArray(d.items) ? d.items : []
-    const hotels = items.filter(i => i.type === 'hotel')
+    // Accept common accommodation labels in case a model uses a synonym.
+    const hotels = items.filter(i => ['hotel', 'accommodation', 'lodging', 'stay'].includes(i.type.toLowerCase()))
     const food   = items.filter(i => i.type === 'food_drink').map(f => ({ name: f.name ?? '', mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [] }))
     const acts   = items.filter(i => i.type === 'activity').map(a => ({ name: a.name ?? '', notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0 }))
     const groups: StayGroup[] = hotels.length === 0
