@@ -9,7 +9,13 @@ import { TripRatingPicker } from '@/components/TripRatingPicker'
 
 // Binary files (images, PDFs, XLSX) are uploaded to Vercel Blob to avoid the 4.5MB
 // function body limit. The public Blob URL is sent to the API route instead of base64.
-async function readFileForUpload(file: File): Promise<{ text: string } | { blobUrl: string; mediaType: string }> {
+const MAX_IMPORT_FILE_SIZE = 100 * 1024 * 1024
+const IMPORT_TIMEOUT_MS = 5 * 60 * 1000
+
+async function readFileForUpload(
+  file: File,
+  onUploadProgress?: (percentage: number) => void,
+): Promise<{ text: string } | { blobUrl: string; mediaType: string }> {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
   const mime = file.type
   const isPdf = ext === 'pdf' || mime === 'application/pdf'
@@ -18,19 +24,24 @@ async function readFileForUpload(file: File): Promise<{ text: string } | { blobU
   const isHtml = ext === 'html' || ext === 'htm' || mime === 'text/html'
 
   if (isPdf || isXlsx || isImage) {
+    if (file.size > MAX_IMPORT_FILE_SIZE) {
+      throw new Error('Files must be 100 MB or smaller.')
+    }
     const ext2 = file.name.includes('.') ? '.' + file.name.split('.').pop() : ''
     const uniqueName = `extractions/${Date.now()}-${Math.random().toString(36).slice(2)}${ext2}`
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 45000)
+    const timeout = setTimeout(() => controller.abort(), IMPORT_TIMEOUT_MS)
     let blob: Awaited<ReturnType<typeof upload>>
     try {
       blob = await upload(uniqueName, file, {
         access: 'public',
         handleUploadUrl: '/api/upload-doc',
         abortSignal: controller.signal,
+        multipart: true,
+        onUploadProgress: ({ percentage }) => onUploadProgress?.(percentage),
       })
     } catch (err) {
-      if (controller.signal.aborted) throw new Error('Upload timed out. Please try a smaller file or try again.')
+      if (controller.signal.aborted) throw new Error('Upload timed out. Please check your connection and try again.')
       throw err
     } finally {
       clearTimeout(timeout)
@@ -223,6 +234,7 @@ export default function CreatePage() {
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState<string | null>(null)
   const [extractProgress, setExtractProgress] = useState<{ current: number; total: number } | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [pasteMode, setPasteMode] = useState(false)
   const [pasteText, setPasteText] = useState('')
@@ -252,7 +264,7 @@ export default function CreatePage() {
   async function fetchExtraction(payload: { text: string } | { blobUrl: string; mediaType: string }): Promise<ExtractionData> {
     if ('text' in payload && !payload.text.trim()) throw new Error('No text to extract from.')
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 45000)
+    const timeout = setTimeout(() => controller.abort(), IMPORT_TIMEOUT_MS)
     let res: Response
     try {
       res = await fetch('/api/extract-pdf', {
@@ -287,6 +299,7 @@ export default function CreatePage() {
     if (!pasteText.trim()) return
     setExtracting(true)
     setExtractError(null)
+    setUploadProgress(null)
     try {
       const data = await fetchExtraction({ text: pasteText })
       applyExtractionResults([data])
@@ -318,8 +331,9 @@ export default function CreatePage() {
     try {
       for (let i = 0; i < pendingFiles.length; i++) {
         if (pendingFiles.length > 1) setExtractProgress({ current: i + 1, total: pendingFiles.length })
-        const payload = await readFileForUpload(pendingFiles[i])
+        const payload = await readFileForUpload(pendingFiles[i], setUploadProgress)
         results.push(await fetchExtraction(payload))
+        setUploadProgress(null)
       }
       applyExtractionResults(results)
       setPendingFiles([])
@@ -328,6 +342,7 @@ export default function CreatePage() {
     } finally {
       setExtracting(false)
       setExtractProgress(null)
+      setUploadProgress(null)
     }
   }
 
@@ -519,6 +534,8 @@ export default function CreatePage() {
                 <p className="text-xs text-blue-600 animate-pulse">
                   {extractProgress
                     ? `Reading file ${extractProgress.current} of ${extractProgress.total}…`
+                    : uploadProgress != null
+                      ? `Uploading file… ${Math.round(uploadProgress)}%`
                     : 'Reading your itinerary…'}
                 </p>
               )}

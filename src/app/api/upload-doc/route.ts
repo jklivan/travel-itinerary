@@ -29,7 +29,7 @@ export async function POST(req: NextRequest): Promise<Response> {
           'image/gif',
           'image/webp',
         ],
-        maximumSizeInBytes: 25 * 1024 * 1024,
+        maximumSizeInBytes: 100 * 1024 * 1024,
       }),
       onUploadCompleted: async () => {},
     })

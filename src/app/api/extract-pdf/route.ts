@@ -1,8 +1,8 @@
-import OpenAI from 'openai'
+import OpenAI, { toFile } from 'openai'
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 
-export const maxDuration = 60
+export const maxDuration = 300
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
 
@@ -82,7 +82,7 @@ function parseResult(completion: OpenAI.Chat.ChatCompletion): ExtractedItinerary
 
 async function fetchBlob(url: string): Promise<Response> {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 30000)
+  const timeout = setTimeout(() => controller.abort(), 2 * 60 * 1000)
   try {
     const response = await fetch(url, { signal: controller.signal })
     if (!response.ok) throw new Error(`Failed to download uploaded file: ${response.status}`)
@@ -124,22 +124,30 @@ async function extractFromImageUrl(url: string): Promise<ExtractedItinerary> {
 }
 
 async function extractFromPdfUrl(url: string): Promise<ExtractedItinerary> {
-  // Chat Completions accepts PDFs as file content, not as an image URL.
+  // Upload the PDF as an OpenAI file so the completion request remains small.
   const res = await fetchBlob(url)
-  const base64 = Buffer.from(await res.arrayBuffer()).toString('base64')
-  const completion = await client.chat.completions.create({
-    model: 'gpt-5.6-luna',
-    tools: [EXTRACT_FUNCTION],
-    tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
-    messages: [{
-      role: 'user',
-      content: [
-        { type: 'file', file: { file_data: base64, filename: 'itinerary.pdf' } },
-        { type: 'text', text: EXTRACT_PROMPT },
-      ],
-    }],
+  const file = await client.files.create({
+    file: await toFile(Buffer.from(await res.arrayBuffer()), 'itinerary.pdf', { type: 'application/pdf' }),
+    purpose: 'user_data',
   })
-  return parseResult(completion)
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: 'gpt-5.6-luna',
+      tools: [EXTRACT_FUNCTION],
+      tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'file', file: { file_id: file.id } },
+          { type: 'text', text: EXTRACT_PROMPT },
+        ],
+      }],
+    })
+    return parseResult(completion)
+  } finally {
+    await client.files.delete(file.id).catch(() => undefined)
+  }
 }
 
 export async function POST(req: NextRequest) {
