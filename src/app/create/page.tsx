@@ -346,7 +346,11 @@ export default function CreatePage() {
     try {
       for (let i = 0; i < pendingFiles.length; i++) {
         if (pendingFiles.length > 1) setExtractProgress({ current: i + 1, total: pendingFiles.length })
-        const payload = await readFileForUpload(pendingFiles[i], setUploadProgress)
+        let uploadComplete = false
+        const payload = await readFileForUpload(pendingFiles[i], (percentage) => {
+          if (!uploadComplete) setUploadProgress(percentage)
+        })
+        uploadComplete = true
         setUploadProgress(null)
         results.push(await fetchExtraction(payload))
       }
