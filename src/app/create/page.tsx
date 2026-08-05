@@ -15,7 +15,6 @@ const IMPORT_TIMEOUT_MS = 5 * 60 * 1000
 
 async function readFileForUpload(
   file: File,
-  onUploadProgress?: (percentage: number) => void,
 ): Promise<{ text: string } | { base64: string; mediaType: string } | { blobUrl: string; mediaType: string; filename: string }> {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
   const mime = file.type
@@ -53,7 +52,6 @@ async function readFileForUpload(
         // Multipart is for genuinely large uploads. For normal PDFs it adds an
         // unnecessary control-plane round trip and can stall before extraction.
         multipart: file.size > 10 * 1024 * 1024,
-        onUploadProgress: ({ percentage }) => onUploadProgress?.(percentage),
       })
     } catch (err) {
       if (controller.signal.aborted) throw new Error('Upload timed out. Please check your connection and try again.')
@@ -346,11 +344,8 @@ export default function CreatePage() {
     try {
       for (let i = 0; i < pendingFiles.length; i++) {
         if (pendingFiles.length > 1) setExtractProgress({ current: i + 1, total: pendingFiles.length })
-        let uploadComplete = false
-        const payload = await readFileForUpload(pendingFiles[i], (percentage) => {
-          if (!uploadComplete) setUploadProgress(percentage)
-        })
-        uploadComplete = true
+        setUploadProgress(0)
+        const payload = await readFileForUpload(pendingFiles[i])
         setUploadProgress(null)
         results.push(await fetchExtraction(payload))
       }
@@ -554,7 +549,7 @@ export default function CreatePage() {
                   {extractProgress
                     ? `Reading file ${extractProgress.current} of ${extractProgress.total}…`
                     : uploadProgress != null
-                      ? `Uploading file… ${Math.round(uploadProgress)}%`
+                      ? 'Uploading file…'
                     : 'Reading your itinerary…'}
                 </p>
               )}
