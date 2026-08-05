@@ -31,7 +31,6 @@ export async function POST(req: NextRequest): Promise<Response> {
         ],
         maximumSizeInBytes: 100 * 1024 * 1024,
       }),
-      onUploadCompleted: async () => {},
     })
     return Response.json(jsonResponse)
   } catch (error) {
