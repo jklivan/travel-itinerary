@@ -50,7 +50,9 @@ async function readFileForUpload(
         access: 'public',
         handleUploadUrl: '/api/upload-doc',
         abortSignal: controller.signal,
-        multipart: true,
+        // Multipart is for genuinely large uploads. For normal PDFs it adds an
+        // unnecessary control-plane round trip and can stall before extraction.
+        multipart: file.size > 10 * 1024 * 1024,
         onUploadProgress: ({ percentage }) => onUploadProgress?.(percentage),
       })
     } catch (err) {
