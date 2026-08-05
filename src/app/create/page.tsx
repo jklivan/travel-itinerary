@@ -10,7 +10,9 @@ import { TripRatingPicker } from '@/components/TripRatingPicker'
 // Binary files (images, PDFs, XLSX) are uploaded to Vercel Blob to avoid the 4.5MB
 // function body limit. The public Blob URL is sent to the API route instead of base64.
 const MAX_IMPORT_FILE_SIZE = 100 * 1024 * 1024
-const DIRECT_IMAGE_LIMIT = 3 * 1024 * 1024
+// Base64 expands an image by roughly one third. Keep direct requests comfortably
+// below server request limits; larger images use the more reliable Blob route.
+const DIRECT_IMAGE_LIMIT = 2 * 1024 * 1024
 const IMPORT_TIMEOUT_MS = 5 * 60 * 1000
 
 async function readFileForUpload(
@@ -274,26 +276,33 @@ export default function CreatePage() {
   }
 
   // ── Import ────────────────────────────────────────────────────────────────
-  async function fetchExtraction(payload: { text: string } | { base64: string; mediaType: string } | { blobUrl: string; mediaType: string; filename: string }): Promise<ExtractionData> {
+  async function fetchExtraction(payload: { text: string } | { base64: string; mediaType: string } | { blobUrl: string; mediaType: string; filename: string }, label = 'your file'): Promise<ExtractionData> {
     if ('text' in payload && !payload.text.trim()) throw new Error('No text to extract from.')
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), IMPORT_TIMEOUT_MS)
-    let res: Response
-    try {
-      res = await fetch('/api/extract-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      })
-    } finally {
-      clearTimeout(timeout)
+    let lastError: unknown
+    // Retrying is safe: extraction only reads the document and does not write data.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), IMPORT_TIMEOUT_MS)
+      try {
+        const res = await fetch('/api/extract-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        })
+        if (res.ok) return res.json()
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error ?? 'Extraction failed.')
+      } catch (err) {
+        lastError = err
+        if (controller.signal.aborted) throw new Error(`Reading ${label} timed out. Please try that file again.`)
+        if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 750))
+      } finally {
+        clearTimeout(timeout)
+      }
     }
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}))
-      throw new Error(body.error ?? 'Extraction failed.')
-    }
-    return res.json()
+    const detail = lastError instanceof Error && lastError.message ? ` (${lastError.message})` : ''
+    throw new Error(`Could not read ${label}. Please try again.${detail}`)
   }
 
   function applyExtractionResults(results: ExtractionData[]) {
@@ -347,7 +356,7 @@ export default function CreatePage() {
         setUploadProgress(0)
         const payload = await readFileForUpload(pendingFiles[i])
         setUploadProgress(null)
-        results.push(await fetchExtraction(payload))
+        results.push(await fetchExtraction(payload, pendingFiles[i].name))
       }
       applyExtractionResults(results)
       setPendingFiles([])
