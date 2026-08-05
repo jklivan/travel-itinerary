@@ -75,7 +75,7 @@ const EXTRACT_PROMPT = `Extract only confirmed or scheduled items from this trav
 - Do not extract guide names, tour-leader names, meeting points, guide meeting instructions, or guide contact details as itinerary items. If a named guide company is the booked tour provider, you may include the company as the activity; do not include an individual guide's name.
 - For food_drink, infer mealType from the time if given: before 11am = breakfast, 11am–3pm = lunch, 3pm–6pm = drinks or coffee, after 6pm = dinner. Otherwise pick the best fit.
 - Rate 1–5 stars if any sentiment is expressed. Omit rating if none.
-- Put useful details (confirmation numbers, dress codes, notes) in the notes field.
+- Write notes for someone deciding whether they would want to stay there, do the activity, or visit the restaurant. Keep only concise, generally useful context such as what the experience includes, a notable feature, atmosphere, location context, or a broadly relevant dress code. Omit booking administration and traveller-specific logistics: confirmation numbers and dates, cancellation or payment terms, rates, contact details, check-in instructions, transport coordination, high-chair requests, seating requests (window/outdoor), dietary requests, and similar personal preferences.
 - Populate startDate/endDate from the earliest and latest dates in the document (YYYY-MM-DD).
 - Skip pure transportation (flights, transfers, shuttles).`
 
