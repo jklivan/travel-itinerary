@@ -1,12 +1,12 @@
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 
 export const maxDuration = 60
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
 
-type ExtractedItem = { type: string; name: string; notes: string; link?: string }
+type ExtractedItem = { type: string; name: string; notes: string; mealType?: string; rating?: number; link?: string }
 type ExtractedDest = { name: string; country: string; items: ExtractedItem[] }
 type ExtractedItinerary = {
   title: string
@@ -19,112 +19,150 @@ type ExtractedItinerary = {
   destinations: ExtractedDest[]
 }
 
-const EXTRACT_TOOL: Anthropic.Tool = {
-  name: 'extract_itinerary',
-  description: 'Extract the actual itinerary data. Only include things explicitly stated as part of the trip.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      title: { type: 'string' },
-      description: { type: 'string' },
-      startDate: { type: 'string', description: 'YYYY-MM-DD' },
-      endDate: { type: 'string', description: 'YYYY-MM-DD' },
-      budget: { type: 'number' },
-      currency: { type: 'string' },
-      notes: { type: 'string' },
-      destinations: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            name: { type: 'string' },
-            country: { type: 'string' },
-            items: {
-              type: 'array',
+const EXTRACT_FUNCTION: OpenAI.Chat.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'extract_itinerary',
+    description: 'Extract travel data into structured itinerary format.',
+    parameters: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        description: { type: 'string' },
+        startDate: { type: 'string', description: 'YYYY-MM-DD' },
+        endDate: { type: 'string', description: 'YYYY-MM-DD' },
+        budget: { type: 'number' },
+        currency: { type: 'string' },
+        notes: { type: 'string' },
+        destinations: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              country: { type: 'string' },
               items: {
-                type: 'object',
-                properties: {
-                  type: { type: 'string', enum: ['activity', 'food_drink'] },
-                  name: { type: 'string' },
-                  notes: { type: 'string' },
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    type: { type: 'string', enum: ['hotel', 'activity', 'food_drink'] },
+                    name: { type: 'string' },
+                    notes: { type: 'string' },
+                    mealType: { type: 'string', enum: ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] },
+                    rating: { type: 'integer', minimum: 1, maximum: 5, description: 'Scale any expressed sentiment to 1-5. Omit if none.' },
+                  },
+                  required: ['type', 'name', 'notes'],
                 },
-                required: ['type', 'name', 'notes'],
               },
             },
+            required: ['name', 'country', 'items'],
           },
-          required: ['name', 'country', 'items'],
         },
       },
+      required: ['title', 'destinations'],
     },
-    required: ['title', 'destinations'],
   },
 }
 
-const EXTRACT_PROMPT = `Extract the actual itinerary from this document.
+const EXTRACT_PROMPT = `You are extracting travel data from a document. The document can be anything travel-related: an itinerary, booking confirmations, reservation emails, hotel folios, notes, screenshots — anything. Extract every place, stay, meal, and experience that would belong in a travel itinerary.
 
-RULES:
-- Only extract confirmed trip items, not suggestions or recommendations.
-- Do NOT extract specific calendar dates or times — use relative labels like "Day 1" in notes if relevant.
-- Do NOT populate startDate or endDate.
-- Classify as "activity" for sightseeing/experiences, "food_drink" for restaurants/bars/cafes.
-- Set "notes" to empty string if no notes exist for an item.
-- Do NOT include transportation logistics: skip anything that is purely about pick-up, drop-off, transfers, airport/hotel shuttles, departure/arrival times, or transit between locations. Only include destinations and things to do, eat, or stay at those destinations.`
+- Classify each item as "hotel" (any accommodation), "food_drink" (any restaurant, bar, cafe, dining reservation), or "activity" (anything else: tours, sights, spa, experiences).
+- For food_drink, infer mealType from the time if given: before 11am = breakfast, 11am–3pm = lunch, 3pm–6pm = drinks or coffee, after 6pm = dinner. Otherwise pick the best fit.
+- Rate 1–5 stars if any sentiment is expressed. Omit rating if none.
+- Put useful details (confirmation numbers, dress codes, notes) in the notes field.
+- Populate startDate/endDate from the earliest and latest dates in the document (YYYY-MM-DD).
+- Skip pure transportation (flights, transfers, shuttles).`
+
+function parseResult(completion: OpenAI.Chat.ChatCompletion): ExtractedItinerary {
+  const toolCall = completion.choices[0]?.message?.tool_calls?.[0]
+  if (!toolCall || toolCall.type !== 'function') throw new Error('Could not extract itinerary.')
+  return JSON.parse(toolCall.function.arguments) as ExtractedItinerary
+}
+
+async function fetchBlob(url: string): Promise<Response> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30000)
+  try {
+    const response = await fetch(url, { signal: controller.signal })
+    if (!response.ok) throw new Error(`Failed to download uploaded file: ${response.status}`)
+    return response
+  } catch (err) {
+    if (controller.signal.aborted) throw new Error('Downloading the uploaded file timed out.')
+    throw err
+  } finally {
+    clearTimeout(timeout)
+  }
+}
 
 async function extractFromText(text: string): Promise<ExtractedItinerary> {
   const truncated = text.length > 20000 ? text.slice(0, 20000) + '\n[truncated]' : text
-  const extraction = await client.messages.create({
-    model: 'claude-haiku-4-5',
-    max_tokens: 2048,
-    tools: [EXTRACT_TOOL],
-    tool_choice: { type: 'tool', name: 'extract_itinerary' },
+  const completion = await client.chat.completions.create({
+    model: 'gpt-5.6-luna',
+    tools: [EXTRACT_FUNCTION],
+    tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
     messages: [{ role: 'user', content: `${EXTRACT_PROMPT}\n\nDOCUMENT:\n${truncated}` }],
   })
-  const block = extraction.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
-  if (!block) throw new Error('Could not extract itinerary.')
-  return block.input as ExtractedItinerary
+  return parseResult(completion)
 }
 
-async function extractFromPdf(base64: string): Promise<ExtractedItinerary> {
-  const extraction = await client.messages.create({
-    model: 'claude-haiku-4-5',
-    max_tokens: 2048,
-    tools: [EXTRACT_TOOL],
-    tool_choice: { type: 'tool', name: 'extract_itinerary' },
+async function extractFromImageUrl(url: string): Promise<ExtractedItinerary> {
+  // Pass the public Blob URL directly — OpenAI fetches it, no server-side download needed
+  const completion = await client.chat.completions.create({
+    model: 'gpt-5.6-luna',
+    tools: [EXTRACT_FUNCTION],
+    tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
     messages: [{
       role: 'user',
       content: [
-        {
-          type: 'document',
-          source: { type: 'base64', media_type: 'application/pdf', data: base64 },
-        } as Anthropic.DocumentBlockParam,
+        { type: 'image_url', image_url: { url } },
         { type: 'text', text: EXTRACT_PROMPT },
       ],
     }],
   })
-  const block = extraction.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
-  if (!block) throw new Error('Could not extract itinerary.')
-  return block.input as ExtractedItinerary
+  return parseResult(completion)
+}
+
+async function extractFromPdfUrl(url: string): Promise<ExtractedItinerary> {
+  // Chat Completions accepts PDFs as file content, not as an image URL.
+  const res = await fetchBlob(url)
+  const base64 = Buffer.from(await res.arrayBuffer()).toString('base64')
+  const completion = await client.chat.completions.create({
+    model: 'gpt-5.6-luna',
+    tools: [EXTRACT_FUNCTION],
+    tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'file', file: { file_data: base64, filename: 'itinerary.pdf' } },
+        { type: 'text', text: EXTRACT_PROMPT },
+      ],
+    }],
+  })
+  return parseResult(completion)
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as { text?: string; base64?: string; mediaType?: string }
+    const body = (await req.json()) as { text?: string; blobUrl?: string; mediaType?: string }
 
     let extracted: ExtractedItinerary
 
-    if (body.base64 && body.mediaType?.includes('pdf')) {
-      // PDF — send directly to Claude as a document
-      extracted = await extractFromPdf(body.base64)
-    } else if (body.base64) {
-      // XLSX / other binary — parse to CSV on server then extract
-      const buffer = Buffer.from(body.base64, 'base64')
+    if (body.blobUrl && body.mediaType?.startsWith('image/')) {
+      // Image: pass URL directly to OpenAI — no server download needed
+      extracted = await extractFromImageUrl(body.blobUrl)
+    } else if (body.blobUrl && body.mediaType?.includes('pdf')) {
+      extracted = await extractFromPdfUrl(body.blobUrl)
+    } else if (body.blobUrl) {
+      // XLSX — fetch and parse to CSV text
+      const res = await fetchBlob(body.blobUrl)
+      const buffer = Buffer.from(await res.arrayBuffer())
       const workbook = XLSX.read(buffer, { type: 'buffer' })
       const text = workbook.SheetNames.map(name =>
         `Sheet: ${name}\n${XLSX.utils.sheet_to_csv(workbook.Sheets[name])}`
       ).join('\n\n')
       extracted = await extractFromText(text)
     } else if (body.text?.trim()) {
-      // Plain text / CSV / paste
       extracted = await extractFromText(body.text)
     } else {
       return NextResponse.json({ error: 'No content provided.' }, { status: 400 })

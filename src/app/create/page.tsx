@@ -1,34 +1,55 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { upload } from '@vercel/blob/client'
 import { createItineraryDirect } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import TagPicker from '@/components/TagPicker'
 import { TripRatingPicker } from '@/components/TripRatingPicker'
 
-// Returns either plain text (for txt/csv) or base64+mediaType (for pdf/xlsx)
-// All binary parsing happens server-side to avoid mobile compatibility issues
-async function readFileForUpload(file: File): Promise<{ text: string } | { base64: string; mediaType: string }> {
+// Binary files (images, PDFs, XLSX) are uploaded to Vercel Blob to avoid the 4.5MB
+// function body limit. The public Blob URL is sent to the API route instead of base64.
+async function readFileForUpload(file: File): Promise<{ text: string } | { blobUrl: string; mediaType: string }> {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
   const mime = file.type
-  const isBinary = ext === 'pdf' || mime === 'application/pdf' ||
-    ext === 'xlsx' || ext === 'xls' || mime.includes('spreadsheet') || mime.includes('excel')
+  const isPdf = ext === 'pdf' || mime === 'application/pdf'
+  const isXlsx = ext === 'xlsx' || ext === 'xls' || mime.includes('spreadsheet') || mime.includes('excel')
+  const isImage = mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)
+  const isHtml = ext === 'html' || ext === 'htm' || mime === 'text/html'
+
+  if (isPdf || isXlsx || isImage) {
+    const ext2 = file.name.includes('.') ? '.' + file.name.split('.').pop() : ''
+    const uniqueName = `extractions/${Date.now()}-${Math.random().toString(36).slice(2)}${ext2}`
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 45000)
+    let blob: Awaited<ReturnType<typeof upload>>
+    try {
+      blob = await upload(uniqueName, file, {
+        access: 'public',
+        handleUploadUrl: '/api/upload-doc',
+        abortSignal: controller.signal,
+      })
+    } catch (err) {
+      if (controller.signal.aborted) throw new Error('Upload timed out. Please try a smaller file or try again.')
+      throw err
+    } finally {
+      clearTimeout(timeout)
+    }
+    const mediaType = file.type || (isPdf ? 'application/pdf' : isImage ? 'image/jpeg' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    return { blobUrl: blob.url, mediaType }
+  }
 
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    if (isBinary) {
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string
-        const base64 = dataUrl.split(',')[1]
-        const mediaType = file.type || (ext === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        resolve({ base64, mediaType })
+    reader.onload = (e) => {
+      let text = (e.target?.result as string) ?? ''
+      if (isHtml) {
+        const doc = new DOMParser().parseFromString(text, 'text/html')
+        text = doc.body.textContent ?? text
       }
-      reader.readAsDataURL(file)
-    } else {
-      reader.onload = (e) => resolve({ text: (e.target?.result as string) ?? '' })
-      reader.readAsText(file)
+      resolve({ text })
     }
+    reader.readAsText(file)
     reader.onerror = () => reject(new Error('Failed to read file.'))
   })
 }
@@ -38,6 +59,25 @@ type ActivityItem = { name: string; notes: string; link: string; rating: number 
 type StayGroup    = { hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; food: FoodItem[]; activities: ActivityItem[] }
 type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
 type UploadedPhoto = { url: string; caption: string }
+
+type RawDestItem = { type: string; mealType?: string; rating?: number; name: string; notes?: string; link?: string }
+type RawDest = { name?: string; country?: string; items?: RawDestItem[] }
+type ExtractionData = { title?: string; description?: string; startDate?: string; endDate?: string; notes?: string; destinations?: RawDest[] }
+
+const DOC_ACCEPT = '.pdf,.xlsx,.xls,.csv,.txt,.html,.htm,image/jpeg,image/png,image/gif,image/webp,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain,text/html'
+
+function mapExtractionDests(rawDests: RawDest[]): Destination[] {
+  return rawDests.map((d) => {
+    const items = Array.isArray(d.items) ? d.items : []
+    const hotels = items.filter(i => i.type === 'hotel')
+    const food   = items.filter(i => i.type === 'food_drink').map(f => ({ name: f.name ?? '', mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [] }))
+    const acts   = items.filter(i => i.type === 'activity').map(a => ({ name: a.name ?? '', notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0 }))
+    const groups: StayGroup[] = hotels.length === 0
+      ? [{ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], food, activities: acts }]
+      : hotels.map((h, hi) => ({ hotelName: h.name ?? '', hotelNotes: h.notes ?? '', hotelLink: h.link ?? '', hotelRating: h.rating ?? 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], food: hi === 0 ? food : [], activities: hi === 0 ? acts : [] }))
+    return { name: d.name ?? '', country: d.country ?? '', notes: '', groups }
+  })
+}
 
 const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [] })
 const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0 })
@@ -182,6 +222,8 @@ export default function CreatePage() {
   const [uploading, setUploading] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState<string | null>(null)
+  const [extractProgress, setExtractProgress] = useState<{ current: number; total: number } | null>(null)
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [pasteMode, setPasteMode] = useState(false)
   const [pasteText, setPasteText] = useState('')
 
@@ -207,7 +249,7 @@ export default function CreatePage() {
   }
 
   // ── Import ────────────────────────────────────────────────────────────────
-  async function runExtraction(payload: { text: string } | { base64: string; mediaType: string }) {
+  async function fetchExtraction(payload: { text: string } | { blobUrl: string; mediaType: string }): Promise<ExtractionData> {
     if ('text' in payload && !payload.text.trim()) throw new Error('No text to extract from.')
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 45000)
@@ -226,26 +268,18 @@ export default function CreatePage() {
       const body = await res.json().catch(() => ({}))
       throw new Error(body.error ?? 'Extraction failed.')
     }
-    const data = await res.json()
-    if (data.title) setTitle(data.title)
-    if (data.description) setDescription(data.description)
-    if (data.startDate) setStartDate(data.startDate)
-    if (data.endDate) setEndDate(data.endDate)
-    if (data.notes) setNotes(data.notes)
-    if (Array.isArray(data.destinations) && data.destinations.length > 0) {
-      setDestinations(
-        data.destinations.map((d: { name?: string; country?: string; items?: { type: string; mealType?: string; name: string; notes?: string; link?: string }[] }) => {
-          const items = Array.isArray(d.items) ? d.items : []
-          const hotels = items.filter(i => i.type === 'hotel')
-          const food   = items.filter(i => i.type === 'food_drink').map(f => ({ name: f.name ?? '', mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [] }))
-          const acts   = items.filter(i => i.type === 'activity').map(a => ({ name: a.name ?? '', notes: a.notes ?? '', link: a.link ?? '', rating: 0 }))
-          const groups: StayGroup[] = hotels.length === 0
-            ? [{ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], food, activities: acts }]
-            : hotels.map((h, hi) => ({ hotelName: h.name ?? '', hotelNotes: h.notes ?? '', hotelLink: h.link ?? '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], food: hi === 0 ? food : [], activities: hi === 0 ? acts : [] }))
-          return { name: d.name ?? '', country: d.country ?? '', notes: '', groups }
-        })
-      )
-    }
+    return res.json()
+  }
+
+  function applyExtractionResults(results: ExtractionData[]) {
+    const first = results[0]
+    if (first.title) setTitle(first.title)
+    if (first.description) setDescription(first.description)
+    if (first.startDate) setStartDate(first.startDate)
+    if (first.endDate) setEndDate(first.endDate)
+    if (first.notes) setNotes(first.notes)
+    const allDests = results.flatMap(r => Array.isArray(r.destinations) && r.destinations.length > 0 ? mapExtractionDests(r.destinations) : [])
+    if (allDests.length > 0) setDestinations(allDests)
     setStep('basics')
   }
 
@@ -254,7 +288,8 @@ export default function CreatePage() {
     setExtracting(true)
     setExtractError(null)
     try {
-      await runExtraction({ text: pasteText })
+      const data = await fetchExtraction({ text: pasteText })
+      applyExtractionResults([data])
       setPasteMode(false)
       setPasteText('')
     } catch (err) {
@@ -264,19 +299,35 @@ export default function CreatePage() {
     }
   }
 
-  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+  function handleAddFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const incoming = Array.from(e.target.files ?? [])
+    if (incoming.length > 0) setPendingFiles(prev => [...prev, ...incoming])
+    e.target.value = ''
+  }
+
+  function removePendingFile(i: number) {
+    setPendingFiles(prev => prev.filter((_, idx) => idx !== i))
+  }
+
+  async function handleExtractAll() {
+    if (pendingFiles.length === 0) return
     setExtracting(true)
     setExtractError(null)
+    setExtractProgress(pendingFiles.length > 1 ? { current: 0, total: pendingFiles.length } : null)
+    const results: ExtractionData[] = []
     try {
-      const payload = await readFileForUpload(file)
-      await runExtraction(payload)
+      for (let i = 0; i < pendingFiles.length; i++) {
+        if (pendingFiles.length > 1) setExtractProgress({ current: i + 1, total: pendingFiles.length })
+        const payload = await readFileForUpload(pendingFiles[i])
+        results.push(await fetchExtraction(payload))
+      }
+      applyExtractionResults(results)
+      setPendingFiles([])
     } catch (err) {
       setExtractError(err instanceof Error ? err.message : 'Something went wrong.')
     } finally {
       setExtracting(false)
-      e.target.value = ''
+      setExtractProgress(null)
     }
   }
 
@@ -389,28 +440,58 @@ export default function CreatePage() {
             <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
               <div>
                 <p className="font-semibold text-gray-900 mb-0.5">📄 Import</p>
-                <p className="text-xs text-gray-500">Upload a PDF, spreadsheet, or paste an email / booking confirmation — we&apos;ll fill everything in automatically.</p>
+                <p className="text-xs text-gray-500">Upload a PDF, spreadsheet, screenshot, or HTML export — or paste an email / booking confirmation. Works with Apple Notes (share as PDF or screenshot).</p>
               </div>
 
-              <div className="flex gap-2">
-                <label className={`flex-1 text-center cursor-pointer rounded-xl px-4 py-3 text-sm font-medium transition-colors border ${
-                  extracting ? 'bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-blue-600 hover:text-white hover:border-blue-600'
-                }`}>
-                  {extracting ? 'Reading…' : '📎 Upload file'}
-                  <input type="file"
-                    accept=".pdf,.xlsx,.xls,.csv,.txt,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain"
-                    className="sr-only" onChange={handleImport} disabled={extracting} />
-                </label>
-                <button type="button" disabled={extracting}
-                  onClick={() => { setPasteMode(v => !v); setExtractError(null) }}
-                  className={`flex-1 rounded-xl px-4 py-3 text-sm font-medium transition-colors border ${
-                    pasteMode ? 'bg-blue-600 text-white border-blue-600' :
-                    extracting ? 'bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed' :
-                    'bg-gray-50 text-gray-700 border-gray-200 hover:bg-blue-600 hover:text-white hover:border-blue-600'
+              {pendingFiles.length > 0 ? (
+                <div className="space-y-2">
+                  {pendingFiles.map((f, i) => (
+                    <div key={i} className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                      <span className="text-sm flex-1 truncate text-gray-700">{f.name}</span>
+                      <button type="button" onClick={() => removePendingFile(i)} disabled={extracting}
+                        className="text-gray-400 hover:text-red-500 text-lg leading-none disabled:opacity-30">×</button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2 pt-1">
+                    <label className={`shrink-0 text-center cursor-pointer rounded-xl px-4 py-2.5 text-sm font-medium transition-colors border ${
+                      extracting ? 'bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                    }`}>
+                      + Add more files
+                      <input type="file" multiple
+                        accept={DOC_ACCEPT}
+                        className="sr-only" onChange={handleAddFiles} disabled={extracting} />
+                    </label>
+                    <button type="button" onClick={handleExtractAll} disabled={extracting}
+                      className="flex-1 bg-blue-600 text-white text-sm font-semibold rounded-xl px-4 py-2.5 hover:bg-blue-700 transition-colors disabled:opacity-60">
+                      {extracting
+                        ? extractProgress
+                          ? `Reading ${extractProgress.current} of ${extractProgress.total}…`
+                          : 'Reading…'
+                        : 'Extract itinerary'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <label className={`flex-1 text-center cursor-pointer rounded-xl px-4 py-3 text-sm font-medium transition-colors border ${
+                    extracting ? 'bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-blue-600 hover:text-white hover:border-blue-600'
                   }`}>
-                  📋 Paste text
-                </button>
-              </div>
+                    📎 Upload file
+                    <input type="file" multiple
+                      accept={DOC_ACCEPT}
+                      className="sr-only" onChange={handleAddFiles} disabled={extracting} />
+                  </label>
+                  <button type="button" disabled={extracting}
+                    onClick={() => { setPasteMode(v => !v); setExtractError(null) }}
+                    className={`flex-1 rounded-xl px-4 py-3 text-sm font-medium transition-colors border ${
+                      pasteMode ? 'bg-blue-600 text-white border-blue-600' :
+                      extracting ? 'bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed' :
+                      'bg-gray-50 text-gray-700 border-gray-200 hover:bg-blue-600 hover:text-white hover:border-blue-600'
+                    }`}>
+                    📋 Paste text
+                  </button>
+                </div>
+              )}
 
               {pasteMode && (
                 <div className="space-y-2">
@@ -435,7 +516,11 @@ export default function CreatePage() {
                 <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{extractError}</p>
               )}
               {extracting && (
-                <p className="text-xs text-blue-600 animate-pulse">Reading your itinerary…</p>
+                <p className="text-xs text-blue-600 animate-pulse">
+                  {extractProgress
+                    ? `Reading file ${extractProgress.current} of ${extractProgress.total}…`
+                    : 'Reading your itinerary…'}
+                </p>
               )}
             </div>
 
