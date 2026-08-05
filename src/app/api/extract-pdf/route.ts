@@ -126,7 +126,7 @@ async function extractFromPrivatePdf(url: string, filename: string): Promise<Ext
         role: 'user',
         content: [
           { type: 'input_file', file_id: file.id },
-          { type: 'input_text', text: EXTRACT_PROMPT },
+          { type: 'input_text', text: `${EXTRACT_PROMPT}\n\nReturn only valid JSON.` },
         ],
       }],
       text: {
