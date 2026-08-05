@@ -15,7 +15,7 @@ const IMPORT_TIMEOUT_MS = 5 * 60 * 1000
 async function readFileForUpload(
   file: File,
   onUploadProgress?: (percentage: number) => void,
-): Promise<{ text: string } | { blobUrl: string; mediaType: string }> {
+): Promise<{ text: string } | { blobUrl: string; mediaType: string; filename: string }> {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
   const mime = file.type
   const isPdf = ext === 'pdf' || mime === 'application/pdf'
@@ -47,7 +47,7 @@ async function readFileForUpload(
       clearTimeout(timeout)
     }
     const mediaType = file.type || (isPdf ? 'application/pdf' : isImage ? 'image/jpeg' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    return { blobUrl: blob.url, mediaType }
+    return { blobUrl: blob.url, mediaType, filename: file.name }
   }
 
   return new Promise((resolve, reject) => {
@@ -261,7 +261,7 @@ export default function CreatePage() {
   }
 
   // ── Import ────────────────────────────────────────────────────────────────
-  async function fetchExtraction(payload: { text: string } | { blobUrl: string; mediaType: string }): Promise<ExtractionData> {
+  async function fetchExtraction(payload: { text: string } | { blobUrl: string; mediaType: string; filename: string }): Promise<ExtractionData> {
     if ('text' in payload && !payload.text.trim()) throw new Error('No text to extract from.')
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), IMPORT_TIMEOUT_MS)

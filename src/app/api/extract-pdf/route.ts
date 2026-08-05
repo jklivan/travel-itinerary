@@ -106,28 +106,16 @@ async function extractFromText(text: string): Promise<ExtractedItinerary> {
   return parseResult(completion)
 }
 
-async function extractFromImageUrl(url: string): Promise<ExtractedItinerary> {
-  // Pass the public Blob URL directly — OpenAI fetches it, no server-side download needed
-  const completion = await client.chat.completions.create({
-    model: 'gpt-5.6-luna',
-    tools: [EXTRACT_FUNCTION],
-    tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
-    messages: [{
-      role: 'user',
-      content: [
-        { type: 'image_url', image_url: { url } },
-        { type: 'text', text: EXTRACT_PROMPT },
-      ],
-    }],
-  })
-  return parseResult(completion)
-}
-
-async function extractFromPdfUrl(url: string): Promise<ExtractedItinerary> {
-  // Upload the PDF as an OpenAI file so the completion request remains small.
+async function extractFromUploadedFile(
+  url: string,
+  filename: string,
+  contentType: string,
+): Promise<ExtractedItinerary> {
+  // Upload to OpenAI first. Passing a Vercel Blob URL directly makes the model
+  // fetch the image itself, which can stall on remote-object retrieval.
   const res = await fetchBlob(url)
   const file = await client.files.create({
-    file: await toFile(Buffer.from(await res.arrayBuffer()), 'itinerary.pdf', { type: 'application/pdf' }),
+    file: await toFile(Buffer.from(await res.arrayBuffer()), filename, { type: contentType }),
     purpose: 'user_data',
   })
 
@@ -152,15 +140,22 @@ async function extractFromPdfUrl(url: string): Promise<ExtractedItinerary> {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as { text?: string; blobUrl?: string; mediaType?: string }
+    const body = (await req.json()) as { text?: string; blobUrl?: string; mediaType?: string; filename?: string }
 
     let extracted: ExtractedItinerary
 
     if (body.blobUrl && body.mediaType?.startsWith('image/')) {
-      // Image: pass URL directly to OpenAI — no server download needed
-      extracted = await extractFromImageUrl(body.blobUrl)
+      extracted = await extractFromUploadedFile(
+        body.blobUrl,
+        body.filename ?? 'itinerary-image',
+        body.mediaType,
+      )
     } else if (body.blobUrl && body.mediaType?.includes('pdf')) {
-      extracted = await extractFromPdfUrl(body.blobUrl)
+      extracted = await extractFromUploadedFile(
+        body.blobUrl,
+        body.filename ?? 'itinerary.pdf',
+        body.mediaType,
+      )
     } else if (body.blobUrl) {
       // XLSX — fetch and parse to CSV text
       const res = await fetchBlob(body.blobUrl)
