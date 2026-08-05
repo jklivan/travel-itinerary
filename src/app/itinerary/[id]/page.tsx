@@ -59,7 +59,7 @@ export default async function ItineraryPage({
   const it = await prisma.itinerary.findUnique({
     where: { id },
     include: {
-      user: { select: { id: true, name: true, isPrivate: true } },
+      user: { select: { id: true, name: true } },
       destinations: {
         orderBy: { order: 'asc' },
         include: { items: true },
@@ -73,23 +73,13 @@ export default async function ItineraryPage({
   const isOwn = session?.user?.id === it.user.id
   const isGuide = it.postType === 'guide'
 
-  if ((it.visibility === 'private' || it.visibility === 'draft') && !isOwn) notFound()
-
-  // Private account: only accepted followers (and the owner) can view any itinerary
-  if (it.user.isPrivate && !isOwn) {
-    const followRecord = session?.user?.id
-      ? await prisma.follow.findUnique({
-          where: { followerId_followingId: { followerId: session.user.id, followingId: it.user.id } },
-        })
-      : null
-    if (followRecord?.status !== 'accepted') notFound()
-  }
+  if (it.visibility === 'draft' && !isOwn) notFound()
 
   // Adjacent itineraries for swipe navigation (same author, same visibility rules)
   const userItineraries = await prisma.itinerary.findMany({
     where: {
       userId: it.user.id,
-      ...(isOwn ? {} : { visibility: 'public' }),
+      ...(isOwn ? {} : { visibility: { not: 'draft' } }),
     },
     orderBy: { startDate: 'desc' },
     select: { id: true },

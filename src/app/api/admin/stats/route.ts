@@ -9,9 +9,9 @@ export async function GET(req: NextRequest) {
 
   const [totalUsers, usersWithItineraries, totalItineraries, totalPublic, totalSaves, nonPublic] = await Promise.all([
     prisma.user.count(),
-    prisma.user.count({ where: { itineraries: { some: { visibility: 'public' } } } }),
+    prisma.user.count({ where: { itineraries: { some: { visibility: { not: 'draft' } } } } }),
     prisma.itinerary.count(),
-    prisma.itinerary.count({ where: { visibility: 'public' } }),
+    prisma.itinerary.count({ where: { visibility: { not: 'draft' } } }),
     prisma.bucketListItem.count(),
     prisma.itinerary.findMany({
       where: { visibility: { not: 'public' } },

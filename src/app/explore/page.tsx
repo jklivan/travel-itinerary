@@ -6,7 +6,7 @@ import ItineraryCard from '@/components/ItineraryCard'
 import HorizontalScrollFeed from '@/components/HorizontalScrollFeed'
 import ExploreSearchBar from '@/components/ExploreSearchBar'
 import { parseSearchQuery, type ParsedQuery } from '@/lib/parseSearchQuery'
-import { tagMeta, TAGS } from '@/lib/tags'
+import { tagMeta } from '@/lib/tags'
 import { MapPin, Globe, ChevronRight } from 'lucide-react'
 import { Caveat } from 'next/font/google'
 import ExploreMap from '@/components/ExploreMap'
@@ -25,7 +25,7 @@ const TRIP_TYPE_META: Record<string, { label: string; emoji: string; desc: strin
 const NAV_CARDS = [
   { key: 'tags',     href: '/explore?view=tags',     emoji: '🏷️', title: 'Browse by Type', desc: 'Filter by vibe',        bg: '#C4782A', tape: 'rgba(255,243,148,0.88)', rot: '-1.5deg' },
   { key: 'hotspots', href: '/explore?view=hotspots', emoji: '🔥', title: 'Hot Spots',      desc: "What's trending",       bg: '#B03020', tape: 'rgba(255,210,210,0.88)', rot:  '1.5deg' },
-  { key: 'recs',     href: '/explore?view=recs',     emoji: '⭐', title: 'Expert Recs',    desc: 'Curated picks',          bg: '#1A4F7A', tape: 'rgba(200,232,255,0.88)', rot: '-0.5deg' },
+  { key: 'recs',     href: '/friends',                emoji: '👥', title: "Friends' Trips", desc: 'Trips from friends',    bg: '#1A4F7A', tape: 'rgba(200,232,255,0.88)', rot: '-0.5deg' },
   { key: 'map',      href: '/explore?view=map',      emoji: '🗺️', title: 'Map',            desc: 'Explore destinations',  bg: '#0F7A65', tape: 'rgba(210,255,220,0.88)', rot:  '2.0deg' },
 ]
 
@@ -33,7 +33,7 @@ const NAV_CARDS = [
 async function fetchItineraries(where: ItineraryWhereInput, userId: string | null) {
   const [itineraries, bucketIds] = await Promise.all([
     prisma.itinerary.findMany({
-      where: { visibility: 'public', destinations: { some: { items: { some: {} } } }, ...where },
+      where: { visibility: { not: 'draft' }, destinations: { some: { items: { some: {} } } }, ...where },
       orderBy: { createdAt: 'desc' },
       include: {
         user: { select: { name: true, id: true } },
@@ -146,7 +146,7 @@ export default async function ExplorePage({
     console.log('[search] audience:', parsed.audience, 'budget:', parsed.maxBudget)
 
     const allDests = await prisma.destination.findMany({
-      where: { itinerary: { visibility: 'public' } },
+      where: { itinerary: { visibility: { not: 'draft' } } },
       select: { name: true, country: true },
     })
     console.log('[search] all destinations:', allDests.map(d => `"${d.name}" / "${d.country}"`).join(' | '))
@@ -216,7 +216,7 @@ export default async function ExplorePage({
   // ── Country view ───────────────────────────────────────────────────────────
   if (country) {
     const destinations = await prisma.destination.findMany({
-      where: { country, itinerary: { visibility: 'public' }, items: { some: {} } },
+      where: { country, itinerary: { visibility: { not: 'draft' } }, items: { some: {} } },
       select: { name: true },
     })
     const cityMap = new Map<string, number>()
@@ -323,9 +323,9 @@ export default async function ExplorePage({
       <div className="max-w-2xl mx-auto px-4 py-6">
         <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
         <div className="text-center py-24">
-          <p className="text-5xl mb-4">⭐</p>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Expert Recs</h2>
-          <p className="text-sm text-gray-400">Coming soon</p>
+          <p className="text-5xl mb-4">👥</p>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Friends&apos; Trips</h2>
+          <Link href="/friends" className="text-sm text-blue-600 hover:underline">See your friends</Link>
         </div>
       </div>
     )
@@ -337,7 +337,7 @@ export default async function ExplorePage({
       where: {
         lat: { not: null },
         lng: { not: null },
-        itinerary: { visibility: 'public' },
+        itinerary: { visibility: { not: 'draft' } },
         items: { some: {} },
       },
       select: {

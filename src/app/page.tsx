@@ -17,29 +17,18 @@ export default async function FeedPage({
   const isExplore = !userId || view === 'explore'
   const isFriends = !isExplore
 
-  let userIdFilter: { in: string[] } | undefined
-  if (isFriends && userId) {
-    const follows = await prisma.follow.findMany({
+  const friendIds = userId
+    ? (await prisma.follow.findMany({
       where: { followerId: userId, status: 'accepted' },
-    })
-    const ids = [...follows.map((f) => f.followingId), userId]
-    userIdFilter = { in: ids }
-  }
+      select: { followingId: true },
+    })).map((follow) => follow.followingId)
+    : []
+  const userIdFilter = isFriends && userId ? { in: [...friendIds, userId] } : undefined
 
-  const [itineraries, bucketIds] = await Promise.all([
+  const [itineraries, bucketIds, friendItineraries] = await Promise.all([
     prisma.itinerary.findMany({
       where: {
-        OR: [
-          { visibility: 'public' },
-          ...(userId ? [{ userId, visibility: 'private' }] : []),
-        ],
-        // Explore feed: hide itineraries from private accounts (except own)
-        ...(isExplore ? {
-          OR: [
-            { user: { isPrivate: false } },
-            ...(userId ? [{ userId }] : []),
-          ],
-        } : {}),
+        visibility: { not: 'draft' },
         destinations: { some: { items: { some: {} } } },
         ...(isFriends && userIdFilter ? { userId: userIdFilter } : {}),
         ...(searchQuery ? {
@@ -63,6 +52,23 @@ export default async function FeedPage({
     }),
     userId
       ? prisma.bucketListItem.findMany({ where: { userId }, select: { itineraryId: true } })
+      : Promise.resolve([]),
+    friendIds.length > 0
+      ? prisma.itinerary.findMany({
+          where: {
+            userId: { in: friendIds },
+            visibility: { not: 'draft' },
+            destinations: { some: { items: { some: {} } } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          include: {
+            user: { select: { name: true, id: true } },
+            destinations: { orderBy: { order: 'asc' }, include: { items: true } },
+            photos: { take: 1, orderBy: { isStock: 'asc' } },
+            _count: { select: { bucketedBy: true } },
+          },
+        })
       : Promise.resolve([]),
   ])
 
@@ -122,30 +128,37 @@ export default async function FeedPage({
         </HorizontalScrollFeed>
       )}
 
-      {/* Expert Recs */}
-      {!searchQuery && (
+      {!searchQuery && isExplore && userId && (
         <div className="mt-10">
           <div className="mb-4">
-            <h2 className="text-lg font-bold text-gray-900">Expert Recs</h2>
-            <p className="text-sm text-gray-500">Curated picks from travel experts</p>
+            <h2 className="text-lg font-bold text-gray-900">Friends&apos; Trips</h2>
+            <p className="text-sm text-gray-500">Recent itineraries from people you follow</p>
           </div>
-          <div className="flex gap-5 overflow-x-auto pb-4 -mx-4 px-4 [&::-webkit-scrollbar]:hidden">
-            {[
-              { rotate: '-rotate-2' },
-              { rotate: 'rotate-1' },
-              { rotate: '-rotate-1' },
-              { rotate: 'rotate-2' },
-              { rotate: '-rotate-1' },
-            ].map((p, i) => (
-              <div key={i} className={`flex-none w-36 bg-white shadow-md p-2.5 pb-9 ${p.rotate}`}>
-                <div className="w-full aspect-square bg-gray-100" />
-                <div className="mt-3 space-y-1.5">
-                  <div className="h-2 bg-gray-200 rounded w-4/5" />
-                  <div className="h-2 bg-gray-100 rounded w-3/5" />
-                </div>
-              </div>
-            ))}
-          </div>
+          {friendItineraries.length > 0 ? (
+            <HorizontalScrollFeed>
+              {friendItineraries.map((it) => (
+                <ItineraryCard
+                  key={it.id}
+                  id={it.id}
+                  postType={it.postType}
+                  title={it.title}
+                  startDate={it.startDate}
+                  endDate={it.endDate}
+                  audience={it.audience}
+                  budget={it.budget}
+                  authorName={it.user.name}
+                  destinations={it.destinations}
+                  coverPhoto={it.photos[0]?.url ?? null}
+                  currentUserId={userId}
+                  isOwn={false}
+                  isBucketed={bucketSet.has(it.id)}
+                  saveCount={it._count.bucketedBy}
+                />
+              ))}
+            </HorizontalScrollFeed>
+          ) : (
+            <p className="text-sm text-gray-500">Follow friends to see their trips here.</p>
+          )}
         </div>
       )}
     </div>

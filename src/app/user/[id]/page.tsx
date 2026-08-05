@@ -34,7 +34,7 @@ export default async function UserProfilePage({
 
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, name: true, createdAt: true, isPrivate: true },
+    select: { id: true, name: true, createdAt: true },
   })
   if (!user) notFound()
 
@@ -47,7 +47,7 @@ export default async function UserProfilePage({
     prisma.itinerary.findMany({
       where: {
         userId: id,
-        ...(isOwn ? { visibility: { not: 'draft' } } : { visibility: 'public' }),
+        visibility: { not: 'draft' },
       },
       orderBy: { createdAt: 'desc' },
       include: {
@@ -98,7 +98,6 @@ export default async function UserProfilePage({
   ])
 
   const followStatus = followRecord?.status ?? 'none'
-  const isAccountPrivate = user.isPrivate && !isOwn && followStatus !== 'accepted'
   const avatarColor = hashPick(user.name, AVATAR_COLORS)
   const initials = getInitials(user.name)
 
@@ -122,12 +121,7 @@ export default async function UserProfilePage({
           {initials}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-gray-900">{user.name}</h1>
-            {user.isPrivate && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">🔒 Private</span>
-            )}
-          </div>
+          <h1 className="text-xl font-bold text-gray-900">{user.name}</h1>
           <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
             <span className="flex items-center gap-1">
               <Users size={12} />
@@ -205,18 +199,7 @@ export default async function UserProfilePage({
         </div>
       )}
 
-      {/* Locked account state */}
-      {isAccountPrivate ? (
-        <div className="bg-white rounded-xl shadow-md p-10 text-center">
-          <p className="text-4xl mb-3">🔒</p>
-          <p className="font-semibold text-gray-900 mb-1">This account is private</p>
-          <p className="text-sm text-gray-500">
-            {followStatus === 'pending'
-              ? 'Your follow request is pending approval.'
-              : 'Follow this account to see their itineraries.'}
-          </p>
-        </div>
-      ) : showDrafts ? (
+      {showDrafts ? (
         <>
           <h2 className="font-semibold text-gray-900 text-sm mb-3">Drafts</h2>
           {drafts.length === 0 ? (
@@ -318,4 +301,3 @@ export default async function UserProfilePage({
     </div>
   )
 }
-

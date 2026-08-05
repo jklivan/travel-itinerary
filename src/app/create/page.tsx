@@ -237,7 +237,6 @@ export default function CreatePage() {
   const [endDate, setEndDate] = useState('')
   const [postType, setPostType] = useState<'itinerary' | 'guide'>('itinerary')
   const [isAdult, setIsAdult] = useState(false)
-  const [isPrivate, setIsPrivate] = useState(false)
   const [notes, setNotes] = useState('')
   const [highlights, setHighlights] = useState('')
   const [tags, setTags] = useState<string[]>([])
@@ -267,7 +266,7 @@ export default function CreatePage() {
       title, description, startDate, endDate, notes, highlights,
       destinations, photos, tags, tripRating,
       postType, audience: isAdult ? 'adult' : 'family',
-      visibility: isPrivate ? 'private' : 'public',
+      visibility: 'public',
       isDraft,
     })
     setPending(false)
@@ -610,12 +609,6 @@ export default function CreatePage() {
                   <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${!isAdult ? 'translate-x-5' : 'translate-x-1'}`} />
                 </div>
                 <span className="text-sm text-gray-900">Family friendly</span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer select-none">
-                <div onClick={() => setIsPrivate(v => !v)} className={`w-10 h-6 rounded-full transition-colors relative ${isPrivate ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${isPrivate ? 'translate-x-5' : 'translate-x-1'}`} />
-                </div>
-                <span className="text-sm text-gray-900">{isPrivate ? 'Private' : 'Public'}</span>
               </label>
             </div>
           </div>

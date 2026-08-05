@@ -8,29 +8,25 @@ export async function sendFollowRequest(userId: string) {
   const session = await auth()
   if (!session?.user?.id) return
   if (userId === session.user.id) return
-  const targetUser = await prisma.user.findUnique({ where: { id: userId }, select: { isPrivate: true } })
-  const status = targetUser?.isPrivate ? 'pending' : 'accepted'
   await prisma.follow.upsert({
     where: { followerId_followingId: { followerId: session.user.id, followingId: userId } },
-    update: {},
-    create: { followerId: session.user.id, followingId: userId, status },
+    update: { status: 'accepted' },
+    create: { followerId: session.user.id, followingId: userId, status: 'accepted' },
   })
   revalidatePath('/friends')
   revalidatePath('/')
   revalidatePath(`/user/${userId}`)
 }
 
-export async function updateAccountPrivacy(isPrivate: boolean) {
+export async function updateAccountPrivacy() {
   const session = await auth()
   if (!session?.user?.id) return
-  await prisma.user.update({ where: { id: session.user.id }, data: { isPrivate } })
-  // When switching to public, auto-accept all pending incoming requests
-  if (!isPrivate) {
-    await prisma.follow.updateMany({
-      where: { followingId: session.user.id, status: 'pending' },
-      data: { status: 'accepted' },
-    })
-  }
+  // Profiles are public for now. Keep this action safe for an older open client.
+  await prisma.user.update({ where: { id: session.user.id }, data: { isPrivate: false } })
+  await prisma.follow.updateMany({
+    where: { followingId: session.user.id, status: 'pending' },
+    data: { status: 'accepted' },
+  })
   revalidatePath(`/user/${session.user.id}`)
   revalidatePath('/settings')
   revalidatePath('/')

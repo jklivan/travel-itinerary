@@ -46,7 +46,7 @@ function parseFormData(formData: FormData) {
   const postType = (formData.get('postType') as string) || 'itinerary'
   const audience = (formData.get('audience') as string) || 'family'
   const isDraft = formData.get('isDraft') === '1'
-  const visibility = isDraft ? 'draft' : ((formData.get('visibility') as string) || 'public')
+  const visibility = isDraft ? 'draft' : 'public'
   const notes = (formData.get('notes') as string)?.trim() || null
   const highlights = (formData.get('highlights') as string)?.trim() || null
   const tags: string[] = formData.get('tags') ? JSON.parse(formData.get('tags') as string) : []
@@ -235,7 +235,8 @@ export async function createItineraryDirect(input: {
   const session = await auth()
   if (!session?.user?.id) return { error: 'You must be logged in.' }
 
-  const { title, description, startDate: startDateStr, endDate: endDateStr, postType, audience, visibility, isDraft, notes, highlights, tags, tripRating, destinations, photos } = input
+  const { title, description, startDate: startDateStr, endDate: endDateStr, postType, audience, isDraft, notes, highlights, tags, tripRating, destinations, photos } = input
+  const visibility = isDraft ? 'draft' : 'public'
 
   const resolvedTitle = title?.trim() || (input.destinations?.[0]?.name ? `Trip to ${input.destinations[0].name}` : 'My Trip')
 

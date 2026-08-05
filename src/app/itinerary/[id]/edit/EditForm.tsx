@@ -211,7 +211,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   const [startDate, setStartDate] = useState(fmt(itinerary.startDate))
   const [endDate, setEndDate] = useState(fmt(itinerary.endDate))
   const [isAdult, setIsAdult] = useState(itinerary.audience === 'adult')
-  const [isPrivate, setIsPrivate] = useState(itinerary.visibility === 'private')
   const [notes, setNotes] = useState(itinerary.notes ?? '')
   const [highlights, setHighlights] = useState(itinerary.highlights ?? '')
   const [tags, setTags] = useState<string[]>(itinerary.tags ?? [])
@@ -314,7 +313,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       <input type="hidden" name="destinations" value={JSON.stringify(destinations)} />
       <input type="hidden" name="photos" ref={photosInputRef} defaultValue={JSON.stringify(photos)} />
       <input type="hidden" name="audience" value={isAdult ? 'adult' : 'family'} />
-      <input type="hidden" name="visibility" value={isPrivate ? 'private' : 'public'} />
+      <input type="hidden" name="visibility" value="public" />
       <input type="hidden" name="postType" value={postType} />
       <input type="hidden" name="tripRating" value={tripRating ?? ''} />
 
@@ -372,12 +371,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
             <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${!isAdult ? 'translate-x-5' : 'translate-x-1'}`} />
           </div>
           <span className="text-sm text-gray-900">Family friendly</span>
-        </label>
-        <label className="flex items-center gap-3 cursor-pointer select-none">
-          <div onClick={() => setIsPrivate(v => !v)} className={`w-10 h-6 rounded-full transition-colors relative ${isPrivate ? 'bg-gray-700' : 'bg-gray-200'}`}>
-            <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${isPrivate ? 'translate-x-5' : 'translate-x-1'}`} />
-          </div>
-          <span className="text-sm text-gray-900">{isPrivate ? 'Private — only visible to you' : 'Public — visible to everyone'}</span>
         </label>
       </section>
 
