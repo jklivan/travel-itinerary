@@ -1,4 +1,4 @@
-import OpenAI, { toFile } from 'openai'
+import OpenAI from 'openai'
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 
@@ -107,37 +107,28 @@ async function extractFromText(text: string): Promise<ExtractedItinerary> {
   return parseResult(completion)
 }
 
-async function extractFromUploadedFile(
-  url: string,
-  filename: string,
-  contentType: string,
-): Promise<ExtractedItinerary> {
-  // Upload to OpenAI first. Passing a Vercel Blob URL directly makes the model
-  // fetch the image itself, which can stall on remote-object retrieval.
-  const res = await fetchBlob(url)
-  const file = await client.files.create({
-    file: await toFile(Buffer.from(await res.arrayBuffer()), filename, { type: contentType }),
-    purpose: 'user_data',
+async function extractFromPdfUrl(url: string): Promise<ExtractedItinerary> {
+  // The Responses API can read a public PDF URL directly. This avoids fetching
+  // a potentially large Blob through the Vercel function before extraction.
+  const response = await client.responses.create({
+    model: 'gpt-5.6-luna',
+    input: [{
+      role: 'user',
+      content: [
+        { type: 'input_file', file_url: url },
+        { type: 'input_text', text: EXTRACT_PROMPT },
+      ],
+    }],
+    text: {
+      format: {
+        type: 'json_schema',
+        name: 'itinerary_extraction',
+        strict: true,
+        schema: (EXTRACT_FUNCTION as Extract<OpenAI.Chat.ChatCompletionTool, { type: 'function' }>).function.parameters ?? { type: 'object' },
+      },
+    },
   })
-
-  try {
-    const completion = await client.chat.completions.create({
-      model: 'gpt-5.6-luna',
-      reasoning_effort: 'none',
-      tools: [EXTRACT_FUNCTION],
-      tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'file', file: { file_id: file.id } },
-          { type: 'text', text: EXTRACT_PROMPT },
-        ],
-      }],
-    })
-    return parseResult(completion)
-  } finally {
-    await client.files.delete(file.id).catch(() => undefined)
-  }
+  return JSON.parse(response.output_text) as ExtractedItinerary
 }
 
 async function extractFromImageUrl(url: string, contentType: string): Promise<ExtractedItinerary> {
@@ -189,11 +180,7 @@ export async function POST(req: NextRequest) {
     } else if (body.blobUrl && body.mediaType?.startsWith('image/')) {
       extracted = await extractFromImageUrl(body.blobUrl, body.mediaType)
     } else if (body.blobUrl && body.mediaType?.includes('pdf')) {
-      extracted = await extractFromUploadedFile(
-        body.blobUrl,
-        body.filename ?? 'itinerary.pdf',
-        body.mediaType,
-      )
+      extracted = await extractFromPdfUrl(body.blobUrl)
     } else if (body.blobUrl) {
       // XLSX — fetch and parse to CSV text
       const res = await fetchBlob(body.blobUrl)
