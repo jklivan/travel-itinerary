@@ -138,6 +138,26 @@ async function extractFromUploadedFile(
   }
 }
 
+async function extractFromImageUrl(url: string, contentType: string): Promise<ExtractedItinerary> {
+  // Fetch Blob ourselves, then send the image bytes to vision. This avoids both
+  // OpenAI's remote-URL fetch and its PDF-only file-input restriction.
+  const res = await fetchBlob(url)
+  const base64 = Buffer.from(await res.arrayBuffer()).toString('base64')
+  const completion = await client.chat.completions.create({
+    model: 'gpt-5.6-luna',
+    tools: [EXTRACT_FUNCTION],
+    tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image_url', image_url: { url: `data:${contentType};base64,${base64}` } },
+        { type: 'text', text: EXTRACT_PROMPT },
+      ],
+    }],
+  })
+  return parseResult(completion)
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as { text?: string; blobUrl?: string; mediaType?: string; filename?: string }
@@ -145,11 +165,7 @@ export async function POST(req: NextRequest) {
     let extracted: ExtractedItinerary
 
     if (body.blobUrl && body.mediaType?.startsWith('image/')) {
-      extracted = await extractFromUploadedFile(
-        body.blobUrl,
-        body.filename ?? 'itinerary-image',
-        body.mediaType,
-      )
+      extracted = await extractFromImageUrl(body.blobUrl, body.mediaType)
     } else if (body.blobUrl && body.mediaType?.includes('pdf')) {
       extracted = await extractFromUploadedFile(
         body.blobUrl,
