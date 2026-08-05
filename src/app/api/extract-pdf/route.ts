@@ -70,8 +70,9 @@ const EXTRACT_PROMPT = `Extract only confirmed or scheduled items from this trav
 
 - Include a place only when it is actually booked, scheduled, attended, stayed at, or explicitly placed on the itinerary. For a professional itinerary, entries in its day-by-day schedule count as confirmed.
 - Exclude suggestions, recommendations, options, alternatives, "consider" lists, nearby places, and unselected restaurants or activities — even if they sound appealing.
-- Always include accommodation. Classify any hotel, resort, inn, villa, lodging, accommodation, or stay as "hotel", including when it appears in a document header or an accommodation section.
+- Include accommodation only when the document explicitly names or states the hotel, resort, inn, villa, lodging, accommodation, or stay. Never infer or invent a hotel from a destination, meeting point, or itinerary context. Classify explicitly stated accommodation as "hotel".
 - Classify each remaining item as "food_drink" (a confirmed restaurant, bar, cafe, or dining reservation) or "activity" (a confirmed tour, sight, spa, or experience).
+- Do not extract guide names, tour-leader names, meeting points, guide meeting instructions, or guide contact details as itinerary items. If a named guide company is the booked tour provider, you may include the company as the activity; do not include an individual guide's name.
 - For food_drink, infer mealType from the time if given: before 11am = breakfast, 11am–3pm = lunch, 3pm–6pm = drinks or coffee, after 6pm = dinner. Otherwise pick the best fit.
 - Rate 1–5 stars if any sentiment is expressed. Omit rating if none.
 - Put useful details (confirmation numbers, dress codes, notes) in the notes field.
