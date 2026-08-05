@@ -130,12 +130,7 @@ async function extractFromPrivatePdf(url: string, filename: string): Promise<Ext
         ],
       }],
       text: {
-        format: {
-          type: 'json_schema',
-          name: 'itinerary_extraction',
-          strict: true,
-          schema: (EXTRACT_FUNCTION as Extract<OpenAI.Chat.ChatCompletionTool, { type: 'function' }>).function.parameters ?? { type: 'object' },
-        },
+        format: { type: 'json_object' },
       },
     })
     return JSON.parse(response.output_text) as ExtractedItinerary
