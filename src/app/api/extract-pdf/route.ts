@@ -75,6 +75,10 @@ const EXTRACT_PROMPT = `You are extracting travel data from a document. The docu
 - Populate startDate/endDate from the earliest and latest dates in the document (YYYY-MM-DD).
 - Skip pure transportation (flights, transfers, shuttles).`
 
+const PDF_JSON_INSTRUCTION = `Return only valid JSON in exactly this shape:
+{"title":"","description":"","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD","notes":"","destinations":[{"name":"","country":"","items":[{"type":"hotel|activity|food_drink","name":"","notes":"","mealType":"breakfast|lunch|dinner|drinks|coffee|dessert|bakery","rating":1}]}]}.
+Use an empty array for destinations only when the document contains no travel places.`
+
 function parseResult(completion: OpenAI.Chat.ChatCompletion): ExtractedItinerary {
   const toolCall = completion.choices[0]?.message?.tool_calls?.[0]
   if (!toolCall || toolCall.type !== 'function') throw new Error('Could not extract itinerary.')
@@ -126,7 +130,7 @@ async function extractFromPrivatePdf(url: string, filename: string): Promise<Ext
         role: 'user',
         content: [
           { type: 'input_file', file_id: file.id },
-          { type: 'input_text', text: `${EXTRACT_PROMPT}\n\nReturn only valid JSON.` },
+          { type: 'input_text', text: `${EXTRACT_PROMPT}\n\n${PDF_JSON_INSTRUCTION}` },
         ],
       }],
       text: {
