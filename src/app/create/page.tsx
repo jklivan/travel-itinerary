@@ -47,7 +47,7 @@ async function readFileForUpload(
     let blob: Awaited<ReturnType<typeof upload>>
     try {
       blob = await upload(uniqueName, file, {
-        access: 'public',
+        access: isPdf ? 'private' : 'public',
         handleUploadUrl: '/api/upload-doc',
         abortSignal: controller.signal,
         // Multipart is for genuinely large uploads. For normal PDFs it adds an

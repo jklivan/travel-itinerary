@@ -1,6 +1,7 @@
-import OpenAI from 'openai'
+import OpenAI, { toFile } from 'openai'
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
+import { get } from '@vercel/blob'
 
 export const maxDuration = 300
 
@@ -107,28 +108,40 @@ async function extractFromText(text: string): Promise<ExtractedItinerary> {
   return parseResult(completion)
 }
 
-async function extractFromPdfUrl(url: string): Promise<ExtractedItinerary> {
-  // The Responses API can read a public PDF URL directly. This avoids fetching
-  // a potentially large Blob through the Vercel function before extraction.
-  const response = await client.responses.create({
-    model: 'gpt-5.6-luna',
-    input: [{
-      role: 'user',
-      content: [
-        { type: 'input_file', file_url: url },
-        { type: 'input_text', text: EXTRACT_PROMPT },
-      ],
-    }],
-    text: {
-      format: {
-        type: 'json_schema',
-        name: 'itinerary_extraction',
-        strict: true,
-        schema: (EXTRACT_FUNCTION as Extract<OpenAI.Chat.ChatCompletionTool, { type: 'function' }>).function.parameters ?? { type: 'object' },
-      },
-    },
+async function extractFromPrivatePdf(url: string, filename: string): Promise<ExtractedItinerary> {
+  // Private Blob uploads use the same proven route as trip photos. The server,
+  // rather than the browser, authenticates the read before sending the PDF on.
+  const result = await get(url, { access: 'private' })
+  if (!result || result.statusCode !== 200 || !result.stream) {
+    throw new Error('Could not read the uploaded PDF.')
+  }
+  const file = await client.files.create({
+    file: await toFile(Buffer.from(await new Response(result.stream).arrayBuffer()), filename, { type: 'application/pdf' }),
+    purpose: 'user_data',
   })
-  return JSON.parse(response.output_text) as ExtractedItinerary
+  try {
+    const response = await client.responses.create({
+      model: 'gpt-5.6-luna',
+      input: [{
+        role: 'user',
+        content: [
+          { type: 'input_file', file_id: file.id },
+          { type: 'input_text', text: EXTRACT_PROMPT },
+        ],
+      }],
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'itinerary_extraction',
+          strict: true,
+          schema: (EXTRACT_FUNCTION as Extract<OpenAI.Chat.ChatCompletionTool, { type: 'function' }>).function.parameters ?? { type: 'object' },
+        },
+      },
+    })
+    return JSON.parse(response.output_text) as ExtractedItinerary
+  } finally {
+    await client.files.delete(file.id).catch(() => undefined)
+  }
 }
 
 async function extractFromImageUrl(url: string, contentType: string): Promise<ExtractedItinerary> {
@@ -180,7 +193,7 @@ export async function POST(req: NextRequest) {
     } else if (body.blobUrl && body.mediaType?.startsWith('image/')) {
       extracted = await extractFromImageUrl(body.blobUrl, body.mediaType)
     } else if (body.blobUrl && body.mediaType?.includes('pdf')) {
-      extracted = await extractFromPdfUrl(body.blobUrl)
+      extracted = await extractFromPrivatePdf(body.blobUrl, body.filename ?? 'itinerary.pdf')
     } else if (body.blobUrl) {
       // XLSX — fetch and parse to CSV text
       const res = await fetchBlob(body.blobUrl)
