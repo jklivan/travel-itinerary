@@ -99,6 +99,7 @@ async function extractFromText(text: string): Promise<ExtractedItinerary> {
   const truncated = text.length > 20000 ? text.slice(0, 20000) + '\n[truncated]' : text
   const completion = await client.chat.completions.create({
     model: 'gpt-5.6-luna',
+    reasoning_effort: 'none',
     tools: [EXTRACT_FUNCTION],
     tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
     messages: [{ role: 'user', content: `${EXTRACT_PROMPT}\n\nDOCUMENT:\n${truncated}` }],
@@ -122,6 +123,7 @@ async function extractFromUploadedFile(
   try {
     const completion = await client.chat.completions.create({
       model: 'gpt-5.6-luna',
+      reasoning_effort: 'none',
       tools: [EXTRACT_FUNCTION],
       tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
       messages: [{
@@ -145,6 +147,7 @@ async function extractFromImageUrl(url: string, contentType: string): Promise<Ex
   const base64 = Buffer.from(await res.arrayBuffer()).toString('base64')
   const completion = await client.chat.completions.create({
     model: 'gpt-5.6-luna',
+    reasoning_effort: 'none',
     tools: [EXTRACT_FUNCTION],
     tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
     messages: [{
@@ -161,6 +164,7 @@ async function extractFromImageUrl(url: string, contentType: string): Promise<Ex
 async function extractFromImageBase64(base64: string, contentType: string): Promise<ExtractedItinerary> {
   const completion = await client.chat.completions.create({
     model: 'gpt-5.6-luna',
+    reasoning_effort: 'none',
     tools: [EXTRACT_FUNCTION],
     tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
     messages: [{
