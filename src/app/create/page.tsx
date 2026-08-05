@@ -10,18 +10,31 @@ import { TripRatingPicker } from '@/components/TripRatingPicker'
 // Binary files (images, PDFs, XLSX) are uploaded to Vercel Blob to avoid the 4.5MB
 // function body limit. The public Blob URL is sent to the API route instead of base64.
 const MAX_IMPORT_FILE_SIZE = 100 * 1024 * 1024
+const DIRECT_IMAGE_LIMIT = 3 * 1024 * 1024
 const IMPORT_TIMEOUT_MS = 5 * 60 * 1000
 
 async function readFileForUpload(
   file: File,
   onUploadProgress?: (percentage: number) => void,
-): Promise<{ text: string } | { blobUrl: string; mediaType: string; filename: string }> {
+): Promise<{ text: string } | { base64: string; mediaType: string } | { blobUrl: string; mediaType: string; filename: string }> {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
   const mime = file.type
   const isPdf = ext === 'pdf' || mime === 'application/pdf'
   const isXlsx = ext === 'xlsx' || ext === 'xls' || mime.includes('spreadsheet') || mime.includes('excel')
   const isImage = mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)
   const isHtml = ext === 'html' || ext === 'htm' || mime === 'text/html'
+
+  // Small screenshots can go directly to vision. This avoids a second network
+  // hop through Blob and keeps the common import path fast and reliable.
+  if (isImage && file.size <= DIRECT_IMAGE_LIMIT) {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = () => reject(new Error('Failed to read image.'))
+      reader.readAsDataURL(file)
+    })
+    return { base64: dataUrl.split(',')[1], mediaType: file.type || 'image/jpeg' }
+  }
 
   if (isPdf || isXlsx || isImage) {
     if (file.size > MAX_IMPORT_FILE_SIZE) {
@@ -261,7 +274,7 @@ export default function CreatePage() {
   }
 
   // ── Import ────────────────────────────────────────────────────────────────
-  async function fetchExtraction(payload: { text: string } | { blobUrl: string; mediaType: string; filename: string }): Promise<ExtractionData> {
+  async function fetchExtraction(payload: { text: string } | { base64: string; mediaType: string } | { blobUrl: string; mediaType: string; filename: string }): Promise<ExtractionData> {
     if ('text' in payload && !payload.text.trim()) throw new Error('No text to extract from.')
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), IMPORT_TIMEOUT_MS)

@@ -158,13 +158,31 @@ async function extractFromImageUrl(url: string, contentType: string): Promise<Ex
   return parseResult(completion)
 }
 
+async function extractFromImageBase64(base64: string, contentType: string): Promise<ExtractedItinerary> {
+  const completion = await client.chat.completions.create({
+    model: 'gpt-5.6-luna',
+    tools: [EXTRACT_FUNCTION],
+    tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image_url', image_url: { url: `data:${contentType};base64,${base64}` } },
+        { type: 'text', text: EXTRACT_PROMPT },
+      ],
+    }],
+  })
+  return parseResult(completion)
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as { text?: string; blobUrl?: string; mediaType?: string; filename?: string }
+    const body = (await req.json()) as { text?: string; base64?: string; blobUrl?: string; mediaType?: string; filename?: string }
 
     let extracted: ExtractedItinerary
 
-    if (body.blobUrl && body.mediaType?.startsWith('image/')) {
+    if (body.base64 && body.mediaType?.startsWith('image/')) {
+      extracted = await extractFromImageBase64(body.base64, body.mediaType)
+    } else if (body.blobUrl && body.mediaType?.startsWith('image/')) {
       extracted = await extractFromImageUrl(body.blobUrl, body.mediaType)
     } else if (body.blobUrl && body.mediaType?.includes('pdf')) {
       extracted = await extractFromUploadedFile(
