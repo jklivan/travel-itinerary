@@ -33,7 +33,7 @@ export default async function FriendsPage() {
       <div className="mb-5">
         <h1 className="text-xl font-bold text-gray-900">Friends</h1>
         <p className="text-gray-500 text-sm mt-0.5">
-          Follow travellers to see their itineraries in your feed.
+          Follow travelers to see their itineraries in your feed.
         </p>
       </div>
       <FriendsUI

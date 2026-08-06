@@ -193,7 +193,7 @@ export default function FriendsUI({
       <section className="bg-white rounded-xl shadow-md overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
           <Search size={16} className="text-gray-400" />
-          <h2 className="font-semibold text-gray-900 text-sm">Find travellers</h2>
+          <h2 className="font-semibold text-gray-900 text-sm">Find travelers</h2>
         </div>
         <div className="p-4">
           <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium mb-4 w-fit">
@@ -252,7 +252,7 @@ export default function FriendsUI({
                 </button>
               </form>
               {destSearched && destResults.length === 0 && (
-                <p className="mt-4 text-sm text-gray-500 italic">No travellers found for that destination.</p>
+                <p className="mt-4 text-sm text-gray-500 italic">No travelers found for that destination.</p>
               )}
               {destResults.length > 0 && (
                 <ul className="mt-4 divide-y divide-gray-100">
@@ -292,7 +292,7 @@ export default function FriendsUI({
         </div>
         {followingList.length === 0 ? (
           <p className="text-sm text-gray-500 italic p-5">
-            You&apos;re not following anyone yet. Search above to find travellers.
+            You&apos;re not following anyone yet. Search above to find travelers.
           </p>
         ) : (
           <ul className="divide-y divide-gray-100">

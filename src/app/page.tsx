@@ -100,7 +100,7 @@ export default async function FeedPage({
           </p>
           <p className="text-sm mt-1 text-gray-500">
             {isFriends ? (
-              <Link href="/friends" className="text-blue-600 hover:underline">Follow some travellers</Link>
+              <Link href="/friends" className="text-blue-600 hover:underline">Follow some travelers</Link>
             ) : 'Be the first to share a trip!'}
           </p>
         </div>
