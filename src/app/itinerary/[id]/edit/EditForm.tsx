@@ -249,11 +249,12 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   async function fetchHotelPriceLevel(di: number, gi: number, placeId: string) {
     try {
       const res = await fetch(`/api/place-details?id=${encodeURIComponent(placeId)}`)
-      const { priceLevel, lat, lng } = await res.json()
+      const { priceLevel, lat, lng, website } = await res.json()
       updGroup(di, gi, g => ({
         ...g,
         ...(priceLevel !== null ? { hotelPriceLevel: priceLevel } : {}),
         ...(lat !== null ? { hotelLat: lat, hotelLng: lng } : {}),
+        ...(!g.hotelLink && website ? { hotelLink: website } : {}),
       }))
     } catch { /* ignore */ }
   }
@@ -271,9 +272,9 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   async function fetchFoodPriceLevel(di: number, gi: number, ii: number, placeId: string) {
     try {
       const res = await fetch(`/api/place-details?id=${encodeURIComponent(placeId)}`)
-      const { priceLevel, lat, lng } = await res.json()
+      const { priceLevel, lat, lng, website } = await res.json()
       if (priceLevel !== null) setFoodPriceLevel(di, gi, ii, priceLevel)
-      if (lat !== null) updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, lat, lng }) }))
+      if (lat !== null || website) updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, lat: lat ?? f.lat, lng: lng ?? f.lng, link: !f.link && website ? website : f.link }) }))
     } catch { /* ignore */ }
   }
   function toggleFoodTag(di: number, gi: number, ii: number, tag: string) {

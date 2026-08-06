@@ -11,8 +11,8 @@ const PRICE_LEVEL_MAP: Record<string, number> = {
 
 export async function GET(req: NextRequest) {
   const placeId = req.nextUrl.searchParams.get('id')?.trim()
-  if (!placeId) return Response.json({ priceLevel: null })
-  if (!API_KEY) return Response.json({ priceLevel: null })
+  if (!placeId) return Response.json({ priceLevel: null, website: null })
+  if (!API_KEY) return Response.json({ priceLevel: null, website: null })
 
   try {
     const res = await fetch(
@@ -20,18 +20,18 @@ export async function GET(req: NextRequest) {
       {
         headers: {
           'X-Goog-Api-Key': API_KEY,
-          'X-Goog-FieldMask': 'priceLevel,location',
+          'X-Goog-FieldMask': 'priceLevel,location,websiteUri',
         },
         signal: AbortSignal.timeout(4000),
       }
     )
-    if (!res.ok) return Response.json({ priceLevel: null })
+    if (!res.ok) return Response.json({ priceLevel: null, website: null })
     const data = await res.json()
     const priceLevel = PRICE_LEVEL_MAP[data.priceLevel as string] ?? null
     const lat = data.location?.latitude ?? null
     const lng = data.location?.longitude ?? null
-    return Response.json({ priceLevel, lat, lng })
+    return Response.json({ priceLevel, lat, lng, website: data.websiteUri ?? null })
   } catch {
-    return Response.json({ priceLevel: null })
+    return Response.json({ priceLevel: null, website: null })
   }
 }
