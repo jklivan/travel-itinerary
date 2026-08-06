@@ -212,7 +212,9 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   const [description, setDescription] = useState(itinerary.description ?? '')
   const [startDate, setStartDate] = useState(fmt(itinerary.startDate))
   const [endDate, setEndDate] = useState(fmt(itinerary.endDate))
-  const [isAdult, setIsAdult] = useState(itinerary.audience === 'adult')
+  const [tripAudience, setTripAudience] = useState<'family' | 'friends' | 'romantic' | 'adult'>(
+    ['family', 'friends', 'romantic'].includes(itinerary.audience) ? itinerary.audience as 'family' | 'friends' | 'romantic' : 'adult'
+  )
   const [notes, setNotes] = useState(itinerary.notes ?? '')
   const [highlights, setHighlights] = useState(itinerary.highlights ?? '')
   const [tags, setTags] = useState<string[]>(itinerary.tags ?? [])
@@ -314,7 +316,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
     <form action={action} className="space-y-8">
       <input type="hidden" name="destinations" value={JSON.stringify(destinations)} />
       <input type="hidden" name="photos" ref={photosInputRef} defaultValue={JSON.stringify(photos)} />
-      <input type="hidden" name="audience" value={isAdult ? 'adult' : 'family'} />
+      <input type="hidden" name="audience" value={tripAudience} />
       <input type="hidden" name="visibility" value="public" />
       <input type="hidden" name="postType" value={postType} />
       <input type="hidden" name="tripRating" value={tripRating ?? ''} />
@@ -368,12 +370,22 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
             </div>
           </div>
         )}
-        <label className="flex items-center gap-3 cursor-pointer select-none">
-          <div onClick={() => setIsAdult(v => !v)} className={`w-10 h-6 rounded-full transition-colors relative ${!isAdult ? 'bg-green-500' : 'bg-gray-200'}`}>
-            <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${!isAdult ? 'translate-x-5' : 'translate-x-1'}`} />
+        <div>
+          <p className="text-xs font-medium text-gray-500 mb-2">Trip type</p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { value: 'family', label: '👨‍👩‍👧 Family' },
+              { value: 'friends', label: '🥳 Friends' },
+              { value: 'romantic', label: '💋 Romantic' },
+              { value: 'adult', label: '🍷 Other' },
+            ].map(({ value, label }) => (
+              <button key={value} type="button" onClick={() => setTripAudience(value as typeof tripAudience)}
+                className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${tripAudience === value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>
+                {label}
+              </button>
+            ))}
           </div>
-          <span className="text-sm text-gray-900">Family friendly</span>
-        </label>
+        </div>
       </section>
 
       {/* Highlights */}

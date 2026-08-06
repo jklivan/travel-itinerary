@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 const client = new Anthropic()
 
 export type ParsedQuery = {
-  audience: 'family' | 'adult' | null
+  audience: 'family' | 'adult' | 'friends' | 'romantic' | null
   postType: 'guide' | null
   tags: string[]
   maxBudget: number | null
@@ -33,7 +33,7 @@ export async function parseSearchQuery(query: string): Promise<ParsedQuery> {
           properties: {
             audience: {
               type: 'string',
-              enum: ['family', 'adult'],
+              enum: ['family', 'adult', 'friends', 'romantic'],
               description: 'Target audience — only set if explicitly mentioned.',
             },
             postType: {
@@ -82,7 +82,7 @@ export async function parseSearchQuery(query: string): Promise<ParsedQuery> {
     console.log('[parseSearch] extracted:', JSON.stringify(input))
 
     return {
-      audience: (input.audience as 'family' | 'adult') ?? null,
+      audience: (input.audience as 'family' | 'adult' | 'friends' | 'romantic') ?? null,
       postType: (input.postType as 'guide') ?? null,
       tags: Array.isArray(input.tags) ? (input.tags as string[]).filter((t) => TAG_IDS.includes(t)) : [],
       maxBudget: typeof input.maxBudget === 'number' ? input.maxBudget : null,

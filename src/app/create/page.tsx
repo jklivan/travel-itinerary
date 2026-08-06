@@ -242,7 +242,7 @@ export default function CreatePage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [postType, setPostType] = useState<'itinerary' | 'guide'>('itinerary')
-  const [isAdult, setIsAdult] = useState(false)
+  const [tripAudience, setTripAudience] = useState<'family' | 'friends' | 'romantic' | 'adult'>('family')
   const [notes, setNotes] = useState('')
   const [highlights, setHighlights] = useState('')
   const [tags, setTags] = useState<string[]>([])
@@ -271,7 +271,7 @@ export default function CreatePage() {
     const result = await createItineraryDirect({
       title, description, startDate, endDate, notes, highlights,
       destinations, photos, tags, tripRating,
-      postType, audience: isAdult ? 'adult' : 'family',
+      postType, audience: tripAudience,
       visibility: 'public',
       isDraft,
     })
@@ -616,13 +616,21 @@ export default function CreatePage() {
               </div>
             )}
 
-            <div className="space-y-3 pt-1">
-              <label className="flex items-center gap-3 cursor-pointer select-none">
-                <div onClick={() => setIsAdult(v => !v)} className={`w-10 h-6 rounded-full transition-colors relative ${!isAdult ? 'bg-green-500' : 'bg-gray-200'}`}>
-                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${!isAdult ? 'translate-x-5' : 'translate-x-1'}`} />
-                </div>
-                <span className="text-sm text-gray-900">Family friendly</span>
-              </label>
+            <div className="space-y-2 pt-1">
+              <p className={labelClass}>Trip type</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: 'family', label: '👨‍👩‍👧 Family' },
+                  { value: 'friends', label: '🥳 Friends' },
+                  { value: 'romantic', label: '💋 Romantic' },
+                  { value: 'adult', label: '🍷 Other' },
+                ].map(({ value, label }) => (
+                  <button key={value} type="button" onClick={() => setTripAudience(value as typeof tripAudience)}
+                    className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${tripAudience === value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

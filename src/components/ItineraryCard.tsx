@@ -124,6 +124,12 @@ export default function ItineraryCard({
             {!isGuide && audience === 'family' && (
               <span className="text-[10px] px-2 py-1 rounded font-semibold bg-black/60 text-white">👨‍👩‍👧 Family</span>
             )}
+            {!isGuide && audience === 'friends' && (
+              <span className="text-[10px] px-2 py-1 rounded font-semibold bg-black/60 text-white">🥳 Friends</span>
+            )}
+            {!isGuide && audience === 'romantic' && (
+              <span className="text-[10px] px-2 py-1 rounded font-semibold bg-black/60 text-white">💋 Romantic</span>
+            )}
           </div>
 
           {/* Bucket button */}

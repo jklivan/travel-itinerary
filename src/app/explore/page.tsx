@@ -18,6 +18,8 @@ const caveat = Caveat({ subsets: ['latin'] })
 const TRIP_TYPE_META: Record<string, { label: string; emoji: string; desc: string }> = {
   family: { label: 'Family', emoji: '👨‍👩‍👧', desc: 'Great for all ages' },
   adult:  { label: 'Adults', emoji: '🍷',   desc: 'Curated for adults' },
+  friends:{ label: 'Friends', emoji: '🥳',  desc: 'Trips with friends' },
+  romantic:{ label: 'Romantic', emoji: '💋', desc: 'Romantic getaways' },
   guide:  { label: 'Guides', emoji: '📖',   desc: 'Expert recommendations' },
 }
 
@@ -93,6 +95,8 @@ function SearchFiltersDisplay({ parsed }: { parsed: ParsedQuery }) {
   const chips: string[] = []
   if (parsed.audience === 'family') chips.push('👨‍👩‍👧 Family')
   if (parsed.audience === 'adult') chips.push('🍷 Adults')
+  if (parsed.audience === 'friends') chips.push('🥳 Friends')
+  if (parsed.audience === 'romantic') chips.push('💋 Romantic')
   if (parsed.postType === 'guide') chips.push('📖 Guides')
   if (parsed.maxBudget) chips.push('$'.repeat(parsed.maxBudget) + ' or less')
   for (const tag of parsed.tags) {
@@ -263,6 +267,8 @@ export default async function ExplorePage({
     const where =
       type === 'family' ? { audience: 'family' } :
       type === 'adult'  ? { audience: 'adult' }  :
+      type === 'friends' ? { audience: 'friends' } :
+      type === 'romantic' ? { audience: 'romantic' } :
       type === 'guide'  ? { postType: 'guide' }  : {}
     const { itineraries, bucketSet } = await fetchItineraries(where, userId)
     const meta = TRIP_TYPE_META[type]

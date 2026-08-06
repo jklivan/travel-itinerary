@@ -221,7 +221,7 @@ export default function GuidedCreatePage() {
   const [postType, setPostType] = useState<'itinerary' | 'guide'>('itinerary')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [isAdult, setIsAdult] = useState(false)
+  const [tripAudience, setTripAudience] = useState<'family' | 'friends' | 'romantic' | 'adult'>('family')
   const [budget, setBudget] = useState(0)
   const [tripRating, setTripRating] = useState<number | null>(null)
 
@@ -293,7 +293,7 @@ export default function GuidedCreatePage() {
         <input type="hidden" name="postType" value={postType} />
         <input type="hidden" name="startDate" value={startDate} />
         <input type="hidden" name="endDate" value={endDate} />
-        <input type="hidden" name="audience" value={isAdult ? 'adult' : 'family'} />
+        <input type="hidden" name="audience" value={tripAudience} />
         <input type="hidden" name="visibility" value="public" />
         <input type="hidden" name="destinations" value={JSON.stringify(buildDestinations())} />
         <input type="hidden" name="photos" value={JSON.stringify(photos)} />
@@ -546,13 +546,22 @@ export default function GuidedCreatePage() {
                 <TagPicker selected={tags} onChange={setTags} />
               </div>
 
-              <label className="flex items-center gap-3 cursor-pointer select-none">
-                <div onClick={() => setIsAdult(v => !v)}
-                  className={`w-10 h-6 rounded-full transition-colors relative ${!isAdult ? 'bg-green-500' : 'bg-gray-200'}`}>
-                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${!isAdult ? 'translate-x-5' : 'translate-x-1'}`} />
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-2">Trip type</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: 'family', label: '👨‍👩‍👧 Family' },
+                    { value: 'friends', label: '🥳 Friends' },
+                    { value: 'romantic', label: '💋 Romantic' },
+                    { value: 'adult', label: '🍷 Other' },
+                  ].map(({ value, label }) => (
+                    <button key={value} type="button" onClick={() => setTripAudience(value as typeof tripAudience)}
+                      className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${tripAudience === value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>
+                      {label}
+                    </button>
+                  ))}
                 </div>
-                <span className="text-sm text-gray-900">Family friendly</span>
-              </label>
+              </div>
 
               <div>
                 <p className="text-xs font-medium text-gray-500 mb-2">Budget</p>
