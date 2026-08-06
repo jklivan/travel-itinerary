@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
 
   const requestedLimit = Number(req.nextUrl.searchParams.get('limit') ?? '75')
   const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.floor(requestedLimit), 1), 100) : 75
+  const includeRemaining = req.nextUrl.searchParams.get('details') === '1'
   const items = await prisma.destItem.findMany({
     where: { type: { in: ['hotel', 'food_drink'] }, name: { not: '' }, OR: [{ link: null }, { link: '' }] },
     select: { id: true, name: true, destination: { select: { name: true, country: true } } },
@@ -57,8 +58,14 @@ export async function POST(req: NextRequest) {
     await new Promise((resolve) => setTimeout(resolve, 125))
   }
 
-  const remaining = await prisma.destItem.count({
-    where: { type: { in: ['hotel', 'food_drink'] }, name: { not: '' }, OR: [{ link: null }, { link: '' }] },
-  })
-  return Response.json({ processed: items.length, updated, noWebsite, remaining })
+  const remainingWhere = { type: { in: ['hotel', 'food_drink'] }, name: { not: '' }, OR: [{ link: null }, { link: '' }] }
+  const remaining = await prisma.destItem.count({ where: remainingWhere })
+  const remainingItems = includeRemaining
+    ? await prisma.destItem.findMany({
+        where: remainingWhere,
+        select: { name: true, type: true, destination: { select: { name: true, country: true } } },
+        take: 100,
+      })
+    : undefined
+  return Response.json({ processed: items.length, updated, noWebsite, remaining, ...(includeRemaining ? { remainingItems } : {}) })
 }
