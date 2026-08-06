@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { MapPin, Clock } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import BucketButton from './BucketButton'
 import { Caveat, Kalam } from 'next/font/google'
 
@@ -140,7 +140,7 @@ export default function ItineraryCard({
             {title}
           </h2>
 
-          <div className="flex items-center justify-between text-xs text-gray-400">
+          <div className="text-xs text-gray-400 space-y-0.5">
             {location && (
               <span className="flex items-center gap-1 truncate min-w-0">
                 <MapPin size={9} className="shrink-0" />
@@ -148,9 +148,8 @@ export default function ItineraryCard({
               </span>
             )}
             {!isGuide && (
-              <span className="flex items-center gap-1 shrink-0 ml-2">
-                <Clock size={9} />
-                {days}d
+              <span className="block">
+                {days}-day trip
               </span>
             )}
           </div>
