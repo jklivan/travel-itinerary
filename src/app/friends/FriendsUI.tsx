@@ -2,10 +2,9 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { Users, Search, UserPlus, MapPin } from 'lucide-react'
+import { Users, Search, UserPlus } from 'lucide-react'
 import {
   searchUsers,
-  searchUsersByDestination,
   sendFollowRequest,
   cancelFollowRequest,
   acceptFollowRequest,
@@ -14,7 +13,6 @@ import {
 } from '@/actions/friends'
 
 type User = { id: string; name: string }
-type DestUser = { id: string; name: string; matchedDestinations: string[] }
 
 const AVATAR_COLORS = [
   '#6366F1', '#8B5CF6', '#EC4899', '#14B8A6',
@@ -83,13 +81,9 @@ export default function FriendsUI({
   pendingOutgoing: User[]
   incomingRequests: User[]
 }) {
-  const [tab, setTab] = useState<'name' | 'destination'>('name')
   const [nameQuery, setNameQuery] = useState('')
-  const [destQuery, setDestQuery] = useState('')
   const [nameResults, setNameResults] = useState<User[]>([])
-  const [destResults, setDestResults] = useState<DestUser[]>([])
   const [nameSearched, setNameSearched] = useState(false)
-  const [destSearched, setDestSearched] = useState(false)
   const [followingIds, setFollowingIds] = useState(new Set(following.map((u) => u.id)))
   const [pendingIds, setPendingIds] = useState(new Set(pendingOutgoing.map((u) => u.id)))
   const [requests, setRequests] = useState(incomingRequests)
@@ -107,13 +101,6 @@ export default function FriendsUI({
     if (!nameQuery.trim()) return
     setNameResults(await searchUsers(nameQuery))
     setNameSearched(true)
-  }
-
-  async function handleDestSearch(e: React.FormEvent) {
-    e.preventDefault()
-    if (!destQuery.trim()) return
-    setDestResults(await searchUsersByDestination(destQuery))
-    setDestSearched(true)
   }
 
   function handleFollow(userId: string) {
@@ -196,85 +183,32 @@ export default function FriendsUI({
           <h2 className="font-semibold text-gray-900 text-sm">Find travelers</h2>
         </div>
         <div className="p-4">
-          <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium mb-4 w-fit">
-            <button onClick={() => setTab('name')}
-              className={`px-4 py-1.5 rounded-lg transition-colors ${tab === 'name' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
-              By name
+          <form onSubmit={handleNameSearch} className="flex gap-2">
+            <input type="text" value={nameQuery}
+              onChange={(e) => { setNameQuery(e.target.value); setNameSearched(false) }}
+              placeholder="Search by name…"
+              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <button type="submit"
+              className="bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+              Search
             </button>
-            <button onClick={() => setTab('destination')}
-              className={`px-4 py-1.5 rounded-lg transition-colors ${tab === 'destination' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
-              By destination
-            </button>
-          </div>
-
-          {tab === 'name' && (
-            <>
-              <form onSubmit={handleNameSearch} className="flex gap-2">
-                <input type="text" value={nameQuery}
-                  onChange={(e) => { setNameQuery(e.target.value); setNameSearched(false) }}
-                  placeholder="Search by name…"
-                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <button type="submit"
-                  className="bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                  Search
-                </button>
-              </form>
-              {nameSearched && nameResults.length === 0 && (
-                <p className="mt-4 text-sm text-gray-500 italic">No users found.</p>
-              )}
-              {nameResults.length > 0 && (
-                <ul className="mt-4 divide-y divide-gray-100">
-                  {nameResults.map((user) => (
-                    <li key={user.id} className="flex items-center justify-between py-3">
-                      <Link href={`/user/${user.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                        <Avatar name={user.name} />
-                        <p className="text-sm font-medium text-gray-900">{user.name}</p>
-                      </Link>
-                      <FollowButton userId={user.id} status={followStatus(user.id)}
-                        onFollow={handleFollow} onCancel={handleCancel} onUnfollow={handleUnfollow} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
+          </form>
+          {nameSearched && nameResults.length === 0 && (
+            <p className="mt-4 text-sm text-gray-500 italic">No users found.</p>
           )}
-
-          {tab === 'destination' && (
-            <>
-              <form onSubmit={handleDestSearch} className="flex gap-2">
-                <input type="text" value={destQuery}
-                  onChange={(e) => { setDestQuery(e.target.value); setDestSearched(false) }}
-                  placeholder="e.g. Tokyo, France, Bali…"
-                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <button type="submit"
-                  className="bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                  Search
-                </button>
-              </form>
-              {destSearched && destResults.length === 0 && (
-                <p className="mt-4 text-sm text-gray-500 italic">No travelers found for that destination.</p>
-              )}
-              {destResults.length > 0 && (
-                <ul className="mt-4 divide-y divide-gray-100">
-                  {destResults.map((user) => (
-                    <li key={user.id} className="flex items-center justify-between py-3 gap-4">
-                      <Link href={`/user/${user.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity min-w-0">
-                        <Avatar name={user.name} />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900">{user.name}</p>
-                          <p className="text-xs text-gray-500 flex items-center gap-1 truncate">
-                            <MapPin size={10} />
-                            {user.matchedDestinations.join(' · ')}
-                          </p>
-                        </div>
-                      </Link>
-                      <FollowButton userId={user.id} status={followStatus(user.id)}
-                        onFollow={handleFollow} onCancel={handleCancel} onUnfollow={handleUnfollow} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
+          {nameResults.length > 0 && (
+            <ul className="mt-4 divide-y divide-gray-100">
+              {nameResults.map((user) => (
+                <li key={user.id} className="flex items-center justify-between py-3">
+                  <Link href={`/user/${user.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                    <Avatar name={user.name} />
+                    <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                  </Link>
+                  <FollowButton userId={user.id} status={followStatus(user.id)}
+                    onFollow={handleFollow} onCancel={handleCancel} onUnfollow={handleUnfollow} />
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </section>
