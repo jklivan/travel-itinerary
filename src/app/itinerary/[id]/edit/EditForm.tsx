@@ -101,9 +101,11 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
       <div className="flex gap-1 flex-wrap">
         {MEAL_TYPES.map(mt => {
           const meta = MEAL_TYPE_META[mt]
+          const selected = item.mealType.split(',').filter(Boolean)
+          const isSelected = selected.includes(mt)
           return (
-            <button key={mt} type="button" onClick={() => onUpdate('mealType', item.mealType === mt ? '' : mt)}
-              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${item.mealType === mt ? meta.active : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+            <button key={mt} type="button" onClick={() => onUpdate('mealType', isSelected ? selected.filter(type => type !== mt).join(',') : [...selected, mt].join(','))}
+              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSelected ? meta.active : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
               {meta.emoji} {mt}
             </button>
           )

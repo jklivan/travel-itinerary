@@ -44,6 +44,28 @@ function groupItems(items: DestItemRow[]) {
   return [...map.entries()].sort(([a], [b]) => a - b).map(([, g]) => g)
 }
 
+const MEAL_PILL_STYLES: Record<string, string> = {
+  breakfast: 'bg-yellow-100 text-yellow-700',
+  lunch: 'bg-orange-100 text-orange-700',
+  dinner: 'bg-purple-100 text-purple-700',
+  drinks: 'bg-blue-100 text-blue-700',
+  coffee: 'bg-amber-100 text-amber-800',
+  dessert: 'bg-pink-100 text-pink-700',
+  bakery: 'bg-orange-50 text-orange-600',
+}
+const MEAL_EMOJIS: Record<string, string> = {
+  breakfast: '🍳', lunch: '☀️', dinner: '🌙', drinks: '🍹', coffee: '☕', dessert: '🍰', bakery: '🥐',
+}
+
+function MealPills({ mealType }: { mealType: string | null | undefined }) {
+  if (!mealType) return null
+  return mealType.split(',').filter(Boolean).map((type) => (
+    <span key={type} className={`text-xs px-2 py-0.5 rounded-full font-medium ${MEAL_PILL_STYLES[type] ?? 'bg-blue-100 text-blue-700'}`}>
+      {MEAL_EMOJIS[type] ?? '🍽️'} {type.charAt(0).toUpperCase() + type.slice(1)}
+    </span>
+  ))
+}
+
 export default async function ItineraryPage({
   params,
   searchParams,
@@ -393,24 +415,7 @@ export default async function ItineraryPage({
                                     <div key={item.id}>
                                       <div className="flex items-center gap-2 flex-wrap">
                                         <span className="text-sm font-medium text-gray-900">{item.name}</span>
-                                        {item.mealType && (
-                                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                            item.mealType === 'breakfast' ? 'bg-yellow-100 text-yellow-700' :
-                                            item.mealType === 'lunch'     ? 'bg-orange-100 text-orange-700' :
-                                            item.mealType === 'dinner'    ? 'bg-purple-100 text-purple-700' :
-                                            item.mealType === 'coffee'    ? 'bg-amber-100 text-amber-800' :
-                                            item.mealType === 'dessert'   ? 'bg-pink-100 text-pink-700' :
-                                            item.mealType === 'bakery'    ? 'bg-orange-50 text-orange-600' :
-                                            'bg-blue-100 text-blue-700'
-                                          }`}>
-                                            {item.mealType === 'breakfast' ? '🍳' :
-                                             item.mealType === 'lunch'     ? '☀️' :
-                                             item.mealType === 'dinner'    ? '🌙' :
-                                             item.mealType === 'coffee'    ? '☕' :
-                                             item.mealType === 'dessert'   ? '🍰' :
-                                             item.mealType === 'bakery'    ? '🥐' : '🍹'} {item.mealType.charAt(0).toUpperCase() + item.mealType.slice(1)}
-                                          </span>
-                                        )}
+                                        <MealPills mealType={item.mealType} />
                                         {!isGuide && <Stars rating={item.rating ?? null} />}
                                       </div>
                                       {(item.priceLevel != null || item.familyFriendly) && (

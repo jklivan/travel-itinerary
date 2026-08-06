@@ -168,12 +168,16 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
       <div className="flex gap-1 flex-wrap">
-        {MEAL_TYPES.map(mt => (
-          <button key={mt} type="button" onClick={() => onUpdate('mealType', item.mealType === mt ? '' : mt)}
-            className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${item.mealType === mt ? MEAL_TYPE_META[mt].active : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+        {MEAL_TYPES.map(mt => {
+          const selected = item.mealType.split(',').filter(Boolean)
+          const isSelected = selected.includes(mt)
+          return (
+          <button key={mt} type="button" onClick={() => onUpdate('mealType', isSelected ? selected.filter(type => type !== mt).join(',') : [...selected, mt].join(','))}
+            className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSelected ? MEAL_TYPE_META[mt].active : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
             {MEAL_TYPE_META[mt].emoji} {mt}
           </button>
-        ))}
+          )
+        })}
       </div>
       <div className="flex items-center gap-3 flex-wrap">
         {item.priceLevel != null && (

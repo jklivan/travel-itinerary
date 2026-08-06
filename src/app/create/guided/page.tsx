@@ -82,7 +82,7 @@ function AddedRow({ item, onRemove }: { item: GuidedItem; onRemove: () => void }
         <div className="min-w-0">
           <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
           <div className="flex items-center gap-2 flex-wrap">
-            {item.mealType && <span className="text-xs text-gray-500">{MEAL_EMOJI[item.mealType]} {item.mealType}</span>}
+            {item.mealType && <span className="text-xs text-gray-500">{item.mealType.split(',').map(type => `${MEAL_EMOJI[type]} ${type}`).join(' · ')}</span>}
             {item.rating > 0 && <span className="text-xs text-yellow-500">{'★'.repeat(item.rating)}</span>}
             {item.notes && <span className="text-xs text-gray-400 truncate">{item.notes}</span>}
           </div>
@@ -129,12 +129,16 @@ function ItemForm({ type, onAdd, onClose }: {
         placeholder={cfg.placeholder} className={inputCls} />
       {type === 'food_drink' && (
         <div className="flex flex-wrap gap-1.5">
-          {MEAL_TYPES.map(mt => (
-            <button key={mt} type="button" onClick={() => setMealType(mealType === mt ? '' : mt)}
-              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${mealType === mt ? MEAL_ACTIVE[mt] : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+          {MEAL_TYPES.map(mt => {
+            const selected = mealType.split(',').filter(Boolean)
+            const isSelected = selected.includes(mt)
+            return (
+            <button key={mt} type="button" onClick={() => setMealType(isSelected ? selected.filter(type => type !== mt).join(',') : [...selected, mt].join(','))}
+              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSelected ? MEAL_ACTIVE[mt] : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
               {MEAL_EMOJI[mt]} {mt}
             </button>
-          ))}
+            )
+          })}
         </div>
       )}
       <div className="space-y-1">
@@ -182,7 +186,7 @@ function DestSummary({ dest, onRemove }: { dest: GuidedDest; onRemove: () => voi
           <div key={f.id} className="flex items-center gap-1.5">
             <Utensils size={12} className="text-orange-500 shrink-0" />
             <span className="truncate">{f.name}</span>
-            {f.mealType && <span className="text-gray-400 ml-1">{MEAL_EMOJI[f.mealType]}</span>}
+            {f.mealType && <span className="text-gray-400 ml-1">{f.mealType.split(',').map(type => MEAL_EMOJI[type]).join(' ')}</span>}
           </div>
         ))}
         {acts.map(a => (
