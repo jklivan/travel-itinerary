@@ -8,10 +8,15 @@
     "migrate:deploy": "prisma migrate deploy",
     "start": "next start",
     "lint": "eslint",
+    "ios:sync": "npx cap sync ios",
+    "ios:open": "npx cap open ios",
     "postinstall": "prisma generate"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
     "@google/genai": "^2.13.0",
     "@neondatabase/serverless": "^1.1.0",
     "@prisma/adapter-neon": "^7.8.0",
