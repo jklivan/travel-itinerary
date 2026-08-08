@@ -230,7 +230,7 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
 
 // ── Steps ─────────────────────────────────────────────────────────────────────
 const STEPS = ['start', 'basics', 'places', 'photos', 'details'] as const
-type Step = typeof STEPS[number]
+type Step = typeof STEPS[number] | 'review'
 
 export default function CreatePage() {
   const [formError, setFormError] = useState<string | undefined>()
@@ -257,9 +257,10 @@ export default function CreatePage() {
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [pasteMode, setPasteMode] = useState(false)
   const [pasteText, setPasteText] = useState('')
+  const [importSources, setImportSources] = useState<string[]>([])
 
   const showRating = postType === 'itinerary'
-  const stepIndex = STEPS.indexOf(step)
+  const stepIndex = step === 'review' ? -1 : STEPS.indexOf(step)
 
   function goNext() { setStep(STEPS[stepIndex + 1]) }
   function goBack() { setStep(STEPS[stepIndex - 1]) }
@@ -309,7 +310,7 @@ export default function CreatePage() {
     throw new Error(`Could not read ${label}. Please try again.${detail}`)
   }
 
-  function applyExtractionResults(results: ExtractionData[]) {
+  function applyExtractionResults(results: ExtractionData[], sources: string[]) {
     const first = results[0]
     if (first.title) setTitle(first.title)
     if (first.description) setDescription(first.description)
@@ -318,7 +319,8 @@ export default function CreatePage() {
     if (first.notes) setNotes(first.notes)
     const allDests = results.flatMap(r => Array.isArray(r.destinations) && r.destinations.length > 0 ? mapExtractionDests(r.destinations) : [])
     if (allDests.length > 0) setDestinations(allDests)
-    setStep('basics')
+    setImportSources(sources)
+    setStep('review')
   }
 
   async function handlePasteExtract() {
@@ -328,7 +330,7 @@ export default function CreatePage() {
     setUploadProgress(null)
     try {
       const data = await fetchExtraction({ text: pasteText })
-      applyExtractionResults([data])
+      applyExtractionResults([data], ['Pasted text'])
       setPasteMode(false)
       setPasteText('')
     } catch (err) {
@@ -362,7 +364,7 @@ export default function CreatePage() {
         setUploadProgress(null)
         results.push(await fetchExtraction(payload, pendingFiles[i].name))
       }
-      applyExtractionResults(results)
+      applyExtractionResults(results, pendingFiles.map(file => file.name))
       setPendingFiles([])
     } catch (err) {
       setExtractError(err instanceof Error ? err.message : 'Something went wrong.')
@@ -452,13 +454,19 @@ export default function CreatePage() {
   function updateCaption(i: number, val: string) { setPhotos(p => p.map((ph, idx) => idx === i ? { ...ph, caption: val } : ph)) }
 
   const hasItems = destinations.some(d => d.groups.some(g => g.hotelName.trim() || g.food.some(f => f.name.trim()) || g.activities.some(a => a.name.trim())))
+  const importSummary = {
+    destinations: destinations.filter(d => d.name.trim()).length,
+    hotels: destinations.flatMap(d => d.groups).filter(g => g.hotelName.trim()).length,
+    restaurants: destinations.flatMap(d => d.groups).flatMap(g => g.food).filter(f => f.name.trim()).length,
+    activities: destinations.flatMap(d => d.groups).flatMap(g => g.activities).filter(a => a.name.trim()).length,
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="max-w-xl mx-auto px-4 py-8">
 
       {/* Progress bar (hidden on start step) */}
-      {step !== 'start' && (
+      {step !== 'start' && step !== 'review' && (
         <div className="mb-6 flex gap-1.5">
           {(['basics', 'places', 'photos', 'details'] as const).map((s, i) => (
             <div key={s} className={`h-1 flex-1 rounded-full transition-colors ${stepIndex > i + 1 ? 'bg-blue-500' : stepIndex === i + 1 ? 'bg-blue-500' : 'bg-gray-200'}`} />
@@ -573,6 +581,64 @@ export default function CreatePage() {
               className="w-full py-3.5 rounded-2xl border-2 border-dashed border-gray-300 text-sm font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
               Start from scratch →
             </button>
+          </div>
+        )}
+
+        {/* ── IMPORT REVIEW ─────────────────────────────────────────────── */}
+        {step === 'review' && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+            <div>
+              <p className="text-3xl mb-2">✨</p>
+              <h1 className="text-xl font-bold text-gray-900">Your trip is ready to review</h1>
+              <p className="text-sm text-gray-500 mt-1">
+                We organized {importSources.length === 1 ? 'your file' : `${importSources.length} files`} into a draft. You can edit everything before publishing.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                ['Destinations', importSummary.destinations],
+                ['Hotels', importSummary.hotels],
+                ['Restaurants', importSummary.restaurants],
+                ['Activities', importSummary.activities],
+              ].map(([label, count]) => (
+                <div key={String(label)} className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3">
+                  <p className="text-xl font-bold text-blue-800">{count}</p>
+                  <p className="text-xs font-medium text-blue-700">{label}</p>
+                </div>
+              ))}
+            </div>
+
+            {importSources.length > 1 && (
+              <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+                We combined places from all {importSources.length} files. Trip title and dates come from the first file when available.
+              </p>
+            )}
+
+            {importSummary.destinations === 0 && (
+              <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                We couldn&apos;t confidently identify any destinations. Continue to add them yourself, or try a clearer file.
+              </div>
+            )}
+
+            <div className="rounded-xl border border-gray-200 p-4 space-y-1">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Trip details</p>
+              <p className="font-medium text-gray-900">{title || 'No title found yet'}</p>
+              <p className="text-sm text-gray-500">
+                {startDate && endDate ? `${startDate} to ${endDate}` : 'No travel dates found yet'}
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setStep('start')}
+                className="px-4 py-3 text-sm font-medium text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">
+                Try another file
+              </button>
+              <button type="button" onClick={() => setStep('basics')}
+                className="flex-1 bg-blue-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors">
+                Review and continue
+              </button>
+            </div>
           </div>
         )}
 
