@@ -49,8 +49,8 @@ function BottomNavInner({ userId, pendingCount }: { userId: string | null; pendi
               <FileText size={18} className="text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900">Upload itinerary</p>
-              <p className="text-xs text-gray-500 mt-0.5">Add everything at once</p>
+              <p className="text-sm font-medium text-gray-900">Import a trip</p>
+              <p className="text-xs text-gray-500 mt-0.5">Upload a file or paste notes</p>
             </div>
           </Link>
           <Link
@@ -62,8 +62,8 @@ function BottomNavInner({ userId, pendingCount }: { userId: string | null; pendi
               <LayoutList size={18} className="text-purple-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900">Step by step</p>
-              <p className="text-xs text-gray-500 mt-0.5">Card-by-card guided flow</p>
+              <p className="text-sm font-medium text-gray-900">Build a trip</p>
+              <p className="text-xs text-gray-500 mt-0.5">Add places yourself</p>
             </div>
           </Link>
         </div>
