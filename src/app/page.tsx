@@ -7,15 +7,12 @@ import Link from 'next/link'
 export default async function FeedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; search?: string }>
+  searchParams: Promise<{ search?: string }>
 }) {
-  const { view, search } = await searchParams
+  const { search } = await searchParams
   const session = await auth()
   const searchQuery = search?.trim() || ''
   const userId = session?.user?.id ?? null
-
-  const isExplore = !userId || view === 'explore'
-  const isFriends = !isExplore
 
   const friendIds = userId
     ? (await prisma.follow.findMany({
@@ -23,14 +20,12 @@ export default async function FeedPage({
       select: { followingId: true },
     })).map((follow) => follow.followingId)
     : []
-  const userIdFilter = isFriends && userId ? { in: [...friendIds, userId] } : undefined
 
   const [itineraries, bucketIds, friendItineraries] = await Promise.all([
     prisma.itinerary.findMany({
       where: {
         visibility: { not: 'draft' },
         destinations: { some: { items: { some: {} } } },
-        ...(isFriends && userIdFilter ? { userId: userIdFilter } : {}),
         ...(searchQuery ? {
           destinations: {
             some: {
@@ -42,7 +37,12 @@ export default async function FeedPage({
           },
         } : {}),
       },
-      orderBy: { createdAt: 'desc' },
+      // Public discovery: show the most-saved trips first, with newer trips
+      // winning ties so the feed is both useful and fresh.
+      orderBy: [
+        { bucketedBy: { _count: 'desc' } },
+        { createdAt: 'desc' },
+      ],
       include: {
         user: { select: { name: true, id: true } },
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
@@ -84,24 +84,22 @@ export default async function FeedPage({
       ) : (
         <div className="mb-5">
           <h2 className="text-lg font-bold text-gray-900">
-            {isFriends ? 'Friends\' Trips' : 'Explore'}
+            Discover trips
           </h2>
           <p className="text-sm text-gray-500">
-            {isFriends ? 'Itineraries from people you follow' : 'Discover trips from around the world'}
+            Popular trips, with the newest first when equally saved
           </p>
         </div>
       )}
 
       {itineraries.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-xl shadow-sm">
-          <p className="text-4xl mb-4">{isFriends ? '👥' : '🌍'}</p>
+          <p className="text-4xl mb-4">🌍</p>
           <p className="text-base font-medium text-gray-900">
-            {isFriends ? 'No itineraries from friends yet.' : 'No itineraries yet.'}
+            No itineraries yet.
           </p>
           <p className="text-sm mt-1 text-gray-500">
-            {isFriends ? (
-              <Link href="/friends" className="text-blue-600 hover:underline">Follow some travelers</Link>
-            ) : 'Be the first to share a trip!'}
+            Be the first to share a trip!
           </p>
         </div>
       ) : (
@@ -128,7 +126,7 @@ export default async function FeedPage({
         </HorizontalScrollFeed>
       )}
 
-      {!searchQuery && isExplore && userId && (
+      {!searchQuery && userId && (
         <div className="mt-10">
           <div className="mb-4">
             <h2 className="text-lg font-bold text-gray-900">Friends&apos; Trips</h2>
