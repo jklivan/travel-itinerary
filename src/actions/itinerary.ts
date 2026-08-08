@@ -150,11 +150,10 @@ export async function createItinerary(
   const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, tripRating, destinations, photos } =
     parseFormData(formData)
 
-  if (!title) return { error: 'Title is required.' }
-
   // Dates required for itineraries — unless saving as draft
   const isGuide = postType === 'guide'
-  if (!isDraft && !isGuide && (!startDateStr || !endDateStr)) return { error: 'Start and end dates are required.' }
+  if (!isDraft && !title.trim()) return { error: 'Add a title before publishing.' }
+  if (!isDraft && !isGuide && (!startDateStr || !endDateStr)) return { error: 'Add a month and number of days before publishing.' }
 
   const today = new Date()
   const startDate = startDateStr ? new Date(startDateStr) : today
@@ -163,6 +162,7 @@ export async function createItinerary(
 
   // Publishing requires at least one item
   if (!isDraft) {
+    if (!destinations.some((destination) => destination.name.trim())) return { error: 'Add at least one destination before publishing.' }
     const totalItems = destinations.flatMap(d => flattenGroups(d.groups ?? [])).length
     if (totalItems === 0) return { error: 'Add at least one hotel, restaurant, or activity before publishing.' }
   }
@@ -246,6 +246,9 @@ export async function createItineraryDirect(input: {
   if (startDateStr && endDateStr && endDate < startDate) return { error: 'End date must be after start date.' }
 
   if (!isDraft) {
+    if (!title?.trim()) return { error: 'Add a title before publishing.' }
+    if (!destinations.some((destination) => destination.name.trim())) return { error: 'Add at least one destination before publishing.' }
+    if (postType !== 'guide' && (!startDateStr || !endDateStr)) return { error: 'Add a month and number of days before publishing.' }
     const totalItems = destinations.flatMap(d => flattenGroups(d.groups ?? [])).length
     if (totalItems === 0) return { error: 'Add at least one hotel, restaurant, or activity before publishing.' }
   }

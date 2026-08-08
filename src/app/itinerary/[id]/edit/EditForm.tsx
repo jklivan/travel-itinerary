@@ -7,6 +7,7 @@ import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import TagPicker from '@/components/TagPicker'
 import DeleteButton from '@/components/DeleteButton'
 import { TripRatingPicker } from '@/components/TripRatingPicker'
+import { dateRangeFromMonthAndDays, monthAndDaysFromDates } from '@/lib/tripDates'
 
 type FoodItem     = { name: string; mealType: string; description: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null; tags: string[] }
 type ActivityItem = { name: string; notes: string; link: string; rating: number }
@@ -210,8 +211,9 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   const [postType, setPostType] = useState<'itinerary' | 'guide'>(itinerary.postType === 'guide' ? 'guide' : 'itinerary')
   const [title, setTitle] = useState(itinerary.title)
   const [description, setDescription] = useState(itinerary.description ?? '')
-  const [startDate, setStartDate] = useState(fmt(itinerary.startDate))
-  const [endDate, setEndDate] = useState(fmt(itinerary.endDate))
+  const initialTripDates = monthAndDaysFromDates(fmt(itinerary.startDate), fmt(itinerary.endDate))
+  const [tripMonth, setTripMonth] = useState(initialTripDates.month)
+  const [tripDays, setTripDays] = useState(initialTripDates.days)
   const [tripAudience, setTripAudience] = useState<'family' | 'friends' | 'romantic' | 'adult'>(
     ['family', 'friends', 'romantic'].includes(itinerary.audience) ? itinerary.audience as 'family' | 'friends' | 'romantic' : 'adult'
   )
@@ -224,6 +226,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       ? itinerary.destinations.map(d => ({ name: d.name, country: d.country ?? '', notes: d.notes ?? '', groups: itemsToGroups(d.items) }))
       : [emptyDest()]
   )
+  const tripDateRange = dateRangeFromMonthAndDays(tripMonth, tripDays)
   const [photos, setPhotos] = useState<UploadedPhoto[]>(itinerary.photos.map(p => ({ url: p.url, caption: p.caption ?? '' })))
   const photosInputRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
@@ -315,6 +318,8 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
 
   return (
     <form action={action} className="space-y-8">
+      <input type="hidden" name="startDate" value={tripDateRange.startDate} />
+      <input type="hidden" name="endDate" value={tripDateRange.endDate} />
       <input type="hidden" name="destinations" value={JSON.stringify(destinations)} />
       <input type="hidden" name="photos" ref={photosInputRef} defaultValue={JSON.stringify(photos)} />
       <input type="hidden" name="audience" value={tripAudience} />
@@ -362,12 +367,12 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         {postType === 'itinerary' && (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="startDate" className={labelClass}>Start date *</label>
-              <input id="startDate" name="startDate" type="date" required className={inputClass} value={startDate} onChange={e => setStartDate(e.target.value)} />
+              <label htmlFor="tripMonth" className={labelClass}>Month and year *</label>
+              <input id="tripMonth" type="month" required className={inputClass} value={tripMonth} onChange={e => setTripMonth(e.target.value)} />
             </div>
             <div>
-              <label htmlFor="endDate" className={labelClass}>End date *</label>
-              <input id="endDate" name="endDate" type="date" required className={inputClass} value={endDate} onChange={e => setEndDate(e.target.value)} />
+              <label htmlFor="tripDays" className={labelClass}>Number of days *</label>
+              <input id="tripDays" type="number" min="1" step="1" inputMode="numeric" required className={inputClass} value={tripDays} onChange={e => setTripDays(e.target.value)} />
             </div>
           </div>
         )}

@@ -7,6 +7,7 @@ import { MapPin, Hotel, Utensils, Camera, Star, ArrowRight, Plus, Check, X, File
 import TagPicker from '@/components/TagPicker'
 import Link from 'next/link'
 import { TripRatingPicker } from '@/components/TripRatingPicker'
+import { dateRangeFromMonthAndDays } from '@/lib/tripDates'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -219,8 +220,8 @@ export default function GuidedCreatePage() {
   const [title, setTitle] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [postType, setPostType] = useState<'itinerary' | 'guide'>('itinerary')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  const [tripMonth, setTripMonth] = useState('')
+  const [tripDays, setTripDays] = useState('')
   const [tripAudience, setTripAudience] = useState<'family' | 'friends' | 'romantic' | 'adult'>('family')
   const [budget, setBudget] = useState(0)
   const [tripRating, setTripRating] = useState<number | null>(null)
@@ -281,6 +282,7 @@ export default function GuidedCreatePage() {
 
   const resolvedTitle = title.trim() || (dests[0]?.name ? `Trip to ${dests[0].name}` : 'Untitled Trip')
   const hasHotel = curItems.some(i => i.type === 'hotel')
+  const tripDateRange = dateRangeFromMonthAndDays(tripMonth, tripDays)
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 pb-36">
@@ -289,10 +291,10 @@ export default function GuidedCreatePage() {
       <p className="text-sm text-gray-500 mb-6">Build your trip one card at a time.</p>
 
       <form id="gf" action={action}>
-        <input type="hidden" name="title" value={resolvedTitle} />
+        <input type="hidden" name="title" value={title} />
         <input type="hidden" name="postType" value={postType} />
-        <input type="hidden" name="startDate" value={startDate} />
-        <input type="hidden" name="endDate" value={endDate} />
+        <input type="hidden" name="startDate" value={tripDateRange.startDate} />
+        <input type="hidden" name="endDate" value={tripDateRange.endDate} />
         <input type="hidden" name="audience" value={tripAudience} />
         <input type="hidden" name="visibility" value="public" />
         <input type="hidden" name="destinations" value={JSON.stringify(buildDestinations())} />
@@ -511,7 +513,7 @@ export default function GuidedCreatePage() {
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
             <div className="bg-gradient-to-r from-gray-800 to-gray-700 px-5 py-4">
               <h2 className="font-bold text-white">One last thing</h2>
-              <p className="text-white/70 text-xs mt-0.5">Give your trip a name and dates</p>
+              <p className="text-white/70 text-xs mt-0.5">Give your trip a name, month, and length</p>
             </div>
             <div className="p-5 space-y-4">
               <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium">
@@ -532,12 +534,12 @@ export default function GuidedCreatePage() {
               {postType === 'itinerary' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Start date</label>
-                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={inputCls} />
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Month and year</label>
+                    <input type="month" value={tripMonth} onChange={e => setTripMonth(e.target.value)} className={inputCls} />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">End date</label>
-                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={inputCls} />
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Number of days</label>
+                    <input type="number" min="1" step="1" inputMode="numeric" value={tripDays} onChange={e => setTripDays(e.target.value)} placeholder="e.g. 8" className={inputCls} />
                   </div>
                 </div>
               )}

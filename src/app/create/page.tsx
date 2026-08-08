@@ -6,6 +6,7 @@ import { createItineraryDirect } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import TagPicker from '@/components/TagPicker'
 import { TripRatingPicker } from '@/components/TripRatingPicker'
+import { dateRangeFromMonthAndDays, monthAndDaysFromDates } from '@/lib/tripDates'
 
 // Binary files (images, PDFs, XLSX) are uploaded to Vercel Blob to avoid the 4.5MB
 // function body limit. The public Blob URL is sent to the API route instead of base64.
@@ -239,8 +240,8 @@ export default function CreatePage() {
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  const [tripMonth, setTripMonth] = useState('')
+  const [tripDays, setTripDays] = useState('')
   const [postType, setPostType] = useState<'itinerary' | 'guide'>('itinerary')
   const [tripAudience, setTripAudience] = useState<'family' | 'friends' | 'romantic' | 'adult'>('family')
   const [notes, setNotes] = useState('')
@@ -269,6 +270,7 @@ export default function CreatePage() {
   async function handleSubmit(isDraft: boolean) {
     setPending(true)
     setFormError(undefined)
+    const { startDate, endDate } = dateRangeFromMonthAndDays(tripMonth, tripDays)
     const result = await createItineraryDirect({
       title, description, startDate, endDate, notes, highlights,
       destinations, photos, tags, tripRating,
@@ -314,8 +316,9 @@ export default function CreatePage() {
     const first = results[0]
     if (first.title) setTitle(first.title)
     if (first.description) setDescription(first.description)
-    if (first.startDate) setStartDate(first.startDate)
-    if (first.endDate) setEndDate(first.endDate)
+    const extractedDates = monthAndDaysFromDates(first.startDate, first.endDate)
+    if (extractedDates.month) setTripMonth(extractedDates.month)
+    if (extractedDates.days) setTripDays(extractedDates.days)
     if (first.notes) setNotes(first.notes)
     const allDests = results.flatMap(r => Array.isArray(r.destinations) && r.destinations.length > 0 ? mapExtractionDests(r.destinations) : [])
     if (allDests.length > 0) setDestinations(allDests)
@@ -625,7 +628,7 @@ export default function CreatePage() {
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Trip details</p>
               <p className="font-medium text-gray-900">{title || 'No title found yet'}</p>
               <p className="text-sm text-gray-500">
-                {startDate && endDate ? `${startDate} to ${endDate}` : 'No travel dates found yet'}
+                {tripMonth && tripDays ? `${tripMonth} · ${tripDays} days` : 'No travel dates found yet'}
               </p>
             </div>
 
@@ -673,12 +676,12 @@ export default function CreatePage() {
             {postType === 'itinerary' && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="startDate" className={labelClass}>Start date *</label>
-                  <input id="startDate" type="date" className={inputClass} value={startDate} onChange={e => setStartDate(e.target.value)} />
+                  <label htmlFor="tripMonth" className={labelClass}>Month and year *</label>
+                  <input id="tripMonth" type="month" className={inputClass} value={tripMonth} onChange={e => setTripMonth(e.target.value)} />
                 </div>
                 <div>
-                  <label htmlFor="endDate" className={labelClass}>End date *</label>
-                  <input id="endDate" type="date" className={inputClass} value={endDate} onChange={e => setEndDate(e.target.value)} />
+                  <label htmlFor="tripDays" className={labelClass}>Number of days *</label>
+                  <input id="tripDays" type="number" min="1" step="1" inputMode="numeric" placeholder="e.g. 8" className={inputClass} value={tripDays} onChange={e => setTripDays(e.target.value)} />
                 </div>
               </div>
             )}
