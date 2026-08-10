@@ -40,7 +40,21 @@ async function readFileForUpload(
     return { base64: dataUrl.split(',')[1], mediaType: file.type || 'image/jpeg' }
   }
 
-  if (isPdf || isDocx || isXlsx || isImage) {
+  // Word docs are small — read directly as base64, no Blob upload needed
+  if (isDocx) {
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const dataUrl = reader.result as string
+        resolve(dataUrl.split(',')[1])
+      }
+      reader.onerror = () => reject(new Error('Failed to read file.'))
+      reader.readAsDataURL(file)
+    })
+    return { base64, mediaType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
+  }
+
+  if (isPdf || isXlsx || isImage) {
     if (file.size > MAX_IMPORT_FILE_SIZE) {
       throw new Error('Files must be 100 MB or smaller.')
     }

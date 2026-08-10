@@ -194,18 +194,17 @@ export async function POST(req: NextRequest) {
 
     let extracted: ExtractedItinerary
 
-    if (body.base64 && body.mediaType?.startsWith('image/')) {
+    if (body.base64 && body.mediaType?.includes('wordprocessingml')) {
+      // .docx sent as base64 — no Blob round-trip needed
+      const buffer = Buffer.from(body.base64, 'base64')
+      const result = await mammoth.extractRawText({ buffer })
+      extracted = await extractFromText(result.value)
+    } else if (body.base64 && body.mediaType?.startsWith('image/')) {
       extracted = await extractFromImageBase64(body.base64, body.mediaType)
     } else if (body.blobUrl && body.mediaType?.startsWith('image/')) {
       extracted = await extractFromImageUrl(body.blobUrl, body.mediaType)
     } else if (body.blobUrl && body.mediaType?.includes('pdf')) {
       extracted = await extractFromPrivatePdf(body.blobUrl, body.filename ?? 'itinerary.pdf')
-    } else if (body.blobUrl && body.mediaType?.includes('wordprocessingml')) {
-      // .docx — fetch and convert to plain text with mammoth
-      const res = await fetchBlob(body.blobUrl)
-      const buffer = Buffer.from(await res.arrayBuffer())
-      const result = await mammoth.extractRawText({ buffer })
-      extracted = await extractFromText(result.value)
     } else if (body.blobUrl) {
       // XLSX — fetch and parse to CSV text
       const res = await fetchBlob(body.blobUrl)
