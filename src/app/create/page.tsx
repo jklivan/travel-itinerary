@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { upload } from '@vercel/blob/client'
 import { createItineraryDirect } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
@@ -18,6 +18,7 @@ const IMPORT_TIMEOUT_MS = 5 * 60 * 1000
 
 async function readFileForUpload(
   file: File,
+  externalSignal?: AbortSignal,
 ): Promise<{ text: string } | { base64: string; mediaType: string } | { blobUrl: string; mediaType: string; filename: string }> {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
   const mime = file.type
@@ -45,6 +46,8 @@ async function readFileForUpload(
     const ext2 = file.name.includes('.') ? '.' + file.name.split('.').pop() : ''
     const uniqueName = `extractions/${Date.now()}-${Math.random().toString(36).slice(2)}${ext2}`
     const controller = new AbortController()
+    const cancelUpload = () => controller.abort()
+    externalSignal?.addEventListener('abort', cancelUpload, { once: true })
     const timeout = setTimeout(() => controller.abort(), IMPORT_TIMEOUT_MS)
     let blob: Awaited<ReturnType<typeof upload>>
     try {
@@ -57,10 +60,12 @@ async function readFileForUpload(
         multipart: file.size > 10 * 1024 * 1024,
       })
     } catch (err) {
+      if (externalSignal?.aborted) throw new Error('Import cancelled.')
       if (controller.signal.aborted) throw new Error('Upload timed out. Please check your connection and try again.')
       throw err
     } finally {
       clearTimeout(timeout)
+      externalSignal?.removeEventListener('abort', cancelUpload)
     }
     const mediaType = file.type || (isPdf ? 'application/pdf' : isImage ? 'image/jpeg' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     return { blobUrl: blob.url, mediaType, filename: file.name }
@@ -251,14 +256,17 @@ export default function CreatePage() {
   const [destinations, setDestinations] = useState<Destination[]>([emptyDest()])
   const [photos, setPhotos] = useState<UploadedPhoto[]>([])
   const [uploading, setUploading] = useState(false)
+  const [photoUploadError, setPhotoUploadError] = useState<string | null>(null)
+  const [failedPhotoFiles, setFailedPhotoFiles] = useState<File[]>([])
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState<string | null>(null)
   const [extractProgress, setExtractProgress] = useState<{ current: number; total: number } | null>(null)
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [pasteMode, setPasteMode] = useState(false)
   const [pasteText, setPasteText] = useState('')
   const [importSources, setImportSources] = useState<string[]>([])
+  const [importStage, setImportStage] = useState<'uploading' | 'reading' | 'organizing' | null>(null)
+  const importAbortRef = useRef<AbortController | null>(null)
 
   const showRating = postType === 'itinerary'
   const stepIndex = step === 'review' ? -1 : STEPS.indexOf(step)
@@ -283,12 +291,14 @@ export default function CreatePage() {
   }
 
   // ── Import ────────────────────────────────────────────────────────────────
-  async function fetchExtraction(payload: { text: string } | { base64: string; mediaType: string } | { blobUrl: string; mediaType: string; filename: string }, label = 'your file'): Promise<ExtractionData> {
+  async function fetchExtraction(payload: { text: string } | { base64: string; mediaType: string } | { blobUrl: string; mediaType: string; filename: string }, label = 'your file', externalSignal?: AbortSignal): Promise<ExtractionData> {
     if ('text' in payload && !payload.text.trim()) throw new Error('No text to extract from.')
     let lastError: unknown
     // Retrying is safe: extraction only reads the document and does not write data.
     for (let attempt = 0; attempt < 2; attempt++) {
       const controller = new AbortController()
+      const cancelReading = () => controller.abort()
+      externalSignal?.addEventListener('abort', cancelReading, { once: true })
       const timeout = setTimeout(() => controller.abort(), IMPORT_TIMEOUT_MS)
       try {
         const res = await fetch('/api/extract-pdf', {
@@ -302,10 +312,12 @@ export default function CreatePage() {
         throw new Error(body.error ?? 'Extraction failed.')
       } catch (err) {
         lastError = err
+        if (externalSignal?.aborted) throw new Error('Import cancelled.')
         if (controller.signal.aborted) throw new Error(`Reading ${label} timed out. Please try that file again.`)
         if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 750))
       } finally {
         clearTimeout(timeout)
+        externalSignal?.removeEventListener('abort', cancelReading)
       }
     }
     const detail = lastError instanceof Error && lastError.message ? ` (${lastError.message})` : ''
@@ -330,9 +342,11 @@ export default function CreatePage() {
     if (!pasteText.trim()) return
     setExtracting(true)
     setExtractError(null)
-    setUploadProgress(null)
+    const controller = new AbortController()
+    importAbortRef.current = controller
+    setImportStage('organizing')
     try {
-      const data = await fetchExtraction({ text: pasteText })
+      const data = await fetchExtraction({ text: pasteText }, 'your pasted text', controller.signal)
       applyExtractionResults([data], ['Pasted text'])
       setPasteMode(false)
       setPasteText('')
@@ -340,6 +354,8 @@ export default function CreatePage() {
       setExtractError(err instanceof Error ? err.message : 'Something went wrong.')
     } finally {
       setExtracting(false)
+      setImportStage(null)
+      if (importAbortRef.current === controller) importAbortRef.current = null
     }
   }
 
@@ -359,13 +375,15 @@ export default function CreatePage() {
     setExtractError(null)
     setExtractProgress(pendingFiles.length > 1 ? { current: 0, total: pendingFiles.length } : null)
     const results: ExtractionData[] = []
+    const controller = new AbortController()
+    importAbortRef.current = controller
     try {
       for (let i = 0; i < pendingFiles.length; i++) {
         if (pendingFiles.length > 1) setExtractProgress({ current: i + 1, total: pendingFiles.length })
-        setUploadProgress(0)
-        const payload = await readFileForUpload(pendingFiles[i])
-        setUploadProgress(null)
-        results.push(await fetchExtraction(payload, pendingFiles[i].name))
+        setImportStage('uploading')
+        const payload = await readFileForUpload(pendingFiles[i], controller.signal)
+        setImportStage('organizing')
+        results.push(await fetchExtraction(payload, pendingFiles[i].name, controller.signal))
       }
       applyExtractionResults(results, pendingFiles.map(file => file.name))
       setPendingFiles([])
@@ -374,7 +392,8 @@ export default function CreatePage() {
     } finally {
       setExtracting(false)
       setExtractProgress(null)
-      setUploadProgress(null)
+      setImportStage(null)
+      if (importAbortRef.current === controller) importAbortRef.current = null
     }
   }
 
@@ -433,26 +452,39 @@ export default function CreatePage() {
   }
 
   // ── Photos ────────────────────────────────────────────────────────────────
-  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files
-    if (!files?.length) return
+  async function uploadPhotos(files: File[]) {
+    if (!files.length) return
     setUploading(true)
+    setPhotoUploadError(null)
+    setFailedPhotoFiles([])
+    const failed: File[] = []
     try {
       const uploaded: UploadedPhoto[] = []
-      for (const file of Array.from(files)) {
-        const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : ''
-        const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
-        const blob = await upload(uniqueName, file, { access: 'private', handleUploadUrl: '/api/upload' })
-        uploaded.push({ url: `/api/img?url=${encodeURIComponent(blob.url)}`, caption: '' })
+      for (const file of files) {
+        try {
+          const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : ''
+          const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
+          const blob = await upload(uniqueName, file, { access: 'private', handleUploadUrl: '/api/upload' })
+          uploaded.push({ url: `/api/img?url=${encodeURIComponent(blob.url)}`, caption: '' })
+        } catch {
+          failed.push(file)
+        }
       }
       setPhotos(p => [...p, ...uploaded])
-    } catch (err) {
-      console.error('[upload] error:', err)
+      if (failed.length > 0) {
+        setFailedPhotoFiles(failed)
+        setPhotoUploadError(`${failed.length} photo${failed.length === 1 ? '' : 's'} could not be uploaded.`)
+      }
     } finally {
       setUploading(false)
-      e.target.value = ''
     }
   }
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    await uploadPhotos(files)
+  }
+  function cancelImport() { importAbortRef.current?.abort() }
   function removePhoto(i: number) { setPhotos(p => p.filter((_, idx) => idx !== i)) }
   function updateCaption(i: number, val: string) { setPhotos(p => p.map((ph, idx) => idx === i ? { ...ph, caption: val } : ph)) }
 
@@ -570,13 +602,23 @@ export default function CreatePage() {
                 <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{extractError}</p>
               )}
               {extracting && (
-                <p className="text-xs text-blue-600 animate-pulse">
-                  {extractProgress
-                    ? `Reading file ${extractProgress.current} of ${extractProgress.total}…`
-                    : uploadProgress != null
-                      ? 'Uploading file…'
-                    : 'Reading your itinerary…'}
-                </p>
+                <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5 space-y-2">
+                  <p className="text-xs font-medium text-blue-800">
+                    {importStage === 'uploading' ? 'Uploading securely…' :
+                      importStage === 'reading' ? 'Reading your file…' :
+                      'Organizing your trip…'}
+                  </p>
+                  <p className="text-xs text-blue-600">
+                    {extractProgress ? `File ${extractProgress.current} of ${extractProgress.total}` : 'Large PDFs can take a few minutes.'}
+                  </p>
+                  <div className="flex items-center gap-1.5 text-[11px] text-blue-700">
+                    <span className={importStage === 'uploading' ? 'font-semibold' : ''}>1 Upload</span><span>→</span>
+                    <span className={importStage === 'reading' || importStage === 'organizing' ? 'font-semibold' : ''}>2 Read</span><span>→</span>
+                    <span className={importStage === 'organizing' ? 'font-semibold' : ''}>3 Organize</span><span>→</span>
+                    <span>4 Review</span>
+                  </div>
+                  <button type="button" onClick={cancelImport} className="text-xs font-medium text-blue-700 underline hover:text-blue-900">Cancel import</button>
+                </div>
               )}
             </div>
 
@@ -819,6 +861,12 @@ export default function CreatePage() {
               <span className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP, GIF</span>
               <input type="file" accept="image/*" multiple className="sr-only" onChange={handlePhotoUpload} disabled={uploading} />
             </label>
+            {photoUploadError && (
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                <span>{photoUploadError}</span>
+                <button type="button" onClick={() => uploadPhotos(failedPhotoFiles)} disabled={uploading} className="shrink-0 font-semibold underline disabled:opacity-50">Retry</button>
+              </div>
+            )}
             {photos.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {photos.map((photo, i) => (

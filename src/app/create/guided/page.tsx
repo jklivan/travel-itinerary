@@ -214,6 +214,8 @@ export default function GuidedCreatePage() {
   const [curNotes, setCurNotes] = useState('')
   const [photos, setPhotos] = useState<UploadedPhoto[]>([])
   const [uploading, setUploading] = useState(false)
+  const [photoUploadError, setPhotoUploadError] = useState<string | null>(null)
+  const [failedPhotoFiles, setFailedPhotoFiles] = useState<File[]>([])
   const [activeInput, setActiveInput] = useState<ActiveInput>(null)
   const [phase, setPhase] = useState<Phase>('dest')
 
@@ -240,24 +242,39 @@ export default function GuidedCreatePage() {
     setPhase('more')
   }
 
-  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files
-    if (!files?.length) return
+  async function uploadPhotos(files: File[]) {
+    if (!files.length) return
     setUploading(true)
+    setPhotoUploadError(null)
+    setFailedPhotoFiles([])
+    const failed: File[] = []
     try {
-      for (const file of Array.from(files)) {
-        const fd = new FormData()
-        fd.append('file', file)
-        const res = await fetch('/api/upload', { method: 'POST', body: fd })
-        if (res.ok) { const { url } = await res.json(); setPhotos(p => [...p, { url, caption: '' }]) }
-        else { console.error('[upload] failed:', res.status, await res.text().catch(() => '')) }
+      const uploaded: UploadedPhoto[] = []
+      for (const file of files) {
+        try {
+          const fd = new FormData()
+          fd.append('file', file)
+          const res = await fetch('/api/upload', { method: 'POST', body: fd })
+          if (!res.ok) throw new Error('Upload failed')
+          const { url } = await res.json()
+          uploaded.push({ url, caption: '' })
+        } catch {
+          failed.push(file)
+        }
       }
-    } catch (err) {
-      console.error('[upload] error:', err)
+      setPhotos(p => [...p, ...uploaded])
+      if (failed.length > 0) {
+        setFailedPhotoFiles(failed)
+        setPhotoUploadError(`${failed.length} photo${failed.length === 1 ? '' : 's'} could not be uploaded.`)
+      }
     } finally {
       setUploading(false)
-      e.target.value = ''
     }
+  }
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    await uploadPhotos(files)
   }
 
   function buildDestinations() {
@@ -421,6 +438,12 @@ export default function GuidedCreatePage() {
                     <span className="text-xs text-purple-400 mt-0.5">JPG, PNG, WEBP</span>
                     <input type="file" accept="image/*" multiple className="sr-only" onChange={handlePhotoUpload} disabled={uploading} />
                   </label>
+                  {photoUploadError && (
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                      <span>{photoUploadError}</span>
+                      <button type="button" onClick={() => uploadPhotos(failedPhotoFiles)} disabled={uploading} className="font-semibold underline disabled:opacity-50">Retry</button>
+                    </div>
+                  )}
                   <button type="button" onClick={() => setActiveInput(null)}
                     className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors flex items-center justify-center gap-2">
                     <Check size={14} /> Done
