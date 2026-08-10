@@ -21,6 +21,7 @@ type GuidedItem = {
   mealType: string
   rating: number
   notes: string
+  dayIndex: number
 }
 
 type GuidedDest = {
@@ -98,7 +99,7 @@ function AddedRow({ item, onRemove }: { item: GuidedItem; onRemove: () => void }
 
 function ItemForm({ type, onAdd, onClose }: {
   type: ItemType
-  onAdd: (item: Omit<GuidedItem, 'id'>) => void
+  onAdd: (item: Omit<GuidedItem, 'id' | 'dayIndex'>) => void
   onClose: () => void
 }) {
   const [name, setName] = useState('')
@@ -211,6 +212,7 @@ export default function GuidedCreatePage() {
   const [dests, setDests] = useState<GuidedDest[]>([])
   const [curDest, setCurDest] = useState({ name: '', country: '' })
   const [curItems, setCurItems] = useState<GuidedItem[]>([])
+  const [curDayIndex, setCurDayIndex] = useState(1)
   const [curNotes, setCurNotes] = useState('')
   const [photos, setPhotos] = useState<UploadedPhoto[]>([])
   const [uploading, setUploading] = useState(false)
@@ -228,8 +230,8 @@ export default function GuidedCreatePage() {
   const [budget, setBudget] = useState(0)
   const [tripRating, setTripRating] = useState<number | null>(null)
 
-  function addItem(item: Omit<GuidedItem, 'id'>) {
-    setCurItems(i => [...i, { ...item, id: uid() }])
+  function addItem(item: Omit<GuidedItem, 'id' | 'dayIndex'>) {
+    setCurItems(i => [...i, { ...item, id: uid(), dayIndex: curDayIndex }])
     setActiveInput(null)
   }
 
@@ -237,6 +239,7 @@ export default function GuidedCreatePage() {
     setDests(d => [...d, { id: uid(), name: curDest.name, country: curDest.country, notes: curNotes, items: curItems }])
     setCurDest({ name: '', country: '' })
     setCurItems([])
+    setCurDayIndex(1)
     setCurNotes('')
     setActiveInput(null)
     setPhase('more')
@@ -285,22 +288,29 @@ export default function GuidedCreatePage() {
     }
     return all.map(d => {
       const hotels = d.items.filter(i => i.type === 'hotel')
-      const food = d.items.filter(i => i.type === 'food_drink').map(i => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating }))
-      const activities = d.items.filter(i => i.type === 'activity').map(i => ({ name: i.name, notes: i.notes, link: '', rating: i.rating }))
+      // Group non-hotel items by dayIndex
+      const byDay = new Map<number, GuidedItem[]>()
+      for (const item of d.items.filter(i => i.type !== 'hotel')) {
+        const di = item.dayIndex ?? 1
+        if (!byDay.has(di)) byDay.set(di, [])
+        byDay.get(di)!.push(item)
+      }
+      const days = byDay.size > 0
+        ? [...byDay.entries()].sort(([a], [b]) => a - b).map(([, dayItems]) => ({
+            food: dayItems.filter(i => i.type === 'food_drink').map(i => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating })),
+            activities: dayItems.filter(i => i.type === 'activity').map(i => ({ name: i.name, notes: i.notes, link: '', rating: i.rating })),
+          }))
+        : [{ food: [], activities: [] }]
       const stays = hotels.length > 0 ? hotels : [null]
       return {
         name: d.name, country: d.country, notes: d.notes,
-        // Each hotel becomes its own stay. Food and activities remain attached
-        // to the destination's first stay because this guided flow has no dates
-        // for assigning them to a particular hotel.
         groups: stays.map((hotel, index) => ({
           hotelName: hotel?.name ?? '',
           hotelNotes: hotel?.notes ?? '',
           hotelAddress: '',
           hotelLink: '',
           hotelRating: hotel?.rating ?? 0,
-          food: index === 0 ? food : [],
-          activities: index === 0 ? activities : [],
+          days: index === 0 ? days : [{ food: [], activities: [] }],
         })),
       }
     })
@@ -381,13 +391,27 @@ export default function GuidedCreatePage() {
             </div>
 
             <div className="p-5 space-y-4">
-              {/* Added items list */}
+              {/* Added items grouped by day */}
               {curItems.length > 0 && (
-                <div className="space-y-2">
-                  {curItems.map(item => (
-                    <AddedRow key={item.id} item={item}
-                      onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))} />
-                  ))}
+                <div className="space-y-3">
+                  {(() => {
+                    const byDay = new Map<number, GuidedItem[]>()
+                    for (const item of curItems) {
+                      if (!byDay.has(item.dayIndex)) byDay.set(item.dayIndex, [])
+                      byDay.get(item.dayIndex)!.push(item)
+                    }
+                    return [...byDay.entries()].sort(([a], [b]) => a - b).map(([day, items]) => (
+                      <div key={day}>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Day {day}</p>
+                        <div className="space-y-2">
+                          {items.map(item => (
+                            <AddedRow key={item.id} item={item}
+                              onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))} />
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  })()}
                 </div>
               )}
 
@@ -461,37 +485,46 @@ export default function GuidedCreatePage() {
 
               {/* Option buttons — always visible when no form open */}
               {!activeInput && (
-                <div className="grid grid-cols-3 gap-2">
-                  <button type="button"
-                    onClick={() => setActiveInput('hotel')}
-                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-blue-200 text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-all">
-                    <Hotel size={20} />
-                    <span className="text-xs font-semibold">+ Stay / Hotel</span>
-                  </button>
-                  <button type="button"
-                    onClick={() => setActiveInput('food_drink')}
-                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-orange-200 text-orange-600 hover:border-orange-400 hover:bg-orange-50 transition-all">
-                    <Utensils size={20} />
-                    <span className="text-xs font-semibold">+ Food / Drink</span>
-                  </button>
-                  <button type="button"
-                    onClick={() => setActiveInput('activity')}
-                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-green-200 text-green-600 hover:border-green-400 hover:bg-green-50 transition-all">
-                    <Camera size={20} />
-                    <span className="text-xs font-semibold">+ Activity</span>
-                  </button>
-                  <button type="button"
-                    onClick={() => setActiveInput('notes')}
-                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-amber-200 text-amber-600 hover:border-amber-400 hover:bg-amber-50 transition-all">
-                    <FileText size={20} />
-                    <span className="text-xs font-semibold">{curNotes ? 'Notes ✓' : '+ Notes'}</span>
-                  </button>
-                  <button type="button"
-                    onClick={() => setActiveInput('photos')}
-                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-purple-200 text-purple-600 hover:border-purple-400 hover:bg-purple-50 transition-all">
-                    <ImageIcon size={20} />
-                    <span className="text-xs font-semibold">{photos.length > 0 ? `Photos (${photos.length})` : '+ Photos'}</span>
-                  </button>
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Day {curDayIndex}</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button type="button"
+                      onClick={() => setActiveInput('hotel')}
+                      className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-blue-200 text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-all">
+                      <Hotel size={20} />
+                      <span className="text-xs font-semibold">+ Stay / Hotel</span>
+                    </button>
+                    <button type="button"
+                      onClick={() => setActiveInput('food_drink')}
+                      className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-orange-200 text-orange-600 hover:border-orange-400 hover:bg-orange-50 transition-all">
+                      <Utensils size={20} />
+                      <span className="text-xs font-semibold">+ Food / Drink</span>
+                    </button>
+                    <button type="button"
+                      onClick={() => setActiveInput('activity')}
+                      className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-green-200 text-green-600 hover:border-green-400 hover:bg-green-50 transition-all">
+                      <Camera size={20} />
+                      <span className="text-xs font-semibold">+ Activity</span>
+                    </button>
+                    <button type="button"
+                      onClick={() => setActiveInput('notes')}
+                      className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-amber-200 text-amber-600 hover:border-amber-400 hover:bg-amber-50 transition-all">
+                      <FileText size={20} />
+                      <span className="text-xs font-semibold">{curNotes ? 'Notes ✓' : '+ Notes'}</span>
+                    </button>
+                    <button type="button"
+                      onClick={() => setActiveInput('photos')}
+                      className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-purple-200 text-purple-600 hover:border-purple-400 hover:bg-purple-50 transition-all">
+                      <ImageIcon size={20} />
+                      <span className="text-xs font-semibold">{photos.length > 0 ? `Photos (${photos.length})` : '+ Photos'}</span>
+                    </button>
+                    <button type="button"
+                      onClick={() => setCurDayIndex(d => d + 1)}
+                      className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-indigo-200 text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50 transition-all">
+                      <ArrowRight size={20} />
+                      <span className="text-xs font-semibold">Day {curDayIndex + 1}</span>
+                    </button>
+                  </div>
                 </div>
               )}
 
