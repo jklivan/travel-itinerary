@@ -29,17 +29,17 @@ function Stars({ rating }: { rating: number | null }) {
   )
 }
 
-type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number; tags?: string[] }
+type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number; dayIndex?: number | null; tags?: string[] }
 
 function groupItems(items: DestItemRow[]) {
   const map = new Map<number, { hotel: DestItemRow | null; food: DestItemRow[]; activities: DestItemRow[] }>()
   for (const item of items) {
-    const gi = item.groupIndex ?? 0
-    if (!map.has(gi)) map.set(gi, { hotel: null, food: [], activities: [] })
-    const g = map.get(gi)!
-    if (item.type === 'hotel') g.hotel = item
-    else if (item.type === 'food_drink') g.food.push(item)
-    else if (item.type === 'activity') g.activities.push(item)
+    const key = item.groupIndex ?? 0
+    if (!map.has(key)) map.set(key, { hotel: null, food: [], activities: [] })
+    const group = map.get(key)!
+    if (item.type === 'hotel') group.hotel = item
+    else if (item.type === 'food_drink') group.food.push(item)
+    else if (item.type === 'activity') group.activities.push(item)
   }
   return [...map.entries()].sort(([a], [b]) => a - b).map(([, g]) => g)
 }
@@ -361,7 +361,7 @@ export default async function ItineraryPage({
                     <div className="space-y-3">
                       {groups.map((group, gi) => (
                         <div key={gi} className={multiStay ? 'rounded-xl border border-gray-200 overflow-hidden' : 'space-y-2'}>
-                          {multiStay && group.hotel && (
+                          {multiStay && (
                             <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
                               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Stay {gi + 1}</p>
                             </div>
