@@ -159,7 +159,7 @@ function ItemForm({ type, onAdd, onClose }: {
 // ── Completed destination summary ─────────────────────────────────────────────
 
 function DestSummary({ dest, onRemove }: { dest: GuidedDest; onRemove: () => void }) {
-  const hotel = dest.items.find(i => i.type === 'hotel')
+  const hotels = dest.items.filter(i => i.type === 'hotel')
   const food  = dest.items.filter(i => i.type === 'food_drink')
   const acts  = dest.items.filter(i => i.type === 'activity')
   return (
@@ -176,13 +176,13 @@ function DestSummary({ dest, onRemove }: { dest: GuidedDest; onRemove: () => voi
         <button onClick={onRemove} className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>
       </div>
       <div className="px-4 py-3 space-y-1.5 text-xs text-gray-600">
-        {hotel && (
-          <div className="flex items-center gap-1.5">
+        {hotels.map(hotel => (
+          <div key={hotel.id} className="flex items-center gap-1.5">
             <Hotel size={12} className="text-blue-500 shrink-0" />
             <span className="truncate">{hotel.name}</span>
             {hotel.rating > 0 && <span className="text-yellow-500 ml-1">{'★'.repeat(hotel.rating)}</span>}
           </div>
-        )}
+        ))}
         {food.map(f => (
           <div key={f.id} className="flex items-center gap-1.5">
             <Utensils size={12} className="text-orange-500 shrink-0" />
@@ -283,22 +283,30 @@ export default function GuidedCreatePage() {
     if (curDest.name.trim()) {
       all.push({ id: 'current', name: curDest.name, country: curDest.country, notes: curNotes, items: curItems })
     }
-    return all.map(d => ({
-      name: d.name, country: d.country, notes: d.notes,
-      groups: [{
-        hotelName: d.items.find(i => i.type === 'hotel')?.name ?? '',
-        hotelNotes: d.items.find(i => i.type === 'hotel')?.notes ?? '',
-        hotelAddress: '',
-        hotelLink: '',
-        hotelRating: d.items.find(i => i.type === 'hotel')?.rating ?? 0,
-        food: d.items.filter(i => i.type === 'food_drink').map(i => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating })),
-        activities: d.items.filter(i => i.type === 'activity').map(i => ({ name: i.name, notes: i.notes, link: '', rating: i.rating })),
-      }],
-    }))
+    return all.map(d => {
+      const hotels = d.items.filter(i => i.type === 'hotel')
+      const food = d.items.filter(i => i.type === 'food_drink').map(i => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating }))
+      const activities = d.items.filter(i => i.type === 'activity').map(i => ({ name: i.name, notes: i.notes, link: '', rating: i.rating }))
+      const stays = hotels.length > 0 ? hotels : [null]
+      return {
+        name: d.name, country: d.country, notes: d.notes,
+        // Each hotel becomes its own stay. Food and activities remain attached
+        // to the destination's first stay because this guided flow has no dates
+        // for assigning them to a particular hotel.
+        groups: stays.map((hotel, index) => ({
+          hotelName: hotel?.name ?? '',
+          hotelNotes: hotel?.notes ?? '',
+          hotelAddress: '',
+          hotelLink: '',
+          hotelRating: hotel?.rating ?? 0,
+          food: index === 0 ? food : [],
+          activities: index === 0 ? activities : [],
+        })),
+      }
+    })
   }
 
   const resolvedTitle = title.trim() || (dests[0]?.name ? `Trip to ${dests[0].name}` : 'Untitled Trip')
-  const hasHotel = curItems.some(i => i.type === 'hotel')
   const tripDateRange = dateRangeFromMonthAndDays(tripMonth, tripDays)
 
   return (
@@ -456,10 +464,9 @@ export default function GuidedCreatePage() {
                 <div className="grid grid-cols-3 gap-2">
                   <button type="button"
                     onClick={() => setActiveInput('hotel')}
-                    disabled={hasHotel}
-                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-blue-200 text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-blue-200 text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-all">
                     <Hotel size={20} />
-                    <span className="text-xs font-semibold">{hasHotel ? 'Hotel ✓' : '+ Hotel'}</span>
+                    <span className="text-xs font-semibold">+ Stay / Hotel</span>
                   </button>
                   <button type="button"
                     onClick={() => setActiveInput('food_drink')}
