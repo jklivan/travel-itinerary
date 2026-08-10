@@ -1,0 +1,10 @@
+{
+	"appId": "com.joshuaklivan.travelitinerary",
+	"appName": "Travel Itinerary",
+	"webDir": "mobile",
+	"server": {
+		"url": "https://travel-itinerary-gules.vercel.app",
+		"cleartext": false
+	},
+	"packageClassList": []
+}
