@@ -19,6 +19,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       onBeforeGenerateToken: async () => ({
         allowedContentTypes: [
           'application/pdf',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           'application/vnd.ms-excel',
           'text/csv',
