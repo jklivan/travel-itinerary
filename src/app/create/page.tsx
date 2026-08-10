@@ -164,6 +164,7 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
   onRemove: () => void; showRating: boolean
   onSelectPlace?: (placeId: string | null) => void
 }) {
+  const [showDetails, setShowDetails] = useState(false)
   return (
     <div className={`rounded-xl border border-l-4 border-l-orange-400 ${index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'} p-4 space-y-3`}>
       <div className="flex gap-2 items-start">
@@ -185,6 +186,10 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
           )
         })}
       </div>
+      <button type="button" onClick={() => setShowDetails(value => !value)} className="text-xs font-medium text-gray-500 hover:text-gray-800">
+        {showDetails ? '− Hide details' : '+ Add details'}
+      </button>
+      {showDetails && <>
       <div className="flex items-center gap-3 flex-wrap">
         {item.priceLevel != null && (
           <p className="text-xs text-green-700 font-medium">
@@ -209,6 +214,7 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
         <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
       </div>
+      </>}
     </div>
   )
 }
@@ -218,6 +224,7 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
   onUpdate: (field: keyof ActivityItem, val: string) => void
   onRemove: () => void; showRating: boolean
 }) {
+  const [showDetails, setShowDetails] = useState(false)
   return (
     <div className={`rounded-xl border border-l-4 border-l-green-400 ${index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'} p-4 space-y-3`}>
       <div className="flex gap-2 items-start">
@@ -225,11 +232,16 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
           type="activity" placeholder="e.g. Temple tour, Hiking, Museum visit" className={inputClass} />
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
+      <button type="button" onClick={() => setShowDetails(value => !value)} className="text-xs font-medium text-gray-500 hover:text-gray-800">
+        {showDetails ? '− Hide details' : '+ Add details'}
+      </button>
+      {showDetails && <>
       {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
       <div className="grid gap-2">
         <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
       </div>
+      </>}
     </div>
   )
 }
@@ -265,6 +277,7 @@ export default function CreatePage() {
   const [pasteMode, setPasteMode] = useState(false)
   const [pasteText, setPasteText] = useState('')
   const [importSources, setImportSources] = useState<string[]>([])
+  const [expandedDetails, setExpandedDetails] = useState<Set<string>>(new Set())
   const [importStage, setImportStage] = useState<'uploading' | 'reading' | 'organizing' | null>(null)
   const importAbortRef = useRef<AbortController | null>(null)
 
@@ -367,6 +380,14 @@ export default function CreatePage() {
 
   function removePendingFile(i: number) {
     setPendingFiles(prev => prev.filter((_, idx) => idx !== i))
+  }
+  function toggleDetails(key: string) {
+    setExpandedDetails(current => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
   }
 
   async function handleExtractAll() {
@@ -786,6 +807,10 @@ export default function CreatePage() {
                           onSelect={(_, __, placeId) => { if (placeId) fetchHotelPriceLevel(di, gi, placeId) }}
                           type="hotel" placeholder="Hotel name (optional)" className={inputClass} />
                         {group.hotelName && (<>
+                          <button type="button" onClick={() => toggleDetails(`${di}-${gi}-hotel`)} className="text-xs font-medium text-blue-700 hover:text-blue-900">
+                            {expandedDetails.has(`${di}-${gi}-hotel`) ? '− Hide details' : '+ Add details'}
+                          </button>
+                          {expandedDetails.has(`${di}-${gi}-hotel`) && <>
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-gray-500 shrink-0">$/night</span>
                             <input type="number" min="0" step="1" value={group.hotelNightlyRate}
@@ -814,6 +839,7 @@ export default function CreatePage() {
                           </div>
                           <input type="text" value={group.hotelNotes} onChange={e => updateHotel(di, gi, 'hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
                           <input type="url" value={group.hotelLink} onChange={e => updateHotel(di, gi, 'hotelLink', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
+                          </>}
                         </>)}
                       </div>
                       {/* Food */}
