@@ -214,10 +214,12 @@ export async function createItinerary(
   })
 
   // Run stock photo fetch, tag generation, geocoding, price level inference, and description generation in parallel after save
+  // Each task is wrapped in .catch(() => null) so a failure in any background task doesn't block the redirect
   await Promise.all([
     photos.length === 0 && destinations.length > 0
       ? fetchStockPhoto(`${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`)
           .then((url) => url ? prisma.photo.create({ data: { url, isStock: true, itineraryId: itinerary.id } }) : null)
+          .catch(() => null)
       : null,
     tags.length === 0
       ? generateTags(title, destinations.map((d) => ({
@@ -234,10 +236,11 @@ export async function createItinerary(
           ]),
         })), audience)
           .then((autoTags) => autoTags.length > 0 ? prisma.itinerary.update({ where: { id: itinerary.id }, data: { tags: autoTags } }) : null)
+          .catch(() => null)
       : null,
-    geocodeItineraryDests(itinerary.id),
-    inferMissingAttributes(itinerary.id),
-    generateMissingDescriptions(itinerary.id),
+    geocodeItineraryDests(itinerary.id).catch(() => null),
+    inferMissingAttributes(itinerary.id).catch(() => null),
+    generateMissingDescriptions(itinerary.id).catch(() => null),
   ])
 
   revalidatePath('/')
@@ -287,6 +290,7 @@ export async function createItineraryDirect(input: {
     photos.length === 0 && destinations.length > 0
       ? fetchStockPhoto(`${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`)
           .then((url) => url ? prisma.photo.create({ data: { url, isStock: true, itineraryId: itinerary.id } }) : null)
+          .catch(() => null)
       : null,
     tags.length === 0
       ? generateTags(resolvedTitle, destinations.map((d) => ({
@@ -302,10 +306,11 @@ export async function createItineraryDirect(input: {
           ]),
         })), audience)
           .then((autoTags) => autoTags.length > 0 ? prisma.itinerary.update({ where: { id: itinerary.id }, data: { tags: autoTags } }) : null)
+          .catch(() => null)
       : null,
-    geocodeItineraryDests(itinerary.id),
-    inferMissingAttributes(itinerary.id),
-    generateMissingDescriptions(itinerary.id),
+    geocodeItineraryDests(itinerary.id).catch(() => null),
+    inferMissingAttributes(itinerary.id).catch(() => null),
+    generateMissingDescriptions(itinerary.id).catch(() => null),
   ])
 
   revalidatePath('/')
@@ -382,10 +387,11 @@ export async function updateItinerary(
     photos.length === 0 && destinations.length > 0
       ? fetchStockPhoto(`${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`)
           .then((url) => url ? prisma.photo.create({ data: { url, isStock: true, itineraryId: id } }) : null)
+          .catch(() => null)
       : null,
-    geocodeItineraryDests(id),
-    inferMissingAttributes(id),
-    generateMissingDescriptions(id),
+    geocodeItineraryDests(id).catch(() => null),
+    inferMissingAttributes(id).catch(() => null),
+    generateMissingDescriptions(id).catch(() => null),
   ])
 
   revalidatePath('/')
