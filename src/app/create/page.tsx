@@ -523,10 +523,24 @@ export default function CreatePage() {
 
       {/* Progress bar (hidden on start step) */}
       {step !== 'start' && step !== 'review' && (
-        <div className="mb-6 flex gap-1.5">
-          {(['basics', 'places', 'photos', 'details'] as const).map((s, i) => (
-            <div key={s} className={`h-1 flex-1 rounded-full transition-colors ${stepIndex > i + 1 ? 'bg-blue-500' : stepIndex === i + 1 ? 'bg-blue-500' : 'bg-gray-200'}`} />
-          ))}
+        <div className="mb-7 grid grid-cols-4 gap-1">
+          {([
+            ['basics', 'Basics'],
+            ['places', 'Places'],
+            ['photos', 'Photos'],
+            ['details', 'Finish'],
+          ] as const).map(([stepName, label], index) => {
+            const isComplete = stepIndex > index + 1
+            const isCurrent = step === stepName
+            return (
+              <div key={stepName} className="min-w-0">
+                <div className={`h-1.5 rounded-full transition-colors ${isComplete || isCurrent ? 'bg-blue-600' : 'bg-gray-200'}`} />
+                <p className={`mt-1.5 text-center text-[11px] font-medium truncate ${isCurrent ? 'text-blue-700' : isComplete ? 'text-blue-600' : 'text-gray-400'}`}>
+                  {index + 1} {label}
+                </p>
+              </div>
+            )
+          })}
         </div>
       )}
 
