@@ -86,13 +86,14 @@ async function readFileForUpload(
   })
 }
 
-type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null; tags: string[] }
-type ActivityItem = { name: string; notes: string; link: string; rating: number }
-type StayGroup    = { hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; food: FoodItem[]; activities: ActivityItem[] }
+type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null; tags: string[]; dayIndex?: number | null }
+type ActivityItem = { name: string; notes: string; link: string; rating: number; dayIndex?: number | null }
+type DayGroup    = { food: FoodItem[]; activities: ActivityItem[] }
+type StayGroup   = { hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; days: DayGroup[] }
 type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
 type UploadedPhoto = { url: string; caption: string }
 
-type RawDestItem = { type: string; mealType?: string; rating?: number; name: string; notes?: string; link?: string }
+type RawDestItem = { type: string; mealType?: string; rating?: number; name: string; notes?: string; link?: string; dayIndex?: number }
 type RawDest = { name?: string; country?: string; items?: RawDestItem[] }
 type ExtractionData = { title?: string; description?: string; startDate?: string; endDate?: string; notes?: string; destinations?: RawDest[] }
 
@@ -103,18 +104,19 @@ function mapExtractionDests(rawDests: RawDest[]): Destination[] {
     const items = Array.isArray(d.items) ? d.items : []
     // Accept common accommodation labels in case a model uses a synonym.
     const hotels = items.filter(i => ['hotel', 'accommodation', 'lodging', 'stay'].includes(i.type.toLowerCase()))
-    const food   = items.filter(i => i.type === 'food_drink').map(f => ({ name: f.name ?? '', mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [] }))
-    const acts   = items.filter(i => i.type === 'activity').map(a => ({ name: a.name ?? '', notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0 }))
+    const food   = items.filter(i => i.type === 'food_drink').map(f => ({ name: f.name ?? '', mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: f.dayIndex ?? null }))
+    const acts   = items.filter(i => i.type === 'activity').map(a => ({ name: a.name ?? '', notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0, dayIndex: a.dayIndex ?? null }))
     const groups: StayGroup[] = hotels.length === 0
-      ? [{ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], food, activities: acts }]
-      : hotels.map((h, hi) => ({ hotelName: h.name ?? '', hotelNotes: h.notes ?? '', hotelLink: h.link ?? '', hotelRating: h.rating ?? 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], food: hi === 0 ? food : [], activities: hi === 0 ? acts : [] }))
+      ? [{ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: [{ food, activities: acts }] }]
+      : hotels.map((h, hi) => ({ hotelName: h.name ?? '', hotelNotes: h.notes ?? '', hotelLink: h.link ?? '', hotelRating: h.rating ?? 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: [{ food: hi === 0 ? food : [], activities: hi === 0 ? acts : [] }] }))
     return { name: d.name ?? '', country: d.country ?? '', notes: '', groups }
   })
 }
 
-const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [] })
-const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0 })
-const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], food: [], activities: [] })
+const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null })
+const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0, dayIndex: null })
+const emptyDay      = (): DayGroup     => ({ food: [], activities: [] })
+const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: [emptyDay()] })
 
 const FOOD_TAGS = ['Worth the Hype', 'Great Food', 'Hidden Gem', 'Local Favorite', "Can't-Miss", 'Good for Groups', 'Family Friendly', 'Great Cocktails', 'Great Ambiance', 'Lively', 'Romantic', 'Chic', 'Casual', 'Outdoor Dining', 'Great Views']
 const HOTEL_TAGS = ['Great Service', 'Worth the Splurge', 'Great Value', 'Hidden Gem', 'Boutique', 'Luxury', 'Romantic', 'Family-Friendly', 'Great Location', 'Great Views', 'Amazing Spa']
@@ -444,32 +446,37 @@ export default function CreatePage() {
       }))
     } catch { /* ignore */ }
   }
-  function addFood(di: number, gi: number) { updGroup(di, gi, g => ({ ...g, food: [...g.food, emptyFood()] })) }
-  function removeFood(di: number, gi: number, ii: number) { updGroup(di, gi, g => ({ ...g, food: g.food.filter((_, j) => j !== ii) })) }
-  function updateFood(di: number, gi: number, ii: number, field: keyof Omit<FoodItem, 'priceLevel'>, val: string) {
-    updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, [field]: field === 'rating' ? Number(val) : val }) }))
+  function updDay(di: number, gi: number, dyi: number, fn: (d: DayGroup) => DayGroup) {
+    updGroup(di, gi, g => ({ ...g, days: g.days.map((d, i) => i !== dyi ? d : fn(d)) }))
   }
-  function setFoodPriceLevel(di: number, gi: number, ii: number, val: number | null) {
-    updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, priceLevel: val }) }))
+  function addDay(di: number, gi: number) { updGroup(di, gi, g => ({ ...g, days: [...g.days, emptyDay()] })) }
+  function removeDay(di: number, gi: number, dyi: number) { updGroup(di, gi, g => ({ ...g, days: g.days.filter((_, i) => i !== dyi) })) }
+  function addFood(di: number, gi: number, dyi: number) { updDay(di, gi, dyi, d => ({ ...d, food: [...d.food, emptyFood()] })) }
+  function removeFood(di: number, gi: number, dyi: number, ii: number) { updDay(di, gi, dyi, d => ({ ...d, food: d.food.filter((_, j) => j !== ii) })) }
+  function updateFood(di: number, gi: number, dyi: number, ii: number, field: keyof Omit<FoodItem, 'priceLevel' | 'familyFriendly' | 'tags'>, val: string) {
+    updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j !== ii ? f : { ...f, [field]: field === 'rating' ? Number(val) : val }) }))
   }
-  function setFoodFamilyFriendly(di: number, gi: number, ii: number, val: boolean | null) {
-    updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, familyFriendly: val, familyFriendlySource: val !== null ? 'user' : null }) }))
+  function setFoodPriceLevel(di: number, gi: number, dyi: number, ii: number, val: number | null) {
+    updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j !== ii ? f : { ...f, priceLevel: val }) }))
   }
-  async function fetchFoodPriceLevel(di: number, gi: number, ii: number, placeId: string) {
+  function setFoodFamilyFriendly(di: number, gi: number, dyi: number, ii: number, val: boolean | null) {
+    updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j !== ii ? f : { ...f, familyFriendly: val, familyFriendlySource: val !== null ? 'user' : null }) }))
+  }
+  async function fetchFoodPriceLevel(di: number, gi: number, dyi: number, ii: number, placeId: string) {
     try {
       const res = await fetch(`/api/place-details?id=${encodeURIComponent(placeId)}`)
       const { priceLevel, lat, lng, website } = await res.json()
-      if (priceLevel !== null) setFoodPriceLevel(di, gi, ii, priceLevel)
-      if (lat !== null || website) updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, lat: lat ?? f.lat, lng: lng ?? f.lng, link: !f.link && website ? website : f.link }) }))
+      if (priceLevel !== null) setFoodPriceLevel(di, gi, dyi, ii, priceLevel)
+      if (lat !== null || website) updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j !== ii ? f : { ...f, lat: lat ?? f.lat, lng: lng ?? f.lng, link: !f.link && website ? website : f.link }) }))
     } catch { /* ignore */ }
   }
-  function toggleFoodTag(di: number, gi: number, ii: number, tag: string) {
-    updGroup(di, gi, g => ({ ...g, food: g.food.map((f, j) => j !== ii ? f : { ...f, tags: f.tags.includes(tag) ? f.tags.filter(t => t !== tag) : [...f.tags, tag] }) }))
+  function toggleFoodTag(di: number, gi: number, dyi: number, ii: number, tag: string) {
+    updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j !== ii ? f : { ...f, tags: f.tags.includes(tag) ? f.tags.filter(t => t !== tag) : [...f.tags, tag] }) }))
   }
-  function addActivity(di: number, gi: number) { updGroup(di, gi, g => ({ ...g, activities: [...g.activities, emptyActivity()] })) }
-  function removeActivity(di: number, gi: number, ii: number) { updGroup(di, gi, g => ({ ...g, activities: g.activities.filter((_, j) => j !== ii) })) }
-  function updateActivity(di: number, gi: number, ii: number, field: keyof ActivityItem, val: string) {
-    updGroup(di, gi, g => ({ ...g, activities: g.activities.map((a, j) => j !== ii ? a : { ...a, [field]: field === 'rating' ? Number(val) : val }) }))
+  function addActivity(di: number, gi: number, dyi: number) { updDay(di, gi, dyi, d => ({ ...d, activities: [...d.activities, emptyActivity()] })) }
+  function removeActivity(di: number, gi: number, dyi: number, ii: number) { updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.filter((_, j) => j !== ii) })) }
+  function updateActivity(di: number, gi: number, dyi: number, ii: number, field: keyof ActivityItem, val: string) {
+    updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.map((a, j) => j !== ii ? a : { ...a, [field]: field === 'rating' ? Number(val) : val }) }))
   }
 
   // ── Photos ────────────────────────────────────────────────────────────────
@@ -509,12 +516,12 @@ export default function CreatePage() {
   function removePhoto(i: number) { setPhotos(p => p.filter((_, idx) => idx !== i)) }
   function updateCaption(i: number, val: string) { setPhotos(p => p.map((ph, idx) => idx === i ? { ...ph, caption: val } : ph)) }
 
-  const hasItems = destinations.some(d => d.groups.some(g => g.hotelName.trim() || g.food.some(f => f.name.trim()) || g.activities.some(a => a.name.trim())))
+  const hasItems = destinations.some(d => d.groups.some(g => g.hotelName.trim() || g.days.some(day => day.food.some(f => f.name.trim()) || day.activities.some(a => a.name.trim()))))
   const importSummary = {
     destinations: destinations.filter(d => d.name.trim()).length,
     hotels: destinations.flatMap(d => d.groups).filter(g => g.hotelName.trim()).length,
-    restaurants: destinations.flatMap(d => d.groups).flatMap(g => g.food).filter(f => f.name.trim()).length,
-    activities: destinations.flatMap(d => d.groups).flatMap(g => g.activities).filter(a => a.name.trim()).length,
+    restaurants: destinations.flatMap(d => d.groups).flatMap(g => g.days).flatMap(d => d.food).filter(f => f.name.trim()).length,
+    activities: destinations.flatMap(d => d.groups).flatMap(g => g.days).flatMap(d => d.activities).filter(a => a.name.trim()).length,
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -856,27 +863,39 @@ export default function CreatePage() {
                           </>}
                         </>)}
                       </div>
-                      {/* Food */}
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🍜 Food & Drink</p>
-                        {group.food.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
-                        <div className="space-y-3">{group.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, ii, v)} onToggleTag={tag => toggleFoodTag(di, gi, ii, tag)} onRemove={() => removeFood(di, gi, ii)} onSelectPlace={id => id ? fetchFoodPriceLevel(di, gi, ii, id) : setFoodPriceLevel(di, gi, ii, null)} />)}</div>
-                        <button type="button" onClick={() => addFood(di, gi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add food / drink</button>
-                      </div>
-                      {/* Activities */}
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🎯 Activities</p>
-                        {group.activities.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
-                        <div className="space-y-3">{group.activities.map((item, ii) => <ActivityRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, ii, f, v)} onRemove={() => removeActivity(di, gi, ii)} />)}</div>
-                        <button type="button" onClick={() => addActivity(di, gi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add activity</button>
-                      </div>
+                      {/* Days */}
+                      {group.days.map((day, dyi) => (
+                        <div key={dyi} className="rounded-xl border border-gray-100 overflow-hidden">
+                          <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100">
+                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Day {dyi + 1}</span>
+                            {group.days.length > 1 && (
+                              <button type="button" onClick={() => removeDay(di, gi, dyi)} className="text-xs text-red-400 hover:text-red-600 font-medium">Remove day</button>
+                            )}
+                          </div>
+                          <div className="p-3 space-y-3">
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🍜 Food & Drink</p>
+                              {day.food.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
+                              <div className="space-y-3">{day.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, dyi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, dyi, ii, v)} onToggleTag={tag => toggleFoodTag(di, gi, dyi, ii, tag)} onRemove={() => removeFood(di, gi, dyi, ii)} onSelectPlace={id => id ? fetchFoodPriceLevel(di, gi, dyi, ii, id) : setFoodPriceLevel(di, gi, dyi, ii, null)} />)}</div>
+                              <button type="button" onClick={() => addFood(di, gi, dyi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add food / drink</button>
+                            </div>
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🎯 Activities</p>
+                              {day.activities.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
+                              <div className="space-y-3">{day.activities.map((item, ii) => <ActivityRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, dyi, ii, f, v)} onRemove={() => removeActivity(di, gi, dyi, ii)} />)}</div>
+                              <button type="button" onClick={() => addActivity(di, gi, dyi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add activity</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => addDay(di, gi)} className="w-full text-xs text-gray-500 hover:text-blue-600 border border-dashed border-gray-200 hover:border-blue-300 rounded-lg py-2 transition-colors">+ Add day</button>
                     </div>
                   </div>
                 ))}
 
                 <button type="button" onClick={() => addGroup(di)}
                   className="w-full text-sm text-gray-500 hover:text-blue-600 border border-dashed border-gray-300 hover:border-blue-300 rounded-xl py-2.5 transition-colors">
-                  + Add another stay
+                  + Add stay (new hotel)
                 </button>
               </div>
             ))}
