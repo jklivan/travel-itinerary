@@ -27,6 +27,7 @@
     "bcryptjs": "^3.0.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.25.0",
+    "mammoth": "^1.12.1",
     "next": "16.2.10",
     "next-auth": "^5.0.0-beta.31",
     "openai": "^7.4.0",

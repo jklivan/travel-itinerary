@@ -23,6 +23,7 @@ async function readFileForUpload(
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
   const mime = file.type
   const isPdf = ext === 'pdf' || mime === 'application/pdf'
+  const isDocx = ext === 'docx' || mime.includes('wordprocessingml')
   const isXlsx = ext === 'xlsx' || ext === 'xls' || mime.includes('spreadsheet') || mime.includes('excel')
   const isImage = mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)
   const isHtml = ext === 'html' || ext === 'htm' || mime === 'text/html'
@@ -39,7 +40,7 @@ async function readFileForUpload(
     return { base64: dataUrl.split(',')[1], mediaType: file.type || 'image/jpeg' }
   }
 
-  if (isPdf || isXlsx || isImage) {
+  if (isPdf || isDocx || isXlsx || isImage) {
     if (file.size > MAX_IMPORT_FILE_SIZE) {
       throw new Error('Files must be 100 MB or smaller.')
     }
@@ -67,7 +68,7 @@ async function readFileForUpload(
       clearTimeout(timeout)
       externalSignal?.removeEventListener('abort', cancelUpload)
     }
-    const mediaType = file.type || (isPdf ? 'application/pdf' : isImage ? 'image/jpeg' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    const mediaType = file.type || (isPdf ? 'application/pdf' : isDocx ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : isImage ? 'image/jpeg' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     return { blobUrl: blob.url, mediaType, filename: file.name }
   }
 
@@ -97,7 +98,23 @@ type RawDestItem = { type: string; mealType?: string; rating?: number; name: str
 type RawDest = { name?: string; country?: string; items?: RawDestItem[] }
 type ExtractionData = { title?: string; description?: string; startDate?: string; endDate?: string; notes?: string; destinations?: RawDest[] }
 
-const DOC_ACCEPT = '.pdf,.xlsx,.xls,.csv,.txt,.html,.htm,image/jpeg,image/png,image/gif,image/webp,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain,text/html'
+const DOC_ACCEPT = '.pdf,.docx,.xlsx,.xls,.csv,.txt,.html,.htm,image/jpeg,image/png,image/gif,image/webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain,text/html'
+
+function buildDays(food: FoodItem[], acts: ActivityItem[]): DayGroup[] {
+  // If no items have explicit day numbers, return a single group (no day labels will be shown)
+  const hasAnyDay = food.some(f => f.dayIndex) || acts.some(a => a.dayIndex)
+  if (!hasAnyDay) return [{ food, activities: acts }]
+
+  // Map day 1 → slot 0, day 2 → slot 1, etc. Items with no day go into slot 0 (Day 1)
+  const maxDay = Math.max(
+    ...food.map(f => f.dayIndex ?? 1),
+    ...acts.map(a => a.dayIndex ?? 1),
+  )
+  const days: DayGroup[] = Array.from({ length: maxDay }, () => ({ food: [], activities: [] }))
+  for (const f of food) days[(f.dayIndex ?? 1) - 1].food.push(f)
+  for (const a of acts) days[(a.dayIndex ?? 1) - 1].activities.push(a)
+  return days
+}
 
 function mapExtractionDests(rawDests: RawDest[]): Destination[] {
   return rawDests.map((d) => {
@@ -107,8 +124,8 @@ function mapExtractionDests(rawDests: RawDest[]): Destination[] {
     const food   = items.filter(i => i.type === 'food_drink').map(f => ({ name: f.name ?? '', mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: f.dayIndex ?? null }))
     const acts   = items.filter(i => i.type === 'activity').map(a => ({ name: a.name ?? '', notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0, dayIndex: a.dayIndex ?? null }))
     const groups: StayGroup[] = hotels.length === 0
-      ? [{ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: [{ food, activities: acts }] }]
-      : hotels.map((h, hi) => ({ hotelName: h.name ?? '', hotelNotes: h.notes ?? '', hotelLink: h.link ?? '', hotelRating: h.rating ?? 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: [{ food: hi === 0 ? food : [], activities: hi === 0 ? acts : [] }] }))
+      ? [{ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: buildDays(food, acts) }]
+      : hotels.map((h, hi) => ({ hotelName: h.name ?? '', hotelNotes: h.notes ?? '', hotelLink: h.link ?? '', hotelRating: h.rating ?? 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: hi === 0 ? buildDays(food, acts) : [emptyDay()] }))
     return { name: d.name ?? '', country: d.country ?? '', notes: '', groups }
   })
 }

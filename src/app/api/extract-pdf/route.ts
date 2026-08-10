@@ -1,13 +1,14 @@
 import OpenAI, { toFile } from 'openai'
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
+import mammoth from 'mammoth'
 import { get } from '@vercel/blob'
 
 export const maxDuration = 300
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
 
-type ExtractedItem = { type: string; name: string; notes: string; mealType?: string; rating?: number; link?: string }
+type ExtractedItem = { type: string; name: string; notes: string; mealType?: string; rating?: number; link?: string; dayIndex?: number }
 type ExtractedDest = { name: string; country: string; items: ExtractedItem[] }
 type ExtractedItinerary = {
   title: string
@@ -51,6 +52,7 @@ const EXTRACT_FUNCTION: OpenAI.Chat.ChatCompletionTool = {
                     name: { type: 'string' },
                     notes: { type: 'string' },
                     mealType: { type: 'string', enum: ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] },
+                    dayIndex: { type: 'integer', minimum: 1, description: 'Trip day number for dated restaurants or activities. Omit when no day is clear.' },
                     rating: { type: 'integer', minimum: 1, maximum: 5, description: 'Scale any expressed sentiment to 1-5. Omit if none.' },
                   },
                   required: ['type', 'name', 'notes'],
@@ -74,13 +76,14 @@ const EXTRACT_PROMPT = `Extract only confirmed or scheduled items from this trav
 - Classify each remaining item as "food_drink" (a confirmed restaurant, bar, cafe, or dining reservation) or "activity" (a confirmed tour, sight, spa, or experience).
 - Do not extract guide names, tour-leader names, meeting points, guide meeting instructions, or guide contact details as itinerary items. If a named guide company is the booked tour provider, you may include the company as the activity; do not include an individual guide's name.
 - For food_drink, infer mealType from the time if given: before 11am = breakfast, 11am–3pm = lunch, 3pm–6pm = drinks or coffee, after 6pm = dinner. Otherwise pick the best fit.
+- For restaurants and activities with a clear date or day in the document, include dayIndex where 1 is the trip start date. Do not guess a day when the document does not establish one. Hotels are location-level stays: omit dayIndex for them.
 - Rate 1–5 stars if any sentiment is expressed. Omit rating if none.
 - Write notes for someone deciding whether they would want to stay there, do the activity, or visit the restaurant. Keep only concise, generally useful context such as what the experience includes, a notable feature, atmosphere, location context, or a broadly relevant dress code. Omit booking administration and traveller-specific logistics: confirmation numbers and dates, cancellation or payment terms, rates, contact details, check-in instructions, transport coordination, high-chair requests, seating requests (window/outdoor), dietary requests, and similar personal preferences.
 - Populate startDate/endDate from the earliest and latest dates in the document (YYYY-MM-DD).
 - Skip pure transportation (flights, transfers, shuttles).`
 
 const PDF_JSON_INSTRUCTION = `Return only valid JSON in exactly this shape:
-{"title":"","description":"","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD","notes":"","destinations":[{"name":"","country":"","items":[{"type":"hotel|activity|food_drink","name":"","notes":"","mealType":"breakfast|lunch|dinner|drinks|coffee|dessert|bakery","rating":1}]}]}.
+{"title":"","description":"","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD","notes":"","destinations":[{"name":"","country":"","items":[{"type":"hotel|activity|food_drink","name":"","notes":"","dayIndex":1,"mealType":"breakfast|lunch|dinner|drinks|coffee|dessert|bakery","rating":1}]}]}.
 Use an empty array for destinations only when the document contains no travel places.`
 
 function parseResult(completion: OpenAI.Chat.ChatCompletion): ExtractedItinerary {
@@ -197,6 +200,12 @@ export async function POST(req: NextRequest) {
       extracted = await extractFromImageUrl(body.blobUrl, body.mediaType)
     } else if (body.blobUrl && body.mediaType?.includes('pdf')) {
       extracted = await extractFromPrivatePdf(body.blobUrl, body.filename ?? 'itinerary.pdf')
+    } else if (body.blobUrl && body.mediaType?.includes('wordprocessingml')) {
+      // .docx — fetch and convert to plain text with mammoth
+      const res = await fetchBlob(body.blobUrl)
+      const buffer = Buffer.from(await res.arrayBuffer())
+      const result = await mammoth.extractRawText({ buffer })
+      extracted = await extractFromText(result.value)
     } else if (body.blobUrl) {
       // XLSX — fetch and parse to CSV text
       const res = await fetchBlob(body.blobUrl)
