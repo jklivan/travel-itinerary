@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { createItinerary } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import { MapPin, Hotel, Utensils, Camera, Star, ArrowRight, Plus, Check, X, FileText, ImageIcon } from 'lucide-react'
@@ -36,7 +36,27 @@ type UploadedPhoto = { url: string; caption: string }
 
 type Phase = 'dest' | 'building' | 'more' | 'details'
 
+type SavedState = {
+  dests: GuidedDest[]
+  curDest: { name: string; country: string }
+  curItems: GuidedItem[]
+  curDayIndex: number
+  curNotes: string
+  photos: UploadedPhoto[]
+  phase: Phase
+  title: string
+  tags: string[]
+  postType: 'itinerary' | 'guide'
+  tripMonth: string
+  tripDays: string
+  tripAudience: 'family' | 'friends' | 'romantic' | 'adult'
+  budget: number
+  tripRating: number | null
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
+
+const SESSION_KEY = 'guided-trip-draft'
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] as const
 const MEAL_EMOJI: Record<string, string> = {
@@ -209,26 +229,63 @@ function DestSummary({ dest, onRemove }: { dest: GuidedDest; onRemove: () => voi
 export default function GuidedCreatePage() {
   const [formState, action, pending] = useActionState(createItinerary, undefined)
 
-  const [dests, setDests] = useState<GuidedDest[]>([])
-  const [curDest, setCurDest] = useState({ name: '', country: '' })
-  const [curItems, setCurItems] = useState<GuidedItem[]>([])
-  const [curDayIndex, setCurDayIndex] = useState(1)
-  const [curNotes, setCurNotes] = useState('')
-  const [photos, setPhotos] = useState<UploadedPhoto[]>([])
+  // Restore in-progress trip from sessionStorage (survives page refresh / server errors)
+  const [restored] = useState<Partial<SavedState>>(() => {
+    if (typeof window === 'undefined') return {}
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY)
+      return raw ? JSON.parse(raw) : {}
+    } catch { return {} }
+  })
+
+  const [dests, setDests] = useState<GuidedDest[]>(restored.dests ?? [])
+  const [curDest, setCurDest] = useState(restored.curDest ?? { name: '', country: '' })
+  const [curItems, setCurItems] = useState<GuidedItem[]>(restored.curItems ?? [])
+  const [curDayIndex, setCurDayIndex] = useState(restored.curDayIndex ?? 1)
+  const [curNotes, setCurNotes] = useState(restored.curNotes ?? '')
+  const [photos, setPhotos] = useState<UploadedPhoto[]>(restored.photos ?? [])
   const [uploading, setUploading] = useState(false)
   const [photoUploadError, setPhotoUploadError] = useState<string | null>(null)
   const [failedPhotoFiles, setFailedPhotoFiles] = useState<File[]>([])
   const [activeInput, setActiveInput] = useState<ActiveInput>(null)
-  const [phase, setPhase] = useState<Phase>('dest')
+  const [phase, setPhase] = useState<Phase>(restored.phase ?? 'dest')
 
-  const [title, setTitle] = useState('')
-  const [tags, setTags] = useState<string[]>([])
-  const [postType, setPostType] = useState<'itinerary' | 'guide'>('itinerary')
-  const [tripMonth, setTripMonth] = useState('')
-  const [tripDays, setTripDays] = useState('')
-  const [tripAudience, setTripAudience] = useState<'family' | 'friends' | 'romantic' | 'adult'>('family')
-  const [budget, setBudget] = useState(0)
-  const [tripRating, setTripRating] = useState<number | null>(null)
+  const [title, setTitle] = useState(restored.title ?? '')
+  const [tags, setTags] = useState<string[]>(restored.tags ?? [])
+  const [postType, setPostType] = useState<'itinerary' | 'guide'>(restored.postType ?? 'itinerary')
+  const [tripMonth, setTripMonth] = useState(restored.tripMonth ?? '')
+  const [tripDays, setTripDays] = useState(restored.tripDays ?? '')
+  const [tripAudience, setTripAudience] = useState<'family' | 'friends' | 'romantic' | 'adult'>(restored.tripAudience ?? 'family')
+  const [budget, setBudget] = useState(restored.budget ?? 0)
+  const [tripRating, setTripRating] = useState<number | null>(restored.tripRating ?? null)
+
+  // Save progress to sessionStorage on every relevant state change
+  useEffect(() => {
+    try {
+      const toSave: SavedState = { dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating }
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(toSave))
+    } catch { /* quota exceeded or SSR */ }
+  }, [dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating])
+
+  function startOver() {
+    try { sessionStorage.removeItem(SESSION_KEY) } catch {}
+    setDests([])
+    setCurDest({ name: '', country: '' })
+    setCurItems([])
+    setCurDayIndex(1)
+    setCurNotes('')
+    setPhotos([])
+    setPhase('dest')
+    setTitle('')
+    setTags([])
+    setPostType('itinerary')
+    setTripMonth('')
+    setTripDays('')
+    setTripAudience('family')
+    setBudget(0)
+    setTripRating(null)
+    setActiveInput(null)
+  }
 
   function addItem(item: Omit<GuidedItem, 'id' | 'dayIndex'>) {
     setCurItems(i => [...i, { ...item, id: uid(), dayIndex: curDayIndex }])
@@ -321,11 +378,18 @@ export default function GuidedCreatePage() {
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 pb-36">
-      <Link href="/" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Back</Link>
+      <div className="flex items-center justify-between mb-5">
+        <Link href="/" className="text-sm text-blue-600 hover:underline">← Back</Link>
+        {(dests.length > 0 || curItems.length > 0 || curDest.name.trim()) && (
+          <button type="button" onClick={startOver} className="text-xs text-gray-400 hover:text-red-500 transition-colors">
+            ↺ Start over
+          </button>
+        )}
+      </div>
       <h1 className="text-xl font-bold text-gray-900 mb-1">Step by step</h1>
       <p className="text-sm text-gray-500 mb-6">Build your trip one card at a time.</p>
 
-      <form id="gf" action={action}>
+      <form id="gf" action={action} onSubmit={() => { try { sessionStorage.removeItem(SESSION_KEY) } catch {} }}>
         <input type="hidden" name="title" value={title} />
         <input type="hidden" name="postType" value={postType} />
         <input type="hidden" name="startDate" value={tripDateRange.startDate} />
