@@ -28,41 +28,168 @@ import { GripVertical } from 'lucide-react'
 
 function uid() { return Math.random().toString(36).slice(2) }
 
-type FoodItem     = { id: string; name: string; mealType: string; description: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null; tags: string[]; dayIndex: number | null }
-type ActivityItem = { id: string; name: string; notes: string; link: string; rating: number; dayIndex: number | null }
-type DayGroup     = { food: FoodItem[]; activities: ActivityItem[] }
-type StayGroup    = { hotelName: string; hotelDescription: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; days: DayGroup[] }
-type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type DayItem = {
+  id: string
+  type: 'food_drink' | 'activity'
+  name: string
+  mealType: string
+  description: string
+  notes: string
+  link: string
+  rating: number
+  priceLevel: number | null
+  familyFriendly: boolean | null
+  familyFriendlySource: string | null
+  lat: number | null
+  lng: number | null
+  tags: string[]
+  dayIndex: number | null
+}
+
+type DayGroup    = { items: DayItem[] }
+type StayGroup   = { hotelName: string; hotelDescription: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; days: DayGroup[] }
+type Destination = { name: string; country: string; notes: string; groups: StayGroup[] }
 type UploadedPhoto = { url: string; caption: string }
 
+type RawItem = {
+  type: string; mealType?: string | null; name: string; description?: string | null
+  notes: string | null; address?: string | null; rating: number | null
+  priceLevel?: number | null; link: string | null; groupIndex?: number
+  dayIndex?: number | null; order?: number | null
+  familyFriendly?: boolean | null; familyFriendlySource?: string | null
+  lat?: number | null; lng?: number | null; tags?: string[]
+}
+
 type ItineraryData = {
-  id: string
-  postType: string
-  title: string
-  description: string | null
-  startDate: Date
-  endDate: Date
-  audience: string
-  visibility: string
-  notes: string | null
-  highlights: string | null
-  tags: string[]
-  budget: number | null
-  tripRating: number | null
-  destinations: {
-    name: string
-    country: string | null
-    notes: string | null
-    items: { type: string; mealType?: string | null; name: string; description?: string | null; notes: string | null; address?: string | null; rating: number | null; priceLevel?: number | null; link: string | null; groupIndex?: number; dayIndex?: number | null }[]
-  }[]
+  id: string; postType: string; title: string; description: string | null
+  startDate: Date; endDate: Date; audience: string; visibility: string
+  notes: string | null; highlights: string | null; tags: string[]
+  budget: number | null; tripRating: number | null
+  destinations: { name: string; country: string | null; notes: string | null; items: RawItem[] }[]
   photos: { url: string; caption: string | null }[]
 }
 
-const inputClass = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const inputClass    = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
 const subInputClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400'
-const labelClass = 'block text-sm font-medium text-gray-900 mb-1'
+const labelClass    = 'block text-sm font-medium text-gray-900 mb-1'
+
+const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] as const
+const MEAL_TYPE_META: Record<string, { emoji: string; active: string }> = {
+  breakfast: { emoji: '🍳', active: 'bg-yellow-500 text-white border-yellow-500' },
+  lunch:     { emoji: '☀️', active: 'bg-orange-500 text-white border-orange-500' },
+  dinner:    { emoji: '🌙', active: 'bg-purple-600 text-white border-purple-600' },
+  drinks:    { emoji: '🍹', active: 'bg-blue-500 text-white border-blue-500'     },
+  coffee:    { emoji: '☕', active: 'bg-amber-700 text-white border-amber-700'   },
+  dessert:   { emoji: '🍰', active: 'bg-pink-500 text-white border-pink-500'     },
+  bakery:    { emoji: '🥐', active: 'bg-orange-400 text-white border-orange-400' },
+}
+const FOOD_TAGS  = ['Worth the Hype', 'Great Food', 'Hidden Gem', 'Local Favorite', "Can't-Miss", 'Good for Groups', 'Family Friendly', 'Great Cocktails', 'Great Ambiance', 'Lively', 'Romantic', 'Chic', 'Casual', 'Outdoor Dining', 'Great Views']
+const HOTEL_TAGS = ['Great Service', 'Worth the Splurge', 'Great Value', 'Hidden Gem', 'Boutique', 'Luxury', 'Romantic', 'Family-Friendly', 'Great Location', 'Great Views', 'Amazing Spa']
 
 function fmt(d: Date) { return new Date(d).toISOString().slice(0, 10) }
+
+function nightlyRateToTier(rate: number): number {
+  if (rate < 150) return 1; if (rate < 350) return 2
+  if (rate < 600) return 3; if (rate < 1000) return 4; return 5
+}
+
+const emptyFoodItem = (): DayItem => ({ id: uid(), type: 'food_drink', name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null })
+const emptyActItem  = (): DayItem => ({ id: uid(), type: 'activity',   name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null })
+const emptyDay      = (): DayGroup   => ({ items: [] })
+const emptyGroup    = (): StayGroup  => ({ hotelName: '', hotelDescription: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: [emptyDay()] })
+const emptyDest     = (): Destination => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
+
+// ── Data conversion ───────────────────────────────────────────────────────────
+
+function itemsToGroups(rawItems: RawItem[]): StayGroup[] {
+  const byGi = new Map<number, RawItem[]>()
+  for (const item of rawItems) {
+    const gi = item.groupIndex ?? 0
+    if (!byGi.has(gi)) byGi.set(gi, [])
+    byGi.get(gi)!.push(item)
+  }
+  if (byGi.size === 0) return [emptyGroup()]
+  return [...byGi.entries()].sort(([a], [b]) => a - b).map(([, grpItems]) => {
+    const hotel = grpItems.find(i => i.type === 'hotel')
+    const nonHotel = grpItems.filter(i => i.type !== 'hotel')
+    const byDay = new Map<number, RawItem[]>()
+    for (const item of nonHotel) {
+      const di = item.dayIndex ?? 0
+      if (!byDay.has(di)) byDay.set(di, [])
+      byDay.get(di)!.push(item)
+    }
+    const days: DayGroup[] = byDay.size === 0 ? [emptyDay()] :
+      [...byDay.entries()].sort(([a], [b]) => a - b).map(([, dayItems]) => ({
+        items: [...dayItems]
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+          .map(i => ({
+            id: uid(),
+            type: i.type as 'food_drink' | 'activity',
+            name: i.name,
+            mealType: i.mealType ?? '',
+            description: i.description ?? '',
+            notes: i.notes ?? '',
+            link: i.link ?? '',
+            rating: i.rating ?? 0,
+            priceLevel: i.priceLevel ?? null,
+            familyFriendly: i.familyFriendly ?? null,
+            familyFriendlySource: i.familyFriendlySource ?? null,
+            lat: i.lat ?? null,
+            lng: i.lng ?? null,
+            tags: i.tags ?? [],
+            dayIndex: i.dayIndex ?? null,
+          }))
+      }))
+    return {
+      hotelName: hotel?.name ?? '',
+      hotelDescription: hotel?.description ?? '',
+      hotelNotes: hotel?.notes ?? '',
+      hotelAddress: hotel?.address ?? '',
+      hotelLink: hotel?.link ?? '',
+      hotelRating: hotel?.rating ?? 0,
+      hotelPriceLevel: hotel?.priceLevel ?? null,
+      hotelNightlyRate: '',
+      hotelLat: hotel?.lat ?? null,
+      hotelLng: hotel?.lng ?? null,
+      hotelTags: hotel?.tags ?? [],
+      days,
+    }
+  })
+}
+
+// Convert merged items back to the { food, activities } format the server action expects,
+// using each item's position in the merged list as its `order` value.
+function toServerFormat(destinations: Destination[]) {
+  return destinations.map(dest => ({
+    ...dest,
+    groups: dest.groups.map(group => ({
+      ...group,
+      days: group.days.map(day => ({
+        food: day.items
+          .filter(i => i.type === 'food_drink')
+          .map(i => ({
+            name: i.name, mealType: i.mealType, description: i.description,
+            notes: i.notes, link: i.link, rating: i.rating,
+            priceLevel: i.priceLevel, familyFriendly: i.familyFriendly,
+            familyFriendlySource: i.familyFriendlySource, lat: i.lat, lng: i.lng,
+            tags: i.tags, dayIndex: i.dayIndex, order: day.items.indexOf(i),
+          })),
+        activities: day.items
+          .filter(i => i.type === 'activity')
+          .map(i => ({
+            name: i.name, notes: i.notes, link: i.link, rating: i.rating,
+            dayIndex: i.dayIndex, order: day.items.indexOf(i),
+          })),
+      }))
+    }))
+  }))
+}
+
+// ── Star rating ───────────────────────────────────────────────────────────────
 
 function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
@@ -77,30 +204,12 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   )
 }
 
-const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] as const
+// ── FoodRow ───────────────────────────────────────────────────────────────────
 
-const MEAL_TYPE_META: Record<string, { emoji: string; active: string; pill: string }> = {
-  breakfast: { emoji: '🍳', active: 'bg-yellow-500 text-white border-yellow-500', pill: 'bg-yellow-100 text-yellow-700' },
-  lunch:     { emoji: '☀️', active: 'bg-orange-500 text-white border-orange-500', pill: 'bg-orange-100 text-orange-700' },
-  dinner:    { emoji: '🌙', active: 'bg-purple-600 text-white border-purple-600', pill: 'bg-purple-100 text-purple-700' },
-  drinks:    { emoji: '🍹', active: 'bg-blue-500 text-white border-blue-500',     pill: 'bg-blue-100 text-blue-700' },
-  coffee:    { emoji: '☕', active: 'bg-amber-700 text-white border-amber-700',   pill: 'bg-amber-100 text-amber-800' },
-  dessert:   { emoji: '🍰', active: 'bg-pink-500 text-white border-pink-500',     pill: 'bg-pink-100 text-pink-700' },
-  bakery:    { emoji: '🥐', active: 'bg-orange-400 text-white border-orange-400', pill: 'bg-orange-50 text-orange-600' },
-}
-
-function nightlyRateToTier(rate: number): number {
-  if (rate < 150) return 1
-  if (rate < 350) return 2
-  if (rate < 600) return 3
-  if (rate < 1000) return 4
-  return 5
-}
-
-function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, showRating, onSelectPlace }: {
-  item: FoodItem; index: number
-  onUpdate: (field: keyof Omit<FoodItem, 'id' | 'priceLevel' | 'familyFriendly' | 'tags'>, val: string) => void
-  onUpdateFF: (val: boolean | null) => void
+function FoodRow({ item, index, onUpdate, onPatch, onToggleTag, onRemove, showRating, onSelectPlace }: {
+  item: DayItem; index: number
+  onUpdate: (field: string, val: string) => void
+  onPatch: (patch: Partial<DayItem>) => void
   onToggleTag: (tag: string) => void
   onRemove: () => void; showRating: boolean
   onSelectPlace?: (placeId: string | null) => void
@@ -110,6 +219,7 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
   return (
     <div ref={setNodeRef} style={style} className={`rounded-xl border border-l-4 border-l-orange-400 ${rowBg} p-4 space-y-3`}>
+      <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide">🍜 Food & Drink</p>
       <div className="flex gap-2 items-start">
         <button type="button" {...attributes} {...listeners} className="mt-2 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0 touch-none">
           <GripVertical size={14} />
@@ -130,7 +240,8 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
           const selected = item.mealType.split(',').filter(Boolean)
           const isSelected = selected.includes(mt)
           return (
-            <button key={mt} type="button" onClick={() => onUpdate('mealType', isSelected ? selected.filter(type => type !== mt).join(',') : [...selected, mt].join(','))}
+            <button key={mt} type="button"
+              onClick={() => onUpdate('mealType', isSelected ? selected.filter(t => t !== mt).join(',') : [...selected, mt].join(','))}
               className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSelected ? meta.active : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
               {meta.emoji} {mt}
             </button>
@@ -143,7 +254,7 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
             {'$'.repeat(item.priceLevel)}<span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
           </p>
         )}
-        <button type="button" onClick={() => onUpdateFF(item.familyFriendly === true ? null : true)}
+        <button type="button" onClick={() => onPatch({ familyFriendly: item.familyFriendly === true ? null : true, familyFriendlySource: item.familyFriendly === true ? null : 'user' })}
           className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.familyFriendly === true ? 'bg-green-500 text-white border-green-500' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
           👨‍👩‍👧 Family friendly
         </button>
@@ -156,7 +267,7 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
           </button>
         ))}
       </div>
-      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
+      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
       <div className="grid gap-2">
         <input type="text" value={item.description} onChange={e => onUpdate('description', e.target.value)} className={subInputClass} placeholder="✨ Description (auto-generated if blank)" />
         <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
@@ -166,9 +277,12 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
   )
 }
 
-function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
-  item: ActivityItem; index: number
-  onUpdate: (field: keyof Omit<ActivityItem, 'id'>, val: string) => void
+// ── ActivityRow ───────────────────────────────────────────────────────────────
+
+function ActivityRow({ item, index, onUpdate, onPatch, onRemove, showRating }: {
+  item: DayItem; index: number
+  onUpdate: (field: string, val: string) => void
+  onPatch: (patch: Partial<DayItem>) => void
   onRemove: () => void; showRating: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
@@ -176,6 +290,7 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
   return (
     <div ref={setNodeRef} style={style} className={`rounded-xl border border-l-4 border-l-green-400 ${rowBg} p-4 space-y-3`}>
+      <p className="text-xs font-semibold text-green-600 uppercase tracking-wide">🎯 Activity</p>
       <div className="flex gap-2 items-start">
         <button type="button" {...attributes} {...listeners} className="mt-2 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0 touch-none">
           <GripVertical size={14} />
@@ -189,7 +304,7 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
         />
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
-      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
+      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
       <div className="grid gap-2">
         <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
@@ -198,62 +313,7 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
   )
 }
 
-const emptyFood     = (): FoodItem     => ({ id: uid(), name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null })
-const emptyActivity = (): ActivityItem => ({ id: uid(), name: '', notes: '', link: '', rating: 0, dayIndex: null })
-const emptyDay      = (): DayGroup     => ({ food: [], activities: [] })
-const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelDescription: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: [emptyDay()] })
-
-const FOOD_TAGS = ['Worth the Hype', 'Great Food', 'Hidden Gem', 'Local Favorite', "Can't-Miss", 'Good for Groups', 'Family Friendly', 'Great Cocktails', 'Great Ambiance', 'Lively', 'Romantic', 'Chic', 'Casual', 'Outdoor Dining', 'Great Views']
-const HOTEL_TAGS = ['Great Service', 'Worth the Splurge', 'Great Value', 'Hidden Gem', 'Boutique', 'Luxury', 'Romantic', 'Family-Friendly', 'Great Location', 'Great Views', 'Amazing Spa']
-const emptyDest     = (): Destination  => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
-
-function itemsToGroups(items: ItineraryData['destinations'][0]['items']): StayGroup[] {
-  const byGi = new Map<number, typeof items>()
-  for (const item of items) {
-    const gi = item.groupIndex ?? 0
-    if (!byGi.has(gi)) byGi.set(gi, [])
-    byGi.get(gi)!.push(item)
-  }
-  if (byGi.size === 0) return [emptyGroup()]
-  return [...byGi.entries()].sort(([a], [b]) => a - b).map(([, grpItems]) => {
-    const hotel = grpItems.find(i => i.type === 'hotel')
-    const nonHotel = grpItems.filter(i => i.type !== 'hotel')
-    const byDay = new Map<number, typeof nonHotel>()
-    for (const item of nonHotel) {
-      const di = item.dayIndex ?? 0
-      if (!byDay.has(di)) byDay.set(di, [])
-      byDay.get(di)!.push(item)
-    }
-    const days: DayGroup[] = byDay.size === 0 ? [emptyDay()] :
-      [...byDay.entries()].sort(([a], [b]) => a - b).map(([, dayItems]) => ({
-        food: dayItems.filter(i => i.type === 'food_drink').map(f => ({
-          id: uid(), name: f.name, mealType: f.mealType ?? '', description: (f as { description?: string | null }).description ?? '',
-          notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0,
-          priceLevel: f.priceLevel ?? null, familyFriendly: (f as { familyFriendly?: boolean | null }).familyFriendly ?? null,
-          familyFriendlySource: (f as { familyFriendlySource?: string | null }).familyFriendlySource ?? null,
-          lat: (f as { lat?: number | null }).lat ?? null, lng: (f as { lng?: number | null }).lng ?? null,
-          tags: (f as { tags?: string[] }).tags ?? [], dayIndex: f.dayIndex ?? null,
-        })),
-        activities: dayItems.filter(i => i.type === 'activity').map(a => ({
-          id: uid(), name: a.name, notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0, dayIndex: a.dayIndex ?? null,
-        })),
-      }))
-    return {
-      hotelName: hotel?.name ?? '',
-      hotelDescription: (hotel as { description?: string | null } | undefined)?.description ?? '',
-      hotelNotes: hotel?.notes ?? '',
-      hotelAddress: hotel?.address ?? '',
-      hotelLink: hotel?.link ?? '',
-      hotelRating: hotel?.rating ?? 0,
-      hotelPriceLevel: (hotel as { priceLevel?: number | null } | undefined)?.priceLevel ?? null,
-      hotelNightlyRate: '',
-      hotelLat: (hotel as { lat?: number | null } | undefined)?.lat ?? null,
-      hotelLng: (hotel as { lng?: number | null } | undefined)?.lng ?? null,
-      hotelTags: (hotel as { tags?: string[] } | undefined)?.tags ?? [],
-      days,
-    }
-  })
-}
+// ── Main form ─────────────────────────────────────────────────────────────────
 
 export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   const boundAction = updateItinerary.bind(null, itinerary.id)
@@ -287,6 +347,13 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
 
   const showRating = postType === 'itinerary'
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  )
+
+  // ── State helpers ────────────────────────────────────────────────────────────
+
   function addDest() { setDestinations(d => [...d, emptyDest()]) }
   function removeDest(i: number) { setDestinations(d => d.filter((_, idx) => idx !== i)) }
   function updateDest(i: number, field: 'name' | 'country' | 'notes', val: string) {
@@ -317,58 +384,52 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   }
   function addDay(di: number, gi: number) { updGroup(di, gi, g => ({ ...g, days: [...g.days, emptyDay()] })) }
   function removeDay(di: number, gi: number, dyi: number) { updGroup(di, gi, g => ({ ...g, days: g.days.filter((_, i) => i !== dyi) })) }
-  function addFood(di: number, gi: number, dyi: number) { updDay(di, gi, dyi, d => ({ ...d, food: [...d.food, emptyFood()] })) }
-  function removeFood(di: number, gi: number, dyi: number, ii: number) { updDay(di, gi, dyi, d => ({ ...d, food: d.food.filter((_, j) => j !== ii) })) }
-  function updateFood(di: number, gi: number, dyi: number, ii: number, field: keyof Omit<FoodItem, 'priceLevel' | 'familyFriendly' | 'tags'>, val: string) {
-    updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j !== ii ? f : { ...f, [field]: field === 'rating' ? Number(val) : val }) }))
+
+  function addItem(di: number, gi: number, dyi: number, type: 'food_drink' | 'activity') {
+    updDay(di, gi, dyi, d => ({ ...d, items: [...d.items, type === 'food_drink' ? emptyFoodItem() : emptyActItem()] }))
   }
-  function setFoodPriceLevel(di: number, gi: number, dyi: number, ii: number, val: number | null) {
-    updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j !== ii ? f : { ...f, priceLevel: val }) }))
+  function removeItem(di: number, gi: number, dyi: number, itemId: string) {
+    updDay(di, gi, dyi, d => ({ ...d, items: d.items.filter(i => i.id !== itemId) }))
   }
-  function setFoodFamilyFriendly(di: number, gi: number, dyi: number, ii: number, val: boolean | null) {
-    updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j !== ii ? f : { ...f, familyFriendly: val, familyFriendlySource: val !== null ? 'user' : null }) }))
+  function updateItem(di: number, gi: number, dyi: number, itemId: string, field: string, val: string) {
+    updDay(di, gi, dyi, d => ({
+      ...d, items: d.items.map(i => i.id !== itemId ? i : { ...i, [field]: val })
+    }))
   }
-  async function fetchFoodPriceLevel(di: number, gi: number, dyi: number, ii: number, placeId: string) {
+  function patchItem(di: number, gi: number, dyi: number, itemId: string, patch: Partial<DayItem>) {
+    updDay(di, gi, dyi, d => ({
+      ...d, items: d.items.map(i => i.id !== itemId ? i : { ...i, ...patch })
+    }))
+  }
+  function toggleItemTag(di: number, gi: number, dyi: number, itemId: string, tag: string) {
+    updDay(di, gi, dyi, d => ({
+      ...d, items: d.items.map(i => i.id !== itemId ? i : {
+        ...i, tags: i.tags.includes(tag) ? i.tags.filter(t => t !== tag) : [...i.tags, tag]
+      })
+    }))
+  }
+  async function fetchItemPriceLevel(di: number, gi: number, dyi: number, itemId: string, placeId: string) {
     try {
       const res = await fetch(`/api/place-details?id=${encodeURIComponent(placeId)}`)
       const { priceLevel, lat, lng, website } = await res.json()
-      if (priceLevel !== null) setFoodPriceLevel(di, gi, dyi, ii, priceLevel)
-      if (lat !== null || website) updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j !== ii ? f : { ...f, lat: lat ?? f.lat, lng: lng ?? f.lng, link: !f.link && website ? website : f.link }) }))
+      patchItem(di, gi, dyi, itemId, {
+        ...(priceLevel !== null ? { priceLevel } : {}),
+        ...(lat !== null ? { lat, lng } : {}),
+      })
+      // set link only if blank
+      updDay(di, gi, dyi, d => ({
+        ...d, items: d.items.map(i => i.id !== itemId ? i : { ...i, link: !i.link && website ? website : i.link })
+      }))
     } catch { /* ignore */ }
   }
-  function toggleFoodTag(di: number, gi: number, dyi: number, ii: number, tag: string) {
-    updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j !== ii ? f : { ...f, tags: f.tags.includes(tag) ? f.tags.filter(t => t !== tag) : [...f.tags, tag] }) }))
-  }
-  function addActivity(di: number, gi: number, dyi: number) { updDay(di, gi, dyi, d => ({ ...d, activities: [...d.activities, emptyActivity()] })) }
-  function removeActivity(di: number, gi: number, dyi: number, ii: number) { updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.filter((_, j) => j !== ii) })) }
-  function updateActivity(di: number, gi: number, dyi: number, ii: number, field: keyof ActivityItem, val: string) {
-    updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.map((a, j) => j !== ii ? a : { ...a, [field]: field === 'rating' ? Number(val) : val }) }))
-  }
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
-  )
-
-  function reorderFood(di: number, gi: number, dyi: number, e: DragEndEvent) {
+  function reorderItems(di: number, gi: number, dyi: number, e: DragEndEvent) {
     const { active, over } = e
     if (!over || active.id === over.id) return
     updDay(di, gi, dyi, d => {
-      const oldIndex = d.food.findIndex(f => f.id === active.id)
-      const newIndex = d.food.findIndex(f => f.id === over.id)
+      const oldIndex = d.items.findIndex(i => i.id === active.id)
+      const newIndex = d.items.findIndex(i => i.id === over.id)
       if (oldIndex === -1 || newIndex === -1) return d
-      return { ...d, food: arrayMove(d.food, oldIndex, newIndex) }
-    })
-  }
-
-  function reorderActivity(di: number, gi: number, dyi: number, e: DragEndEvent) {
-    const { active, over } = e
-    if (!over || active.id === over.id) return
-    updDay(di, gi, dyi, d => {
-      const oldIndex = d.activities.findIndex(a => a.id === active.id)
-      const newIndex = d.activities.findIndex(a => a.id === over.id)
-      if (oldIndex === -1 || newIndex === -1) return d
-      return { ...d, activities: arrayMove(d.activities, oldIndex, newIndex) }
+      return { ...d, items: arrayMove(d.items, oldIndex, newIndex) }
     })
   }
 
@@ -381,12 +442,8 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       for (const file of Array.from(files)) {
         const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : ''
         const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
-        const blob = await upload(uniqueName, file, {
-          access: 'private',
-          handleUploadUrl: '/api/upload',
-        })
-        const proxyUrl = `/api/img?url=${encodeURIComponent(blob.url)}`
-        uploaded.push({ url: proxyUrl, caption: '' })
+        const blob = await upload(uniqueName, file, { access: 'private', handleUploadUrl: '/api/upload' })
+        uploaded.push({ url: `/api/img?url=${encodeURIComponent(blob.url)}`, caption: '' })
       }
       setPhotos(p => [...p, ...uploaded])
     } catch (err) {
@@ -399,11 +456,13 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   function removePhoto(i: number) { setPhotos(p => p.filter((_, idx) => idx !== i)) }
   function updateCaption(i: number, val: string) { setPhotos(p => p.map((ph, idx) => idx === i ? { ...ph, caption: val } : ph)) }
 
+  // ── Render ───────────────────────────────────────────────────────────────────
+
   return (
     <form action={action} className="space-y-8">
       <input type="hidden" name="startDate" value={tripDateRange.startDate} />
       <input type="hidden" name="endDate" value={tripDateRange.endDate} />
-      <input type="hidden" name="destinations" value={JSON.stringify(destinations)} />
+      <input type="hidden" name="destinations" value={JSON.stringify(toServerFormat(destinations))} />
       <input type="hidden" name="photos" ref={photosInputRef} defaultValue={JSON.stringify(photos)} />
       <input type="hidden" name="audience" value={tripAudience} />
       <input type="hidden" name="visibility" value="public" />
@@ -490,7 +549,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
 
         {destinations.map((dest, di) => (
           <div key={di} className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-            {/* City / Country */}
             <div className="flex gap-3 items-start">
               <div className="flex-1 grid grid-cols-2 gap-3">
                 <PlacesAutocomplete
@@ -508,14 +566,8 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 <button type="button" onClick={() => removeDest(di)} className="mt-1 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
               )}
             </div>
-
-            <textarea
-              value={dest.notes}
-              onChange={e => updateDest(di, 'notes', e.target.value)}
-              rows={2}
-              className={inputClass}
-              placeholder="Overview / notes for this destination (optional)"
-            />
+            <textarea value={dest.notes} onChange={e => updateDest(di, 'notes', e.target.value)}
+              rows={2} className={inputClass} placeholder="Overview / notes for this destination (optional)" />
 
             {/* Stays */}
             {dest.groups.map((group, gi) => (
@@ -534,16 +586,12 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                       value={group.hotelName}
                       onChange={val => { updateHotel(di, gi, 'hotelName', val); if (!val) updGroup(di, gi, g => ({ ...g, hotelPriceLevel: null, hotelNightlyRate: '' })) }}
                       onSelect={(_, __, placeId) => { if (placeId) fetchHotelPriceLevel(di, gi, placeId) }}
-                      type="hotel"
-                      placeholder="Hotel name (optional)"
-                      className={inputClass}
+                      type="hotel" placeholder="Hotel name (optional)" className={inputClass}
                     />
                     {group.hotelName && (<>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-500 shrink-0">$/night</span>
-                        <input
-                          type="number" min="0" step="1"
-                          value={group.hotelNightlyRate}
+                        <input type="number" min="0" step="1" value={group.hotelNightlyRate}
                           onChange={e => {
                             const val = e.target.value
                             updGroup(di, gi, g => {
@@ -551,14 +599,11 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                               return { ...g, hotelNightlyRate: val, hotelPriceLevel: val && !isNaN(rate) && rate > 0 ? nightlyRateToTier(rate) : g.hotelPriceLevel }
                             })
                           }}
-                          className={subInputClass}
-                          placeholder="What did you pay per night? (optional)"
-                        />
+                          className={subInputClass} placeholder="What did you pay per night? (optional)" />
                       </div>
                       {group.hotelPriceLevel !== null && (
                         <p className="text-xs text-green-700 font-medium">
-                          {'$'.repeat(group.hotelPriceLevel)}
-                          <span className="text-gray-300">{'$'.repeat(5 - group.hotelPriceLevel)}</span>
+                          {'$'.repeat(group.hotelPriceLevel)}<span className="text-gray-300">{'$'.repeat(5 - group.hotelPriceLevel)}</span>
                         </p>
                       )}
                       {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600">Rate it!</span><StarRating value={group.hotelRating} onChange={v => updateHotel(di, gi, 'hotelRating', String(v))} /></div>}
@@ -576,7 +621,8 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                       <input type="url" value={group.hotelLink} onChange={e => updateHotel(di, gi, 'hotelLink', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
                     </>)}
                   </div>
-                  {/* Days */}
+
+                  {/* Days — single merged item list */}
                   {group.days.map((day, dyi) => (
                     <div key={dyi} className="rounded-xl border border-gray-100 overflow-hidden">
                       <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100">
@@ -586,30 +632,49 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                         )}
                       </div>
                       <div className="p-3 space-y-3">
-                        <div className="space-y-2">
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🍜 Food & Drink</p>
-                          {day.food.length === 0 && <p className="text-xs text-gray-600 italic">None added yet.</p>}
-                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={e => reorderFood(di, gi, dyi, e)}>
-                            <SortableContext items={day.food.map(f => f.id)} strategy={verticalListSortingStrategy}>
-                              <div className="space-y-3">{day.food.map((item, ii) => <FoodRow key={item.id} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, dyi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, dyi, ii, v)} onToggleTag={tag => toggleFoodTag(di, gi, dyi, ii, tag)} onRemove={() => removeFood(di, gi, dyi, ii)} onSelectPlace={(id) => id ? fetchFoodPriceLevel(di, gi, dyi, ii, id) : setFoodPriceLevel(di, gi, dyi, ii, null)} />)}</div>
-                            </SortableContext>
-                          </DndContext>
-                          <button type="button" onClick={() => addFood(di, gi, dyi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add food / drink</button>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🎯 Activities</p>
-                          {day.activities.length === 0 && <p className="text-xs text-gray-600 italic">None added yet.</p>}
-                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={e => reorderActivity(di, gi, dyi, e)}>
-                            <SortableContext items={day.activities.map(a => a.id)} strategy={verticalListSortingStrategy}>
-                              <div className="space-y-3">{day.activities.map((item, ii) => <ActivityRow key={item.id} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, dyi, ii, f, v)} onRemove={() => removeActivity(di, gi, dyi, ii)} />)}</div>
-                            </SortableContext>
-                          </DndContext>
-                          <button type="button" onClick={() => addActivity(di, gi, dyi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add activity</button>
+                        {day.items.length === 0 && (
+                          <p className="text-xs text-gray-400 italic">No items yet — add food or an activity below.</p>
+                        )}
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={e => reorderItems(di, gi, dyi, e)}>
+                          <SortableContext items={day.items.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                            <div className="space-y-3">
+                              {day.items.map((item, ii) =>
+                                item.type === 'food_drink'
+                                  ? <FoodRow key={item.id} item={item} index={ii} showRating={showRating}
+                                      onUpdate={(f, v) => updateItem(di, gi, dyi, item.id, f, v)}
+                                      onPatch={patch => patchItem(di, gi, dyi, item.id, patch)}
+                                      onToggleTag={tag => toggleItemTag(di, gi, dyi, item.id, tag)}
+                                      onRemove={() => removeItem(di, gi, dyi, item.id)}
+                                      onSelectPlace={id => id
+                                        ? fetchItemPriceLevel(di, gi, dyi, item.id, id)
+                                        : patchItem(di, gi, dyi, item.id, { priceLevel: null })}
+                                    />
+                                  : <ActivityRow key={item.id} item={item} index={ii} showRating={showRating}
+                                      onUpdate={(f, v) => updateItem(di, gi, dyi, item.id, f, v)}
+                                      onPatch={patch => patchItem(di, gi, dyi, item.id, patch)}
+                                      onRemove={() => removeItem(di, gi, dyi, item.id)}
+                                    />
+                              )}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => addItem(di, gi, dyi, 'food_drink')}
+                            className="flex-1 text-xs text-orange-600 hover:text-orange-800 font-medium border border-dashed border-orange-300 hover:border-orange-500 rounded-lg py-2 transition-colors">
+                            + Food / Drink
+                          </button>
+                          <button type="button" onClick={() => addItem(di, gi, dyi, 'activity')}
+                            className="flex-1 text-xs text-green-600 hover:text-green-800 font-medium border border-dashed border-green-300 hover:border-green-500 rounded-lg py-2 transition-colors">
+                            + Activity
+                          </button>
                         </div>
                       </div>
                     </div>
                   ))}
-                  <button type="button" onClick={() => addDay(di, gi)} className="w-full text-xs text-gray-500 hover:text-blue-600 border border-dashed border-gray-200 hover:border-blue-300 rounded-lg py-2 transition-colors">+ Add day</button>
+                  <button type="button" onClick={() => addDay(di, gi)}
+                    className="w-full text-xs text-gray-500 hover:text-blue-600 border border-dashed border-gray-200 hover:border-blue-300 rounded-lg py-2 transition-colors">
+                    + Add day
+                  </button>
                 </div>
               </div>
             ))}
@@ -683,10 +748,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         </button>
         {(() => {
           const hasItems = destinations.some(d =>
-            d.groups.some(g =>
-              g.hotelName.trim() ||
-              g.days.some(day => day.food.some(f => f.name.trim()) || day.activities.some(a => a.name.trim()))
-            )
+            d.groups.some(g => g.hotelName.trim() || g.days.some(day => day.items.some(i => i.name.trim())))
           )
           const label = itinerary.visibility === 'draft' ? 'Publish' : 'Save changes'
           return (

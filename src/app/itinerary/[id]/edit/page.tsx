@@ -13,7 +13,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
     include: {
       destinations: {
         orderBy: { order: 'asc' },
-        include: { items: true },
+        include: { items: { orderBy: { order: 'asc' } } },
       },
       photos: { where: { isStock: false } },
     },
