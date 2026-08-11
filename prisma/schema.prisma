@@ -96,6 +96,7 @@ model DestItem {
   familyFriendlySource String?
   link          String?
   groupIndex    Int         @default(0)
+  dayIndex      Int?
   tags          String[]    @default([])
   lat           Float?
   lng           Float?
