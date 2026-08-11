@@ -101,8 +101,8 @@ async function readFileForUpload(
   })
 }
 
-type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null; tags: string[]; dayIndex?: number | null }
-type ActivityItem = { name: string; notes: string; link: string; rating: number; dayIndex?: number | null }
+type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null; tags: string[]; dayIndex?: number | null; order?: number }
+type ActivityItem = { name: string; notes: string; link: string; rating: number; dayIndex?: number | null; order?: number }
 type DayGroup    = { dayIndex?: number; food: FoodItem[]; activities: ActivityItem[] }
 type StayGroup   = { hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; days: DayGroup[] }
 type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
@@ -144,10 +144,18 @@ function buildDays(food: FoodItem[], acts: ActivityItem[]): DayGroup[] {
 function mapExtractionDests(rawDests: RawDest[]): Destination[] {
   return rawDests.map((d) => {
     const items = Array.isArray(d.items) ? d.items : []
-    // Accept common accommodation labels in case a model uses a synonym.
-    const hotels = items.filter(i => ['hotel', 'accommodation', 'lodging', 'stay'].includes(i.type.toLowerCase()))
-    const food   = items.filter(i => i.type === 'food_drink').map(f => ({ name: f.name ?? '', mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: f.dayIndex ?? null }))
-    const acts   = items.filter(i => i.type === 'activity').map(a => ({ name: a.name ?? '', notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0, dayIndex: a.dayIndex ?? null }))
+    const isHotelType = (t: string) => ['hotel', 'accommodation', 'lodging', 'stay'].includes(t.toLowerCase())
+    const hotels = items.filter(i => isHotelType(i.type))
+    // Track each non-hotel item's position in the document so we can restore schedule order.
+    const nonHotelItems = items.filter(i => !isHotelType(i.type))
+    const food = nonHotelItems
+      .map((item, docPos) => ({ item, docPos }))
+      .filter(({ item }) => item.type === 'food_drink')
+      .map(({ item: f, docPos }) => ({ name: f.name ?? '', mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: f.dayIndex ?? null, order: docPos }))
+    const acts = nonHotelItems
+      .map((item, docPos) => ({ item, docPos }))
+      .filter(({ item }) => item.type === 'activity')
+      .map(({ item: a, docPos }) => ({ name: a.name ?? '', notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0, dayIndex: a.dayIndex ?? null, order: docPos }))
     const groups: StayGroup[] = hotels.length === 0
       ? [{ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: buildDays(food, acts) }]
       : hotels.map((h, hi) => ({ hotelName: h.name ?? '', hotelNotes: h.notes ?? '', hotelLink: h.link ?? '', hotelRating: h.rating ?? 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: hi === 0 ? buildDays(food, acts) : [emptyDay()] }))

@@ -12,8 +12,8 @@ import { generateDescriptions } from '@/lib/generateDescriptions'
 
 export type ItineraryState = { error?: string } | undefined
 
-type FoodInput = { name: string; mealType?: string; description?: string; notes: string; rating: number; link: string; priceLevel?: number | null; familyFriendly?: boolean | null; familyFriendlySource?: string | null; lat?: number | null; lng?: number | null; tags?: string[]; dayIndex?: number | null }
-type ActivityInput = { name: string; notes: string; rating: number; link: string; dayIndex?: number | null }
+type FoodInput = { name: string; mealType?: string; description?: string; notes: string; rating: number; link: string; priceLevel?: number | null; familyFriendly?: boolean | null; familyFriendlySource?: string | null; lat?: number | null; lng?: number | null; tags?: string[]; dayIndex?: number | null; order?: number }
+type ActivityInput = { name: string; notes: string; rating: number; link: string; dayIndex?: number | null; order?: number }
 type DayInput = { dayIndex?: number; food: FoodInput[]; activities: ActivityInput[] }
 type StayGroup = {
   hotelName: string; hotelDescription?: string; hotelNotes: string; hotelAddress?: string; hotelLink: string; hotelRating: number; hotelPriceLevel?: number | null; hotelLat?: number | null; hotelLng?: number | null; hotelTags?: string[]
@@ -22,7 +22,7 @@ type StayGroup = {
 }
 type DestInput = { name: string; country: string; notes: string; groups: StayGroup[] }
 
-type ItemRow = { type: string; name: string; description: string | null; notes: string | null; address: string | null; link: string | null; rating: number | null; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; mealType: string | null; groupIndex: number; dayIndex: number | null; lat: number | null; lng: number | null; tags: string[] }
+type ItemRow = { type: string; name: string; description: string | null; notes: string | null; address: string | null; link: string | null; rating: number | null; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; mealType: string | null; groupIndex: number; dayIndex: number | null; order: number; lat: number | null; lng: number | null; tags: string[] }
 
 // Cap any promise at ms milliseconds — resolves to null on timeout
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
@@ -33,24 +33,24 @@ function flattenGroups(groups: StayGroup[]): ItemRow[] {
   return groups.flatMap((g, gi) => {
     const rows: ItemRow[] = []
     if (g.hotelName?.trim()) {
-      rows.push({ type: 'hotel', name: g.hotelName.trim(), description: g.hotelDescription?.trim() || null, notes: g.hotelNotes?.trim() || null, address: g.hotelAddress?.trim() || null, link: g.hotelLink?.trim() || null, rating: g.hotelRating > 0 ? g.hotelRating : null, priceLevel: g.hotelPriceLevel ?? null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi, dayIndex: null, lat: g.hotelLat ?? null, lng: g.hotelLng ?? null, tags: g.hotelTags ?? [] })
+      rows.push({ type: 'hotel', name: g.hotelName.trim(), description: g.hotelDescription?.trim() || null, notes: g.hotelNotes?.trim() || null, address: g.hotelAddress?.trim() || null, link: g.hotelLink?.trim() || null, rating: g.hotelRating > 0 ? g.hotelRating : null, priceLevel: g.hotelPriceLevel ?? null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi, dayIndex: null, order: 0, lat: g.hotelLat ?? null, lng: g.hotelLng ?? null, tags: g.hotelTags ?? [] })
     }
     if (g.days) {
       for (const [dyi, day] of g.days.entries()) {
         const dayIndex = day.dayIndex ?? (dyi + 1)
-        for (const f of day.food ?? []) {
-          if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), description: f.description?.trim() || null, notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: f.priceLevel ?? null, familyFriendly: f.familyFriendly ?? null, familyFriendlySource: f.familyFriendlySource ?? null, mealType: f.mealType?.trim() || null, groupIndex: gi, dayIndex, lat: f.lat ?? null, lng: f.lng ?? null, tags: f.tags ?? [] })
+        for (const [fi, f] of (day.food ?? []).entries()) {
+          if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), description: f.description?.trim() || null, notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: f.priceLevel ?? null, familyFriendly: f.familyFriendly ?? null, familyFriendlySource: f.familyFriendlySource ?? null, mealType: f.mealType?.trim() || null, groupIndex: gi, dayIndex, order: f.order ?? fi, lat: f.lat ?? null, lng: f.lng ?? null, tags: f.tags ?? [] })
         }
-        for (const a of day.activities ?? []) {
-          if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), description: null, notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi, dayIndex, lat: null, lng: null, tags: [] })
+        for (const [ai, a] of (day.activities ?? []).entries()) {
+          if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), description: null, notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi, dayIndex, order: a.order ?? ((day.food?.length ?? 0) + ai), lat: null, lng: null, tags: [] })
         }
       }
     } else {
-      for (const f of g.food ?? []) {
-        if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), description: f.description?.trim() || null, notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: f.priceLevel ?? null, familyFriendly: f.familyFriendly ?? null, familyFriendlySource: f.familyFriendlySource ?? null, mealType: f.mealType?.trim() || null, groupIndex: gi, dayIndex: f.dayIndex ?? null, lat: f.lat ?? null, lng: f.lng ?? null, tags: f.tags ?? [] })
+      for (const [fi, f] of (g.food ?? []).entries()) {
+        if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), description: f.description?.trim() || null, notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: f.priceLevel ?? null, familyFriendly: f.familyFriendly ?? null, familyFriendlySource: f.familyFriendlySource ?? null, mealType: f.mealType?.trim() || null, groupIndex: gi, dayIndex: f.dayIndex ?? null, order: fi, lat: f.lat ?? null, lng: f.lng ?? null, tags: f.tags ?? [] })
       }
-      for (const a of g.activities ?? []) {
-        if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), description: null, notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi, dayIndex: a.dayIndex ?? null, lat: null, lng: null, tags: [] })
+      for (const [ai, a] of (g.activities ?? []).entries()) {
+        if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), description: null, notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi, dayIndex: a.dayIndex ?? null, order: (g.food?.length ?? 0) + ai, lat: null, lng: null, tags: [] })
       }
     }
     return rows

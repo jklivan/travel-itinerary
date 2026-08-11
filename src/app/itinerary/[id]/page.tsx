@@ -32,7 +32,7 @@ function Stars({ rating }: { rating: number | null }) {
 type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number; dayIndex?: number | null; tags?: string[] }
 
 function groupItems(items: DestItemRow[]) {
-  const stays = new Map<number, { hotel: DestItemRow | null; days: Map<number, { food: DestItemRow[]; activities: DestItemRow[] }> }>()
+  const stays = new Map<number, { hotel: DestItemRow | null; days: Map<number, DestItemRow[]> }>()
   for (const item of items) {
     const gi = item.groupIndex ?? 0
     if (!stays.has(gi)) stays.set(gi, { hotel: null, days: new Map() })
@@ -41,15 +41,13 @@ function groupItems(items: DestItemRow[]) {
       stay.hotel = item
     } else {
       const di = item.dayIndex ?? 0
-      if (!stay.days.has(di)) stay.days.set(di, { food: [], activities: [] })
-      const day = stay.days.get(di)!
-      if (item.type === 'food_drink') day.food.push(item)
-      else if (item.type === 'activity') day.activities.push(item)
+      if (!stay.days.has(di)) stay.days.set(di, [])
+      stay.days.get(di)!.push(item)
     }
   }
   return [...stays.entries()].sort(([a], [b]) => a - b).map(([, stay]) => ({
     hotel: stay.hotel,
-    days: [...stay.days.entries()].sort(([a], [b]) => a - b).map(([dayIndex, day]) => ({ dayIndex, ...day })),
+    days: [...stay.days.entries()].sort(([a], [b]) => a - b).map(([dayIndex, items]) => ({ dayIndex, items })),
   }))
 }
 
@@ -93,7 +91,7 @@ export default async function ItineraryPage({
       user: { select: { id: true, name: true } },
       destinations: {
         orderBy: { order: 'asc' },
-        include: { items: true },
+        include: { items: { orderBy: { order: 'asc' } } },
       },
       photos: { orderBy: { isStock: 'asc' } },
     },
@@ -416,83 +414,56 @@ export default async function ItineraryPage({
                             {group.days.map((day, di) => {
                               const showDayLabel = group.days.length > 1 || day.dayIndex > 1
                               return (
-                                <div key={di}>
+                                <div key={di} className="space-y-2">
                                   {showDayLabel && (
                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2 mb-1">Day {day.dayIndex || di + 1}</p>
                                   )}
-                                  {day.food.length > 0 && (
-                                    <div className="bg-orange-50 rounded-lg p-3">
-                                      <div className="flex items-center gap-1.5 mb-2">
-                                        <Utensils size={14} className="text-orange-600" />
-                                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Food & Drink</p>
+                                  {day.items.map(item => item.type === 'food_drink' ? (
+                                    <div key={item.id} className="bg-orange-50 rounded-lg p-3">
+                                      <div className="flex items-center gap-1.5 mb-1">
+                                        <Utensils size={12} className="text-orange-500 shrink-0" />
+                                        <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                          <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                                          <MealPills mealType={item.mealType} />
+                                          {!isGuide && <Stars rating={item.rating ?? null} />}
+                                        </div>
                                       </div>
-                                      <div className="space-y-2">
-                                        {day.food.map(item => (
-                                          <div key={item.id}>
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                              <span className="text-sm font-medium text-gray-900">{item.name}</span>
-                                              <MealPills mealType={item.mealType} />
-                                              {!isGuide && <Stars rating={item.rating ?? null} />}
-                                            </div>
-                                            {(item.priceLevel != null || item.familyFriendly) && (
-                                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                                {item.priceLevel != null && (
-                                                  <p className="text-xs font-medium text-green-700">
-                                                    {'$'.repeat(item.priceLevel)}<span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
-                                                  </p>
-                                                )}
-                                                {item.familyFriendly && (
-                                                  <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">👨‍👩‍👧 Family friendly</span>
-                                                )}
-                                              </div>
-                                            )}
-                                            {item.tags && item.tags.length > 0 && (
-                                              <div className="flex flex-wrap gap-1 mt-1">
-                                                {item.tags.map(tag => (
-                                                  <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">{tag}</span>
-                                                ))}
-                                              </div>
-                                            )}
-                                            {item.description && (
-                                              <p className="text-xs text-gray-600 mt-1">
-                                                <span className="font-semibold text-gray-500">Description: </span>{item.description}
-                                              </p>
-                                            )}
-                                            {item.notes && (
-                                              <p className="text-xs text-gray-500 italic mt-0.5">
-                                                <span className="font-semibold not-italic">User notes: </span>{item.notes}
-                                              </p>
-                                            )}
-                                            {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
-                                          </div>
-                                        ))}
-                                      </div>
+                                      {(item.priceLevel != null || item.familyFriendly) && (
+                                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                          {item.priceLevel != null && (
+                                            <p className="text-xs font-medium text-green-700">
+                                              {'$'.repeat(item.priceLevel)}<span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
+                                            </p>
+                                          )}
+                                          {item.familyFriendly && (
+                                            <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">👨‍👩‍👧 Family friendly</span>
+                                          )}
+                                        </div>
+                                      )}
+                                      {item.tags && item.tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                          {item.tags.map(tag => (
+                                            <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">{tag}</span>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {item.description && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold text-gray-500">Description: </span>{item.description}</p>}
+                                      {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
+                                      {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
                                     </div>
-                                  )}
-                                  {day.activities.length > 0 && (
-                                    <div className="bg-green-50 rounded-lg p-3">
-                                      <div className="flex items-center gap-1.5 mb-2">
-                                        <Camera size={14} className="text-green-600" />
-                                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Activities</p>
+                                  ) : (
+                                    <div key={item.id} className="bg-green-50 rounded-lg p-3">
+                                      <div className="flex items-center gap-1.5 mb-1">
+                                        <Camera size={12} className="text-green-600 shrink-0" />
+                                        <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                          <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                                          {!isGuide && <Stars rating={item.rating ?? null} />}
+                                        </div>
                                       </div>
-                                      <div className="space-y-2">
-                                        {day.activities.map(item => (
-                                          <div key={item.id}>
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                              <span className="text-sm font-medium text-gray-900">{item.name}</span>
-                                              {!isGuide && <Stars rating={item.rating ?? null} />}
-                                            </div>
-                                            {item.notes && (
-                                              <p className="text-xs text-gray-500 italic mt-0.5">
-                                                <span className="font-semibold not-italic">User notes: </span>{item.notes}
-                                              </p>
-                                            )}
-                                            {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
-                                          </div>
-                                        ))}
-                                      </div>
+                                      {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
+                                      {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
                                     </div>
-                                  )}
+                                  ))}
                                 </div>
                               )
                             })}
