@@ -181,8 +181,7 @@ function ItemForm({ type, onAdd, onClose }: {
 
 function DestSummary({ dest, onRemove }: { dest: GuidedDest; onRemove: () => void }) {
   const hotels = dest.items.filter(i => i.type === 'hotel')
-  const food  = dest.items.filter(i => i.type === 'food_drink')
-  const acts  = dest.items.filter(i => i.type === 'activity')
+  const nonHotels = dest.items.filter(i => i.type !== 'hotel')
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
@@ -204,17 +203,14 @@ function DestSummary({ dest, onRemove }: { dest: GuidedDest; onRemove: () => voi
             {hotel.rating > 0 && <span className="text-yellow-500 ml-1">{'★'.repeat(hotel.rating)}</span>}
           </div>
         ))}
-        {food.map(f => (
-          <div key={f.id} className="flex items-center gap-1.5">
-            <Utensils size={12} className="text-orange-500 shrink-0" />
-            <span className="truncate">{f.name}</span>
-            {f.mealType && <span className="text-gray-400 ml-1">{f.mealType.split(',').map(type => MEAL_EMOJI[type]).join(' ')}</span>}
-          </div>
-        ))}
-        {acts.map(a => (
-          <div key={a.id} className="flex items-center gap-1.5">
-            <Camera size={12} className="text-green-500 shrink-0" />
-            <span className="truncate">{a.name}</span>
+        {nonHotels.map(item => (
+          <div key={item.id} className="flex items-center gap-1.5">
+            {item.type === 'food_drink'
+              ? <Utensils size={12} className="text-orange-500 shrink-0" />
+              : <Camera size={12} className="text-green-500 shrink-0" />}
+            <span className="truncate">{item.name}</span>
+            {item.mealType && <span className="text-gray-400 ml-1">{item.mealType.split(',').map(type => MEAL_EMOJI[type]).join(' ')}</span>}
+            {item.rating > 0 && <span className="text-yellow-500 ml-1">{'★'.repeat(item.rating)}</span>}
           </div>
         ))}
         {dest.notes && <p className="text-gray-500 italic mt-1">📝 {dest.notes}</p>}
@@ -354,8 +350,14 @@ export default function GuidedCreatePage() {
       }
       const days = byDay.size > 0
         ? [...byDay.entries()].sort(([a], [b]) => a - b).map(([, dayItems]) => ({
-            food: dayItems.filter(i => i.type === 'food_drink').map(i => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating })),
-            activities: dayItems.filter(i => i.type === 'activity').map(i => ({ name: i.name, notes: i.notes, link: '', rating: i.rating })),
+            food: dayItems
+              .map((item, pos) => ({ item, pos }))
+              .filter(({ item }) => item.type === 'food_drink')
+              .map(({ item: i, pos }) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos })),
+            activities: dayItems
+              .map((item, pos) => ({ item, pos }))
+              .filter(({ item }) => item.type === 'activity')
+              .map(({ item: i, pos }) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos })),
           }))
         : [{ food: [], activities: [] }]
       const stays = hotels.length > 0 ? hotels : [null]
