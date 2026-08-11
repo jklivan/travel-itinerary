@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { fetchStockPhoto } from '@/lib/stockPhoto'
 import { generateTags } from '@/lib/generateTags'
-import { geocode } from '@/lib/geocode'
+import { geocode, geocodePlaceByName } from '@/lib/geocode'
 import { inferPlaceAttributes } from '@/lib/inferPriceLevels'
 import { generateDescriptions } from '@/lib/generateDescriptions'
 
@@ -159,6 +159,31 @@ async function geocodeItineraryDests(itineraryId: string): Promise<void> {
   }
 }
 
+// Geocodes individual items (hotels, restaurants, activities) that have no coordinates yet.
+// Uses Google Places Text Search with destination context to disambiguate — e.g.
+// "The Edition, Rome, Italy" — so imported itineraries appear as map pins immediately.
+async function geocodeItineraryItems(itineraryId: string): Promise<void> {
+  const items = await prisma.destItem.findMany({
+    where: {
+      destination: { itineraryId },
+      lat: null,
+      name: { not: '' },
+    },
+    select: {
+      id: true,
+      name: true,
+      destination: { select: { name: true, country: true } },
+    },
+  })
+  for (const item of items) {
+    const query = [item.name, item.destination.name, item.destination.country].filter(Boolean).join(', ')
+    const coords = await geocodePlaceByName(query)
+    if (coords) {
+      await prisma.destItem.update({ where: { id: item.id }, data: coords })
+    }
+  }
+}
+
 export async function createItinerary(
   state: ItineraryState,
   formData: FormData
@@ -245,6 +270,7 @@ export async function createItinerary(
           .catch(() => null)
       : null,
     geocodeItineraryDests(itinerary.id).catch(() => null),
+    geocodeItineraryItems(itinerary.id).catch(() => null),
     inferMissingAttributes(itinerary.id).catch(() => null),
     generateMissingDescriptions(itinerary.id).catch(() => null),
   ]), 20000)
@@ -315,6 +341,7 @@ export async function createItineraryDirect(input: {
           .catch(() => null)
       : null,
     geocodeItineraryDests(itinerary.id).catch(() => null),
+    geocodeItineraryItems(itinerary.id).catch(() => null),
     inferMissingAttributes(itinerary.id).catch(() => null),
     generateMissingDescriptions(itinerary.id).catch(() => null),
   ]), 20000)
@@ -396,6 +423,7 @@ export async function updateItinerary(
           .catch(() => null)
       : null,
     geocodeItineraryDests(id).catch(() => null),
+    geocodeItineraryItems(id).catch(() => null),
     inferMissingAttributes(id).catch(() => null),
     generateMissingDescriptions(id).catch(() => null),
   ]), 20000)
