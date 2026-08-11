@@ -24,6 +24,11 @@ type DestInput = { name: string; country: string; notes: string; groups: StayGro
 
 type ItemRow = { type: string; name: string; description: string | null; notes: string | null; address: string | null; link: string | null; rating: number | null; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; mealType: string | null; groupIndex: number; dayIndex: number | null; lat: number | null; lng: number | null; tags: string[] }
 
+// Cap any promise at ms milliseconds — resolves to null on timeout
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([p, new Promise<null>((r) => setTimeout(() => r(null), ms))])
+}
+
 function flattenGroups(groups: StayGroup[]): ItemRow[] {
   return groups.flatMap((g, gi) => {
     const rows: ItemRow[] = []
@@ -214,8 +219,9 @@ export async function createItinerary(
   })
 
   // Run stock photo fetch, tag generation, geocoding, price level inference, and description generation in parallel after save
-  // Each task is wrapped in .catch(() => null) so a failure in any background task doesn't block the redirect
-  await Promise.all([
+  // Each task is wrapped in .catch(() => null) so a failure in any background task doesn't block the redirect.
+  // The whole block is capped at 20 s so a stalled API can never hang the publish button.
+  await withTimeout(Promise.all([
     photos.length === 0 && destinations.length > 0
       ? fetchStockPhoto(`${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`)
           .then((url) => url ? prisma.photo.create({ data: { url, isStock: true, itineraryId: itinerary.id } }) : null)
@@ -241,7 +247,7 @@ export async function createItinerary(
     geocodeItineraryDests(itinerary.id).catch(() => null),
     inferMissingAttributes(itinerary.id).catch(() => null),
     generateMissingDescriptions(itinerary.id).catch(() => null),
-  ])
+  ]), 20000)
 
   revalidatePath('/')
   redirect(`/itinerary/${itinerary.id}`)
@@ -286,7 +292,7 @@ export async function createItineraryDirect(input: {
     },
   })
 
-  await Promise.all([
+  await withTimeout(Promise.all([
     photos.length === 0 && destinations.length > 0
       ? fetchStockPhoto(`${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`)
           .then((url) => url ? prisma.photo.create({ data: { url, isStock: true, itineraryId: itinerary.id } }) : null)
@@ -311,7 +317,7 @@ export async function createItineraryDirect(input: {
     geocodeItineraryDests(itinerary.id).catch(() => null),
     inferMissingAttributes(itinerary.id).catch(() => null),
     generateMissingDescriptions(itinerary.id).catch(() => null),
-  ])
+  ]), 20000)
 
   revalidatePath('/')
   redirect(`/itinerary/${itinerary.id}`)
@@ -383,7 +389,7 @@ export async function updateItinerary(
   })
 
   // Fetch stock photo, geocode destinations, infer missing price levels, and generate descriptions after save
-  await Promise.all([
+  await withTimeout(Promise.all([
     photos.length === 0 && destinations.length > 0
       ? fetchStockPhoto(`${destinations[0].name}${destinations[0].country ? ` ${destinations[0].country}` : ''} travel`)
           .then((url) => url ? prisma.photo.create({ data: { url, isStock: true, itineraryId: id } }) : null)
@@ -392,7 +398,7 @@ export async function updateItinerary(
     geocodeItineraryDests(id).catch(() => null),
     inferMissingAttributes(id).catch(() => null),
     generateMissingDescriptions(id).catch(() => null),
-  ])
+  ]), 20000)
 
   revalidatePath('/')
   revalidatePath(`/itinerary/${id}`)
