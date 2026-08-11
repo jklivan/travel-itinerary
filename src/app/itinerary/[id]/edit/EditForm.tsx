@@ -48,7 +48,7 @@ type DayItem = {
   dayIndex: number | null
 }
 
-type DayGroup    = { items: DayItem[] }
+type DayGroup    = { dayIndex: number; items: DayItem[] }
 type StayGroup   = { hotelName: string; hotelDescription: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; days: DayGroup[] }
 type Destination = { name: string; country: string; notes: string; groups: StayGroup[] }
 type UploadedPhoto = { url: string; caption: string }
@@ -99,8 +99,8 @@ function nightlyRateToTier(rate: number): number {
 
 const emptyFoodItem = (): DayItem => ({ id: uid(), type: 'food_drink', name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null })
 const emptyActItem  = (): DayItem => ({ id: uid(), type: 'activity',   name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null })
-const emptyDay      = (): DayGroup   => ({ items: [] })
-const emptyGroup    = (): StayGroup  => ({ hotelName: '', hotelDescription: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: [emptyDay()] })
+const emptyDay      = (dayIndex = 0): DayGroup => ({ dayIndex, items: [] })
+const emptyGroup    = (): StayGroup  => ({ hotelName: '', hotelDescription: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: [emptyDay(0)] })
 const emptyDest     = (): Destination => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
 
 // ── Data conversion ───────────────────────────────────────────────────────────
@@ -122,8 +122,9 @@ function itemsToGroups(rawItems: RawItem[]): StayGroup[] {
       if (!byDay.has(di)) byDay.set(di, [])
       byDay.get(di)!.push(item)
     }
-    const days: DayGroup[] = byDay.size === 0 ? [emptyDay()] :
-      [...byDay.entries()].sort(([a], [b]) => a - b).map(([, dayItems]) => ({
+    const days: DayGroup[] = byDay.size === 0 ? [emptyDay(0)] :
+      [...byDay.entries()].sort(([a], [b]) => a - b).map(([dayIdx, dayItems]) => ({
+        dayIndex: dayIdx,
         items: [...dayItems]
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
           .map(i => ({
@@ -206,13 +207,31 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 
 // ── FoodRow ───────────────────────────────────────────────────────────────────
 
-function FoodRow({ item, index, onUpdate, onPatch, onToggleTag, onRemove, showRating, onSelectPlace }: {
+type DayMove = { currentDyi: number; totalDays: number; onMove: (toDyi: number) => void }
+
+function DayMoveBar({ dayMove }: { dayMove: DayMove }) {
+  if (dayMove.totalDays <= 1) return null
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <span className="text-xs text-gray-400">Move to:</span>
+      {Array.from({ length: dayMove.totalDays }, (_, i) => i).filter(i => i !== dayMove.currentDyi).map(i => (
+        <button key={i} type="button" onClick={() => dayMove.onMove(i)}
+          className="text-xs px-2 py-0.5 rounded-full border border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
+          Day {i + 1}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function FoodRow({ item, index, onUpdate, onPatch, onToggleTag, onRemove, showRating, onSelectPlace, dayMove }: {
   item: DayItem; index: number
   onUpdate: (field: string, val: string) => void
   onPatch: (patch: Partial<DayItem>) => void
   onToggleTag: (tag: string) => void
   onRemove: () => void; showRating: boolean
   onSelectPlace?: (placeId: string | null) => void
+  dayMove?: DayMove
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
@@ -273,17 +292,19 @@ function FoodRow({ item, index, onUpdate, onPatch, onToggleTag, onRemove, showRa
         <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
       </div>
+      {dayMove && <DayMoveBar dayMove={dayMove} />}
     </div>
   )
 }
 
 // ── ActivityRow ───────────────────────────────────────────────────────────────
 
-function ActivityRow({ item, index, onUpdate, onPatch, onRemove, showRating }: {
+function ActivityRow({ item, index, onUpdate, onPatch, onRemove, showRating, dayMove }: {
   item: DayItem; index: number
   onUpdate: (field: string, val: string) => void
   onPatch: (patch: Partial<DayItem>) => void
   onRemove: () => void; showRating: boolean
+  dayMove?: DayMove
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
@@ -309,6 +330,7 @@ function ActivityRow({ item, index, onUpdate, onPatch, onRemove, showRating }: {
         <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
       </div>
+      {dayMove && <DayMoveBar dayMove={dayMove} />}
     </div>
   )
 }
@@ -382,11 +404,37 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   function updDay(di: number, gi: number, dyi: number, fn: (d: DayGroup) => DayGroup) {
     updGroup(di, gi, g => ({ ...g, days: g.days.map((d, i) => i !== dyi ? d : fn(d)) }))
   }
-  function addDay(di: number, gi: number) { updGroup(di, gi, g => ({ ...g, days: [...g.days, emptyDay()] })) }
+  function addDay(di: number, gi: number) {
+    updGroup(di, gi, g => {
+      const nextDayIndex = Math.max(...g.days.map(d => d.dayIndex)) + 1
+      return { ...g, days: [...g.days, emptyDay(nextDayIndex)] }
+    })
+  }
   function removeDay(di: number, gi: number, dyi: number) { updGroup(di, gi, g => ({ ...g, days: g.days.filter((_, i) => i !== dyi) })) }
 
   function addItem(di: number, gi: number, dyi: number, type: 'food_drink' | 'activity') {
-    updDay(di, gi, dyi, d => ({ ...d, items: [...d.items, type === 'food_drink' ? emptyFoodItem() : emptyActItem()] }))
+    updGroup(di, gi, g => {
+      const item = type === 'food_drink' ? emptyFoodItem() : emptyActItem()
+      item.dayIndex = g.days[dyi].dayIndex
+      return { ...g, days: g.days.map((d, i) => i !== dyi ? d : { ...d, items: [...d.items, item] }) }
+    })
+  }
+
+  function moveItemToDay(di: number, gi: number, itemId: string, fromDyi: number, toDyi: number) {
+    if (fromDyi === toDyi) return
+    updGroup(di, gi, g => {
+      const item = g.days[fromDyi]?.items.find(i => i.id === itemId)
+      if (!item) return g
+      const movedItem = { ...item, dayIndex: g.days[toDyi].dayIndex }
+      return {
+        ...g,
+        days: g.days.map((d, i) => {
+          if (i === fromDyi) return { ...d, items: d.items.filter(i => i.id !== itemId) }
+          if (i === toDyi)   return { ...d, items: [...d.items, movedItem] }
+          return d
+        })
+      }
+    })
   }
   function removeItem(di: number, gi: number, dyi: number, itemId: string) {
     updDay(di, gi, dyi, d => ({ ...d, items: d.items.filter(i => i.id !== itemId) }))
@@ -638,8 +686,11 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={e => reorderItems(di, gi, dyi, e)}>
                           <SortableContext items={day.items.map(i => i.id)} strategy={verticalListSortingStrategy}>
                             <div className="space-y-3">
-                              {day.items.map((item, ii) =>
-                                item.type === 'food_drink'
+                              {day.items.map((item, ii) => {
+                                const dayMove: DayMove | undefined = group.days.length > 1
+                                  ? { currentDyi: dyi, totalDays: group.days.length, onMove: toDyi => moveItemToDay(di, gi, item.id, dyi, toDyi) }
+                                  : undefined
+                                return item.type === 'food_drink'
                                   ? <FoodRow key={item.id} item={item} index={ii} showRating={showRating}
                                       onUpdate={(f, v) => updateItem(di, gi, dyi, item.id, f, v)}
                                       onPatch={patch => patchItem(di, gi, dyi, item.id, patch)}
@@ -648,13 +699,15 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                                       onSelectPlace={id => id
                                         ? fetchItemPriceLevel(di, gi, dyi, item.id, id)
                                         : patchItem(di, gi, dyi, item.id, { priceLevel: null })}
+                                      dayMove={dayMove}
                                     />
                                   : <ActivityRow key={item.id} item={item} index={ii} showRating={showRating}
                                       onUpdate={(f, v) => updateItem(di, gi, dyi, item.id, f, v)}
                                       onPatch={patch => patchItem(di, gi, dyi, item.id, patch)}
                                       onRemove={() => removeItem(di, gi, dyi, item.id)}
+                                      dayMove={dayMove}
                                     />
-                              )}
+                              })}
                             </div>
                           </SortableContext>
                         </DndContext>
