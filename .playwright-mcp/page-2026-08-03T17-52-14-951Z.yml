@@ -1,0 +1,122 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link [ref=e4] [cursor=pointer]:
+        - /url: /
+        - heading "Travel!" [level=1] [ref=e5]
+        - paragraph [ref=e6]: Share your journey
+      - generic [ref=e9]:
+        - generic [ref=e10]: 🔍
+        - textbox "Search destinations…" [ref=e11]
+      - generic [ref=e12]:
+        - link "Sign in" [ref=e13] [cursor=pointer]:
+          - /url: /login
+        - link "Get started" [ref=e14] [cursor=pointer]:
+          - /url: /register
+  - main [ref=e15]:
+    - generic [ref=e17]:
+      - link "← Back to feed" [ref=e18] [cursor=pointer]:
+        - /url: /
+      - link "Previous itinerary" [ref=e19] [cursor=pointer]:
+        - /url: /itinerary/cmrtfedv9000004jsqp3t716q
+      - generic [ref=e22]:
+        - img "Trip to Mallorca" [ref=e24]
+        - generic [ref=e25]:
+          - link "JB joshua B klivan 📅 Jun 20, 2023 – Jun 25, 2023 · 6 days" [ref=e27] [cursor=pointer]:
+            - /url: /user/cmrl06l91000004l4lvej3wda
+            - generic [ref=e28]: JB
+            - generic [ref=e29]:
+              - paragraph [ref=e30]: joshua B klivan
+              - paragraph [ref=e31]: 📅 Jun 20, 2023 – Jun 25, 2023 · 6 days
+          - generic [ref=e32]:
+            - generic [ref=e33]:
+              - generic [ref=e34]: Mallorca, Spain
+              - generic [ref=e38]: Family Friendly
+              - generic [ref=e39]: Loved it
+            - heading "Trip to Mallorca" [level=1] [ref=e40]
+            - generic [ref=e41]:
+              - generic [ref=e42]: 🏖️ Beach
+              - generic [ref=e43]: 🌴 Relaxing
+          - generic [ref=e44]:
+            - generic [ref=e45]:
+              - generic [ref=e46]: ✨
+              - heading "Highlights" [level=2] [ref=e47]
+            - list [ref=e48]:
+              - listitem [ref=e49]: 📍 Platja de Muro (Mallorca, Spain)
+              - listitem [ref=e50]: 🍽️ Sa Portassa (Mallorca, Spain)
+              - listitem [ref=e51]: 🍽️ Patiki Beach (Mallorca, Spain)
+              - listitem [ref=e52]: 🍽️ NU Mallorca (Mallorca, Spain)
+              - listitem [ref=e53]: 📍 Cuevas del Drach (Mallorca, Spain)
+              - listitem [ref=e54]: 📍 Boat out of Soller (Mallorca, Spain)
+          - generic [ref=e55]:
+            - link "Details" [ref=e56] [cursor=pointer]:
+              - /url: /itinerary/cmsdhzi38000004kyzim7d4h3
+            - link "🗺️ Map" [ref=e57] [cursor=pointer]:
+              - /url: /itinerary/cmsdhzi38000004kyzim7d4h3?view=map
+          - generic [ref=e59]:
+            - heading "Mallorca, Spain" [level=3] [ref=e60]
+            - paragraph [ref=e64]: We spent some time in the old town of Alcudia and didn't spend a whole lot of time outside of that area, the old town is very touristy but still has some charm. Was pretty easy trip with young kids - took our 2 year old who was totally fine.
+            - generic [ref=e67]:
+              - generic [ref=e68]:
+                - paragraph [ref=e73]: Hotel
+                - generic [ref=e74]: Zafiro Palace Alcudia
+                - paragraph [ref=e87]: $$$$$
+                - paragraph [ref=e88]: "Description: Beachfront all-inclusive resort featuring Mediterranean architecture, pools, and entertainment in the charming town of Alcudia."
+                - paragraph [ref=e89]: "User notes: Not the nicest place, very kid friendly - has a little water park on property my kids loved. But it's not the nicest place."
+              - generic [ref=e90]:
+                - paragraph [ref=e95]: Food & Drink
+                - generic [ref=e96]:
+                  - generic [ref=e97]:
+                    - generic [ref=e98]:
+                      - generic [ref=e99]: Sa Portassa
+                      - generic [ref=e100]: 🌙 Dinner
+                    - generic [ref=e112]:
+                      - paragraph [ref=e113]: $$$$
+                      - generic [ref=e114]: 👨‍👩‍👧 Family friendly
+                    - paragraph [ref=e115]: "Description: Intimate dinner destination showcasing traditional Balearic seafood and local specialties with rustic, atmospheric charm."
+                    - paragraph [ref=e116]: "User notes: Paella, old place, touristy but good"
+                  - generic [ref=e117]:
+                    - generic [ref=e118]:
+                      - generic [ref=e119]: Patiki Beach
+                      - generic [ref=e120]: ☀️ Lunch
+                    - generic [ref=e132]:
+                      - paragraph [ref=e133]: $$$$
+                      - generic [ref=e134]: 👨‍👩‍👧 Family friendly
+                    - paragraph [ref=e135]: "Description: Casual beachfront eatery serving fresh Mediterranean fare and refreshing drinks with unbeatable seaside views."
+                    - paragraph [ref=e136]: "User notes: Super fresh fish on the beach"
+                  - generic [ref=e137]:
+                    - generic [ref=e138]:
+                      - generic [ref=e139]: NU Mallorca
+                      - generic [ref=e140]: ☀️ Lunch
+                    - paragraph [ref=e153]: $$$$
+                    - paragraph [ref=e154]: "Description: Contemporary restaurant-bar offering creative Mediterranean cuisine in a relaxed, vibrant atmosphere perfect for lunch."
+                    - paragraph [ref=e155]: "User notes: Beautiful view, good seafood, kid friendly"
+              - generic [ref=e156]:
+                - paragraph [ref=e161]: Activities
+                - generic [ref=e162]:
+                  - generic [ref=e163]:
+                    - generic [ref=e164]: Cuevas del Drach
+                    - paragraph [ref=e177]: "User notes: Go through old, cool caves and take a boat ride at the end."
+                  - generic [ref=e178]:
+                    - generic [ref=e179]: Boat out of Soller
+                    - paragraph [ref=e192]: "User notes: The water was too choppy to go very far, so that wasn't ideal, but the area is cool"
+                  - generic [ref=e193]:
+                    - generic [ref=e194]: Platja de Muro
+                    - paragraph [ref=e207]: "User notes: beautiful beach in acludia, water is warm and clear"
+          - generic [ref=e208]:
+            - heading "Comments" [level=2] [ref=e209]
+            - paragraph [ref=e210]:
+              - link "Log in" [ref=e211] [cursor=pointer]:
+                - /url: /login
+              - text: to leave a comment.
+  - generic [ref=e213]:
+    - link "Feed" [ref=e214] [cursor=pointer]:
+      - /url: /
+    - link "Explore" [ref=e219] [cursor=pointer]:
+      - /url: /explore
+    - button [ref=e224]
+    - link "Friends" [ref=e226] [cursor=pointer]:
+      - /url: /friends
+    - link "Profile" [ref=e233] [cursor=pointer]:
+      - /url: /login
+  - alert [ref=e238]

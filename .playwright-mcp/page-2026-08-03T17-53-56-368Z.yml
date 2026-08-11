@@ -1,0 +1,72 @@
+- generic [active] [ref=f1e1]:
+  - banner [ref=f1e2]:
+    - generic [ref=f1e3]:
+      - link [ref=f1e4] [cursor=pointer]:
+        - /url: /
+        - heading "Travel!" [level=1] [ref=f1e5]
+        - paragraph [ref=f1e6]: Share your journey
+      - generic [ref=f1e9]:
+        - generic [ref=f1e10]: 🔍
+        - textbox "Search destinations…" [ref=f1e11]
+      - generic [ref=f1e12]:
+        - link "Sign in" [ref=f1e13] [cursor=pointer]:
+          - /url: /login
+        - link "Get started" [ref=f1e14] [cursor=pointer]:
+          - /url: /register
+  - main [ref=f1e15]:
+    - generic [ref=f1e17]:
+      - link "← Back to feed" [ref=f1e18] [cursor=pointer]:
+        - /url: /
+      - link "Previous itinerary" [ref=f1e19] [cursor=pointer]:
+        - /url: /itinerary/cmrtfedv9000004jsqp3t716q
+      - generic [ref=f1e22]:
+        - img "Trip to Mallorca" [ref=f1e24]
+        - generic [ref=f1e25]:
+          - link "JB joshua B klivan 📅 Jun 20, 2023 – Jun 25, 2023 · 6 days" [ref=f1e27] [cursor=pointer]:
+            - /url: /user/cmrl06l91000004l4lvej3wda
+            - generic [ref=f1e28]: JB
+            - generic [ref=f1e29]:
+              - paragraph [ref=f1e30]: joshua B klivan
+              - paragraph [ref=f1e31]: 📅 Jun 20, 2023 – Jun 25, 2023 · 6 days
+          - generic [ref=f1e32]:
+            - generic [ref=f1e33]:
+              - generic [ref=f1e34]: Mallorca, Spain
+              - generic [ref=f1e38]: Family Friendly
+              - generic [ref=f1e39]: Loved it
+            - heading "Trip to Mallorca" [level=1] [ref=f1e40]
+            - generic [ref=f1e41]:
+              - generic [ref=f1e42]: 🏖️ Beach
+              - generic [ref=f1e43]: 🌴 Relaxing
+          - generic [ref=f1e44]:
+            - generic [ref=f1e45]:
+              - generic [ref=f1e46]: ✨
+              - heading "Highlights" [level=2] [ref=f1e47]
+            - list [ref=f1e48]:
+              - listitem [ref=f1e49]: 📍 Platja de Muro (Mallorca, Spain)
+              - listitem [ref=f1e50]: 🍽️ Sa Portassa (Mallorca, Spain)
+              - listitem [ref=f1e51]: 🍽️ Patiki Beach (Mallorca, Spain)
+              - listitem [ref=f1e52]: 🍽️ NU Mallorca (Mallorca, Spain)
+              - listitem [ref=f1e53]: 📍 Cuevas del Drach (Mallorca, Spain)
+              - listitem [ref=f1e54]: 📍 Boat out of Soller (Mallorca, Spain)
+          - generic [ref=f1e55]:
+            - link "Details" [ref=f1e56] [cursor=pointer]:
+              - /url: /itinerary/cmsdhzi38000004kyzim7d4h3
+            - link "🗺️ Map" [ref=f1e57] [cursor=pointer]:
+              - /url: /itinerary/cmsdhzi38000004kyzim7d4h3?view=map
+          - generic [ref=f1e60]:
+            - heading "Comments" [level=2] [ref=f1e61]
+            - paragraph [ref=f1e62]:
+              - link "Log in" [ref=f1e63] [cursor=pointer]:
+                - /url: /login
+              - text: to leave a comment.
+  - generic [ref=f1e65]:
+    - link "Feed" [ref=f1e66] [cursor=pointer]:
+      - /url: /
+    - link "Explore" [ref=f1e71] [cursor=pointer]:
+      - /url: /explore
+    - button [ref=f1e76]
+    - link "Friends" [ref=f1e78] [cursor=pointer]:
+      - /url: /friends
+    - link "Profile" [ref=f1e85] [cursor=pointer]:
+      - /url: /login
+  - alert [ref=f1e90]
