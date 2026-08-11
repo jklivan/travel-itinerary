@@ -8,9 +8,28 @@ import TagPicker from '@/components/TagPicker'
 import DeleteButton from '@/components/DeleteButton'
 import { TripRatingPicker } from '@/components/TripRatingPicker'
 import { dateRangeFromMonthAndDays, monthAndDaysFromDates } from '@/lib/tripDates'
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { GripVertical } from 'lucide-react'
 
-type FoodItem     = { name: string; mealType: string; description: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null; tags: string[]; dayIndex: number | null }
-type ActivityItem = { name: string; notes: string; link: string; rating: number; dayIndex: number | null }
+function uid() { return Math.random().toString(36).slice(2) }
+
+type FoodItem     = { id: string; name: string; mealType: string; description: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null; tags: string[]; dayIndex: number | null }
+type ActivityItem = { id: string; name: string; notes: string; link: string; rating: number; dayIndex: number | null }
 type DayGroup     = { food: FoodItem[]; activities: ActivityItem[] }
 type StayGroup    = { hotelName: string; hotelDescription: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; days: DayGroup[] }
 type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
@@ -80,16 +99,21 @@ function nightlyRateToTier(rate: number): number {
 
 function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, showRating, onSelectPlace }: {
   item: FoodItem; index: number
-  onUpdate: (field: keyof Omit<FoodItem, 'priceLevel' | 'familyFriendly' | 'tags'>, val: string) => void
+  onUpdate: (field: keyof Omit<FoodItem, 'id' | 'priceLevel' | 'familyFriendly' | 'tags'>, val: string) => void
   onUpdateFF: (val: boolean | null) => void
   onToggleTag: (tag: string) => void
   onRemove: () => void; showRating: boolean
   onSelectPlace?: (placeId: string | null) => void
 }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
   return (
-    <div className={`rounded-xl border border-l-4 border-l-orange-400 ${rowBg} p-4 space-y-3`}>
+    <div ref={setNodeRef} style={style} className={`rounded-xl border border-l-4 border-l-orange-400 ${rowBg} p-4 space-y-3`}>
       <div className="flex gap-2 items-start">
+        <button type="button" {...attributes} {...listeners} className="mt-2 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0 touch-none">
+          <GripVertical size={14} />
+        </button>
         <PlacesAutocomplete
           value={item.name}
           onChange={val => { onUpdate('name', val); if (!val) onSelectPlace?.(null) }}
@@ -144,13 +168,18 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
 
 function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
   item: ActivityItem; index: number
-  onUpdate: (field: keyof ActivityItem, val: string) => void
+  onUpdate: (field: keyof Omit<ActivityItem, 'id'>, val: string) => void
   onRemove: () => void; showRating: boolean
 }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
   return (
-    <div className={`rounded-xl border border-l-4 border-l-green-400 ${rowBg} p-4 space-y-3`}>
+    <div ref={setNodeRef} style={style} className={`rounded-xl border border-l-4 border-l-green-400 ${rowBg} p-4 space-y-3`}>
       <div className="flex gap-2 items-start">
+        <button type="button" {...attributes} {...listeners} className="mt-2 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0 touch-none">
+          <GripVertical size={14} />
+        </button>
         <PlacesAutocomplete
           value={item.name}
           onChange={val => onUpdate('name', val)}
@@ -169,8 +198,8 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
   )
 }
 
-const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null })
-const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0, dayIndex: null })
+const emptyFood     = (): FoodItem     => ({ id: uid(), name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null })
+const emptyActivity = (): ActivityItem => ({ id: uid(), name: '', notes: '', link: '', rating: 0, dayIndex: null })
 const emptyDay      = (): DayGroup     => ({ food: [], activities: [] })
 const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelDescription: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: [emptyDay()] })
 
@@ -198,7 +227,7 @@ function itemsToGroups(items: ItineraryData['destinations'][0]['items']): StayGr
     const days: DayGroup[] = byDay.size === 0 ? [emptyDay()] :
       [...byDay.entries()].sort(([a], [b]) => a - b).map(([, dayItems]) => ({
         food: dayItems.filter(i => i.type === 'food_drink').map(f => ({
-          name: f.name, mealType: f.mealType ?? '', description: (f as { description?: string | null }).description ?? '',
+          id: uid(), name: f.name, mealType: f.mealType ?? '', description: (f as { description?: string | null }).description ?? '',
           notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0,
           priceLevel: f.priceLevel ?? null, familyFriendly: (f as { familyFriendly?: boolean | null }).familyFriendly ?? null,
           familyFriendlySource: (f as { familyFriendlySource?: string | null }).familyFriendlySource ?? null,
@@ -206,7 +235,7 @@ function itemsToGroups(items: ItineraryData['destinations'][0]['items']): StayGr
           tags: (f as { tags?: string[] }).tags ?? [], dayIndex: f.dayIndex ?? null,
         })),
         activities: dayItems.filter(i => i.type === 'activity').map(a => ({
-          name: a.name, notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0, dayIndex: a.dayIndex ?? null,
+          id: uid(), name: a.name, notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0, dayIndex: a.dayIndex ?? null,
         })),
       }))
     return {
@@ -314,6 +343,33 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   function removeActivity(di: number, gi: number, dyi: number, ii: number) { updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.filter((_, j) => j !== ii) })) }
   function updateActivity(di: number, gi: number, dyi: number, ii: number, field: keyof ActivityItem, val: string) {
     updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.map((a, j) => j !== ii ? a : { ...a, [field]: field === 'rating' ? Number(val) : val }) }))
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  )
+
+  function reorderFood(di: number, gi: number, dyi: number, e: DragEndEvent) {
+    const { active, over } = e
+    if (!over || active.id === over.id) return
+    updDay(di, gi, dyi, d => {
+      const oldIndex = d.food.findIndex(f => f.id === active.id)
+      const newIndex = d.food.findIndex(f => f.id === over.id)
+      if (oldIndex === -1 || newIndex === -1) return d
+      return { ...d, food: arrayMove(d.food, oldIndex, newIndex) }
+    })
+  }
+
+  function reorderActivity(di: number, gi: number, dyi: number, e: DragEndEvent) {
+    const { active, over } = e
+    if (!over || active.id === over.id) return
+    updDay(di, gi, dyi, d => {
+      const oldIndex = d.activities.findIndex(a => a.id === active.id)
+      const newIndex = d.activities.findIndex(a => a.id === over.id)
+      if (oldIndex === -1 || newIndex === -1) return d
+      return { ...d, activities: arrayMove(d.activities, oldIndex, newIndex) }
+    })
   }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -533,13 +589,21 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                         <div className="space-y-2">
                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🍜 Food & Drink</p>
                           {day.food.length === 0 && <p className="text-xs text-gray-600 italic">None added yet.</p>}
-                          <div className="space-y-3">{day.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, dyi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, dyi, ii, v)} onToggleTag={tag => toggleFoodTag(di, gi, dyi, ii, tag)} onRemove={() => removeFood(di, gi, dyi, ii)} onSelectPlace={(id) => id ? fetchFoodPriceLevel(di, gi, dyi, ii, id) : setFoodPriceLevel(di, gi, dyi, ii, null)} />)}</div>
+                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={e => reorderFood(di, gi, dyi, e)}>
+                            <SortableContext items={day.food.map(f => f.id)} strategy={verticalListSortingStrategy}>
+                              <div className="space-y-3">{day.food.map((item, ii) => <FoodRow key={item.id} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, dyi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, dyi, ii, v)} onToggleTag={tag => toggleFoodTag(di, gi, dyi, ii, tag)} onRemove={() => removeFood(di, gi, dyi, ii)} onSelectPlace={(id) => id ? fetchFoodPriceLevel(di, gi, dyi, ii, id) : setFoodPriceLevel(di, gi, dyi, ii, null)} />)}</div>
+                            </SortableContext>
+                          </DndContext>
                           <button type="button" onClick={() => addFood(di, gi, dyi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add food / drink</button>
                         </div>
                         <div className="space-y-2">
                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🎯 Activities</p>
                           {day.activities.length === 0 && <p className="text-xs text-gray-600 italic">None added yet.</p>}
-                          <div className="space-y-3">{day.activities.map((item, ii) => <ActivityRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, dyi, ii, f, v)} onRemove={() => removeActivity(di, gi, dyi, ii)} />)}</div>
+                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={e => reorderActivity(di, gi, dyi, e)}>
+                            <SortableContext items={day.activities.map(a => a.id)} strategy={verticalListSortingStrategy}>
+                              <div className="space-y-3">{day.activities.map((item, ii) => <ActivityRow key={item.id} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, dyi, ii, f, v)} onRemove={() => removeActivity(di, gi, dyi, ii)} />)}</div>
+                            </SortableContext>
+                          </DndContext>
                           <button type="button" onClick={() => addActivity(di, gi, dyi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add activity</button>
                         </div>
                       </div>
