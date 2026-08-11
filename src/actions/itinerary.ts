@@ -14,7 +14,7 @@ export type ItineraryState = { error?: string } | undefined
 
 type FoodInput = { name: string; mealType?: string; description?: string; notes: string; rating: number; link: string; priceLevel?: number | null; familyFriendly?: boolean | null; familyFriendlySource?: string | null; lat?: number | null; lng?: number | null; tags?: string[]; dayIndex?: number | null }
 type ActivityInput = { name: string; notes: string; rating: number; link: string; dayIndex?: number | null }
-type DayInput = { food: FoodInput[]; activities: ActivityInput[] }
+type DayInput = { dayIndex?: number; food: FoodInput[]; activities: ActivityInput[] }
 type StayGroup = {
   hotelName: string; hotelDescription?: string; hotelNotes: string; hotelAddress?: string; hotelLink: string; hotelRating: number; hotelPriceLevel?: number | null; hotelLat?: number | null; hotelLng?: number | null; hotelTags?: string[]
   days?: DayInput[]      // new format: days with food and activities
@@ -37,7 +37,7 @@ function flattenGroups(groups: StayGroup[]): ItemRow[] {
     }
     if (g.days) {
       for (const [dyi, day] of g.days.entries()) {
-        const dayIndex = dyi + 1
+        const dayIndex = day.dayIndex ?? (dyi + 1)
         for (const f of day.food ?? []) {
           if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), description: f.description?.trim() || null, notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: f.priceLevel ?? null, familyFriendly: f.familyFriendly ?? null, familyFriendlySource: f.familyFriendlySource ?? null, mealType: f.mealType?.trim() || null, groupIndex: gi, dayIndex, lat: f.lat ?? null, lng: f.lng ?? null, tags: f.tags ?? [] })
         }

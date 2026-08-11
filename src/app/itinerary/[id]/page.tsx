@@ -414,7 +414,7 @@ export default async function ItineraryPage({
                               </div>
                             )}
                             {group.days.map((day, di) => {
-                              const showDayLabel = group.days.length > 1
+                              const showDayLabel = group.days.length > 1 || day.dayIndex > 1
                               return (
                                 <div key={di}>
                                   {showDayLabel && (

@@ -103,7 +103,7 @@ async function readFileForUpload(
 
 type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null; tags: string[]; dayIndex?: number | null }
 type ActivityItem = { name: string; notes: string; link: string; rating: number; dayIndex?: number | null }
-type DayGroup    = { food: FoodItem[]; activities: ActivityItem[] }
+type DayGroup    = { dayIndex?: number; food: FoodItem[]; activities: ActivityItem[] }
 type StayGroup   = { hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; days: DayGroup[] }
 type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
 type UploadedPhoto = { url: string; caption: string }
@@ -119,15 +119,26 @@ function buildDays(food: FoodItem[], acts: ActivityItem[]): DayGroup[] {
   const hasAnyDay = food.some(f => f.dayIndex) || acts.some(a => a.dayIndex)
   if (!hasAnyDay) return [{ food, activities: acts }]
 
-  // Map day 1 → slot 0, day 2 → slot 1, etc. Items with no day go into slot 0 (Day 1)
-  const maxDay = Math.max(
-    ...food.map(f => f.dayIndex ?? 1),
-    ...acts.map(a => a.dayIndex ?? 1),
-  )
-  const days: DayGroup[] = Array.from({ length: maxDay }, () => ({ food: [], activities: [] }))
-  for (const f of food) days[(f.dayIndex ?? 1) - 1].food.push(f)
-  for (const a of acts) days[(a.dayIndex ?? 1) - 1].activities.push(a)
-  return days
+  // Group by the trip-wide day number, skipping empty slots entirely.
+  // Items with no day go into day 1 of the destination.
+  const byDay = new Map<number, { food: FoodItem[]; activities: ActivityItem[] }>()
+  for (const f of food) {
+    const di = f.dayIndex ?? 1
+    if (!byDay.has(di)) byDay.set(di, { food: [], activities: [] })
+    byDay.get(di)!.food.push(f)
+  }
+  for (const a of acts) {
+    const di = a.dayIndex ?? 1
+    if (!byDay.has(di)) byDay.set(di, { food: [], activities: [] })
+    byDay.get(di)!.activities.push(a)
+  }
+
+  // Return sorted by trip-wide day, preserving the original dayIndex so
+  // flattenGroups stores the right value in the DB (e.g. Day 3 of the trip,
+  // not Day 1 just because it's first in this destination).
+  return [...byDay.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([dayIndex, items]) => ({ dayIndex, ...items }))
 }
 
 function mapExtractionDests(rawDests: RawDest[]): Destination[] {
