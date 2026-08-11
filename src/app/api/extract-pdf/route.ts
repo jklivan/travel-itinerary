@@ -108,13 +108,12 @@ async function fetchBlob(url: string): Promise<Response> {
 }
 
 async function extractFromText(text: string): Promise<ExtractedItinerary> {
-  const truncated = text.length > 20000 ? text.slice(0, 20000) + '\n[truncated]' : text
   const completion = await client.chat.completions.create({
     model: 'gpt-5.6-luna',
     reasoning_effort: 'none',
     tools: [EXTRACT_FUNCTION],
     tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
-    messages: [{ role: 'user', content: `${EXTRACT_PROMPT}\n\nDOCUMENT:\n${truncated}` }],
+    messages: [{ role: 'user', content: `${EXTRACT_PROMPT}\n\nDOCUMENT:\n${text}` }],
   })
   return parseResult(completion)
 }
