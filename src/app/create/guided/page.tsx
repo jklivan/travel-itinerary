@@ -3,11 +3,27 @@
 import { useActionState, useEffect, useState } from 'react'
 import { createItinerary } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
-import { MapPin, Hotel, Utensils, Camera, Star, ArrowRight, Plus, Check, X, FileText, ImageIcon } from 'lucide-react'
+import { MapPin, Hotel, Utensils, Camera, Star, ArrowRight, Plus, Check, X, FileText, ImageIcon, GripVertical } from 'lucide-react'
 import TagPicker from '@/components/TagPicker'
 import Link from 'next/link'
 import { TripRatingPicker } from '@/components/TripRatingPicker'
 import { dateRangeFromMonthAndDays } from '@/lib/tripDates'
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -90,16 +106,22 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   )
 }
 
-// ── Added item row ────────────────────────────────────────────────────────────
+// ── Added item row (sortable) ─────────────────────────────────────────────────
 
 function AddedRow({ item, onRemove }: { item: GuidedItem; onRemove: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
+
   const icon = item.type === 'hotel' ? <Hotel size={13} className="text-blue-500 shrink-0" />
     : item.type === 'food_drink' ? <Utensils size={13} className="text-orange-500 shrink-0" />
     : <Camera size={13} className="text-green-500 shrink-0" />
 
   return (
-    <div className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 gap-2">
-      <div className="flex items-center gap-2 min-w-0">
+    <div ref={setNodeRef} style={style} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 gap-2">
+      <button type="button" {...attributes} {...listeners} className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0 touch-none">
+        <GripVertical size={14} />
+      </button>
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         {icon}
         <div className="min-w-0">
           <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
@@ -283,6 +305,22 @@ export default function GuidedCreatePage() {
     setActiveInput(null)
   }
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setCurItems(items => {
+      const oldIndex = items.findIndex(i => i.id === active.id)
+      const newIndex = items.findIndex(i => i.id === over.id)
+      if (oldIndex === -1 || newIndex === -1) return items
+      return arrayMove(items, oldIndex, newIndex)
+    })
+  }
+
   function addItem(item: Omit<GuidedItem, 'id' | 'dayIndex'>) {
     setCurItems(i => [...i, { ...item, id: uid(), dayIndex: curDayIndex }])
     setActiveInput(null)
@@ -459,26 +497,30 @@ export default function GuidedCreatePage() {
             <div className="p-5 space-y-4">
               {/* Added items grouped by day */}
               {curItems.length > 0 && (
-                <div className="space-y-3">
-                  {(() => {
-                    const byDay = new Map<number, GuidedItem[]>()
-                    for (const item of curItems) {
-                      if (!byDay.has(item.dayIndex)) byDay.set(item.dayIndex, [])
-                      byDay.get(item.dayIndex)!.push(item)
-                    }
-                    return [...byDay.entries()].sort(([a], [b]) => a - b).map(([day, items]) => (
-                      <div key={day}>
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Day {day}</p>
-                        <div className="space-y-2">
-                          {items.map(item => (
-                            <AddedRow key={item.id} item={item}
-                              onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))} />
-                          ))}
-                        </div>
-                      </div>
-                    ))
-                  })()}
-                </div>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={curItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-3">
+                      {(() => {
+                        const byDay = new Map<number, GuidedItem[]>()
+                        for (const item of curItems) {
+                          if (!byDay.has(item.dayIndex)) byDay.set(item.dayIndex, [])
+                          byDay.get(item.dayIndex)!.push(item)
+                        }
+                        return [...byDay.entries()].sort(([a], [b]) => a - b).map(([day, items]) => (
+                          <div key={day}>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Day {day}</p>
+                            <div className="space-y-2">
+                              {items.map(item => (
+                                <AddedRow key={item.id} item={item}
+                                  onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))} />
+                              ))}
+                            </div>
+                          </div>
+                        ))
+                      })()}
+                    </div>
+                  </SortableContext>
+                </DndContext>
               )}
 
               {/* Active input form */}
