@@ -109,7 +109,7 @@ async function fetchBlob(url: string): Promise<Response> {
 
 async function extractFromText(text: string): Promise<ExtractedItinerary> {
   const completion = await client.chat.completions.create({
-    model: 'gpt-5.6-luna',
+    model: 'gpt-5.6-terra',
     reasoning_effort: 'none',
     tools: [EXTRACT_FUNCTION],
     tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
@@ -131,7 +131,7 @@ async function extractFromPrivatePdf(url: string, filename: string): Promise<Ext
   })
   try {
     const response = await client.responses.create({
-      model: 'gpt-5.6-luna',
+      model: 'gpt-5.6-terra',
       input: [{
         role: 'user',
         content: [
@@ -155,7 +155,7 @@ async function extractFromImageUrl(url: string, contentType: string): Promise<Ex
   const res = await fetchBlob(url)
   const base64 = Buffer.from(await res.arrayBuffer()).toString('base64')
   const completion = await client.chat.completions.create({
-    model: 'gpt-5.6-luna',
+    model: 'gpt-5.6-terra',
     reasoning_effort: 'none',
     tools: [EXTRACT_FUNCTION],
     tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
@@ -172,7 +172,7 @@ async function extractFromImageUrl(url: string, contentType: string): Promise<Ex
 
 async function extractFromImageBase64(base64: string, contentType: string): Promise<ExtractedItinerary> {
   const completion = await client.chat.completions.create({
-    model: 'gpt-5.6-luna',
+    model: 'gpt-5.6-terra',
     reasoning_effort: 'none',
     tools: [EXTRACT_FUNCTION],
     tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
