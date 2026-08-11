@@ -527,19 +527,19 @@ export default function CreatePage() {
     setUploading(true)
     setPhotoUploadError(null)
     setFailedPhotoFiles([])
-    const failed: File[] = []
     try {
-      const uploaded: UploadedPhoto[] = []
-      for (const file of files) {
+      const results = await Promise.all(files.map(async file => {
+        const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : ''
+        const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
         try {
-          const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : ''
-          const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
           const blob = await upload(uniqueName, file, { access: 'private', handleUploadUrl: '/api/upload' })
-          uploaded.push({ url: `/api/img?url=${encodeURIComponent(blob.url)}`, caption: '' })
+          return { url: `/api/img?url=${encodeURIComponent(blob.url)}`, caption: '' }
         } catch {
-          failed.push(file)
+          return { failed: file }
         }
-      }
+      }))
+      const uploaded = results.filter((r): r is UploadedPhoto => 'url' in r)
+      const failed = results.filter((r): r is { failed: File } => 'failed' in r).map(r => r.failed)
       setPhotos(p => [...p, ...uploaded])
       if (failed.length > 0) {
         setFailedPhotoFiles(failed)
