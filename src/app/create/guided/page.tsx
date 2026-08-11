@@ -737,6 +737,19 @@ export default function GuidedCreatePage() {
                   )
                 })()}
               </div>
+              {pending && (
+                <p className="text-center text-xs text-gray-400">
+                  Taking too long?{' '}
+                  <button
+                    type="button"
+                    onClick={() => { window.location.reload() }}
+                    className="underline hover:text-gray-600"
+                  >
+                    Cancel
+                  </button>
+                  {' '}— your trip is saved and will be here when you come back.
+                </p>
+              )}
             </div>
           </div>
         )}
