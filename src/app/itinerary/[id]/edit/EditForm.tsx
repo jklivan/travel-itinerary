@@ -233,15 +233,15 @@ function FoodRow({ item, index, onUpdate, onPatch, onToggleTag, onRemove, showRa
   onSelectPlace?: (placeId: string | null) => void
   dayMove?: DayMove
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
   return (
     <div ref={setNodeRef} style={style} className={`rounded-xl border border-l-4 border-l-orange-400 ${rowBg} p-4 space-y-3`}>
       <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide">🍜 Food & Drink</p>
       <div className="flex gap-2 items-start">
-        <button type="button" {...attributes} {...listeners} className="mt-2 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0 touch-none">
-          <GripVertical size={14} />
+        <button type="button" ref={setActivatorNodeRef} {...attributes} {...listeners} className="mt-2 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing shrink-0 touch-none p-1 -m-1">
+          <GripVertical size={16} />
         </button>
         <PlacesAutocomplete
           value={item.name}
@@ -306,15 +306,15 @@ function ActivityRow({ item, index, onUpdate, onPatch, onRemove, showRating, day
   onRemove: () => void; showRating: boolean
   dayMove?: DayMove
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
   return (
     <div ref={setNodeRef} style={style} className={`rounded-xl border border-l-4 border-l-green-400 ${rowBg} p-4 space-y-3`}>
       <p className="text-xs font-semibold text-green-600 uppercase tracking-wide">🎯 Activity</p>
       <div className="flex gap-2 items-start">
-        <button type="button" {...attributes} {...listeners} className="mt-2 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0 touch-none">
-          <GripVertical size={14} />
+        <button type="button" ref={setActivatorNodeRef} {...attributes} {...listeners} className="mt-2 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing shrink-0 touch-none p-1 -m-1">
+          <GripVertical size={16} />
         </button>
         <PlacesAutocomplete
           value={item.name}
