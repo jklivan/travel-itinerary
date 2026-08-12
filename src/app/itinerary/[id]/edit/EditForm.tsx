@@ -169,7 +169,7 @@ function toServerFormat(destinations: Destination[]) {
     ...dest,
     groups: dest.groups.map(group => ({
       ...group,
-      days: group.days.map(day => ({
+      days: group.days.map((day, dyi) => ({
         food: day.items
           .filter(i => i.type === 'food_drink')
           .map(i => ({
@@ -177,13 +177,13 @@ function toServerFormat(destinations: Destination[]) {
             notes: i.notes, link: i.link, rating: i.rating,
             priceLevel: i.priceLevel, familyFriendly: i.familyFriendly,
             familyFriendlySource: i.familyFriendlySource, lat: i.lat, lng: i.lng,
-            tags: i.tags, dayIndex: i.dayIndex, order: day.items.indexOf(i),
+            tags: i.tags, dayIndex: dyi, order: day.items.indexOf(i),
           })),
         activities: day.items
           .filter(i => i.type === 'activity')
           .map(i => ({
             name: i.name, notes: i.notes, link: i.link, rating: i.rating,
-            dayIndex: i.dayIndex, order: day.items.indexOf(i),
+            dayIndex: dyi, order: day.items.indexOf(i),
           })),
       }))
     }))

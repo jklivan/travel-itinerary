@@ -412,11 +412,10 @@ export default async function ItineraryPage({
                               </div>
                             )}
                             {group.days.map((day, di) => {
-                              const showDayLabel = group.days.length > 1 || day.dayIndex > 1
                               return (
                                 <div key={di} className="space-y-2">
-                                  {showDayLabel && (
-                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2 mb-1">Day {day.dayIndex || di + 1}</p>
+                                  {group.days.length > 1 && (
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2 mb-1">Day {di + 1}</p>
                                   )}
                                   {day.items.map(item => item.type === 'food_drink' ? (
                                     <div key={item.id} className="bg-orange-50 rounded-lg p-3">
