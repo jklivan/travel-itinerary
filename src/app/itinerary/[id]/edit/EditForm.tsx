@@ -237,12 +237,13 @@ function FoodRow({ item, index, onUpdate, onPatch, onToggleTag, onRemove, showRa
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
   return (
-    <div ref={setNodeRef} style={style} className={`rounded-xl border border-l-4 border-l-orange-400 ${rowBg} p-4 space-y-3`}>
+    <div ref={setNodeRef} style={style} className={`rounded-xl border border-l-4 border-l-orange-400 ${rowBg} flex overflow-hidden`}>
+      <button type="button" ref={setActivatorNodeRef} {...attributes} {...listeners} className="flex items-center justify-center w-8 shrink-0 cursor-grab active:cursor-grabbing touch-none bg-black/5 hover:bg-black/10 border-r border-black/5 text-gray-400 hover:text-gray-600">
+        <GripVertical size={16} />
+      </button>
+      <div className="flex-1 p-4 space-y-3">
       <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide">🍜 Food & Drink</p>
       <div className="flex gap-2 items-start">
-        <button type="button" ref={setActivatorNodeRef} {...attributes} {...listeners} className="mt-2 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing shrink-0 touch-none p-1 -m-1">
-          <GripVertical size={16} />
-        </button>
         <PlacesAutocomplete
           value={item.name}
           onChange={val => { onUpdate('name', val); if (!val) onSelectPlace?.(null) }}
@@ -293,6 +294,7 @@ function FoodRow({ item, index, onUpdate, onPatch, onToggleTag, onRemove, showRa
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
       </div>
       {dayMove && <DayMoveBar dayMove={dayMove} />}
+      </div>
     </div>
   )
 }
@@ -310,12 +312,13 @@ function ActivityRow({ item, index, onUpdate, onPatch, onRemove, showRating, day
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
   return (
-    <div ref={setNodeRef} style={style} className={`rounded-xl border border-l-4 border-l-green-400 ${rowBg} p-4 space-y-3`}>
+    <div ref={setNodeRef} style={style} className={`rounded-xl border border-l-4 border-l-green-400 ${rowBg} flex overflow-hidden`}>
+      <button type="button" ref={setActivatorNodeRef} {...attributes} {...listeners} className="flex items-center justify-center w-8 shrink-0 cursor-grab active:cursor-grabbing touch-none bg-black/5 hover:bg-black/10 border-r border-black/5 text-gray-400 hover:text-gray-600">
+        <GripVertical size={16} />
+      </button>
+      <div className="flex-1 p-4 space-y-3">
       <p className="text-xs font-semibold text-green-600 uppercase tracking-wide">🎯 Activity</p>
       <div className="flex gap-2 items-start">
-        <button type="button" ref={setActivatorNodeRef} {...attributes} {...listeners} className="mt-2 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing shrink-0 touch-none p-1 -m-1">
-          <GripVertical size={16} />
-        </button>
         <PlacesAutocomplete
           value={item.name}
           onChange={val => onUpdate('name', val)}
@@ -331,6 +334,7 @@ function ActivityRow({ item, index, onUpdate, onPatch, onRemove, showRating, day
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
       </div>
       {dayMove && <DayMoveBar dayMove={dayMove} />}
+      </div>
     </div>
   )
 }
