@@ -238,6 +238,7 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
           )
         })}
       </div>
+      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
       <button type="button" onClick={() => setShowDetails(value => !value)} className="text-xs font-medium text-gray-500 hover:text-gray-800">
         {showDetails ? '− Hide details' : '+ Add details'}
       </button>
@@ -261,7 +262,6 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
           </button>
         ))}
       </div>
-      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
       <div className="grid gap-2">
         <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
@@ -284,11 +284,11 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
           type="activity" placeholder="e.g. Temple tour, Hiking, Museum visit" className={inputClass} />
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
+      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
       <button type="button" onClick={() => setShowDetails(value => !value)} className="text-xs font-medium text-gray-500 hover:text-gray-800">
         {showDetails ? '− Hide details' : '+ Add details'}
       </button>
       {showDetails && <>
-      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
       <div className="grid gap-2">
         <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
