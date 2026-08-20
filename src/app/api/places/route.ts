@@ -2,6 +2,29 @@ import { NextRequest } from 'next/server'
 
 const API_KEY = process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_PLACES_API
 
+// Simple in-process geocode cache so repeated autocomplete calls for the same
+// city don't hit the Geocoding API every time.
+const geocodeCache = new Map<string, { lat: number; lng: number } | null>()
+
+async function geocodeCity(city: string): Promise<{ lat: number; lng: number } | null> {
+  const key = city.toLowerCase().trim()
+  if (geocodeCache.has(key)) return geocodeCache.get(key)!
+  try {
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(city)}&key=${API_KEY}`
+    )
+    if (!res.ok) { geocodeCache.set(key, null); return null }
+    const data = await res.json()
+    const loc = data.results?.[0]?.geometry?.location
+    const coords = loc ? { lat: loc.lat as number, lng: loc.lng as number } : null
+    geocodeCache.set(key, coords)
+    return coords
+  } catch {
+    geocodeCache.set(key, null)
+    return null
+  }
+}
+
 export async function GET(req: NextRequest) {
   if (!API_KEY) {
     console.error('[places] GOOGLE_PLACES_API_KEY is not set')
@@ -10,8 +33,15 @@ export async function GET(req: NextRequest) {
 
   const q = req.nextUrl.searchParams.get('q')?.trim()
   const type = req.nextUrl.searchParams.get('type') ?? 'destination'
+  const city = req.nextUrl.searchParams.get('city')?.trim() || null
 
   if (!q || q.length < 2) return Response.json([])
+
+  // Bias results toward the current destination city when provided
+  const cityCoords = city ? await geocodeCity(city) : null
+  const locationBias = cityCoords
+    ? { circle: { center: { latitude: cityCoords.lat, longitude: cityCoords.lng }, radius: 50000 } }
+    : undefined
 
   type RawSuggestion = {
     placePrediction?: {
@@ -54,11 +84,13 @@ export async function GET(req: NextRequest) {
 
   let rawResults: RawSuggestion[]
 
+  const base = { input: q, languageCode: 'en', ...(locationBias ? { locationBias } : {}) }
+
   if (type === 'hotel') {
     // Run both queries in parallel: named lodging + free-text addresses
     const [lodgingRaw, addressRaw] = await Promise.all([
-      autocomplete({ input: q, languageCode: 'en', includedPrimaryTypes: ['lodging'] }),
-      autocomplete({ input: q, languageCode: 'en' }),
+      autocomplete({ ...base, includedPrimaryTypes: ['lodging'] }),
+      autocomplete(base),
     ])
     // Merge: lodging results first, then address results not already present
     const seen = new Set(lodgingRaw.map(s => s.placePrediction?.placeId).filter(Boolean))
@@ -72,7 +104,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    rawResults = await autocomplete({ input: q, languageCode: 'en' })
+    rawResults = await autocomplete(base)
   } catch (err) {
     console.error('[places] fetch error:', err)
     return Response.json([])

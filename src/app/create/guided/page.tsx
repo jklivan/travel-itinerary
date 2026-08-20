@@ -142,10 +142,11 @@ function AddedRow({ item, onRemove }: { item: GuidedItem; onRemove: () => void }
 
 // ── Inline item form ──────────────────────────────────────────────────────────
 
-function ItemForm({ type, onAdd, onClose }: {
+function ItemForm({ type, onAdd, onClose, city }: {
   type: ItemType
   onAdd: (item: Omit<GuidedItem, 'id' | 'dayIndex' | 'isHighlight'>) => void
   onClose: () => void
+  city?: string
 }) {
   const [name, setName] = useState('')
   const [mealType, setMealType] = useState('')
@@ -173,7 +174,7 @@ function ItemForm({ type, onAdd, onClose }: {
         </button>
       </div>
       <PlacesAutocomplete value={name} onChange={setName} type={cfg.placeType}
-        placeholder={cfg.placeholder} className={inputCls} />
+        placeholder={cfg.placeholder} className={inputCls} city={city} />
       {type === 'food_drink' && (
         <div className="flex flex-wrap gap-1.5">
           {MEAL_TYPES.map(mt => {
@@ -616,6 +617,7 @@ export default function GuidedCreatePage() {
                   type={activeInput}
                   onAdd={addItem}
                   onClose={() => setActiveInput(null)}
+                  city={curDest.name || undefined}
                 />
               )}
 

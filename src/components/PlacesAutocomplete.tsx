@@ -11,10 +11,11 @@ type Props = {
   type?: 'destination' | 'hotel' | 'restaurant' | 'activity'
   placeholder?: string
   className?: string
+  city?: string
 }
 
 export default function PlacesAutocomplete({
-  value, onChange, onSelect, type = 'destination', placeholder, className,
+  value, onChange, onSelect, type = 'destination', placeholder, className, city,
 }: Props) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [open, setOpen] = useState(false)
@@ -24,13 +25,15 @@ export default function PlacesAutocomplete({
 
   const fetchSuggestions = useCallback(async (q: string) => {
     if (q.length < 2) { setSuggestions([]); setOpen(false); return }
-    const res = await fetch(`/api/places?q=${encodeURIComponent(q)}&type=${type}`)
+    const params = new URLSearchParams({ q, type })
+    if (city) params.set('city', city)
+    const res = await fetch(`/api/places?${params}`)
     if (!res.ok) return
     const data: Suggestion[] = await res.json()
     setSuggestions(data)
     setOpen(data.length > 0)
     setActiveIdx(-1)
-  }, [type])
+  }, [type, city])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value
