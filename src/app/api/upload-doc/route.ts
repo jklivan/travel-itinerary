@@ -3,7 +3,13 @@ import { auth } from '@/auth'
 import { NextRequest } from 'next/server'
 
 export async function POST(req: NextRequest): Promise<Response> {
-  const body = (await req.json()) as HandleUploadBody
+  let body: HandleUploadBody
+  try {
+    body = (await req.json()) as HandleUploadBody
+  } catch {
+    console.error('[upload-doc] Failed to parse request body as JSON — content-type:', req.headers.get('content-type'))
+    return Response.json({ error: 'Request body must be JSON' }, { status: 400 })
+  }
 
   if (body.type === 'blob.generate-client-token') {
     const session = await auth()
