@@ -407,7 +407,7 @@ export default async function ItineraryPage({
                           <div className="bg-blue-50 rounded-lg p-3">
                             <div className="flex items-center gap-1.5 mb-1.5">
                               <Hotel size={14} className="text-blue-600" />
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Hotel</p>
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Lodging</p>
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-sm font-medium text-gray-900">{hotel.name}</span>
