@@ -399,58 +399,60 @@ export default async function ItineraryPage({
                       <p className="text-xs text-gray-500 italic mb-3 border-l-2 border-blue-200 pl-2">{dest.notes}</p>
                     )}
                     <div className="space-y-3">
-                      {groups.map((group, gi) => (
-                        <div key={gi} className={multiStay ? 'rounded-xl border border-gray-200 overflow-hidden' : 'space-y-2'}>
-                          {multiStay && (
-                            <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Stay {gi + 1}</p>
+                      {(() => {
+                        // For multi-stay destinations show Day 1/Day 2 with hotel inline
+                        // instead of Stay 1/Stay 2 boxes. Day numbers are sequential across all groups.
+                        let dayCounter = 0
+                        const hotelCard = (hotel: (typeof groups)[0]['hotel']) => hotel && (
+                          <div className="bg-blue-50 rounded-lg p-3">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <Hotel size={14} className="text-blue-600" />
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Hotel</p>
                             </div>
-                          )}
-                          <div className={multiStay ? 'p-3 space-y-2' : 'space-y-2'}>
-                            {group.hotel && (
-                              <div className="bg-blue-50 rounded-lg p-3">
-                                <div className="flex items-center gap-1.5 mb-1.5">
-                                  <Hotel size={14} className="text-blue-600" />
-                                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Hotel</p>
-                                </div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-sm font-medium text-gray-900">{group.hotel.name}</span>
-                                  {!isGuide && <Stars rating={group.hotel.rating ?? null} />}
-                                </div>
-                                {group.hotel.priceLevel != null && (
-                                  <p className="text-xs font-medium text-green-700 mt-0.5">
-                                    {'$'.repeat(group.hotel.priceLevel)}
-                                    <span className="text-gray-300">{'$'.repeat(5 - group.hotel.priceLevel)}</span>
-                                  </p>
-                                )}
-                                {group.hotel.tags && group.hotel.tags.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mt-1.5">
-                                    {group.hotel.tags.map(tag => (
-                                      <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">{tag}</span>
-                                    ))}
-                                  </div>
-                                )}
-                                {group.hotel.description && (
-                                  <p className="text-xs text-gray-600 mt-1">
-                                    <span className="font-semibold text-gray-500">Description: </span>{group.hotel.description}
-                                  </p>
-                                )}
-                                {group.hotel.notes && (
-                                  <p className="text-xs text-gray-500 italic mt-0.5">
-                                    <span className="font-semibold not-italic">User notes: </span>{group.hotel.notes}
-                                  </p>
-                                )}
-                                {group.hotel.address && <p className="text-xs text-gray-500 mt-0.5">📍 {group.hotel.address}</p>}
-                                {group.hotel.link && <a href={group.hotel.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-medium text-gray-900">{hotel.name}</span>
+                              {!isGuide && <Stars rating={hotel.rating ?? null} />}
+                            </div>
+                            {hotel.priceLevel != null && (
+                              <p className="text-xs font-medium text-green-700 mt-0.5">
+                                {'$'.repeat(hotel.priceLevel)}
+                                <span className="text-gray-300">{'$'.repeat(5 - hotel.priceLevel)}</span>
+                              </p>
+                            )}
+                            {hotel.tags && hotel.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {hotel.tags.map(tag => (
+                                  <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">{tag}</span>
+                                ))}
                               </div>
                             )}
-                            {group.days.map((day, di) => {
-                              return (
-                                <div key={di} className="space-y-2">
-                                  {group.days.length > 1 && (
-                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2 mb-1">Day {di + 1}</p>
-                                  )}
-                                  {day.items.map(item => item.type === 'food_drink' ? (
+                            {hotel.description && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold text-gray-500">Description: </span>{hotel.description}</p>}
+                            {hotel.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{hotel.notes}</p>}
+                            {hotel.address && <p className="text-xs text-gray-500 mt-0.5">📍 {hotel.address}</p>}
+                            {hotel.link && <a href={hotel.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                          </div>
+                        )
+                        return groups.map((group, gi) => (
+                          <div key={gi} className="space-y-2">
+                            {multiStay ? (
+                              // Multi-stay: each day group shows "Day N · Hotel Name"
+                              group.days.length === 0 && group.hotel ? hotelCard(group.hotel) :
+                              group.days.map((day, di) => {
+                                dayCounter++
+                                const dn = dayCounter
+                                return (
+                                  <div key={di} className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full shrink-0">Day {dn}</span>
+                                      {group.hotel && (
+                                        <span className="text-xs text-gray-500 flex items-center gap-1 min-w-0">
+                                          <Hotel size={10} className="text-blue-400 shrink-0" />
+                                          <span className="truncate">{group.hotel.name}</span>
+                                          {!isGuide && group.hotel.rating ? <span className="text-yellow-500 shrink-0">{'★'.repeat(group.hotel.rating)}</span> : null}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {day.items.map(item => item.type === 'food_drink' ? (
                                     <div key={item.id} className="bg-orange-50 rounded-lg p-3">
                                       <div className="flex items-center gap-1.5 mb-1">
                                         <Utensils size={12} className="text-orange-500 shrink-0" />
@@ -498,10 +500,49 @@ export default async function ItineraryPage({
                                   ))}
                                 </div>
                               )
-                            })}
+                            })
+                            ) : (
+                              // Single stay: hotel card + day labels
+                              <>
+                                {group.hotel && hotelCard(group.hotel)}
+                                {group.days.map((day, di) => (
+                                  <div key={di} className="space-y-2">
+                                    {group.days.length > 1 && (
+                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2 mb-1">Day {di + 1}</p>
+                                    )}
+                                    {day.items.map(item => item.type === 'food_drink' ? (
+                                      <div key={item.id} className="bg-orange-50 rounded-lg p-3">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                          <Utensils size={12} className="text-orange-500 shrink-0" />
+                                          <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                            <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                                            <MealPills mealType={item.mealType} />
+                                            {!isGuide && <Stars rating={item.rating ?? null} />}
+                                          </div>
+                                        </div>
+                                        {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
+                                        {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                                      </div>
+                                    ) : (
+                                      <div key={item.id} className="bg-green-50 rounded-lg p-3">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                          <Camera size={12} className="text-green-600 shrink-0" />
+                                          <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                            <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                                            {!isGuide && <Stars rating={item.rating ?? null} />}
+                                          </div>
+                                        </div>
+                                        {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
+                                        {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ))}
+                              </>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        ))
+                      })()}
                     </div>
                   </div>
                 )

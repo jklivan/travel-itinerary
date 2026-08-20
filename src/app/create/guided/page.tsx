@@ -447,7 +447,8 @@ export default function GuidedCreatePage() {
           byDay.get(di)!.push(item)
         }
         return byDay.size > 0
-          ? [...byDay.entries()].sort(([a], [b]) => a - b).map(([, dayItems]) => ({
+          ? [...byDay.entries()].sort(([a], [b]) => a - b).map(([dayIdx, dayItems]) => ({
+              dayIndex: dayIdx,
               food: dayItems
                 .map((item, pos) => ({ item, pos }))
                 .filter(({ item }) => item.type === 'food_drink')
