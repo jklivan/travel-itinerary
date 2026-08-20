@@ -62,12 +62,12 @@ export async function GET(req: NextRequest) {
 
   if (!q || q.length < 2) return Response.json([])
 
-  // Restrict results to within 75 km of the destination city when provided.
-  // locationRestriction (hard boundary) rather than locationBias (soft hint)
-  // so out-of-area results don't slip through.
+  // Bias results toward the destination city. locationBias (soft preference)
+  // rather than locationRestriction so results still appear even if geocoding
+  // returns slightly off coordinates or the place sits just outside the radius.
   const cityCoords = city ? await geocodeCity(city) : null
-  const locationRestriction = cityCoords
-    ? { circle: { center: { latitude: cityCoords.lat, longitude: cityCoords.lng }, radius: 75000 } }
+  const locationBias = cityCoords
+    ? { circle: { center: { latitude: cityCoords.lat, longitude: cityCoords.lng }, radius: 50000 } }
     : undefined
 
   type RawSuggestion = {
@@ -111,7 +111,7 @@ export async function GET(req: NextRequest) {
 
   let rawResults: RawSuggestion[]
 
-  const base = { input: q, languageCode: 'en', ...(locationRestriction ? { locationRestriction } : {}) }
+  const base = { input: q, languageCode: 'en', ...(locationBias ? { locationBias } : {}) }
 
   if (type === 'hotel') {
     // Run both queries in parallel: named lodging + free-text addresses
