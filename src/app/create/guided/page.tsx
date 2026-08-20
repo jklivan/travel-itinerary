@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useState } from 'react'
+import { upload } from '@vercel/blob/client'
 import { createItinerary } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import { MapPin, Hotel, Utensils, Camera, Star, ArrowRight, Plus, Check, X, FileText, ImageIcon, GripVertical } from 'lucide-react'
@@ -392,12 +393,10 @@ export default function GuidedCreatePage() {
       const uploaded: UploadedPhoto[] = []
       for (const file of files) {
         try {
-          const fd = new FormData()
-          fd.append('file', file)
-          const res = await fetch('/api/upload', { method: 'POST', body: fd })
-          if (!res.ok) throw new Error('Upload failed')
-          const { url } = await res.json()
-          uploaded.push({ url, caption: '' })
+          const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : ''
+          const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
+          const blob = await upload(uniqueName, file, { access: 'private', handleUploadUrl: '/api/upload' })
+          uploaded.push({ url: `/api/img?url=${encodeURIComponent(blob.url)}`, caption: '' })
         } catch {
           failed.push(file)
         }
