@@ -653,6 +653,9 @@ export default function CreatePage() {
         {/* ── START ──────────────────────────────────────────────────────── */}
         {step === 'start' && (
           <div className="space-y-5">
+            <div className="flex items-center justify-between mb-1">
+              <a href="/" className="text-sm text-blue-600 hover:underline">← Back</a>
+            </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900 mb-1">New post</h1>
               <p className="text-sm text-gray-500">Share a trip or travel guide.</p>
@@ -1149,7 +1152,7 @@ export default function CreatePage() {
         )}
 
         {/* ── Navigation ─────────────────────────────────────────────────── */}
-        {step !== 'start' && step !== 'details' && (
+        {step !== 'start' && step !== 'details' && step !== 'review' && (
           <div className="flex gap-3 mt-6">
             <button type="button" onClick={goBack}
               className="px-5 py-3 rounded-xl border border-gray-300 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors">
