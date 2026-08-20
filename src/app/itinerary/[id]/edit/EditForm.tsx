@@ -8,23 +8,7 @@ import TagPicker from '@/components/TagPicker'
 import DeleteButton from '@/components/DeleteButton'
 import { TripRatingPicker } from '@/components/TripRatingPicker'
 import { dateRangeFromMonthAndDays, monthAndDaysFromDates } from '@/lib/tripDates'
-import {
-  DndContext,
-  PointerSensor,
-  TouchSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-  arrayMove,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import { GripVertical } from 'lucide-react'
+import { ChevronUp, ChevronDown } from 'lucide-react'
 
 function uid() { return Math.random().toString(36).slice(2) }
 
@@ -224,24 +208,30 @@ function DayMoveBar({ dayMove }: { dayMove: DayMove }) {
   )
 }
 
-function FoodRow({ item, index, onUpdate, onPatch, onToggleTag, onRemove, showRating, onSelectPlace, dayMove }: {
-  item: DayItem; index: number
+function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove, showRating, onSelectPlace, onMoveUp, onMoveDown, dayMove }: {
+  item: DayItem; index: number; total: number
   onUpdate: (field: string, val: string) => void
   onPatch: (patch: Partial<DayItem>) => void
   onToggleTag: (tag: string) => void
   onRemove: () => void; showRating: boolean
   onSelectPlace?: (placeId: string | null) => void
+  onMoveUp: () => void; onMoveDown: () => void
   dayMove?: DayMove
 }) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
   return (
-    <div ref={setNodeRef} style={style} className={`rounded-xl border border-l-4 border-l-orange-400 ${rowBg} flex overflow-hidden`}>
-      <button type="button" ref={setActivatorNodeRef} {...attributes} {...listeners} className="flex items-center justify-center w-8 shrink-0 cursor-grab active:cursor-grabbing touch-none bg-black/5 hover:bg-black/10 border-r border-black/5 text-gray-400 hover:text-gray-600">
-        <GripVertical size={16} />
-      </button>
-      <div className="flex-1 p-4 space-y-3">
+    <div className="flex gap-1 items-stretch">
+      <div className="flex flex-col justify-center gap-0.5 shrink-0">
+        <button type="button" onClick={onMoveUp} disabled={index === 0}
+          className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-20 disabled:cursor-default transition-colors">
+          <ChevronUp size={16} />
+        </button>
+        <button type="button" onClick={onMoveDown} disabled={index === total - 1}
+          className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-20 disabled:cursor-default transition-colors">
+          <ChevronDown size={16} />
+        </button>
+      </div>
+      <div className={`flex-1 rounded-xl border border-l-4 border-l-orange-400 ${rowBg} p-4 space-y-3`}>
       <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide">🍜 Food & Drink</p>
       <div className="flex gap-2 items-start">
         <PlacesAutocomplete
@@ -301,22 +291,28 @@ function FoodRow({ item, index, onUpdate, onPatch, onToggleTag, onRemove, showRa
 
 // ── ActivityRow ───────────────────────────────────────────────────────────────
 
-function ActivityRow({ item, index, onUpdate, onPatch, onRemove, showRating, dayMove }: {
-  item: DayItem; index: number
+function ActivityRow({ item, index, total, onUpdate, onPatch, onRemove, showRating, onMoveUp, onMoveDown, dayMove }: {
+  item: DayItem; index: number; total: number
   onUpdate: (field: string, val: string) => void
   onPatch: (patch: Partial<DayItem>) => void
   onRemove: () => void; showRating: boolean
+  onMoveUp: () => void; onMoveDown: () => void
   dayMove?: DayMove
 }) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
   return (
-    <div ref={setNodeRef} style={style} className={`rounded-xl border border-l-4 border-l-green-400 ${rowBg} flex overflow-hidden`}>
-      <button type="button" ref={setActivatorNodeRef} {...attributes} {...listeners} className="flex items-center justify-center w-8 shrink-0 cursor-grab active:cursor-grabbing touch-none bg-black/5 hover:bg-black/10 border-r border-black/5 text-gray-400 hover:text-gray-600">
-        <GripVertical size={16} />
-      </button>
-      <div className="flex-1 p-4 space-y-3">
+    <div className="flex gap-1 items-stretch">
+      <div className="flex flex-col justify-center gap-0.5 shrink-0">
+        <button type="button" onClick={onMoveUp} disabled={index === 0}
+          className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-20 disabled:cursor-default transition-colors">
+          <ChevronUp size={16} />
+        </button>
+        <button type="button" onClick={onMoveDown} disabled={index === total - 1}
+          className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-20 disabled:cursor-default transition-colors">
+          <ChevronDown size={16} />
+        </button>
+      </div>
+      <div className={`flex-1 rounded-xl border border-l-4 border-l-green-400 ${rowBg} p-4 space-y-3`}>
       <p className="text-xs font-semibold text-green-600 uppercase tracking-wide">🎯 Activity</p>
       <div className="flex gap-2 items-start">
         <PlacesAutocomplete
@@ -372,11 +368,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   const [uploading, setUploading] = useState(false)
 
   const showRating = postType === 'itinerary'
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
-  )
 
   // ── State helpers ────────────────────────────────────────────────────────────
 
@@ -474,14 +465,12 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       }))
     } catch { /* ignore */ }
   }
-  function reorderItems(di: number, gi: number, dyi: number, e: DragEndEvent) {
-    const { active, over } = e
-    if (!over || active.id === over.id) return
+  function moveItem(di: number, gi: number, dyi: number, fromIndex: number, toIndex: number) {
     updDay(di, gi, dyi, d => {
-      const oldIndex = d.items.findIndex(i => i.id === active.id)
-      const newIndex = d.items.findIndex(i => i.id === over.id)
-      if (oldIndex === -1 || newIndex === -1) return d
-      return { ...d, items: arrayMove(d.items, oldIndex, newIndex) }
+      const items = [...d.items]
+      const [item] = items.splice(fromIndex, 1)
+      items.splice(toIndex, 0, item)
+      return { ...d, items }
     })
   }
 
@@ -687,34 +676,34 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                         {day.items.length === 0 && (
                           <p className="text-xs text-gray-400 italic">No items yet — add food or an activity below.</p>
                         )}
-                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={e => reorderItems(di, gi, dyi, e)}>
-                          <SortableContext items={day.items.map(i => i.id)} strategy={verticalListSortingStrategy}>
-                            <div className="space-y-3">
-                              {day.items.map((item, ii) => {
-                                const dayMove: DayMove | undefined = group.days.length > 1
-                                  ? { currentDyi: dyi, totalDays: group.days.length, onMove: toDyi => moveItemToDay(di, gi, item.id, dyi, toDyi) }
-                                  : undefined
-                                return item.type === 'food_drink'
-                                  ? <FoodRow key={item.id} item={item} index={ii} showRating={showRating}
-                                      onUpdate={(f, v) => updateItem(di, gi, dyi, item.id, f, v)}
-                                      onPatch={patch => patchItem(di, gi, dyi, item.id, patch)}
-                                      onToggleTag={tag => toggleItemTag(di, gi, dyi, item.id, tag)}
-                                      onRemove={() => removeItem(di, gi, dyi, item.id)}
-                                      onSelectPlace={id => id
-                                        ? fetchItemPriceLevel(di, gi, dyi, item.id, id)
-                                        : patchItem(di, gi, dyi, item.id, { priceLevel: null })}
-                                      dayMove={dayMove}
-                                    />
-                                  : <ActivityRow key={item.id} item={item} index={ii} showRating={showRating}
-                                      onUpdate={(f, v) => updateItem(di, gi, dyi, item.id, f, v)}
-                                      onPatch={patch => patchItem(di, gi, dyi, item.id, patch)}
-                                      onRemove={() => removeItem(di, gi, dyi, item.id)}
-                                      dayMove={dayMove}
-                                    />
-                              })}
-                            </div>
-                          </SortableContext>
-                        </DndContext>
+                        <div className="space-y-1">
+                          {day.items.map((item, ii) => {
+                            const dayMove: DayMove | undefined = group.days.length > 1
+                              ? { currentDyi: dyi, totalDays: group.days.length, onMove: toDyi => moveItemToDay(di, gi, item.id, dyi, toDyi) }
+                              : undefined
+                            return item.type === 'food_drink'
+                              ? <FoodRow key={item.id} item={item} index={ii} total={day.items.length} showRating={showRating}
+                                  onUpdate={(f, v) => updateItem(di, gi, dyi, item.id, f, v)}
+                                  onPatch={patch => patchItem(di, gi, dyi, item.id, patch)}
+                                  onToggleTag={tag => toggleItemTag(di, gi, dyi, item.id, tag)}
+                                  onRemove={() => removeItem(di, gi, dyi, item.id)}
+                                  onSelectPlace={id => id
+                                    ? fetchItemPriceLevel(di, gi, dyi, item.id, id)
+                                    : patchItem(di, gi, dyi, item.id, { priceLevel: null })}
+                                  onMoveUp={() => moveItem(di, gi, dyi, ii, ii - 1)}
+                                  onMoveDown={() => moveItem(di, gi, dyi, ii, ii + 1)}
+                                  dayMove={dayMove}
+                                />
+                              : <ActivityRow key={item.id} item={item} index={ii} total={day.items.length} showRating={showRating}
+                                  onUpdate={(f, v) => updateItem(di, gi, dyi, item.id, f, v)}
+                                  onPatch={patch => patchItem(di, gi, dyi, item.id, patch)}
+                                  onRemove={() => removeItem(di, gi, dyi, item.id)}
+                                  onMoveUp={() => moveItem(di, gi, dyi, ii, ii - 1)}
+                                  onMoveDown={() => moveItem(di, gi, dyi, ii, ii + 1)}
+                                  dayMove={dayMove}
+                                />
+                          })}
+                        </div>
                         <div className="flex gap-2">
                           <button type="button" onClick={() => addItem(di, gi, dyi, 'food_drink')}
                             className="flex-1 text-xs text-orange-600 hover:text-orange-800 font-medium border border-dashed border-orange-300 hover:border-orange-500 rounded-lg py-2 transition-colors">
