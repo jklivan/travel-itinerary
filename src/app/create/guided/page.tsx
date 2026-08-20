@@ -153,7 +153,7 @@ function ItemForm({ type, onAdd, onClose }: {
   const [notes, setNotes] = useState('')
 
   const cfg = {
-    hotel:     { color: 'bg-blue-50 border-blue-200',   label: 'City / Stay', placeholder: 'Hotel, house, Airbnb…', placeType: 'hotel' as const },
+    hotel:     { color: 'bg-blue-50 border-blue-200',   label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…', placeType: 'hotel' as const },
     food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',         placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const },
     activity:  { color: 'bg-green-50 border-green-200',  label: 'Activity',              placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const },
   }[type]
