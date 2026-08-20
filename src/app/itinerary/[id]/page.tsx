@@ -3,9 +3,7 @@ import { auth } from '@/auth'
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { unstable_cache } from 'next/cache'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
-import { generateHighlights } from '@/lib/generateHighlights'
 import { Hotel, Utensils, Camera, MapPin, Star } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import PhotoStrip from '@/components/PhotoStrip'
@@ -71,6 +69,36 @@ function MealPills({ mealType }: { mealType: string | null | undefined }) {
       {MEAL_EMOJIS[type] ?? '🍽️'} {type.charAt(0).toUpperCase() + type.slice(1)}
     </span>
   ))
+}
+
+type HighlightGroup = { dest: string; items: { type: string; name: string }[] }
+
+function getHighlightGroups(
+  destinations: { name: string; country: string | null; items: { id: string; type: string; name: string; rating: number | null; tags: string[] }[] }[]
+): HighlightGroup[] {
+  const sortByRating = (a: { id: string; rating: number | null }, b: { id: string; rating: number | null }) => {
+    const diff = (b.rating ?? 0) - (a.rating ?? 0)
+    return diff !== 0 ? diff : a.id < b.id ? -1 : 1 // stable tiebreaker via id
+  }
+
+  return destinations
+    .map(dest => {
+      const eligible = dest.items.filter(i => i.type !== 'hotel' && i.name.trim())
+      const picked = eligible.filter(i => i.tags.includes('__highlight'))
+      let items: { type: string; name: string }[]
+
+      if (picked.length > 0) {
+        items = picked.map(i => ({ type: i.type, name: i.name }))
+      } else {
+        const food = eligible.filter(i => i.type === 'food_drink' && (i.rating ?? 0) > 0).sort(sortByRating).slice(0, 2)
+        const acts = eligible.filter(i => i.type === 'activity' && (i.rating ?? 0) > 0).sort(sortByRating).slice(0, 2)
+        items = [...food, ...acts].map(i => ({ type: i.type, name: i.name }))
+      }
+
+      const label = [dest.name, dest.country].filter(Boolean).join(', ')
+      return { dest: label, items }
+    })
+    .filter(g => g.items.length > 0)
 }
 
 export default async function ItineraryPage({
@@ -146,16 +174,7 @@ export default async function ItineraryPage({
   const displayTags = it.tags
   const autoTagged = false
 
-  // Highlights: user-written takes priority, otherwise AI-generate from 5-star items
-  let highlights = it.highlights ?? null
-  if (!highlights) {
-    const cached = unstable_cache(
-      () => generateHighlights(it.title, it.destinations),
-      [`highlights-${it.id}`],
-      { revalidate: 86400 * 7 }
-    )
-    highlights = await cached()
-  }
+  const highlightGroups = getHighlightGroups(it.destinations)
 
   // Build map pins from geocoded items
   const mapPins: ItemPin[] = it.destinations.flatMap(d =>
@@ -312,17 +331,29 @@ export default async function ItineraryPage({
           </div>
 
           {/* Highlights */}
-          {highlights && (
+          {highlightGroups.length > 0 && (
             <div className="mb-5 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 p-4">
-              <div className="flex items-center gap-1.5 mb-2">
+              <div className="flex items-center gap-1.5 mb-3">
                 <span className="text-base">✨</span>
                 <h2 className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Highlights</h2>
               </div>
-              <ul className="space-y-1">
-                {highlights.split('\n').map((line, i) => (
-                  <li key={i} className="text-sm text-gray-700">{line}</li>
+              <div className="space-y-3">
+                {highlightGroups.map((group, gi) => (
+                  <div key={gi}>
+                    {highlightGroups.length > 1 && (
+                      <p className="text-xs font-semibold text-amber-700 mb-1.5">{group.dest}</p>
+                    )}
+                    <ul className="space-y-1.5">
+                      {group.items.map((item, i) => (
+                        <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
+                          <span className="shrink-0">{item.type === 'food_drink' ? '🍽️' : '📍'}</span>
+                          <span>{item.name}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
 
