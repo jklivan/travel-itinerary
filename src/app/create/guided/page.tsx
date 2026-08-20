@@ -346,6 +346,18 @@ export default function GuidedCreatePage() {
     setPhase('more')
   }
 
+  function addCity() {
+    if (curDest.name.trim()) {
+      setDests(d => [...d, { id: uid(), name: curDest.name, country: curDest.country, notes: curNotes, items: curItems }])
+    }
+    setCurDest({ name: '', country: '' })
+    setCurItems([])
+    setCurDayIndex(1)
+    setCurNotes('')
+    setActiveInput(null)
+    setPhase('dest')
+  }
+
   function editDest(destId: string) {
     const dest = dests.find(d => d.id === destId)
     if (!dest) return
@@ -713,6 +725,10 @@ export default function GuidedCreatePage() {
                   <button type="button" onClick={() => setCurDayIndex(d => d + 1)}
                     className="w-full py-2.5 rounded-xl border-2 border-indigo-200 text-indigo-700 text-sm font-semibold hover:border-indigo-300 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2">
                     <ArrowRight size={14} /> Add Day {curDayIndex + 1}
+                  </button>
+                  <button type="button" onClick={addCity}
+                    className="w-full py-2.5 rounded-xl border-2 border-emerald-200 text-emerald-700 text-sm font-semibold hover:border-emerald-300 hover:bg-emerald-50 transition-all flex items-center justify-center gap-2">
+                    <MapPin size={14} /> + City
                   </button>
                   <button type="button" onClick={finishDest}
                     className="w-full py-3 rounded-xl bg-gray-900 text-white font-semibold hover:bg-gray-700 transition-colors text-sm flex items-center justify-center gap-2">
