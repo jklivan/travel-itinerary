@@ -38,6 +38,7 @@ type GuidedItem = {
   rating: number
   notes: string
   dayIndex: number
+  isHighlight: boolean
 }
 
 type GuidedDest = {
@@ -128,6 +129,7 @@ function AddedRow({ item, onRemove }: { item: GuidedItem; onRemove: () => void }
           <div className="flex items-center gap-2 flex-wrap">
             {item.mealType && <span className="text-xs text-gray-500">{item.mealType.split(',').map(type => `${MEAL_EMOJI[type]} ${type}`).join(' · ')}</span>}
             {item.rating > 0 && <span className="text-xs text-yellow-500">{'★'.repeat(item.rating)}</span>}
+            {item.isHighlight && <span className="text-amber-400 text-xs">⭐</span>}
             {item.notes && <span className="text-xs text-gray-400 truncate">{item.notes}</span>}
           </div>
         </div>
@@ -148,6 +150,7 @@ function ItemForm({ type, onAdd, onClose }: {
   const [mealType, setMealType] = useState('')
   const [rating, setRating] = useState(0)
   const [notes, setNotes] = useState('')
+  const [isHighlight, setIsHighlight] = useState(false)
 
   const cfg = {
     hotel:     { color: 'bg-blue-50 border-blue-200',   label: 'Hotel / Accommodation', placeholder: 'Hotel name', placeType: 'hotel' as const },
@@ -157,8 +160,8 @@ function ItemForm({ type, onAdd, onClose }: {
 
   function submit() {
     if (!name.trim()) return
-    onAdd({ type, name: name.trim(), mealType, rating, notes: notes.trim() })
-    setName(''); setMealType(''); setRating(0); setNotes('')
+    onAdd({ type, name: name.trim(), mealType, rating, notes: notes.trim(), isHighlight })
+    setName(''); setMealType(''); setRating(0); setNotes(''); setIsHighlight(false)
   }
 
   return (
@@ -185,9 +188,17 @@ function ItemForm({ type, onAdd, onClose }: {
           })}
         </div>
       )}
-      <div className="space-y-1">
-        <p className="text-xs text-gray-500">Rate it</p>
-        <StarRating value={rating} onChange={setRating} />
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="space-y-1">
+          <p className="text-xs text-gray-500">Rate it</p>
+          <StarRating value={rating} onChange={setRating} />
+        </div>
+        {type !== 'hotel' && (
+          <button type="button" onClick={() => setIsHighlight(v => !v)}
+            className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors self-end mb-0.5 ${isHighlight ? 'bg-amber-400 text-white border-amber-400' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+            ⭐ Highlight
+          </button>
+        )}
       </div>
       <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
         placeholder="📝 Notes (optional)" className={inputCls} />
@@ -201,7 +212,7 @@ function ItemForm({ type, onAdd, onClose }: {
 
 // ── Completed destination summary ─────────────────────────────────────────────
 
-function DestSummary({ dest, onRemove }: { dest: GuidedDest; onRemove: () => void }) {
+function DestSummary({ dest, onRemove, onEdit }: { dest: GuidedDest; onRemove: () => void; onEdit?: () => void }) {
   const hotels = dest.items.filter(i => i.type === 'hotel')
   const nonHotels = dest.items.filter(i => i.type !== 'hotel')
   return (
@@ -215,7 +226,12 @@ function DestSummary({ dest, onRemove }: { dest: GuidedDest; onRemove: () => voi
             {dest.name}{dest.country ? `, ${dest.country}` : ''}
           </span>
         </div>
-        <button onClick={onRemove} className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>
+        <div className="flex items-center gap-3">
+          {onEdit && (
+            <button onClick={onEdit} className="text-xs text-blue-600 hover:text-blue-800 font-medium">Edit</button>
+          )}
+          <button onClick={onRemove} className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>
+        </div>
       </div>
       <div className="px-4 py-3 space-y-1.5 text-xs text-gray-600">
         {hotels.map(hotel => (
@@ -336,6 +352,24 @@ export default function GuidedCreatePage() {
     setPhase('more')
   }
 
+  function editDest(destId: string) {
+    const dest = dests.find(d => d.id === destId)
+    if (!dest) return
+    setCurDest({ name: dest.name, country: dest.country })
+    setCurItems(dest.items)
+    setCurNotes(dest.notes)
+    setCurDayIndex(dest.items.reduce((max, i) => Math.max(max, i.dayIndex), 1))
+    setDests(ds => ds.filter(d => d.id !== destId))
+    setPhase('building')
+    setActiveInput(null)
+  }
+
+  const computedHighlights = [...dests, ...(curDest.name.trim() ? [{ items: curItems }] : [])]
+    .flatMap(d => d.items)
+    .filter(i => i.isHighlight && i.type !== 'hotel' && i.name.trim())
+    .map(i => i.name.trim())
+    .join('\n')
+
   async function uploadPhotos(files: File[]) {
     if (!files.length) return
     setUploading(true)
@@ -391,11 +425,11 @@ export default function GuidedCreatePage() {
             food: dayItems
               .map((item, pos) => ({ item, pos }))
               .filter(({ item }) => item.type === 'food_drink')
-              .map(({ item: i, pos }) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos })),
+              .map(({ item: i, pos }) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos, tags: i.isHighlight ? ['__highlight'] : [] })),
             activities: dayItems
               .map((item, pos) => ({ item, pos }))
               .filter(({ item }) => item.type === 'activity')
-              .map(({ item: i, pos }) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos })),
+              .map(({ item: i, pos }) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos, tags: i.isHighlight ? ['__highlight'] : [] })),
           }))
         : [{ food: [], activities: [] }]
       const stays = hotels.length > 0 ? hotels : [null]
@@ -437,6 +471,7 @@ export default function GuidedCreatePage() {
         <input type="hidden" name="audience" value={tripAudience} />
         <input type="hidden" name="visibility" value="public" />
         <input type="hidden" name="destinations" value={JSON.stringify(buildDestinations())} />
+        <input type="hidden" name="highlights" value={computedHighlights} />
         <input type="hidden" name="photos" value={JSON.stringify(photos)} />
         <input type="hidden" name="tags" value={JSON.stringify(tags)} />
         {budget > 0 && <input type="hidden" name="budget" value={budget} />}
@@ -447,7 +482,7 @@ export default function GuidedCreatePage() {
 
         {/* Completed destinations */}
         {dests.map(d => (
-          <DestSummary key={d.id} dest={d} onRemove={() => setDests(ds => ds.filter(x => x.id !== d.id))} />
+          <DestSummary key={d.id} dest={d} onRemove={() => setDests(ds => ds.filter(x => x.id !== d.id))} onEdit={() => editDest(d.id)} />
         ))}
 
         {/* ── DEST card ───────────────────────────────────────────────────── */}
@@ -762,6 +797,10 @@ export default function GuidedCreatePage() {
               {formState?.error && (
                 <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{formState.error}</p>
               )}
+
+              <button type="button" onClick={() => setPhase('more')} className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
+                ← Back
+              </button>
 
               <div className="flex gap-3 pt-1">
                 <button form="gf" type="submit" name="isDraft" value="1" disabled={pending}

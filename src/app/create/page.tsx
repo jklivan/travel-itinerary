@@ -101,8 +101,8 @@ async function readFileForUpload(
   })
 }
 
-type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null; tags: string[]; dayIndex?: number | null; order?: number }
-type ActivityItem = { name: string; notes: string; link: string; rating: number; dayIndex?: number | null; order?: number }
+type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null; tags: string[]; dayIndex?: number | null; order?: number; isHighlight?: boolean }
+type ActivityItem = { name: string; notes: string; link: string; rating: number; dayIndex?: number | null; order?: number; isHighlight?: boolean }
 type DayGroup    = { dayIndex?: number; food: FoodItem[]; activities: ActivityItem[] }
 type StayGroup   = { hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; days: DayGroup[] }
 type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
@@ -151,11 +151,11 @@ function mapExtractionDests(rawDests: RawDest[]): Destination[] {
     const food = nonHotelItems
       .map((item, docPos) => ({ item, docPos }))
       .filter(({ item }) => item.type === 'food_drink')
-      .map(({ item: f, docPos }) => ({ name: f.name ?? '', mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: f.dayIndex ?? null, order: docPos }))
+      .map(({ item: f, docPos }) => ({ name: f.name ?? '', mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: f.dayIndex ?? null, order: docPos, isHighlight: false }))
     const acts = nonHotelItems
       .map((item, docPos) => ({ item, docPos }))
       .filter(({ item }) => item.type === 'activity')
-      .map(({ item: a, docPos }) => ({ name: a.name ?? '', notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0, dayIndex: a.dayIndex ?? null, order: docPos }))
+      .map(({ item: a, docPos }) => ({ name: a.name ?? '', notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0, dayIndex: a.dayIndex ?? null, order: docPos, isHighlight: false }))
     const groups: StayGroup[] = hotels.length === 0
       ? [{ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: buildDays(food, acts) }]
       : hotels.map((h, hi) => ({ hotelName: h.name ?? '', hotelNotes: h.notes ?? '', hotelLink: h.link ?? '', hotelRating: h.rating ?? 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: hi === 0 ? buildDays(food, acts) : [emptyDay()] }))
@@ -163,8 +163,8 @@ function mapExtractionDests(rawDests: RawDest[]): Destination[] {
   })
 }
 
-const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null })
-const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0, dayIndex: null })
+const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null, isHighlight: false })
+const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0, dayIndex: null, isHighlight: false })
 const emptyDay      = (): DayGroup     => ({ food: [], activities: [] })
 const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: [emptyDay()] })
 
@@ -208,13 +208,14 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   )
 }
 
-function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, showRating, onSelectPlace }: {
+function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, showRating, onSelectPlace, onToggleHighlight }: {
   item: FoodItem; index: number
-  onUpdate: (field: keyof Omit<FoodItem, 'priceLevel' | 'familyFriendly' | 'tags'>, val: string) => void
+  onUpdate: (field: keyof Omit<FoodItem, 'priceLevel' | 'familyFriendly' | 'tags' | 'isHighlight'>, val: string) => void
   onUpdateFF: (val: boolean | null) => void
   onToggleTag: (tag: string) => void
   onRemove: () => void; showRating: boolean
   onSelectPlace?: (placeId: string | null) => void
+  onToggleHighlight: () => void
 }) {
   const [showDetails, setShowDetails] = useState(false)
   return (
@@ -238,7 +239,13 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
           )
         })}
       </div>
-      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
+      <div className="flex items-center gap-3 flex-wrap">
+        {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
+        <button type="button" onClick={onToggleHighlight}
+          className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.isHighlight ? 'bg-amber-400 text-white border-amber-400' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+          ⭐ Highlight
+        </button>
+      </div>
       <button type="button" onClick={() => setShowDetails(value => !value)} className="text-xs font-medium text-gray-500 hover:text-gray-800">
         {showDetails ? '− Hide details' : '+ Add details'}
       </button>
@@ -271,10 +278,11 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
   )
 }
 
-function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
+function ActivityRow({ item, index, onUpdate, onRemove, showRating, onToggleHighlight }: {
   item: ActivityItem; index: number
-  onUpdate: (field: keyof ActivityItem, val: string) => void
+  onUpdate: (field: keyof Omit<ActivityItem, 'isHighlight'>, val: string) => void
   onRemove: () => void; showRating: boolean
+  onToggleHighlight: () => void
 }) {
   const [showDetails, setShowDetails] = useState(false)
   return (
@@ -284,7 +292,13 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
           type="activity" placeholder="e.g. Temple tour, Hiking, Museum visit" className={inputClass} />
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
-      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
+      <div className="flex items-center gap-3 flex-wrap">
+        {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
+        <button type="button" onClick={onToggleHighlight}
+          className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.isHighlight ? 'bg-amber-400 text-white border-amber-400' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+          ⭐ Highlight
+        </button>
+      </div>
       <button type="button" onClick={() => setShowDetails(value => !value)} className="text-xs font-medium text-gray-500 hover:text-gray-800">
         {showDetails ? '− Hide details' : '+ Add details'}
       </button>
@@ -314,10 +328,13 @@ export default function CreatePage() {
   const [postType, setPostType] = useState<'itinerary' | 'guide'>('itinerary')
   const [tripAudience, setTripAudience] = useState<'family' | 'friends' | 'romantic' | 'adult'>('family')
   const [notes, setNotes] = useState('')
-  const [highlights, setHighlights] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [tripRating, setTripRating] = useState<number | null>(null)
   const [destinations, setDestinations] = useState<Destination[]>([emptyDest()])
+  const computedHighlightNames = destinations
+    .flatMap(d => d.groups.flatMap(g => g.days.flatMap(day => [...day.food, ...day.activities])))
+    .filter(i => i.isHighlight && i.name.trim())
+    .map(i => i.name.trim())
   const [photos, setPhotos] = useState<UploadedPhoto[]>([])
   const [uploading, setUploading] = useState(false)
   const [photoUploadError, setPhotoUploadError] = useState<string | null>(null)
@@ -344,9 +361,21 @@ export default function CreatePage() {
     setPending(true)
     setFormError(undefined)
     const { startDate, endDate } = dateRangeFromMonthAndDays(tripMonth, tripDays)
+    const submittableDests = destinations.map(dest => ({
+      ...dest,
+      groups: dest.groups.map(group => ({
+        ...group,
+        days: group.days.map(day => ({
+          ...day,
+          food: day.food.map(f => ({ ...f, tags: f.isHighlight ? [...f.tags.filter(t => t !== '__highlight'), '__highlight'] : f.tags })),
+          activities: day.activities.map(a => ({ ...a, tags: a.isHighlight ? ['__highlight'] : [] })),
+        })),
+      })),
+    }))
     const result = await createItineraryDirect({
-      title, description, startDate, endDate, notes, highlights,
-      destinations, photos, tags, tripRating,
+      title, description, startDate, endDate, notes,
+      highlights: computedHighlightNames.join('\n'),
+      destinations: submittableDests, photos, tags, tripRating,
       postType, audience: tripAudience,
       visibility: 'public',
       isDraft,
@@ -523,9 +552,15 @@ export default function CreatePage() {
   function toggleFoodTag(di: number, gi: number, dyi: number, ii: number, tag: string) {
     updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j !== ii ? f : { ...f, tags: f.tags.includes(tag) ? f.tags.filter(t => t !== tag) : [...f.tags, tag] }) }))
   }
+  function toggleFoodHighlight(di: number, gi: number, dyi: number, ii: number) {
+    updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j !== ii ? f : { ...f, isHighlight: !f.isHighlight }) }))
+  }
   function addActivity(di: number, gi: number, dyi: number) { updDay(di, gi, dyi, d => ({ ...d, activities: [...d.activities, emptyActivity()] })) }
   function removeActivity(di: number, gi: number, dyi: number, ii: number) { updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.filter((_, j) => j !== ii) })) }
-  function updateActivity(di: number, gi: number, dyi: number, ii: number, field: keyof ActivityItem, val: string) {
+  function toggleActivityHighlight(di: number, gi: number, dyi: number, ii: number) {
+    updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.map((a, j) => j !== ii ? a : { ...a, isHighlight: !a.isHighlight }) }))
+  }
+  function updateActivity(di: number, gi: number, dyi: number, ii: number, field: keyof Omit<ActivityItem, 'isHighlight'>, val: string) {
     updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.map((a, j) => j !== ii ? a : { ...a, [field]: field === 'rating' ? Number(val) : val }) }))
   }
 
@@ -926,13 +961,13 @@ export default function CreatePage() {
                             <div className="space-y-2">
                               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🍜 Food & Drink</p>
                               {day.food.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
-                              <div className="space-y-3">{day.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, dyi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, dyi, ii, v)} onToggleTag={tag => toggleFoodTag(di, gi, dyi, ii, tag)} onRemove={() => removeFood(di, gi, dyi, ii)} onSelectPlace={id => id ? fetchFoodPriceLevel(di, gi, dyi, ii, id) : setFoodPriceLevel(di, gi, dyi, ii, null)} />)}</div>
+                              <div className="space-y-3">{day.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, dyi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, dyi, ii, v)} onToggleTag={tag => toggleFoodTag(di, gi, dyi, ii, tag)} onRemove={() => removeFood(di, gi, dyi, ii)} onSelectPlace={id => id ? fetchFoodPriceLevel(di, gi, dyi, ii, id) : setFoodPriceLevel(di, gi, dyi, ii, null)} onToggleHighlight={() => toggleFoodHighlight(di, gi, dyi, ii)} />)}</div>
                               <button type="button" onClick={() => addFood(di, gi, dyi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add food / drink</button>
                             </div>
                             <div className="space-y-2">
                               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🎯 Activities</p>
                               {day.activities.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
-                              <div className="space-y-3">{day.activities.map((item, ii) => <ActivityRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, dyi, ii, f, v)} onRemove={() => removeActivity(di, gi, dyi, ii)} />)}</div>
+                              <div className="space-y-3">{day.activities.map((item, ii) => <ActivityRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, dyi, ii, f, v)} onRemove={() => removeActivity(di, gi, dyi, ii)} onToggleHighlight={() => toggleActivityHighlight(di, gi, dyi, ii)} />)}</div>
                               <button type="button" onClick={() => addActivity(di, gi, dyi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add activity</button>
                             </div>
                           </div>
@@ -1006,11 +1041,19 @@ export default function CreatePage() {
             </section>
 
             <section className="bg-amber-50 rounded-2xl border border-amber-200 p-5">
-              <h3 className="font-medium text-gray-900 mb-1 text-sm">✨ Highlights <span className="font-normal text-gray-400">(optional)</span></h3>
-              <p className="text-xs text-gray-500 mb-3">Leave blank and we&apos;ll auto-generate one from your 5-star picks.</p>
-              <textarea rows={3} className={inputClass}
-                value={highlights} onChange={e => setHighlights(e.target.value)}
-                placeholder="The ramen at Ichiran was life-changing…" />
+              <h3 className="font-medium text-gray-900 mb-1 text-sm">✨ Highlights</h3>
+              <p className="text-xs text-gray-500 mb-3">Tap ⭐ on any item in the Places step to feature it here.</p>
+              {computedHighlightNames.length > 0 ? (
+                <ul className="space-y-1.5">
+                  {computedHighlightNames.map((name, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm text-amber-900">
+                      <span>⭐</span><span>{name}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-amber-700 italic">No highlights selected yet. Go back to Places and tap ⭐ on your favorites.</p>
+              )}
             </section>
 
             <section className="bg-white rounded-2xl border border-gray-200 p-5">
