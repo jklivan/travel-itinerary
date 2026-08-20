@@ -153,7 +153,7 @@ function ItemForm({ type, onAdd, onClose }: {
   const [notes, setNotes] = useState('')
 
   const cfg = {
-    hotel:     { color: 'bg-blue-50 border-blue-200',   label: 'Hotel / Accommodation', placeholder: 'Hotel name', placeType: 'hotel' as const },
+    hotel:     { color: 'bg-blue-50 border-blue-200',   label: 'City / Stay', placeholder: 'Hotel, house, Airbnb…', placeType: 'hotel' as const },
     food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',         placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const },
     activity:  { color: 'bg-green-50 border-green-200',  label: 'Activity',              placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const },
   }[type]
@@ -423,36 +423,61 @@ export default function GuidedCreatePage() {
       all.push({ id: 'current', name: curDest.name, country: curDest.country, notes: curNotes, items: curItems })
     }
     return all.map(d => {
-      const hotels = d.items.filter(i => i.type === 'hotel')
-      // Group non-hotel items by dayIndex
-      const byDay = new Map<number, GuidedItem[]>()
-      for (const item of d.items.filter(i => i.type !== 'hotel')) {
-        const di = item.dayIndex ?? 1
-        if (!byDay.has(di)) byDay.set(di, [])
-        byDay.get(di)!.push(item)
+      // Hotels sorted by the day they were added — each one "starts" a new stay group
+      const hotels = d.items.filter(i => i.type === 'hotel').sort((a, b) => a.dayIndex - b.dayIndex)
+      const nonHotels = d.items.filter(i => i.type !== 'hotel')
+
+      function buildDayGroups(items: GuidedItem[]) {
+        const byDay = new Map<number, GuidedItem[]>()
+        for (const item of items) {
+          const di = item.dayIndex ?? 1
+          if (!byDay.has(di)) byDay.set(di, [])
+          byDay.get(di)!.push(item)
+        }
+        return byDay.size > 0
+          ? [...byDay.entries()].sort(([a], [b]) => a - b).map(([, dayItems]) => ({
+              food: dayItems
+                .map((item, pos) => ({ item, pos }))
+                .filter(({ item }) => item.type === 'food_drink')
+                .map(({ item: i, pos }) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos, tags: i.isHighlight ? ['__highlight'] : [] })),
+              activities: dayItems
+                .map((item, pos) => ({ item, pos }))
+                .filter(({ item }) => item.type === 'activity')
+                .map(({ item: i, pos }) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos, tags: i.isHighlight ? ['__highlight'] : [] })),
+            }))
+          : [{ food: [], activities: [] }]
       }
-      const days = byDay.size > 0
-        ? [...byDay.entries()].sort(([a], [b]) => a - b).map(([, dayItems]) => ({
-            food: dayItems
-              .map((item, pos) => ({ item, pos }))
-              .filter(({ item }) => item.type === 'food_drink')
-              .map(({ item: i, pos }) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos, tags: i.isHighlight ? ['__highlight'] : [] })),
-            activities: dayItems
-              .map((item, pos) => ({ item, pos }))
-              .filter(({ item }) => item.type === 'activity')
-              .map(({ item: i, pos }) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos, tags: i.isHighlight ? ['__highlight'] : [] })),
-          }))
-        : [{ food: [], activities: [] }]
-      const stays = hotels.length > 0 ? hotels : [null]
+
+      if (hotels.length === 0) {
+        return {
+          name: d.name, country: d.country, notes: d.notes,
+          groups: [{ hotelName: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, days: buildDayGroups(nonHotels) }],
+        }
+      }
+
+      // Assign each non-hotel item to the hotel that covers its day.
+      // Hotel N covers days from its dayIndex up to (but not including) hotel N+1's dayIndex.
+      // Items before the first hotel's day also fall into hotel 0.
+      const itemsByHotel: GuidedItem[][] = hotels.map(() => [])
+      for (const item of nonHotels) {
+        const di = item.dayIndex ?? 1
+        let hi = 0
+        for (let i = 0; i < hotels.length; i++) {
+          if (hotels[i].dayIndex <= di) hi = i
+          else break
+        }
+        itemsByHotel[hi].push(item)
+      }
+
       return {
         name: d.name, country: d.country, notes: d.notes,
-        groups: stays.map((hotel, index) => ({
-          hotelName: hotel?.name ?? '',
-          hotelNotes: hotel?.notes ?? '',
+        groups: hotels.map((hotel, idx) => ({
+          hotelName: hotel.name,
+          hotelNotes: hotel.notes,
           hotelAddress: '',
           hotelLink: '',
-          hotelRating: hotel?.rating ?? 0,
-          days: index === 0 ? days : [{ food: [], activities: [] }],
+          hotelRating: hotel.rating,
+          days: buildDayGroups(itemsByHotel[idx]),
         })),
       }
     })
@@ -652,7 +677,7 @@ export default function GuidedCreatePage() {
                       onClick={() => setActiveInput('hotel')}
                       className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-blue-200 text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-all">
                       <Hotel size={20} />
-                      <span className="text-xs font-semibold">+ Stay / Hotel</span>
+                      <span className="text-xs font-semibold">+ City</span>
                     </button>
                     <button type="button"
                       onClick={() => setActiveInput('food_drink')}
