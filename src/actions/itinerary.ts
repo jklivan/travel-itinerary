@@ -13,7 +13,7 @@ import { generateDescriptions } from '@/lib/generateDescriptions'
 export type ItineraryState = { error?: string } | undefined
 
 type FoodInput = { name: string; mealType?: string; description?: string; notes: string; rating: number; link: string; priceLevel?: number | null; familyFriendly?: boolean | null; familyFriendlySource?: string | null; lat?: number | null; lng?: number | null; tags?: string[]; dayIndex?: number | null; order?: number }
-type ActivityInput = { name: string; notes: string; rating: number; link: string; dayIndex?: number | null; order?: number }
+type ActivityInput = { name: string; notes: string; rating: number; link: string; dayIndex?: number | null; order?: number; tags?: string[] }
 type DayInput = { dayIndex?: number; food: FoodInput[]; activities: ActivityInput[] }
 type StayGroup = {
   hotelName: string; hotelDescription?: string; hotelNotes: string; hotelAddress?: string; hotelLink: string; hotelRating: number; hotelPriceLevel?: number | null; hotelLat?: number | null; hotelLng?: number | null; hotelTags?: string[]
@@ -42,7 +42,7 @@ function flattenGroups(groups: StayGroup[]): ItemRow[] {
           if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), description: f.description?.trim() || null, notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: f.priceLevel ?? null, familyFriendly: f.familyFriendly ?? null, familyFriendlySource: f.familyFriendlySource ?? null, mealType: f.mealType?.trim() || null, groupIndex: gi, dayIndex, order: f.order ?? fi, lat: f.lat ?? null, lng: f.lng ?? null, tags: f.tags ?? [] })
         }
         for (const [ai, a] of (day.activities ?? []).entries()) {
-          if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), description: null, notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi, dayIndex, order: a.order ?? ((day.food?.length ?? 0) + ai), lat: null, lng: null, tags: [] })
+          if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), description: null, notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi, dayIndex, order: a.order ?? ((day.food?.length ?? 0) + ai), lat: null, lng: null, tags: a.tags ?? [] })
         }
       }
     } else {
@@ -50,7 +50,7 @@ function flattenGroups(groups: StayGroup[]): ItemRow[] {
         if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), description: f.description?.trim() || null, notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: f.priceLevel ?? null, familyFriendly: f.familyFriendly ?? null, familyFriendlySource: f.familyFriendlySource ?? null, mealType: f.mealType?.trim() || null, groupIndex: gi, dayIndex: f.dayIndex ?? null, order: fi, lat: f.lat ?? null, lng: f.lng ?? null, tags: f.tags ?? [] })
       }
       for (const [ai, a] of (g.activities ?? []).entries()) {
-        if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), description: null, notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi, dayIndex: a.dayIndex ?? null, order: (g.food?.length ?? 0) + ai, lat: null, lng: null, tags: [] })
+        if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), description: null, notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi, dayIndex: a.dayIndex ?? null, order: (g.food?.length ?? 0) + ai, lat: null, lng: null, tags: a.tags ?? [] })
       }
     }
     return rows

@@ -30,6 +30,7 @@ type DayItem = {
   lng: number | null
   tags: string[]
   dayIndex: number | null
+  isHighlight: boolean
 }
 
 type DayGroup    = { dayIndex: number; items: DayItem[] }
@@ -81,8 +82,8 @@ function nightlyRateToTier(rate: number): number {
   if (rate < 600) return 3; if (rate < 1000) return 4; return 5
 }
 
-const emptyFoodItem = (): DayItem => ({ id: uid(), type: 'food_drink', name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null })
-const emptyActItem  = (): DayItem => ({ id: uid(), type: 'activity',   name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null })
+const emptyFoodItem = (): DayItem => ({ id: uid(), type: 'food_drink', name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null, isHighlight: false })
+const emptyActItem  = (): DayItem => ({ id: uid(), type: 'activity',   name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null, isHighlight: false })
 const emptyDay      = (dayIndex = 0): DayGroup => ({ dayIndex, items: [] })
 const emptyGroup    = (): StayGroup  => ({ hotelName: '', hotelDescription: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: [emptyDay(0)] })
 const emptyDest     = (): Destination => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
@@ -125,8 +126,9 @@ function itemsToGroups(rawItems: RawItem[]): StayGroup[] {
             familyFriendlySource: i.familyFriendlySource ?? null,
             lat: i.lat ?? null,
             lng: i.lng ?? null,
-            tags: i.tags ?? [],
+            tags: (i.tags ?? []).filter(t => t !== '__highlight'),
             dayIndex: i.dayIndex ?? null,
+            isHighlight: (i.tags ?? []).includes('__highlight'),
           }))
       }))
     return {
@@ -161,12 +163,14 @@ function toServerFormat(destinations: Destination[]) {
             notes: i.notes, link: i.link, rating: i.rating,
             priceLevel: i.priceLevel, familyFriendly: i.familyFriendly,
             familyFriendlySource: i.familyFriendlySource, lat: i.lat, lng: i.lng,
-            tags: i.tags, dayIndex: dyi, order: day.items.indexOf(i),
+            tags: i.isHighlight ? [...i.tags, '__highlight'] : i.tags,
+            dayIndex: dyi, order: day.items.indexOf(i),
           })),
         activities: day.items
           .filter(i => i.type === 'activity')
           .map(i => ({
             name: i.name, notes: i.notes, link: i.link, rating: i.rating,
+            tags: i.isHighlight ? ['__highlight'] : [],
             dayIndex: dyi, order: day.items.indexOf(i),
           })),
       }))
@@ -208,7 +212,7 @@ function DayMoveBar({ dayMove }: { dayMove: DayMove }) {
   )
 }
 
-function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove, showRating, onSelectPlace, onMoveUp, onMoveDown, dayMove }: {
+function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove, showRating, onSelectPlace, onMoveUp, onMoveDown, onToggleHighlight, dayMove }: {
   item: DayItem; index: number; total: number
   onUpdate: (field: string, val: string) => void
   onPatch: (patch: Partial<DayItem>) => void
@@ -216,6 +220,7 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
   onRemove: () => void; showRating: boolean
   onSelectPlace?: (placeId: string | null) => void
   onMoveUp: () => void; onMoveDown: () => void
+  onToggleHighlight: () => void
   dayMove?: DayMove
 }) {
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
@@ -268,6 +273,10 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
           className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.familyFriendly === true ? 'bg-green-500 text-white border-green-500' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
           👨‍👩‍👧 Family friendly
         </button>
+        <button type="button" onClick={onToggleHighlight}
+          className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.isHighlight ? 'bg-amber-400 text-white border-amber-400' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+          ⭐ Highlight
+        </button>
       </div>
       <div className="flex flex-wrap gap-1.5">
         {FOOD_TAGS.map(tag => (
@@ -291,12 +300,13 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
 
 // ── ActivityRow ───────────────────────────────────────────────────────────────
 
-function ActivityRow({ item, index, total, onUpdate, onPatch, onRemove, showRating, onMoveUp, onMoveDown, dayMove }: {
+function ActivityRow({ item, index, total, onUpdate, onPatch, onRemove, showRating, onMoveUp, onMoveDown, onToggleHighlight, dayMove }: {
   item: DayItem; index: number; total: number
   onUpdate: (field: string, val: string) => void
   onPatch: (patch: Partial<DayItem>) => void
   onRemove: () => void; showRating: boolean
   onMoveUp: () => void; onMoveDown: () => void
+  onToggleHighlight: () => void
   dayMove?: DayMove
 }) {
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
@@ -324,7 +334,13 @@ function ActivityRow({ item, index, total, onUpdate, onPatch, onRemove, showRati
         />
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
-      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
+      <div className="flex items-center gap-3 flex-wrap">
+        {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
+        <button type="button" onClick={onToggleHighlight}
+          className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.isHighlight ? 'bg-amber-400 text-white border-amber-400' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+          ⭐ Highlight
+        </button>
+      </div>
       <div className="grid gap-2">
         <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
@@ -351,7 +367,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
     ['family', 'friends', 'romantic'].includes(itinerary.audience) ? itinerary.audience as 'family' | 'friends' | 'romantic' : 'adult'
   )
   const [notes, setNotes] = useState(itinerary.notes ?? '')
-  const [highlights, setHighlights] = useState(itinerary.highlights ?? '')
   const [tags, setTags] = useState<string[]>(itinerary.tags ?? [])
   const [tripRating, setTripRating] = useState<number | null>(itinerary.tripRating ?? null)
   const [destinations, setDestinations] = useState<Destination[]>(
@@ -359,6 +374,10 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       ? itinerary.destinations.map(d => ({ name: d.name, country: d.country ?? '', notes: d.notes ?? '', groups: itemsToGroups(d.items) }))
       : [emptyDest()]
   )
+  // highlights are derived from items marked isHighlight — not a separate text field
+  const highlightedItems = destinations.flatMap(d =>
+    d.groups.flatMap(g => g.days.flatMap(day => day.items))
+  ).filter(i => i.isHighlight && i.name.trim())
   const tripDateRange = dateRangeFromMonthAndDays(tripMonth, tripDays)
   const [photos, setPhotos] = useState<UploadedPhoto[]>(itinerary.photos.map(p => ({ url: p.url, caption: p.caption ?? '' })))
   const photosInputRef = useRef<HTMLInputElement>(null)
@@ -449,6 +468,11 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       ...d, items: d.items.map(i => i.id !== itemId ? i : {
         ...i, tags: i.tags.includes(tag) ? i.tags.filter(t => t !== tag) : [...i.tags, tag]
       })
+    }))
+  }
+  function toggleItemHighlight(di: number, gi: number, dyi: number, itemId: string) {
+    updDay(di, gi, dyi, d => ({
+      ...d, items: d.items.map(i => i.id !== itemId ? i : { ...i, isHighlight: !i.isHighlight })
     }))
   }
   async function fetchItemPriceLevel(di: number, gi: number, dyi: number, itemId: string, placeId: string) {
@@ -577,11 +601,22 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         </div>
       </section>
 
-      {/* Highlights */}
+      {/* Highlights — derived from per-item ⭐ buttons */}
+      <input type="hidden" name="highlights" value={highlightedItems.map(i => i.name.trim()).join('\n')} />
       <section className="bg-amber-50 rounded-2xl border border-amber-200 p-6">
         <h2 className="font-semibold text-gray-900 mb-1">✨ Highlights</h2>
-        <p className="text-xs text-gray-500 mb-3">Your personal trip summary. Leave blank and we&apos;ll auto-generate one from your 5-star picks.</p>
-        <textarea name="highlights" rows={3} className={inputClass} placeholder="The ramen at Ichiran was life-changing…" value={highlights} onChange={e => setHighlights(e.target.value)} />
+        <p className="text-xs text-gray-500 mb-3">Tap ⭐ on any item below to feature it here.</p>
+        {highlightedItems.length > 0 ? (
+          <ul className="space-y-1.5">
+            {highlightedItems.map(i => (
+              <li key={i.id} className="flex items-center gap-2 text-sm text-amber-800 font-medium">
+                <span>⭐</span>{i.name}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-gray-400 italic">No highlights selected yet.</p>
+        )}
       </section>
 
       {/* Destinations */}
@@ -692,6 +727,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                                     : patchItem(di, gi, dyi, item.id, { priceLevel: null })}
                                   onMoveUp={() => moveItem(di, gi, dyi, ii, ii - 1)}
                                   onMoveDown={() => moveItem(di, gi, dyi, ii, ii + 1)}
+                                  onToggleHighlight={() => toggleItemHighlight(di, gi, dyi, item.id)}
                                   dayMove={dayMove}
                                 />
                               : <ActivityRow key={item.id} item={item} index={ii} total={day.items.length} showRating={showRating}
@@ -700,6 +736,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                                   onRemove={() => removeItem(di, gi, dyi, item.id)}
                                   onMoveUp={() => moveItem(di, gi, dyi, ii, ii - 1)}
                                   onMoveDown={() => moveItem(di, gi, dyi, ii, ii + 1)}
+                                  onToggleHighlight={() => toggleItemHighlight(di, gi, dyi, item.id)}
                                   dayMove={dayMove}
                                 />
                           })}
