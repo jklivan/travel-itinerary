@@ -554,7 +554,10 @@ export default function GuidedCreatePage() {
                         }
                         return [...byDay.entries()].sort(([a], [b]) => a - b).map(([day, items]) => (
                           <div key={day}>
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Day {day}</p>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full shrink-0">Day {day}</span>
+                              <div className="flex-1 h-px bg-blue-100" />
+                            </div>
                             <div className="space-y-2">
                               {items.map(item => (
                                 <AddedRow key={item.id} item={item}
@@ -640,7 +643,10 @@ export default function GuidedCreatePage() {
               {/* Option buttons — always visible when no form open */}
               {!activeInput && (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Day {curDayIndex}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-gray-800 bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">Day {curDayIndex}</span>
+                    <span className="text-xs text-gray-400">Add places for this day</span>
+                  </div>
                   <div className="grid grid-cols-3 gap-2">
                     <button type="button"
                       onClick={() => setActiveInput('hotel')}
@@ -672,12 +678,6 @@ export default function GuidedCreatePage() {
                       <ImageIcon size={20} />
                       <span className="text-xs font-semibold">{photos.length > 0 ? `Photos (${photos.length})` : '+ Photos'}</span>
                     </button>
-                    <button type="button"
-                      onClick={() => setCurDayIndex(d => d + 1)}
-                      className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-indigo-200 text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50 transition-all">
-                      <ArrowRight size={20} />
-                      <span className="text-xs font-semibold">Day {curDayIndex + 1}</span>
-                    </button>
                   </div>
                 </div>
               )}
@@ -685,6 +685,10 @@ export default function GuidedCreatePage() {
               {/* Done + draft buttons */}
               {!activeInput && (
                 <div className="space-y-2">
+                  <button type="button" onClick={() => setCurDayIndex(d => d + 1)}
+                    className="w-full py-2.5 rounded-xl border-2 border-indigo-200 text-indigo-700 text-sm font-semibold hover:border-indigo-300 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2">
+                    <ArrowRight size={14} /> Add Day {curDayIndex + 1}
+                  </button>
                   <button type="button" onClick={finishDest}
                     className="w-full py-3 rounded-xl bg-gray-900 text-white font-semibold hover:bg-gray-700 transition-colors text-sm flex items-center justify-center gap-2">
                     Done with {curDest.name} <ArrowRight size={15} />
