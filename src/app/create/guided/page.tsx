@@ -51,7 +51,7 @@ type GuidedDest = {
 
 type UploadedPhoto = { url: string; caption: string }
 
-type Phase = 'dest' | 'building' | 'more' | 'details'
+type Phase = 'dest' | 'building' | 'more' | 'picks' | 'details'
 
 type SavedState = {
   dests: GuidedDest[]
@@ -143,14 +143,13 @@ function AddedRow({ item, onRemove }: { item: GuidedItem; onRemove: () => void }
 
 function ItemForm({ type, onAdd, onClose }: {
   type: ItemType
-  onAdd: (item: Omit<GuidedItem, 'id' | 'dayIndex'>) => void
+  onAdd: (item: Omit<GuidedItem, 'id' | 'dayIndex' | 'isHighlight'>) => void
   onClose: () => void
 }) {
   const [name, setName] = useState('')
   const [mealType, setMealType] = useState('')
   const [rating, setRating] = useState(0)
   const [notes, setNotes] = useState('')
-  const [isHighlight, setIsHighlight] = useState(false)
 
   const cfg = {
     hotel:     { color: 'bg-blue-50 border-blue-200',   label: 'Hotel / Accommodation', placeholder: 'Hotel name', placeType: 'hotel' as const },
@@ -160,8 +159,8 @@ function ItemForm({ type, onAdd, onClose }: {
 
   function submit() {
     if (!name.trim()) return
-    onAdd({ type, name: name.trim(), mealType, rating, notes: notes.trim(), isHighlight })
-    setName(''); setMealType(''); setRating(0); setNotes(''); setIsHighlight(false)
+    onAdd({ type, name: name.trim(), mealType, rating, notes: notes.trim() })
+    setName(''); setMealType(''); setRating(0); setNotes('')
   }
 
   return (
@@ -193,12 +192,6 @@ function ItemForm({ type, onAdd, onClose }: {
           <p className="text-xs text-gray-500">Rate it</p>
           <StarRating value={rating} onChange={setRating} />
         </div>
-        {type !== 'hotel' && (
-          <button type="button" onClick={() => setIsHighlight(v => !v)}
-            className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors self-end mb-0.5 ${isHighlight ? 'bg-amber-400 text-white border-amber-400' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
-            ⭐ Highlight
-          </button>
-        )}
       </div>
       <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
         placeholder="📝 Notes (optional)" className={inputCls} />
@@ -337,8 +330,8 @@ export default function GuidedCreatePage() {
     })
   }
 
-  function addItem(item: Omit<GuidedItem, 'id' | 'dayIndex'>) {
-    setCurItems(i => [...i, { ...item, id: uid(), dayIndex: curDayIndex }])
+  function addItem(item: Omit<GuidedItem, 'id' | 'dayIndex' | 'isHighlight'>) {
+    setCurItems(i => [...i, { ...item, id: uid(), dayIndex: curDayIndex, isHighlight: false }])
     setActiveInput(null)
   }
 
@@ -362,6 +355,25 @@ export default function GuidedCreatePage() {
     setDests(ds => ds.filter(d => d.id !== destId))
     setPhase('building')
     setActiveInput(null)
+  }
+
+  function setTopPickFoodGuided(destId: string, itemId: string | null) {
+    setDests(ds => ds.map(d => d.id !== destId ? d : {
+      ...d,
+      items: d.items.map(i => i.type === 'food_drink'
+        ? { ...i, isHighlight: itemId !== null && i.id === itemId }
+        : i
+      )
+    }))
+  }
+  function setTopPickActivityGuided(destId: string, itemId: string | null) {
+    setDests(ds => ds.map(d => d.id !== destId ? d : {
+      ...d,
+      items: d.items.map(i => i.type === 'activity'
+        ? { ...i, isHighlight: itemId !== null && i.id === itemId }
+        : i
+      )
+    }))
   }
 
   const computedHighlights = [...dests, ...(curDest.name.trim() ? [{ items: curItems }] : [])]
@@ -702,7 +714,7 @@ export default function GuidedCreatePage() {
                 className="flex-1 py-3 rounded-xl border-2 border-blue-200 text-blue-700 text-sm font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
                 <Plus size={15} /> Add destination
               </button>
-              <button type="button" onClick={() => setPhase('details')}
+              <button type="button" onClick={() => setPhase('picks')}
                 className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
                 Finish <ArrowRight size={15} />
               </button>
@@ -711,6 +723,71 @@ export default function GuidedCreatePage() {
               className="w-full py-2.5 rounded-xl border-2 border-gray-200 text-gray-500 text-sm font-medium hover:border-gray-300 transition-colors disabled:opacity-60">
               {pending ? 'Saving…' : 'Save as Draft'}
             </button>
+          </div>
+        )}
+
+        {/* ── PICKS card ─────────────────────────────────────────────────── */}
+        {phase === 'picks' && (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 space-y-5">
+            <div>
+              <h2 className="font-bold text-gray-900">Top picks</h2>
+              <p className="text-sm text-gray-500 mt-0.5">Select your favourite from each destination.</p>
+            </div>
+            {dests.map(dest => {
+              const food = dest.items.filter(i => i.type === 'food_drink' && i.name.trim())
+              const acts = dest.items.filter(i => i.type === 'activity' && i.name.trim())
+              if (food.length === 0 && acts.length === 0) return null
+              const topFoodId = food.find(i => i.isHighlight)?.id ?? null
+              const topActId  = acts.find(i => i.isHighlight)?.id  ?? null
+              return (
+                <div key={dest.id} className="space-y-3">
+                  {dests.length > 1 && (
+                    <p className="text-sm font-semibold text-gray-800">{dest.name}{dest.country ? `, ${dest.country}` : ''}</p>
+                  )}
+                  {food.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 mb-1.5">🍽️ Top restaurant</p>
+                      <div className="space-y-1.5">
+                        {food.map(item => (
+                          <button key={item.id} type="button"
+                            onClick={() => setTopPickFoodGuided(dest.id, topFoodId === item.id ? null : item.id)}
+                            className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${topFoodId === item.id ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
+                            {topFoodId === item.id ? '⭐ ' : ''}{item.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {acts.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 mb-1.5">📍 Top activity</p>
+                      <div className="space-y-1.5">
+                        {acts.map(item => (
+                          <button key={item.id} type="button"
+                            onClick={() => setTopPickActivityGuided(dest.id, topActId === item.id ? null : item.id)}
+                            className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${topActId === item.id ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
+                            {topActId === item.id ? '⭐ ' : ''}{item.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            {dests.every(d => d.items.filter(i => i.type !== 'hotel').length === 0) && (
+              <p className="text-sm text-gray-400 italic">No restaurants or activities added yet.</p>
+            )}
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setPhase('more')}
+                className="px-5 py-3 rounded-xl border border-gray-300 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors">
+                ← Back
+              </button>
+              <button type="button" onClick={() => setPhase('details')}
+                className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
+                Continue →
+              </button>
+            </div>
           </div>
         )}
 
@@ -798,7 +875,7 @@ export default function GuidedCreatePage() {
                 <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{formState.error}</p>
               )}
 
-              <button type="button" onClick={() => setPhase('more')} className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
+              <button type="button" onClick={() => setPhase('picks')} className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
                 ← Back
               </button>
 

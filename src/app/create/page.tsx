@@ -208,14 +208,13 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   )
 }
 
-function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, showRating, onSelectPlace, onToggleHighlight }: {
+function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, showRating, onSelectPlace }: {
   item: FoodItem; index: number
   onUpdate: (field: keyof Omit<FoodItem, 'priceLevel' | 'familyFriendly' | 'tags' | 'isHighlight'>, val: string) => void
   onUpdateFF: (val: boolean | null) => void
   onToggleTag: (tag: string) => void
   onRemove: () => void; showRating: boolean
   onSelectPlace?: (placeId: string | null) => void
-  onToggleHighlight: () => void
 }) {
   const [showDetails, setShowDetails] = useState(false)
   return (
@@ -239,13 +238,9 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
           )
         })}
       </div>
-      <div className="flex items-center gap-3 flex-wrap">
-        {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
-        <button type="button" onClick={onToggleHighlight}
-          className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.isHighlight ? 'bg-amber-400 text-white border-amber-400' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
-          ⭐ Highlight
-        </button>
-      </div>
+      {showRating && (
+        <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>
+      )}
       <button type="button" onClick={() => setShowDetails(value => !value)} className="text-xs font-medium text-gray-500 hover:text-gray-800">
         {showDetails ? '− Hide details' : '+ Add details'}
       </button>
@@ -278,11 +273,10 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
   )
 }
 
-function ActivityRow({ item, index, onUpdate, onRemove, showRating, onToggleHighlight }: {
+function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
   item: ActivityItem; index: number
   onUpdate: (field: keyof Omit<ActivityItem, 'isHighlight'>, val: string) => void
   onRemove: () => void; showRating: boolean
-  onToggleHighlight: () => void
 }) {
   const [showDetails, setShowDetails] = useState(false)
   return (
@@ -292,13 +286,9 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating, onToggleHigh
           type="activity" placeholder="e.g. Temple tour, Hiking, Museum visit" className={inputClass} />
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
-      <div className="flex items-center gap-3 flex-wrap">
-        {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>}
-        <button type="button" onClick={onToggleHighlight}
-          className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.isHighlight ? 'bg-amber-400 text-white border-amber-400' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
-          ⭐ Highlight
-        </button>
-      </div>
+      {showRating && (
+        <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>
+      )}
       <button type="button" onClick={() => setShowDetails(value => !value)} className="text-xs font-medium text-gray-500 hover:text-gray-800">
         {showDetails ? '− Hide details' : '+ Add details'}
       </button>
@@ -313,7 +303,7 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating, onToggleHigh
 }
 
 // ── Steps ─────────────────────────────────────────────────────────────────────
-const STEPS = ['start', 'basics', 'places', 'photos', 'details'] as const
+const STEPS = ['start', 'basics', 'places', 'photos', 'picks', 'details'] as const
 type Step = typeof STEPS[number] | 'review'
 
 export default function CreatePage() {
@@ -552,14 +542,32 @@ export default function CreatePage() {
   function toggleFoodTag(di: number, gi: number, dyi: number, ii: number, tag: string) {
     updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j !== ii ? f : { ...f, tags: f.tags.includes(tag) ? f.tags.filter(t => t !== tag) : [...f.tags, tag] }) }))
   }
-  function toggleFoodHighlight(di: number, gi: number, dyi: number, ii: number) {
-    updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j !== ii ? f : { ...f, isHighlight: !f.isHighlight }) }))
+  function setTopPickFood(di: number, name: string | null) {
+    setDestinations(dests => dests.map((dest, i) => i !== di ? dest : {
+      ...dest,
+      groups: dest.groups.map(g => ({
+        ...g,
+        days: g.days.map(d => ({
+          ...d,
+          food: d.food.map(f => ({ ...f, isHighlight: name !== null && f.name.trim() === name }))
+        }))
+      }))
+    }))
+  }
+  function setTopPickActivity(di: number, name: string | null) {
+    setDestinations(dests => dests.map((dest, i) => i !== di ? dest : {
+      ...dest,
+      groups: dest.groups.map(g => ({
+        ...g,
+        days: g.days.map(d => ({
+          ...d,
+          activities: d.activities.map(a => ({ ...a, isHighlight: name !== null && a.name.trim() === name }))
+        }))
+      }))
+    }))
   }
   function addActivity(di: number, gi: number, dyi: number) { updDay(di, gi, dyi, d => ({ ...d, activities: [...d.activities, emptyActivity()] })) }
   function removeActivity(di: number, gi: number, dyi: number, ii: number) { updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.filter((_, j) => j !== ii) })) }
-  function toggleActivityHighlight(di: number, gi: number, dyi: number, ii: number) {
-    updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.map((a, j) => j !== ii ? a : { ...a, isHighlight: !a.isHighlight }) }))
-  }
   function updateActivity(di: number, gi: number, dyi: number, ii: number, field: keyof Omit<ActivityItem, 'isHighlight'>, val: string) {
     updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.map((a, j) => j !== ii ? a : { ...a, [field]: field === 'rating' ? Number(val) : val }) }))
   }
@@ -615,11 +623,12 @@ export default function CreatePage() {
 
       {/* Progress bar (hidden on start step) */}
       {step !== 'start' && step !== 'review' && (
-        <div className="mb-7 grid grid-cols-4 gap-1">
+        <div className="mb-7 grid grid-cols-5 gap-1">
           {([
             ['basics', 'Basics'],
             ['places', 'Places'],
             ['photos', 'Photos'],
+            ['picks', 'Picks'],
             ['details', 'Finish'],
           ] as const).map(([stepName, label], index) => {
             const isComplete = stepIndex > index + 1
@@ -961,13 +970,13 @@ export default function CreatePage() {
                             <div className="space-y-2">
                               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🍜 Food & Drink</p>
                               {day.food.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
-                              <div className="space-y-3">{day.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, dyi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, dyi, ii, v)} onToggleTag={tag => toggleFoodTag(di, gi, dyi, ii, tag)} onRemove={() => removeFood(di, gi, dyi, ii)} onSelectPlace={id => id ? fetchFoodPriceLevel(di, gi, dyi, ii, id) : setFoodPriceLevel(di, gi, dyi, ii, null)} onToggleHighlight={() => toggleFoodHighlight(di, gi, dyi, ii)} />)}</div>
+                              <div className="space-y-3">{day.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, dyi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, dyi, ii, v)} onToggleTag={tag => toggleFoodTag(di, gi, dyi, ii, tag)} onRemove={() => removeFood(di, gi, dyi, ii)} onSelectPlace={id => id ? fetchFoodPriceLevel(di, gi, dyi, ii, id) : setFoodPriceLevel(di, gi, dyi, ii, null)} />)}</div>
                               <button type="button" onClick={() => addFood(di, gi, dyi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add food / drink</button>
                             </div>
                             <div className="space-y-2">
                               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🎯 Activities</p>
                               {day.activities.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
-                              <div className="space-y-3">{day.activities.map((item, ii) => <ActivityRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, dyi, ii, f, v)} onRemove={() => removeActivity(di, gi, dyi, ii)} onToggleHighlight={() => toggleActivityHighlight(di, gi, dyi, ii)} />)}</div>
+                              <div className="space-y-3">{day.activities.map((item, ii) => <ActivityRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, dyi, ii, f, v)} onRemove={() => removeActivity(di, gi, dyi, ii)} />)}</div>
                               <button type="button" onClick={() => addActivity(di, gi, dyi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add activity</button>
                             </div>
                           </div>
@@ -1029,6 +1038,61 @@ export default function CreatePage() {
           </div>
         )}
 
+        {/* ── PICKS ──────────────────────────────────────────────────────── */}
+        {step === 'picks' && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="font-semibold text-gray-900 text-lg">Top Picks</h2>
+              <p className="text-sm text-gray-500 mt-0.5">Select your favourite restaurant and activity for each destination.</p>
+            </div>
+            {destinations.map((dest, di) => {
+              const allFood = dest.groups.flatMap(g => g.days.flatMap(d => d.food)).filter(f => f.name.trim())
+              const allActs = dest.groups.flatMap(g => g.days.flatMap(d => d.activities)).filter(a => a.name.trim())
+              if (allFood.length === 0 && allActs.length === 0) return null
+              const topFood = allFood.find(f => f.isHighlight)?.name ?? null
+              const topAct  = allActs.find(a => a.isHighlight)?.name ?? null
+              return (
+                <div key={di} className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+                  {destinations.length > 1 && (
+                    <h3 className="font-medium text-gray-900 text-sm">{dest.name || `Destination ${di + 1}`}</h3>
+                  )}
+                  {allFood.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 mb-2">🍽️ Top restaurant</p>
+                      <div className="space-y-1.5">
+                        {allFood.map(f => (
+                          <button key={f.name} type="button"
+                            onClick={() => setTopPickFood(di, topFood === f.name ? null : f.name)}
+                            className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${topFood === f.name ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : 'border-gray-200 text-gray-700 hover:border-amber-200'}`}>
+                            {topFood === f.name ? '⭐ ' : ''}{f.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {allActs.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 mb-2">📍 Top activity</p>
+                      <div className="space-y-1.5">
+                        {allActs.map(a => (
+                          <button key={a.name} type="button"
+                            onClick={() => setTopPickActivity(di, topAct === a.name ? null : a.name)}
+                            className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${topAct === a.name ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : 'border-gray-200 text-gray-700 hover:border-amber-200'}`}>
+                            {topAct === a.name ? '⭐ ' : ''}{a.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            {destinations.every(d => d.groups.flatMap(g => g.days.flatMap(day => [...day.food, ...day.activities])).filter(i => i.name.trim()).length === 0) && (
+              <p className="text-sm text-gray-400 italic">No restaurants or activities added yet — go back to Places.</p>
+            )}
+          </div>
+        )}
+
         {/* ── DETAILS ────────────────────────────────────────────────────── */}
         {step === 'details' && (
           <div className="space-y-4">
@@ -1041,10 +1105,9 @@ export default function CreatePage() {
             </section>
 
             <section className="bg-amber-50 rounded-2xl border border-amber-200 p-5">
-              <h3 className="font-medium text-gray-900 mb-1 text-sm">✨ Highlights</h3>
-              <p className="text-xs text-gray-500 mb-3">Tap ⭐ on any item in the Places step to feature it here.</p>
+              <h3 className="font-medium text-gray-900 mb-1 text-sm">⭐ Top Picks</h3>
               {computedHighlightNames.length > 0 ? (
-                <ul className="space-y-1.5">
+                <ul className="space-y-1.5 mt-2">
                   {computedHighlightNames.map((name, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm text-amber-900">
                       <span>⭐</span><span>{name}</span>
@@ -1052,7 +1115,7 @@ export default function CreatePage() {
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-amber-700 italic">No highlights selected yet. Go back to Places and tap ⭐ on your favorites.</p>
+                <p className="text-sm text-amber-700 italic mt-2">No top picks selected. Go back to choose your favourites.</p>
               )}
             </section>
 

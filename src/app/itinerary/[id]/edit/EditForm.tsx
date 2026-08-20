@@ -212,7 +212,7 @@ function DayMoveBar({ dayMove }: { dayMove: DayMove }) {
   )
 }
 
-function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove, showRating, onSelectPlace, onMoveUp, onMoveDown, onToggleHighlight, dayMove }: {
+function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove, showRating, onSelectPlace, onMoveUp, onMoveDown, dayMove }: {
   item: DayItem; index: number; total: number
   onUpdate: (field: string, val: string) => void
   onPatch: (patch: Partial<DayItem>) => void
@@ -220,7 +220,6 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
   onRemove: () => void; showRating: boolean
   onSelectPlace?: (placeId: string | null) => void
   onMoveUp: () => void; onMoveDown: () => void
-  onToggleHighlight: () => void
   dayMove?: DayMove
 }) {
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
@@ -273,10 +272,6 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
           className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.familyFriendly === true ? 'bg-green-500 text-white border-green-500' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
           👨‍👩‍👧 Family friendly
         </button>
-        <button type="button" onClick={onToggleHighlight}
-          className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.isHighlight ? 'bg-amber-400 text-white border-amber-400' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
-          ⭐ Highlight
-        </button>
       </div>
       <div className="flex flex-wrap gap-1.5">
         {FOOD_TAGS.map(tag => (
@@ -300,13 +295,12 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
 
 // ── ActivityRow ───────────────────────────────────────────────────────────────
 
-function ActivityRow({ item, index, total, onUpdate, onPatch, onRemove, showRating, onMoveUp, onMoveDown, onToggleHighlight, dayMove }: {
+function ActivityRow({ item, index, total, onUpdate, onPatch, onRemove, showRating, onMoveUp, onMoveDown, dayMove }: {
   item: DayItem; index: number; total: number
   onUpdate: (field: string, val: string) => void
   onPatch: (patch: Partial<DayItem>) => void
   onRemove: () => void; showRating: boolean
   onMoveUp: () => void; onMoveDown: () => void
-  onToggleHighlight: () => void
   dayMove?: DayMove
 }) {
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
@@ -336,10 +330,6 @@ function ActivityRow({ item, index, total, onUpdate, onPatch, onRemove, showRati
       </div>
       <div className="flex items-center gap-3 flex-wrap">
         {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
-        <button type="button" onClick={onToggleHighlight}
-          className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.isHighlight ? 'bg-amber-400 text-white border-amber-400' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
-          ⭐ Highlight
-        </button>
       </div>
       <div className="grid gap-2">
         <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
@@ -374,10 +364,13 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       ? itinerary.destinations.map(d => ({ name: d.name, country: d.country ?? '', notes: d.notes ?? '', groups: itemsToGroups(d.items) }))
       : [emptyDest()]
   )
-  // highlights are derived from items marked isHighlight — not a separate text field
-  const highlightedItems = destinations.flatMap(d =>
-    d.groups.flatMap(g => g.days.flatMap(day => day.items))
-  ).filter(i => i.isHighlight && i.name.trim())
+  // top picks are derived from items marked isHighlight — one food + one activity per destination
+  const topPickLines = destinations.flatMap(dest => {
+    const allItems = dest.groups.flatMap(g => g.days.flatMap(d => d.items))
+    const food = allItems.find(i => i.type === 'food_drink' && i.isHighlight && i.name.trim())
+    const act  = allItems.find(i => i.type === 'activity'   && i.isHighlight && i.name.trim())
+    return [food?.name, act?.name].filter(Boolean) as string[]
+  })
   const tripDateRange = dateRangeFromMonthAndDays(tripMonth, tripDays)
   const [photos, setPhotos] = useState<UploadedPhoto[]>(itinerary.photos.map(p => ({ url: p.url, caption: p.caption ?? '' })))
   const photosInputRef = useRef<HTMLInputElement>(null)
@@ -470,11 +463,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       })
     }))
   }
-  function toggleItemHighlight(di: number, gi: number, dyi: number, itemId: string) {
-    updDay(di, gi, dyi, d => ({
-      ...d, items: d.items.map(i => i.id !== itemId ? i : { ...i, isHighlight: !i.isHighlight })
-    }))
-  }
   async function fetchItemPriceLevel(di: number, gi: number, dyi: number, itemId: string, placeId: string) {
     try {
       const res = await fetch(`/api/place-details?id=${encodeURIComponent(placeId)}`)
@@ -496,6 +484,36 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       items.splice(toIndex, 0, item)
       return { ...d, items }
     })
+  }
+  function setTopPickFood(di: number, itemId: string | null) {
+    setDestinations(dests => dests.map((dest, i) => i !== di ? dest : {
+      ...dest,
+      groups: dest.groups.map(g => ({
+        ...g,
+        days: g.days.map(d => ({
+          ...d,
+          items: d.items.map(item => item.type === 'food_drink'
+            ? { ...item, isHighlight: itemId !== null && item.id === itemId }
+            : item
+          )
+        }))
+      }))
+    }))
+  }
+  function setTopPickActivity(di: number, itemId: string | null) {
+    setDestinations(dests => dests.map((dest, i) => i !== di ? dest : {
+      ...dest,
+      groups: dest.groups.map(g => ({
+        ...g,
+        days: g.days.map(d => ({
+          ...d,
+          items: d.items.map(item => item.type === 'activity'
+            ? { ...item, isHighlight: itemId !== null && item.id === itemId }
+            : item
+          )
+        }))
+      }))
+    }))
   }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -601,22 +619,56 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         </div>
       </section>
 
-      {/* Highlights — derived from per-item ⭐ buttons */}
-      <input type="hidden" name="highlights" value={highlightedItems.map(i => i.name.trim()).join('\n')} />
-      <section className="bg-amber-50 rounded-2xl border border-amber-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-1">✨ Highlights</h2>
-        <p className="text-xs text-gray-500 mb-3">Tap ⭐ on any item below to feature it here.</p>
-        {highlightedItems.length > 0 ? (
-          <ul className="space-y-1.5">
-            {highlightedItems.map(i => (
-              <li key={i.id} className="flex items-center gap-2 text-sm text-amber-800 font-medium">
-                <span>⭐</span>{i.name}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-gray-400 italic">No highlights selected yet.</p>
-        )}
+      {/* Top Picks — one food + one activity per destination */}
+      <input type="hidden" name="highlights" value={topPickLines.join('\n')} />
+      <section className="bg-amber-50 rounded-2xl border border-amber-200 p-6 space-y-5">
+        <div>
+          <h2 className="font-semibold text-gray-900 mb-1">⭐ Top Picks</h2>
+          <p className="text-xs text-gray-500">Select your favourite restaurant and activity for each destination.</p>
+        </div>
+        {destinations.map((dest, di) => {
+          const allItems = dest.groups.flatMap(g => g.days.flatMap(d => d.items))
+          const foodItems = allItems.filter(i => i.type === 'food_drink' && i.name.trim())
+          const actItems  = allItems.filter(i => i.type === 'activity'   && i.name.trim())
+          if (foodItems.length === 0 && actItems.length === 0) return null
+          const topFoodId = foodItems.find(i => i.isHighlight)?.id ?? null
+          const topActId  = actItems.find(i => i.isHighlight)?.id  ?? null
+          return (
+            <div key={di} className="space-y-3">
+              {destinations.length > 1 && (
+                <p className="text-sm font-semibold text-amber-800">{dest.name || `Destination ${di + 1}`}</p>
+              )}
+              {foodItems.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-2">🍽️ Top restaurant</p>
+                  <div className="space-y-1.5">
+                    {foodItems.map(item => (
+                      <button key={item.id} type="button"
+                        onClick={() => setTopPickFood(di, topFoodId === item.id ? null : item.id)}
+                        className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${topFoodId === item.id ? 'bg-amber-100 border-amber-400 text-amber-900 font-medium' : 'bg-white border-gray-200 text-gray-700 hover:border-amber-300'}`}>
+                        {topFoodId === item.id ? '⭐ ' : ''}{item.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {actItems.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-2">📍 Top activity</p>
+                  <div className="space-y-1.5">
+                    {actItems.map(item => (
+                      <button key={item.id} type="button"
+                        onClick={() => setTopPickActivity(di, topActId === item.id ? null : item.id)}
+                        className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${topActId === item.id ? 'bg-amber-100 border-amber-400 text-amber-900 font-medium' : 'bg-white border-gray-200 text-gray-700 hover:border-amber-300'}`}>
+                        {topActId === item.id ? '⭐ ' : ''}{item.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
       </section>
 
       {/* Destinations */}
@@ -727,7 +779,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                                     : patchItem(di, gi, dyi, item.id, { priceLevel: null })}
                                   onMoveUp={() => moveItem(di, gi, dyi, ii, ii - 1)}
                                   onMoveDown={() => moveItem(di, gi, dyi, ii, ii + 1)}
-                                  onToggleHighlight={() => toggleItemHighlight(di, gi, dyi, item.id)}
                                   dayMove={dayMove}
                                 />
                               : <ActivityRow key={item.id} item={item} index={ii} total={day.items.length} showRating={showRating}
@@ -736,7 +787,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                                   onRemove={() => removeItem(di, gi, dyi, item.id)}
                                   onMoveUp={() => moveItem(di, gi, dyi, ii, ii - 1)}
                                   onMoveDown={() => moveItem(di, gi, dyi, ii, ii + 1)}
-                                  onToggleHighlight={() => toggleItemHighlight(di, gi, dyi, item.id)}
                                   dayMove={dayMove}
                                 />
                           })}
