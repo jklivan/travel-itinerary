@@ -8,7 +8,6 @@ import { Hotel, Utensils, Camera, MapPin, Star } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import PhotoStrip from '@/components/PhotoStrip'
 import { tagMeta } from '@/lib/tags'
-import SwipeNav from '@/components/SwipeNav'
 import DeleteButton from '@/components/DeleteButton'
 import Comments from '@/components/Comments'
 import { TRIP_STAMPS } from '@/lib/tripStamps'
@@ -134,18 +133,6 @@ export default async function ItineraryPage({
 
   if (it.visibility === 'draft' && !isOwn) notFound()
 
-  // Adjacent itineraries for swipe navigation (same author, same visibility rules)
-  const userItineraries = await prisma.itinerary.findMany({
-    where: {
-      userId: it.user.id,
-      ...(isOwn ? {} : { visibility: { not: 'draft' } }),
-    },
-    orderBy: { startDate: 'desc' },
-    select: { id: true },
-  })
-  const currentIndex = userItineraries.findIndex((i) => i.id === id)
-  const prevId = currentIndex > 0 ? userItineraries[currentIndex - 1].id : null
-  const nextId = currentIndex < userItineraries.length - 1 ? userItineraries[currentIndex + 1].id : null
 
   const [followRecord, bucketItem, comments] = await Promise.all([
     session?.user?.id && !isOwn
@@ -199,7 +186,7 @@ export default async function ItineraryPage({
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <SwipeNav prevId={prevId} nextId={nextId}>
+      <Link href="/" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Back to feed</Link>
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
         {/* Photo strip — user photos scroll horizontally; stock photo as fallback cover */}
         {(() => {
@@ -564,7 +551,6 @@ export default async function ItineraryPage({
 
         </div>
       </div>
-      </SwipeNav>
     </div>
   )
 }
