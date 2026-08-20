@@ -677,7 +677,7 @@ export default function GuidedCreatePage() {
                       onClick={() => setActiveInput('hotel')}
                       className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-blue-200 text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-all">
                       <Hotel size={20} />
-                      <span className="text-xs font-semibold">+ City</span>
+                      <span className="text-xs font-semibold">+ Hotel / Airbnb</span>
                     </button>
                     <button type="button"
                       onClick={() => setActiveInput('food_drink')}
