@@ -435,9 +435,8 @@ export default async function ItineraryPage({
                         return groups.map((group, gi) => (
                           <div key={gi} className="space-y-2">
                             {multiStay ? (
-                              // Multi-stay: hotel card per group, then Day N labels below
+                              // Multi-stay: Day N badge, then hotel card only on first day of each stay
                               <>
-                                {group.hotel && hotelCard(group.hotel)}
                                 {group.days.map((day, di) => {
                                   dayCounter++
                                   const dn = dayCounter
@@ -446,6 +445,7 @@ export default async function ItineraryPage({
                                       <div className="flex items-center gap-2 mt-1">
                                         <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full shrink-0">Day {dn}</span>
                                       </div>
+                                      {di === 0 && group.hotel && hotelCard(group.hotel)}
                                     {day.items.map(item => item.type === 'food_drink' ? (
                                     <div key={item.id} className="bg-orange-50 rounded-lg p-3">
                                       <div className="flex items-center gap-1.5 mb-1">
