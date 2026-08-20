@@ -2,21 +2,46 @@ import { NextRequest } from 'next/server'
 
 const API_KEY = process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_PLACES_API
 
-// Simple in-process geocode cache so repeated autocomplete calls for the same
-// city don't hit the Geocoding API every time.
+// Geocode a city using the Places API only (no Geocoding API needed).
+// Two-step: Autocomplete the city name → Place Details for lat/lng.
+// Results are cached in-process so subsequent keystrokes don't repeat the calls.
 const geocodeCache = new Map<string, { lat: number; lng: number } | null>()
 
 async function geocodeCity(city: string): Promise<{ lat: number; lng: number } | null> {
   const key = city.toLowerCase().trim()
   if (geocodeCache.has(key)) return geocodeCache.get(key)!
   try {
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(city)}&key=${API_KEY}`
-    )
-    if (!res.ok) { geocodeCache.set(key, null); return null }
-    const data = await res.json()
-    const loc = data.results?.[0]?.geometry?.location
-    const coords = loc ? { lat: loc.lat as number, lng: loc.lng as number } : null
+    // Step 1: find the city's placeId via Autocomplete
+    const acRes = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': API_KEY!,
+        'X-Goog-FieldMask': 'suggestions.placePrediction.placeId',
+      },
+      body: JSON.stringify({
+        input: city,
+        languageCode: 'en',
+        includedPrimaryTypes: ['locality', 'administrative_area_level_2', 'administrative_area_level_3'],
+      }),
+    })
+    if (!acRes.ok) { geocodeCache.set(key, null); return null }
+    const acData = await acRes.json()
+    const placeId: string | undefined = acData.suggestions?.[0]?.placePrediction?.placeId
+    if (!placeId) { geocodeCache.set(key, null); return null }
+
+    // Step 2: fetch location from Place Details
+    const detRes = await fetch(`https://places.googleapis.com/v1/places/${placeId}`, {
+      headers: {
+        'X-Goog-Api-Key': API_KEY!,
+        'X-Goog-FieldMask': 'location',
+      },
+    })
+    if (!detRes.ok) { geocodeCache.set(key, null); return null }
+    const det = await detRes.json()
+    const coords = det.location
+      ? { lat: det.location.latitude as number, lng: det.location.longitude as number }
+      : null
     geocodeCache.set(key, coords)
     return coords
   } catch {
@@ -37,10 +62,12 @@ export async function GET(req: NextRequest) {
 
   if (!q || q.length < 2) return Response.json([])
 
-  // Bias results toward the current destination city when provided
+  // Restrict results to within 75 km of the destination city when provided.
+  // locationRestriction (hard boundary) rather than locationBias (soft hint)
+  // so out-of-area results don't slip through.
   const cityCoords = city ? await geocodeCity(city) : null
-  const locationBias = cityCoords
-    ? { circle: { center: { latitude: cityCoords.lat, longitude: cityCoords.lng }, radius: 50000 } }
+  const locationRestriction = cityCoords
+    ? { circle: { center: { latitude: cityCoords.lat, longitude: cityCoords.lng }, radius: 75000 } }
     : undefined
 
   type RawSuggestion = {
@@ -84,7 +111,7 @@ export async function GET(req: NextRequest) {
 
   let rawResults: RawSuggestion[]
 
-  const base = { input: q, languageCode: 'en', ...(locationBias ? { locationBias } : {}) }
+  const base = { input: q, languageCode: 'en', ...(locationRestriction ? { locationRestriction } : {}) }
 
   if (type === 'hotel') {
     // Run both queries in parallel: named lodging + free-text addresses
