@@ -435,23 +435,17 @@ export default async function ItineraryPage({
                         return groups.map((group, gi) => (
                           <div key={gi} className="space-y-2">
                             {multiStay ? (
-                              // Multi-stay: each day group shows "Day N · Hotel Name"
-                              group.days.length === 0 && group.hotel ? hotelCard(group.hotel) :
-                              group.days.map((day, di) => {
-                                dayCounter++
-                                const dn = dayCounter
-                                return (
-                                  <div key={di} className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full shrink-0">Day {dn}</span>
-                                      {group.hotel && (
-                                        <span className="text-xs text-gray-500 flex items-center gap-1 min-w-0">
-                                          <Hotel size={10} className="text-blue-400 shrink-0" />
-                                          <span className="truncate">{group.hotel.name}</span>
-                                          {!isGuide && group.hotel.rating ? <span className="text-yellow-500 shrink-0">{'★'.repeat(group.hotel.rating)}</span> : null}
-                                        </span>
-                                      )}
-                                    </div>
+                              // Multi-stay: hotel card per group, then Day N labels below
+                              <>
+                                {group.hotel && hotelCard(group.hotel)}
+                                {group.days.map((day, di) => {
+                                  dayCounter++
+                                  const dn = dayCounter
+                                  return (
+                                    <div key={di} className="space-y-2">
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full shrink-0">Day {dn}</span>
+                                      </div>
                                     {day.items.map(item => item.type === 'food_drink' ? (
                                     <div key={item.id} className="bg-orange-50 rounded-lg p-3">
                                       <div className="flex items-center gap-1.5 mb-1">
@@ -500,7 +494,8 @@ export default async function ItineraryPage({
                                   ))}
                                 </div>
                               )
-                            })
+                            })}
+                              </>
                             ) : (
                               // Single stay: hotel card + day labels
                               <>
