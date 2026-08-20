@@ -212,7 +212,7 @@ function DayMoveBar({ dayMove }: { dayMove: DayMove }) {
   )
 }
 
-function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove, showRating, onSelectPlace, onMoveUp, onMoveDown, dayMove }: {
+function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove, showRating, onSelectPlace, onMoveUp, onMoveDown, dayMove, city }: {
   item: DayItem; index: number; total: number
   onUpdate: (field: string, val: string) => void
   onPatch: (patch: Partial<DayItem>) => void
@@ -221,6 +221,7 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
   onSelectPlace?: (placeId: string | null) => void
   onMoveUp: () => void; onMoveDown: () => void
   dayMove?: DayMove
+  city?: string
 }) {
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
   return (
@@ -245,6 +246,7 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
           type="restaurant"
           placeholder="e.g. Ramen Ichiran, Rooftop bar, Street market"
           className={inputClass}
+          city={city}
         />
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
@@ -295,13 +297,14 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
 
 // ── ActivityRow ───────────────────────────────────────────────────────────────
 
-function ActivityRow({ item, index, total, onUpdate, onPatch, onRemove, showRating, onMoveUp, onMoveDown, dayMove }: {
+function ActivityRow({ item, index, total, onUpdate, onPatch, onRemove, showRating, onMoveUp, onMoveDown, dayMove, city }: {
   item: DayItem; index: number; total: number
   onUpdate: (field: string, val: string) => void
   onPatch: (patch: Partial<DayItem>) => void
   onRemove: () => void; showRating: boolean
   onMoveUp: () => void; onMoveDown: () => void
   dayMove?: DayMove
+  city?: string
 }) {
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
   return (
@@ -325,6 +328,7 @@ function ActivityRow({ item, index, total, onUpdate, onPatch, onRemove, showRati
           type="activity"
           placeholder="e.g. Temple tour, Hiking, Museum visit"
           className={inputClass}
+          city={city}
         />
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
@@ -715,6 +719,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                       onChange={val => { updateHotel(di, gi, 'hotelName', val); if (!val) updGroup(di, gi, g => ({ ...g, hotelPriceLevel: null, hotelNightlyRate: '' })) }}
                       onSelect={(_, __, placeId) => { if (placeId) fetchHotelPriceLevel(di, gi, placeId) }}
                       type="hotel" placeholder="Hotel name (optional)" className={inputClass}
+                      city={dest.name || undefined}
                     />
                     {group.hotelName && (<>
                       <div className="flex items-center gap-2">
@@ -780,6 +785,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                                   onMoveUp={() => moveItem(di, gi, dyi, ii, ii - 1)}
                                   onMoveDown={() => moveItem(di, gi, dyi, ii, ii + 1)}
                                   dayMove={dayMove}
+                                  city={dest.name || undefined}
                                 />
                               : <ActivityRow key={item.id} item={item} index={ii} total={day.items.length} showRating={showRating}
                                   onUpdate={(f, v) => updateItem(di, gi, dyi, item.id, f, v)}
@@ -788,6 +794,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                                   onMoveUp={() => moveItem(di, gi, dyi, ii, ii - 1)}
                                   onMoveDown={() => moveItem(di, gi, dyi, ii, ii + 1)}
                                   dayMove={dayMove}
+                                  city={dest.name || undefined}
                                 />
                           })}
                         </div>
