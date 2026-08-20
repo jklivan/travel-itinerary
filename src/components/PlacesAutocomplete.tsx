@@ -50,7 +50,7 @@ export default function PlacesAutocomplete({
     if (!open) return
     if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx(i => Math.min(i + 1, suggestions.length - 1)) }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx(i => Math.max(i - 1, -1)) }
-    else if (e.key === 'Enter' && activeIdx >= 0) { e.preventDefault(); pick(suggestions[activeIdx]) }
+    else if (e.key === 'Enter') { e.preventDefault(); if (activeIdx >= 0) pick(suggestions[activeIdx]); else setOpen(false) }
     else if (e.key === 'Escape') { setOpen(false) }
   }
 
