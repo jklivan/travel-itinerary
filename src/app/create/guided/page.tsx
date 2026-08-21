@@ -115,9 +115,109 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   )
 }
 
-// ── Added item row (sortable) ─────────────────────────────────────────────────
+// ── Item edit form (pre-filled) ────────────────────────────────────────────
 
-function AddedRow({ item, onRemove }: { item: GuidedItem; onRemove: () => void }) {
+function ItemEditForm({ type, initial, onSave, onClose, city }: {
+  type: ItemType
+  initial: GuidedItem
+  onSave: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags'>) => void
+  onClose: () => void
+  city?: string
+}) {
+  const [name, setName] = useState(initial.name)
+  const [mealType, setMealType] = useState(initial.mealType)
+  const [rating, setRating] = useState(initial.rating)
+  const [notes, setNotes] = useState(initial.notes)
+  const [tags, setTags] = useState<string[]>(initial.tags)
+  const [showMore, setShowMore] = useState(initial.tags.length > 0)
+
+  const cfg = {
+    hotel:     { color: 'bg-blue-50 border-blue-200',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const      },
+    food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const },
+    activity:  { color: 'bg-green-50 border-green-200',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const   },
+  }[type]
+
+  function toggleTag(tag: string) {
+    setTags(t => t.includes(tag) ? t.filter(x => x !== tag) : [...t, tag])
+  }
+
+  function submit() {
+    if (!name.trim()) return
+    onSave({ name: name.trim(), mealType, rating, notes: notes.trim(), tags })
+  }
+
+  return (
+    <div className={`rounded-2xl border ${cfg.color} p-4 space-y-3`}>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Edit {cfg.label}</p>
+        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+      </div>
+      <PlacesAutocomplete value={name} onChange={setName} type={cfg.placeType}
+        placeholder={cfg.placeholder} className={inputCls} city={city} />
+      {type === 'food_drink' && (
+        <div className="flex flex-wrap gap-1.5">
+          {MEAL_TYPES.map(mt => {
+            const selected = mealType.split(',').filter(Boolean)
+            const isSelected = selected.includes(mt)
+            return (
+              <button key={mt} type="button" onClick={() => setMealType(isSelected ? selected.filter(t => t !== mt).join(',') : [...selected, mt].join(','))}
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSelected ? MEAL_ACTIVE[mt] : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+                {MEAL_EMOJI[mt]} {mt}
+              </button>
+            )
+          })}
+        </div>
+      )}
+      <div className="space-y-1">
+        <p className="text-xs text-gray-500">Rate it</p>
+        <StarRating value={rating} onChange={setRating} />
+      </div>
+      <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
+        placeholder="📝 Notes (optional)" className={inputCls} />
+      <button type="button" onClick={() => setShowMore(s => !s)}
+        className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
+        {showMore ? '▲ Hide details' : '▼ More details'}
+        {tags.length > 0 && !showMore && (
+          <span className="ml-1 bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{tags.length}</span>
+        )}
+      </button>
+      {showMore && (
+        <div className="space-y-2 pt-1">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Tags</p>
+          <div className="flex flex-wrap gap-1.5">
+            {ITEM_TAGS[type].map(tag => (
+              <button key={tag} type="button" onClick={() => toggleTag(tag)}
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="flex gap-2">
+        <button type="button" onClick={onClose}
+          className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-gray-500 text-sm font-medium hover:border-gray-300 transition-colors">
+          Cancel
+        </button>
+        <button type="button" onClick={submit} disabled={!name.trim()}
+          className="flex-1 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+          <Check size={14} /> Save
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Sortable item row (view or edit) ──────────────────────────────────────────
+
+function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, city }: {
+  item: GuidedItem
+  isEditing: boolean
+  onEdit: () => void
+  onUpdate: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags'>) => void
+  onRemove: () => void
+  city?: string
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
 
@@ -125,12 +225,20 @@ function AddedRow({ item, onRemove }: { item: GuidedItem; onRemove: () => void }
     : item.type === 'food_drink' ? <Utensils size={13} className="text-orange-500 shrink-0" />
     : <Camera size={13} className="text-green-500 shrink-0" />
 
+  if (isEditing) {
+    return (
+      <div ref={setNodeRef} style={style}>
+        <ItemEditForm type={item.type} initial={item} onSave={onUpdate} onClose={onEdit} city={city} />
+      </div>
+    )
+  }
+
   return (
     <div ref={setNodeRef} style={style} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 gap-2">
       <button type="button" {...attributes} {...listeners} className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0 touch-none">
         <GripVertical size={14} />
       </button>
-      <div className="flex items-center gap-2 min-w-0 flex-1">
+      <button type="button" onClick={onEdit} className="flex items-center gap-2 min-w-0 flex-1 text-left hover:opacity-75 transition-opacity">
         {icon}
         <div className="min-w-0">
           <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
@@ -141,8 +249,8 @@ function AddedRow({ item, onRemove }: { item: GuidedItem; onRemove: () => void }
             {item.notes && <span className="text-xs text-gray-400 truncate">{item.notes}</span>}
           </div>
         </div>
-      </div>
-      <button onClick={onRemove} className="text-gray-300 hover:text-red-400 text-lg leading-none shrink-0">×</button>
+      </button>
+      <button type="button" onClick={onRemove} className="text-gray-300 hover:text-red-400 text-lg leading-none shrink-0">×</button>
     </div>
   )
 }
@@ -314,6 +422,7 @@ export default function GuidedCreatePage() {
   const [photoUploadError, setPhotoUploadError] = useState<string | null>(null)
   const [failedPhotoFiles, setFailedPhotoFiles] = useState<File[]>([])
   const [activeInput, setActiveInput] = useState<ActiveInput>(null)
+  const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [phase, setPhase] = useState<Phase>(restored.phase ?? 'type')
 
   const [title, setTitle] = useState(restored.title ?? '')
@@ -372,6 +481,11 @@ export default function GuidedCreatePage() {
   function addItem(item: Omit<GuidedItem, 'id' | 'dayIndex' | 'isHighlight'>) {
     setCurItems(i => [...i, { ...item, id: uid(), dayIndex: curDayIndex, isHighlight: false }])
     setActiveInput(null)
+  }
+
+  function updateItem(itemId: string, updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags'>) {
+    setCurItems(items => items.map(i => i.id === itemId ? { ...i, ...updated } : i))
+    setEditingItemId(null)
   }
 
   function finishDest() {
@@ -655,8 +769,13 @@ export default function GuidedCreatePage() {
                       {postType === 'guide' ? (
                         <div className="space-y-2">
                           {curItems.map(item => (
-                            <AddedRow key={item.id} item={item}
-                              onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))} />
+                            <SortableItem key={item.id} item={item}
+                              isEditing={editingItemId === item.id}
+                              onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
+                              onUpdate={updated => updateItem(item.id, updated)}
+                              onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))}
+                              city={curDest.name || undefined}
+                            />
                           ))}
                         </div>
                       ) : (
@@ -674,8 +793,13 @@ export default function GuidedCreatePage() {
                               </div>
                               <div className="space-y-2">
                                 {items.map(item => (
-                                  <AddedRow key={item.id} item={item}
-                                    onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))} />
+                                  <SortableItem key={item.id} item={item}
+                                    isEditing={editingItemId === item.id}
+                                    onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
+                                    onUpdate={updated => updateItem(item.id, updated)}
+                                    onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))}
+                                    city={curDest.name || undefined}
+                                  />
                                 ))}
                               </div>
                             </div>
@@ -757,7 +881,7 @@ export default function GuidedCreatePage() {
               )}
 
               {/* Option buttons — always visible when no form open */}
-              {!activeInput && (
+              {!activeInput && !editingItemId && (
                 <div className="space-y-2">
                   {postType !== 'guide' && (
                     <div className="flex items-center gap-2">
@@ -801,7 +925,7 @@ export default function GuidedCreatePage() {
               )}
 
               {/* Done + draft buttons */}
-              {!activeInput && (
+              {!activeInput && !editingItemId && (
                 <div className="space-y-2">
                   {postType !== 'guide' && (
                     <button type="button" onClick={() => setCurDayIndex(d => d + 1)}
