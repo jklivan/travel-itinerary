@@ -53,7 +53,7 @@ type GuidedDest = {
 
 type UploadedPhoto = { url: string; caption: string }
 
-type Phase = 'dest' | 'building' | 'more' | 'picks' | 'details'
+type Phase = 'type' | 'dest' | 'building' | 'more' | 'picks' | 'details'
 
 type SavedState = {
   dests: GuidedDest[]
@@ -314,7 +314,7 @@ export default function GuidedCreatePage() {
   const [photoUploadError, setPhotoUploadError] = useState<string | null>(null)
   const [failedPhotoFiles, setFailedPhotoFiles] = useState<File[]>([])
   const [activeInput, setActiveInput] = useState<ActiveInput>(null)
-  const [phase, setPhase] = useState<Phase>(restored.phase ?? 'dest')
+  const [phase, setPhase] = useState<Phase>(restored.phase ?? 'type')
 
   const [title, setTitle] = useState(restored.title ?? '')
   const [tags, setTags] = useState<string[]>(restored.tags ?? [])
@@ -341,7 +341,7 @@ export default function GuidedCreatePage() {
     setCurDayIndex(1)
     setCurNotes('')
     setPhotos([])
-    setPhase('dest')
+    setPhase('type')
     setTitle('')
     setTags([])
     setPostType('itinerary')
@@ -572,6 +572,36 @@ export default function GuidedCreatePage() {
           <DestSummary key={d.id} dest={d} onRemove={() => setDests(ds => ds.filter(x => x.id !== d.id))} onEdit={() => editDest(d.id)} />
         ))}
 
+        {/* ── TYPE card ───────────────────────────────────────────────────── */}
+        {phase === 'type' && (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="bg-gradient-to-r from-gray-800 to-gray-700 px-5 py-4">
+              <h2 className="font-bold text-white">What are you creating?</h2>
+              <p className="text-white/70 text-xs mt-0.5">Choose a format to get started</p>
+            </div>
+            <div className="p-5 space-y-3">
+              <button type="button"
+                onClick={() => { setPostType('itinerary'); setPhase('dest') }}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 transition-all text-left">
+                <span className="text-3xl">✈️</span>
+                <div>
+                  <p className="font-semibold text-gray-900 text-sm">Itinerary</p>
+                  <p className="text-xs text-gray-500 mt-0.5">A day-by-day trip with dates, hotels, and activities</p>
+                </div>
+              </button>
+              <button type="button"
+                onClick={() => { setPostType('guide'); setPhase('dest') }}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-green-200 hover:border-green-400 hover:bg-green-50 transition-all text-left">
+                <span className="text-3xl">📖</span>
+                <div>
+                  <p className="font-semibold text-gray-900 text-sm">Guide</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Your go-to recommendations for a place — no dates needed</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ── DEST card ───────────────────────────────────────────────────── */}
         {phase === 'dest' && (
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
@@ -617,32 +647,41 @@ export default function GuidedCreatePage() {
             </div>
 
             <div className="p-5 space-y-4">
-              {/* Added items grouped by day */}
+              {/* Added items — grouped by day for itineraries, flat list for guides */}
               {curItems.length > 0 && (
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   <SortableContext items={curItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
                     <div className="space-y-3">
-                      {(() => {
-                        const byDay = new Map<number, GuidedItem[]>()
-                        for (const item of curItems) {
-                          if (!byDay.has(item.dayIndex)) byDay.set(item.dayIndex, [])
-                          byDay.get(item.dayIndex)!.push(item)
-                        }
-                        return [...byDay.entries()].sort(([a], [b]) => a - b).map(([day, items]) => (
-                          <div key={day}>
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full shrink-0">Day {day}</span>
-                              <div className="flex-1 h-px bg-blue-100" />
+                      {postType === 'guide' ? (
+                        <div className="space-y-2">
+                          {curItems.map(item => (
+                            <AddedRow key={item.id} item={item}
+                              onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))} />
+                          ))}
+                        </div>
+                      ) : (
+                        (() => {
+                          const byDay = new Map<number, GuidedItem[]>()
+                          for (const item of curItems) {
+                            if (!byDay.has(item.dayIndex)) byDay.set(item.dayIndex, [])
+                            byDay.get(item.dayIndex)!.push(item)
+                          }
+                          return [...byDay.entries()].sort(([a], [b]) => a - b).map(([day, items]) => (
+                            <div key={day}>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full shrink-0">Day {day}</span>
+                                <div className="flex-1 h-px bg-blue-100" />
+                              </div>
+                              <div className="space-y-2">
+                                {items.map(item => (
+                                  <AddedRow key={item.id} item={item}
+                                    onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))} />
+                                ))}
+                              </div>
                             </div>
-                            <div className="space-y-2">
-                              {items.map(item => (
-                                <AddedRow key={item.id} item={item}
-                                  onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))} />
-                              ))}
-                            </div>
-                          </div>
-                        ))
-                      })()}
+                          ))
+                        })()
+                      )}
                     </div>
                   </SortableContext>
                 </DndContext>
@@ -720,10 +759,12 @@ export default function GuidedCreatePage() {
               {/* Option buttons — always visible when no form open */}
               {!activeInput && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-gray-800 bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">Day {curDayIndex}</span>
-                    <span className="text-xs text-gray-400">Add places for this day</span>
-                  </div>
+                  {postType !== 'guide' && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-gray-800 bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">Day {curDayIndex}</span>
+                      <span className="text-xs text-gray-400">Add places for this day</span>
+                    </div>
+                  )}
                   <div className="grid grid-cols-3 gap-2">
                     <button type="button"
                       onClick={() => setActiveInput('hotel')}
@@ -762,10 +803,12 @@ export default function GuidedCreatePage() {
               {/* Done + draft buttons */}
               {!activeInput && (
                 <div className="space-y-2">
-                  <button type="button" onClick={() => setCurDayIndex(d => d + 1)}
-                    className="w-full py-2.5 rounded-xl border-2 border-indigo-200 text-indigo-700 text-sm font-semibold hover:border-indigo-300 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2">
-                    <ArrowRight size={14} /> Add Day {curDayIndex + 1}
-                  </button>
+                  {postType !== 'guide' && (
+                    <button type="button" onClick={() => setCurDayIndex(d => d + 1)}
+                      className="w-full py-2.5 rounded-xl border-2 border-indigo-200 text-indigo-700 text-sm font-semibold hover:border-indigo-300 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2">
+                      <ArrowRight size={14} /> Add Day {curDayIndex + 1}
+                    </button>
+                  )}
                   <button type="button" onClick={addCity}
                     className="w-full py-2.5 rounded-xl border-2 border-emerald-200 text-emerald-700 text-sm font-semibold hover:border-emerald-300 hover:bg-emerald-50 transition-all flex items-center justify-center gap-2">
                     <MapPin size={14} /> + City
