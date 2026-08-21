@@ -74,6 +74,7 @@ const MEAL_TYPE_META: Record<string, { emoji: string; active: string }> = {
 }
 const FOOD_TAGS  = ['Worth the Hype', 'Great Food', 'Hidden Gem', 'Local Favorite', "Can't-Miss", 'Good for Groups', 'Family Friendly', 'Great Cocktails', 'Great Ambiance', 'Lively', 'Romantic', 'Chic', 'Casual', 'Outdoor Dining', 'Great Views']
 const HOTEL_TAGS = ['Great Service', 'Worth the Splurge', 'Great Value', 'Hidden Gem', 'Boutique', 'Luxury', 'Romantic', 'Family-Friendly', 'Great Location', 'Great Views', 'Amazing Spa']
+const ACTIVITY_TAGS = ['Must-Do', 'Hidden Gem', 'Family Friendly', 'Great Views', 'Free', 'Outdoor', 'Cultural', 'Adventurous']
 
 function fmt(d: Date) { return new Date(d).toISOString().slice(0, 10) }
 
@@ -170,7 +171,7 @@ function toServerFormat(destinations: Destination[]) {
           .filter(i => i.type === 'activity')
           .map(i => ({
             name: i.name, notes: i.notes, link: i.link, rating: i.rating,
-            tags: i.isHighlight ? ['__highlight'] : [],
+            tags: i.isHighlight ? [...i.tags, '__highlight'] : i.tags,
             dayIndex: dyi, order: day.items.indexOf(i),
           })),
       }))
@@ -223,7 +224,9 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
   dayMove?: DayMove
   city?: string
 }) {
+  const [showMore, setShowMore] = useState(false)
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
+  const moreCount = (item.priceLevel != null ? 1 : 0) + (item.familyFriendly === true ? 1 : 0) + item.tags.length + (item.rating > 0 ? 1 : 0) + (item.description ? 1 : 0) + (item.notes ? 1 : 0) + (item.link ? 1 : 0)
   return (
     <div className="flex gap-1 items-stretch">
       <div className="flex flex-col justify-center gap-0.5 shrink-0">
@@ -264,31 +267,42 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
           )
         })}
       </div>
-      <div className="flex items-center gap-3 flex-wrap">
-        {item.priceLevel != null && (
-          <p className="text-xs text-green-700 font-medium">
-            {'$'.repeat(item.priceLevel)}<span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
-          </p>
+      <button type="button" onClick={() => setShowMore(s => !s)}
+        className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
+        {showMore ? '▲ Hide details' : '▼ More details'}
+        {moreCount > 0 && !showMore && (
+          <span className="ml-1 bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{moreCount}</span>
         )}
-        <button type="button" onClick={() => onPatch({ familyFriendly: item.familyFriendly === true ? null : true, familyFriendlySource: item.familyFriendly === true ? null : 'user' })}
-          className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.familyFriendly === true ? 'bg-green-500 text-white border-green-500' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
-          👨‍👩‍👧 Family friendly
-        </button>
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {FOOD_TAGS.map(tag => (
-          <button key={tag} type="button" onClick={() => onToggleTag(tag)}
-            className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.tags.includes(tag) ? 'bg-orange-500 text-white border-orange-500' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
-            {tag}
-          </button>
-        ))}
-      </div>
-      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
-      <div className="grid gap-2">
-        <input type="text" value={item.description} onChange={e => onUpdate('description', e.target.value)} className={subInputClass} placeholder="✨ Description (auto-generated if blank)" />
-        <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
-        <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
-      </div>
+      </button>
+      {showMore && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {item.priceLevel != null && (
+              <p className="text-xs text-green-700 font-medium">
+                {'$'.repeat(item.priceLevel)}<span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
+              </p>
+            )}
+            <button type="button" onClick={() => onPatch({ familyFriendly: item.familyFriendly === true ? null : true, familyFriendlySource: item.familyFriendly === true ? null : 'user' })}
+              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.familyFriendly === true ? 'bg-green-500 text-white border-green-500' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+              👨‍👩‍👧 Family friendly
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {FOOD_TAGS.map(tag => (
+              <button key={tag} type="button" onClick={() => onToggleTag(tag)}
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.tags.includes(tag) ? 'bg-orange-500 text-white border-orange-500' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+                {tag}
+              </button>
+            ))}
+          </div>
+          {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
+          <div className="grid gap-2">
+            <input type="text" value={item.description} onChange={e => onUpdate('description', e.target.value)} className={subInputClass} placeholder="✨ Description (auto-generated if blank)" />
+            <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
+            <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
+          </div>
+        </div>
+      )}
       {dayMove && <DayMoveBar dayMove={dayMove} />}
       </div>
     </div>
@@ -297,16 +311,19 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
 
 // ── ActivityRow ───────────────────────────────────────────────────────────────
 
-function ActivityRow({ item, index, total, onUpdate, onPatch, onRemove, showRating, onMoveUp, onMoveDown, dayMove, city }: {
+function ActivityRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove, showRating, onMoveUp, onMoveDown, dayMove, city }: {
   item: DayItem; index: number; total: number
   onUpdate: (field: string, val: string) => void
   onPatch: (patch: Partial<DayItem>) => void
+  onToggleTag: (tag: string) => void
   onRemove: () => void; showRating: boolean
   onMoveUp: () => void; onMoveDown: () => void
   dayMove?: DayMove
   city?: string
 }) {
+  const [showMore, setShowMore] = useState(false)
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
+  const moreCount = item.tags.length + (item.rating > 0 ? 1 : 0) + (item.notes ? 1 : 0) + (item.link ? 1 : 0)
   return (
     <div className="flex gap-1 items-stretch">
       <div className="flex flex-col justify-center gap-0.5 shrink-0">
@@ -332,15 +349,104 @@ function ActivityRow({ item, index, total, onUpdate, onPatch, onRemove, showRati
         />
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
-      <div className="flex items-center gap-3 flex-wrap">
-        {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
-      </div>
-      <div className="grid gap-2">
-        <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
-        <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
-      </div>
+      <button type="button" onClick={() => setShowMore(s => !s)}
+        className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
+        {showMore ? '▲ Hide details' : '▼ More details'}
+        {moreCount > 0 && !showMore && (
+          <span className="ml-1 bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{moreCount}</span>
+        )}
+      </button>
+      {showMore && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-1.5">
+            {ACTIVITY_TAGS.map(tag => (
+              <button key={tag} type="button" onClick={() => onToggleTag(tag)}
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.tags.includes(tag) ? 'bg-green-500 text-white border-green-500' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+                {tag}
+              </button>
+            ))}
+          </div>
+          {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
+          <div className="grid gap-2">
+            <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
+            <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
+          </div>
+        </div>
+      )}
       {dayMove && <DayMoveBar dayMove={dayMove} />}
       </div>
+    </div>
+  )
+}
+
+// ── HotelSection ─────────────────────────────────────────────────────────────
+
+function HotelSection({ group, dest, showRating, onUpdateHotel, onFetchPriceLevel, onToggleHotelTag, onUpdateGroup }: {
+  group: StayGroup
+  dest: Destination
+  showRating: boolean
+  onUpdateHotel: (field: keyof StayGroup, val: string) => void
+  onFetchPriceLevel: (placeId: string) => void
+  onToggleHotelTag: (tag: string) => void
+  onUpdateGroup: (fn: (g: StayGroup) => StayGroup) => void
+}) {
+  const [showMore, setShowMore] = useState(false)
+  const moreCount = (group.hotelNightlyRate ? 1 : 0) + (group.hotelRating > 0 ? 1 : 0) + group.hotelTags.length + (group.hotelDescription ? 1 : 0) + (group.hotelNotes ? 1 : 0) + (group.hotelAddress ? 1 : 0) + (group.hotelLink ? 1 : 0)
+  return (
+    <div className="bg-blue-50 rounded-xl border border-l-4 border-l-blue-400 p-3 space-y-2">
+      <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">🏨 Lodging</p>
+      <PlacesAutocomplete
+        value={group.hotelName}
+        onChange={val => { onUpdateHotel('hotelName', val); if (!val) onUpdateGroup(g => ({ ...g, hotelPriceLevel: null, hotelNightlyRate: '' })) }}
+        onSelect={(_, __, placeId) => { if (placeId) onFetchPriceLevel(placeId) }}
+        type="hotel" placeholder="Hotel name (optional)" className={inputClass}
+        city={dest.name || undefined}
+      />
+      {group.hotelName && (
+        <>
+          <button type="button" onClick={() => setShowMore(s => !s)}
+            className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
+            {showMore ? '▲ Hide details' : '▼ More details'}
+            {moreCount > 0 && !showMore && (
+              <span className="ml-1 bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{moreCount}</span>
+            )}
+          </button>
+          {showMore && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 shrink-0">$/night</span>
+                <input type="number" min="0" step="1" value={group.hotelNightlyRate}
+                  onChange={e => {
+                    const val = e.target.value
+                    onUpdateGroup(g => {
+                      const rate = parseFloat(val)
+                      return { ...g, hotelNightlyRate: val, hotelPriceLevel: val && !isNaN(rate) && rate > 0 ? nightlyRateToTier(rate) : g.hotelPriceLevel }
+                    })
+                  }}
+                  className={subInputClass} placeholder="What did you pay per night? (optional)" />
+              </div>
+              {group.hotelPriceLevel !== null && (
+                <p className="text-xs text-green-700 font-medium">
+                  {'$'.repeat(group.hotelPriceLevel)}<span className="text-gray-300">{'$'.repeat(5 - group.hotelPriceLevel)}</span>
+                </p>
+              )}
+              {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600">Rate it!</span><StarRating value={group.hotelRating} onChange={v => onUpdateHotel('hotelRating', String(v))} /></div>}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {HOTEL_TAGS.map(tag => (
+                  <button key={tag} type="button" onClick={() => onToggleHotelTag(tag)}
+                    className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${group.hotelTags.includes(tag) ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+                    {tag}
+                  </button>
+                ))}
+              </div>
+              <input type="text" value={group.hotelDescription} onChange={e => onUpdateHotel('hotelDescription', e.target.value)} className={subInputClass} placeholder="✨ Description (auto-generated if blank)" />
+              <input type="text" value={group.hotelNotes} onChange={e => onUpdateHotel('hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
+              <input type="text" value={group.hotelAddress} onChange={e => onUpdateHotel('hotelAddress', e.target.value)} className={subInputClass} placeholder="📍 Address (optional — for Airbnbs, apartments…)" />
+              <input type="url" value={group.hotelLink} onChange={e => onUpdateHotel('hotelLink', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }
@@ -711,49 +817,16 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                   </div>
                 )}
                 <div className="p-4 space-y-4">
-                  {/* Hotel */}
-                  <div className="bg-blue-50 rounded-xl border border-l-4 border-l-blue-400 p-3 space-y-2">
-                    <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">🏨 Hotel / Accommodation</p>
-                    <PlacesAutocomplete
-                      value={group.hotelName}
-                      onChange={val => { updateHotel(di, gi, 'hotelName', val); if (!val) updGroup(di, gi, g => ({ ...g, hotelPriceLevel: null, hotelNightlyRate: '' })) }}
-                      onSelect={(_, __, placeId) => { if (placeId) fetchHotelPriceLevel(di, gi, placeId) }}
-                      type="hotel" placeholder="Hotel name (optional)" className={inputClass}
-                      city={dest.name || undefined}
-                    />
-                    {group.hotelName && (<>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 shrink-0">$/night</span>
-                        <input type="number" min="0" step="1" value={group.hotelNightlyRate}
-                          onChange={e => {
-                            const val = e.target.value
-                            updGroup(di, gi, g => {
-                              const rate = parseFloat(val)
-                              return { ...g, hotelNightlyRate: val, hotelPriceLevel: val && !isNaN(rate) && rate > 0 ? nightlyRateToTier(rate) : g.hotelPriceLevel }
-                            })
-                          }}
-                          className={subInputClass} placeholder="What did you pay per night? (optional)" />
-                      </div>
-                      {group.hotelPriceLevel !== null && (
-                        <p className="text-xs text-green-700 font-medium">
-                          {'$'.repeat(group.hotelPriceLevel)}<span className="text-gray-300">{'$'.repeat(5 - group.hotelPriceLevel)}</span>
-                        </p>
-                      )}
-                      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600">Rate it!</span><StarRating value={group.hotelRating} onChange={v => updateHotel(di, gi, 'hotelRating', String(v))} /></div>}
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {HOTEL_TAGS.map(tag => (
-                          <button key={tag} type="button" onClick={() => updGroup(di, gi, g => ({ ...g, hotelTags: g.hotelTags.includes(tag) ? g.hotelTags.filter(t => t !== tag) : [...g.hotelTags, tag] }))}
-                            className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${group.hotelTags.includes(tag) ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
-                            {tag}
-                          </button>
-                        ))}
-                      </div>
-                      <input type="text" value={group.hotelDescription} onChange={e => updateHotel(di, gi, 'hotelDescription', e.target.value)} className={subInputClass} placeholder="✨ Description (auto-generated if blank)" />
-                      <input type="text" value={group.hotelNotes} onChange={e => updateHotel(di, gi, 'hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
-                      <input type="text" value={group.hotelAddress} onChange={e => updateHotel(di, gi, 'hotelAddress', e.target.value)} className={subInputClass} placeholder="📍 Address (optional — for Airbnbs, apartments…)" />
-                      <input type="url" value={group.hotelLink} onChange={e => updateHotel(di, gi, 'hotelLink', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
-                    </>)}
-                  </div>
+                  {/* Lodging */}
+                  <HotelSection
+                    group={group}
+                    dest={dest}
+                    showRating={showRating}
+                    onUpdateHotel={(field, val) => updateHotel(di, gi, field, val)}
+                    onFetchPriceLevel={placeId => fetchHotelPriceLevel(di, gi, placeId)}
+                    onToggleHotelTag={tag => updGroup(di, gi, g => ({ ...g, hotelTags: g.hotelTags.includes(tag) ? g.hotelTags.filter(t => t !== tag) : [...g.hotelTags, tag] }))}
+                    onUpdateGroup={fn => updGroup(di, gi, fn)}
+                  />
 
                   {/* Days — single merged item list */}
                   {group.days.map((day, dyi) => (
@@ -790,6 +863,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                               : <ActivityRow key={item.id} item={item} index={ii} total={day.items.length} showRating={showRating}
                                   onUpdate={(f, v) => updateItem(di, gi, dyi, item.id, f, v)}
                                   onPatch={patch => patchItem(di, gi, dyi, item.id, patch)}
+                                  onToggleTag={tag => toggleItemTag(di, gi, dyi, item.id, tag)}
                                   onRemove={() => removeItem(di, gi, dyi, item.id)}
                                   onMoveUp={() => moveItem(di, gi, dyi, ii, ii - 1)}
                                   onMoveDown={() => moveItem(di, gi, dyi, ii, ii + 1)}

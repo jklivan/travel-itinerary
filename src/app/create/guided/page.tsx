@@ -38,6 +38,7 @@ type GuidedItem = {
   mealType: string
   rating: number
   notes: string
+  tags: string[]
   dayIndex: number
   isHighlight: boolean
 }
@@ -91,6 +92,12 @@ const MEAL_ACTIVE: Record<string, string> = {
 }
 
 const inputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white'
+
+const FOOD_TAGS  = ['Worth the Hype', 'Great Food', 'Hidden Gem', 'Local Favorite', "Can't-Miss", 'Good for Groups', 'Family Friendly', 'Great Cocktails', 'Great Ambiance', 'Lively', 'Romantic', 'Casual', 'Outdoor Dining', 'Great Views']
+const HOTEL_TAGS = ['Great Service', 'Worth the Splurge', 'Great Value', 'Hidden Gem', 'Boutique', 'Luxury', 'Romantic', 'Family-Friendly', 'Great Location', 'Great Views', 'Amazing Spa']
+const ACTIVITY_TAGS = ['Must-Do', 'Hidden Gem', 'Family Friendly', 'Great Views', 'Free', 'Outdoor', 'Cultural', 'Adventurous']
+
+const ITEM_TAGS: Record<ItemType, string[]> = { food_drink: FOOD_TAGS, hotel: HOTEL_TAGS, activity: ACTIVITY_TAGS }
 
 function uid() { return Math.random().toString(36).slice(2) }
 
@@ -152,17 +159,23 @@ function ItemForm({ type, onAdd, onClose, city }: {
   const [mealType, setMealType] = useState('')
   const [rating, setRating] = useState(0)
   const [notes, setNotes] = useState('')
+  const [tags, setTags] = useState<string[]>([])
+  const [showMore, setShowMore] = useState(false)
 
   const cfg = {
-    hotel:     { color: 'bg-blue-50 border-blue-200',   label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…', placeType: 'hotel' as const },
-    food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',         placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const },
-    activity:  { color: 'bg-green-50 border-green-200',  label: 'Activity',              placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const },
+    hotel:     { color: 'bg-blue-50 border-blue-200',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',        placeType: 'hotel' as const      },
+    food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const },
+    activity:  { color: 'bg-green-50 border-green-200',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const   },
   }[type]
+
+  function toggleTag(tag: string) {
+    setTags(t => t.includes(tag) ? t.filter(x => x !== tag) : [...t, tag])
+  }
 
   function submit() {
     if (!name.trim()) return
-    onAdd({ type, name: name.trim(), mealType, rating, notes: notes.trim() })
-    setName(''); setMealType(''); setRating(0); setNotes('')
+    onAdd({ type, name: name.trim(), mealType, rating, notes: notes.trim(), tags })
+    setName(''); setMealType(''); setRating(0); setNotes(''); setTags([]); setShowMore(false)
   }
 
   return (
@@ -181,10 +194,10 @@ function ItemForm({ type, onAdd, onClose, city }: {
             const selected = mealType.split(',').filter(Boolean)
             const isSelected = selected.includes(mt)
             return (
-            <button key={mt} type="button" onClick={() => setMealType(isSelected ? selected.filter(type => type !== mt).join(',') : [...selected, mt].join(','))}
-              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSelected ? MEAL_ACTIVE[mt] : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
-              {MEAL_EMOJI[mt]} {mt}
-            </button>
+              <button key={mt} type="button" onClick={() => setMealType(isSelected ? selected.filter(t => t !== mt).join(',') : [...selected, mt].join(','))}
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSelected ? MEAL_ACTIVE[mt] : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+                {MEAL_EMOJI[mt]} {mt}
+              </button>
             )
           })}
         </div>
@@ -197,6 +210,30 @@ function ItemForm({ type, onAdd, onClose, city }: {
       </div>
       <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
         placeholder="📝 Notes (optional)" className={inputCls} />
+
+      {/* More details toggle */}
+      <button type="button" onClick={() => setShowMore(s => !s)}
+        className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
+        {showMore ? '▲ Hide details' : '▼ More details'}
+        {tags.length > 0 && !showMore && (
+          <span className="ml-1 bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{tags.length}</span>
+        )}
+      </button>
+
+      {showMore && (
+        <div className="space-y-2 pt-1">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Tags</p>
+          <div className="flex flex-wrap gap-1.5">
+            {ITEM_TAGS[type].map(tag => (
+              <button key={tag} type="button" onClick={() => toggleTag(tag)}
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <button type="button" onClick={submit} disabled={!name.trim()}
         className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
         <Check size={14} /> Add
@@ -453,11 +490,11 @@ export default function GuidedCreatePage() {
               food: dayItems
                 .map((item, pos) => ({ item, pos }))
                 .filter(({ item }) => item.type === 'food_drink')
-                .map(({ item: i, pos }) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos, tags: i.isHighlight ? ['__highlight'] : [] })),
+                .map(({ item: i, pos }) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos, tags: [...(i.tags ?? []), ...(i.isHighlight ? ['__highlight'] : [])] })),
               activities: dayItems
                 .map((item, pos) => ({ item, pos }))
                 .filter(({ item }) => item.type === 'activity')
-                .map(({ item: i, pos }) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos, tags: i.isHighlight ? ['__highlight'] : [] })),
+                .map(({ item: i, pos }) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos, tags: [...(i.tags ?? []), ...(i.isHighlight ? ['__highlight'] : [])] })),
             }))
           : [{ food: [], activities: [] }]
       }
