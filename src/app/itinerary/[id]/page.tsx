@@ -185,7 +185,7 @@ export default async function ItineraryPage({
     Math.ceil((new Date(it.endDate).getTime() - new Date(it.startDate).getTime()) / 86400000) + 1
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
+    <div className="max-w-3xl mx-auto px-4 py-6">
       <Link href="/" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Back to feed</Link>
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
         {/* Photo strip — user photos scroll horizontally; stock photo as fallback cover */}

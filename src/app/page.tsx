@@ -75,7 +75,7 @@ export default async function FeedPage({
   const bucketSet = new Set(bucketIds.map((b) => b.itineraryId))
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
+    <div className="max-w-5xl mx-auto px-4 py-6">
       {searchQuery ? (
         <div className="mb-5">
           <h2 className="text-lg font-bold text-gray-900">&quot;{searchQuery}&quot;</h2>

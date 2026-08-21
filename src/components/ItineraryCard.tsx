@@ -90,7 +90,7 @@ export default function ItineraryCard({
   const showBucket = !isOwn
 
   return (
-    <Link href={`/itinerary/${id}`} className="block w-[clamp(160px,44vw,300px)] relative pt-5">
+    <Link href={`/itinerary/${id}`} className="block w-[clamp(200px,44vw,320px)] relative pt-5">
 
       {/* Tape */}
       <div
