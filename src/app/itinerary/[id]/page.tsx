@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@/generated/prisma/client'
 import { auth } from '@/auth'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -159,6 +160,79 @@ export default async function ItineraryPage({
   ])
   const followStatus = followRecord?.status ?? 'none'
   const isBucketed = !!bucketItem
+
+  // Social proof data
+  const destNamesLower = it.destinations.map(d => d.name.toLowerCase())
+  const hotelNamesLower = it.destinations.flatMap(d =>
+    d.items.filter(i => i.type === 'hotel' && i.name).map(i => i.name.toLowerCase())
+  )
+
+  const friendIds: string[] = session?.user?.id
+    ? (await prisma.follow.findMany({
+        where: { followerId: session.user.id, status: 'accepted' },
+        select: { followingId: true },
+      })).map(f => f.followingId)
+    : []
+
+  type SocialRow = { name: string; count: bigint }
+  type RecommendRow = { name: string; positive: bigint; total: bigint }
+
+  const [friendDestRows, savedDestRows, friendHotelRows, hotelRecommendRows] = await Promise.all([
+    friendIds.length > 0 && destNamesLower.length > 0
+      ? prisma.$queryRaw<SocialRow[]>(Prisma.sql`
+          SELECT LOWER(d.name) AS name, COUNT(DISTINCT i."userId") AS count
+          FROM "Destination" d
+          JOIN "Itinerary" i ON i.id = d."itineraryId"
+          WHERE i."userId" IN (${Prisma.join(friendIds)})
+            AND LOWER(d.name) IN (${Prisma.join(destNamesLower)})
+            AND i.visibility != 'draft'
+          GROUP BY LOWER(d.name)
+        `)
+      : Promise.resolve([] as SocialRow[]),
+    destNamesLower.length > 0
+      ? prisma.$queryRaw<SocialRow[]>(Prisma.sql`
+          SELECT LOWER(d.name) AS name, COUNT(DISTINCT b."userId") AS count
+          FROM "BucketListItem" b
+          JOIN "Itinerary" i ON i.id = b."itineraryId"
+          JOIN "Destination" d ON d."itineraryId" = i.id
+          WHERE LOWER(d.name) IN (${Prisma.join(destNamesLower)})
+            AND i.visibility != 'draft'
+          GROUP BY LOWER(d.name)
+        `)
+      : Promise.resolve([] as SocialRow[]),
+    friendIds.length > 0 && hotelNamesLower.length > 0
+      ? prisma.$queryRaw<SocialRow[]>(Prisma.sql`
+          SELECT LOWER(di.name) AS name, COUNT(DISTINCT i."userId") AS count
+          FROM "DestItem" di
+          JOIN "Destination" d ON d.id = di."destinationId"
+          JOIN "Itinerary" i ON i.id = d."itineraryId"
+          WHERE i."userId" IN (${Prisma.join(friendIds)})
+            AND di.type = 'hotel'
+            AND LOWER(di.name) IN (${Prisma.join(hotelNamesLower)})
+            AND i.visibility != 'draft'
+          GROUP BY LOWER(di.name)
+        `)
+      : Promise.resolve([] as SocialRow[]),
+    hotelNamesLower.length > 0
+      ? prisma.$queryRaw<RecommendRow[]>(Prisma.sql`
+          SELECT LOWER(di.name) AS name,
+            COUNT(*) FILTER (WHERE di.rating >= 4) AS positive,
+            COUNT(*) FILTER (WHERE di.rating IS NOT NULL) AS total
+          FROM "DestItem" di
+          WHERE di.type = 'hotel'
+            AND LOWER(di.name) IN (${Prisma.join(hotelNamesLower)})
+          GROUP BY LOWER(di.name)
+        `)
+      : Promise.resolve([] as RecommendRow[]),
+  ])
+
+  const friendDestMap = new Map(friendDestRows.map(r => [r.name, Number(r.count)]))
+  const savedDestMap = new Map(savedDestRows.map(r => [r.name, Number(r.count)]))
+  const friendHotelMap = new Map(friendHotelRows.map(r => [r.name, Number(r.count)]))
+  const hotelRecommendMap = new Map(hotelRecommendRows.map(r => [
+    r.name,
+    Number(r.total) > 0 ? Math.round(Number(r.positive) / Number(r.total) * 100) : null,
+  ]))
 
   const displayTags = it.tags
   const autoTagged = false
@@ -378,10 +452,26 @@ export default async function ItineraryPage({
                 const multiStay = groups.length > 1
                 return (
                   <div key={dest.id}>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
                       <MapPin size={14} className="text-blue-600" />
                       {dest.name}{dest.country ? `, ${dest.country}` : ''}
                     </h3>
+                    {(() => {
+                      const key = dest.name.toLowerCase()
+                      const friends = friendDestMap.get(key) ?? 0
+                      const saved = savedDestMap.get(key) ?? 0
+                      if (friends === 0 && saved === 0) return null
+                      return (
+                        <div className="flex items-center gap-3 mb-2">
+                          {friends > 0 && (
+                            <span className="text-xs text-gray-400">👫 {friends} {friends === 1 ? 'friend' : 'friends'} visited</span>
+                          )}
+                          {saved > 0 && (
+                            <span className="text-xs text-gray-400">♥️ Saved by {saved} {saved === 1 ? 'traveler' : 'travelers'}</span>
+                          )}
+                        </div>
+                      )
+                    })()}
                     {dest.notes && (
                       <p className="text-xs text-gray-500 italic mb-3 border-l-2 border-blue-200 pl-2">{dest.notes}</p>
                     )}
@@ -400,6 +490,22 @@ export default async function ItineraryPage({
                               <span className="text-sm font-medium text-gray-900">{hotel.name}</span>
                               {!isGuide && <Stars rating={hotel.rating ?? null} />}
                             </div>
+                            {(() => {
+                              const key = hotel.name.toLowerCase()
+                              const friends = friendHotelMap.get(key) ?? 0
+                              const pct = hotelRecommendMap.get(key) ?? null
+                              if (friends === 0 && pct === null) return null
+                              return (
+                                <div className="flex items-center gap-3 mt-1">
+                                  {friends > 0 && (
+                                    <span className="text-xs text-gray-400">👫 {friends} {friends === 1 ? 'friend' : 'friends'} stayed</span>
+                                  )}
+                                  {pct !== null && (
+                                    <span className="text-xs text-gray-400">♥️ {pct}% would recommend</span>
+                                  )}
+                                </div>
+                              )
+                            })()}
                             {hotel.priceLevel != null && (
                               <p className="text-xs font-medium text-green-700 mt-0.5">
                                 {'$'.repeat(hotel.priceLevel)}
