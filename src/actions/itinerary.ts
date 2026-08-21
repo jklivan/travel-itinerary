@@ -89,6 +89,10 @@ async function generateMissingDescriptions(itineraryId: string): Promise<void> {
       type: { in: ['hotel', 'food_drink'] },
       description: null,
       name: { not: '' },
+      // Only generate descriptions for places confirmed via Google Places API
+      // (lat is set by fetchItemPriceLevel/fetchHotelPriceLevel after autocomplete selection).
+      // Manually typed names and raw addresses have lat: null — skip those.
+      lat: { not: null },
     },
     include: { destination: { select: { name: true, country: true } } },
   })
