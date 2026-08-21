@@ -226,7 +226,7 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
 }) {
   const [showMore, setShowMore] = useState(false)
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
-  const moreCount = (item.priceLevel != null ? 1 : 0) + (item.familyFriendly === true ? 1 : 0) + item.tags.length + (item.rating > 0 ? 1 : 0) + (item.description ? 1 : 0) + (item.notes ? 1 : 0) + (item.link ? 1 : 0)
+  const moreCount = (item.priceLevel != null ? 1 : 0) + (item.familyFriendly === true ? 1 : 0) + item.tags.length + (item.description ? 1 : 0) + (item.link ? 1 : 0)
   return (
     <div className="flex gap-1 items-stretch">
       <div className="flex flex-col justify-center gap-0.5 shrink-0">
@@ -267,6 +267,8 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
           )
         })}
       </div>
+      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
+      <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
@@ -295,10 +297,8 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
               </button>
             ))}
           </div>
-          {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
           <div className="grid gap-2">
             <input type="text" value={item.description} onChange={e => onUpdate('description', e.target.value)} className={subInputClass} placeholder="✨ Description (auto-generated if blank)" />
-            <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
             <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
           </div>
         </div>
@@ -323,7 +323,7 @@ function ActivityRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRem
 }) {
   const [showMore, setShowMore] = useState(false)
   const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
-  const moreCount = item.tags.length + (item.rating > 0 ? 1 : 0) + (item.notes ? 1 : 0) + (item.link ? 1 : 0)
+  const moreCount = item.tags.length + (item.link ? 1 : 0)
   return (
     <div className="flex gap-1 items-stretch">
       <div className="flex flex-col justify-center gap-0.5 shrink-0">
@@ -349,6 +349,8 @@ function ActivityRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRem
         />
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
+      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
+      <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
@@ -366,9 +368,7 @@ function ActivityRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRem
               </button>
             ))}
           </div>
-          {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
           <div className="grid gap-2">
-            <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
             <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
           </div>
         </div>
@@ -391,7 +391,7 @@ function HotelSection({ group, dest, showRating, onUpdateHotel, onFetchPriceLeve
   onUpdateGroup: (fn: (g: StayGroup) => StayGroup) => void
 }) {
   const [showMore, setShowMore] = useState(false)
-  const moreCount = (group.hotelNightlyRate ? 1 : 0) + (group.hotelRating > 0 ? 1 : 0) + group.hotelTags.length + (group.hotelDescription ? 1 : 0) + (group.hotelNotes ? 1 : 0) + (group.hotelAddress ? 1 : 0) + (group.hotelLink ? 1 : 0)
+  const moreCount = (group.hotelNightlyRate ? 1 : 0) + group.hotelTags.length + (group.hotelDescription ? 1 : 0) + (group.hotelAddress ? 1 : 0) + (group.hotelLink ? 1 : 0)
   return (
     <div className="bg-blue-50 rounded-xl border border-l-4 border-l-blue-400 p-3 space-y-2">
       <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">🏨 Lodging</p>
@@ -404,6 +404,8 @@ function HotelSection({ group, dest, showRating, onUpdateHotel, onFetchPriceLeve
       />
       {group.hotelName && (
         <>
+          {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600">Rate it!</span><StarRating value={group.hotelRating} onChange={v => onUpdateHotel('hotelRating', String(v))} /></div>}
+          <input type="text" value={group.hotelNotes} onChange={e => onUpdateHotel('hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
           <button type="button" onClick={() => setShowMore(s => !s)}
             className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
             {showMore ? '▲ Hide details' : '▼ More details'}
@@ -430,7 +432,6 @@ function HotelSection({ group, dest, showRating, onUpdateHotel, onFetchPriceLeve
                   {'$'.repeat(group.hotelPriceLevel)}<span className="text-gray-300">{'$'.repeat(5 - group.hotelPriceLevel)}</span>
                 </p>
               )}
-              {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600">Rate it!</span><StarRating value={group.hotelRating} onChange={v => onUpdateHotel('hotelRating', String(v))} /></div>}
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {HOTEL_TAGS.map(tag => (
                   <button key={tag} type="button" onClick={() => onToggleHotelTag(tag)}
@@ -440,7 +441,6 @@ function HotelSection({ group, dest, showRating, onUpdateHotel, onFetchPriceLeve
                 ))}
               </div>
               <input type="text" value={group.hotelDescription} onChange={e => onUpdateHotel('hotelDescription', e.target.value)} className={subInputClass} placeholder="✨ Description (auto-generated if blank)" />
-              <input type="text" value={group.hotelNotes} onChange={e => onUpdateHotel('hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
               <input type="text" value={group.hotelAddress} onChange={e => onUpdateHotel('hotelAddress', e.target.value)} className={subInputClass} placeholder="📍 Address (optional — for Airbnbs, apartments…)" />
               <input type="url" value={group.hotelLink} onChange={e => onUpdateHotel('hotelLink', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
             </div>
