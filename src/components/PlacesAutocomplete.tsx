@@ -76,12 +76,20 @@ export default function PlacesAutocomplete({
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onFocus={() => suggestions.length > 0 && setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
         placeholder={placeholder}
         className={className}
         autoComplete="off"
       />
       {open && suggestions.length > 0 && (
         <ul className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
+          <li
+            onMouseDown={() => { setSuggestions([]); setOpen(false) }}
+            className="px-3 py-2.5 cursor-pointer text-sm bg-gray-50 border-b border-gray-100 text-gray-500 hover:bg-gray-100 flex items-center gap-1.5"
+          >
+            <span className="text-blue-500 shrink-0">↵</span>
+            <span className="truncate">Use &ldquo;{value}&rdquo;</span>
+          </li>
           {suggestions.map((s, i) => (
             <li
               key={i}
