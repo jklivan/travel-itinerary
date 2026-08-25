@@ -267,6 +267,7 @@ export default async function ExplorePage({
             JOIN "Itinerary" i ON i.id = d."itineraryId"
             WHERE i.visibility != 'draft'
               AND d.name IS NOT NULL AND d.name != ''
+              AND EXISTS (SELECT 1 FROM "DestItem" di WHERE di."destinationId" = d.id)
               AND (
                 LOWER(d.country) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
                 OR d.country ILIKE '%United States%'
@@ -281,6 +282,7 @@ export default async function ExplorePage({
             JOIN "Itinerary" i ON i.id = d."itineraryId"
             WHERE i.visibility != 'draft'
               AND d.name IS NOT NULL AND d.name != ''
+              AND EXISTS (SELECT 1 FROM "DestItem" di WHERE di."destinationId" = d.id)
               AND LOWER(d.country) = ANY(${countryFilter.map(s => s.toLowerCase())})
             GROUP BY d.name
           `
@@ -463,6 +465,7 @@ export default async function ExplorePage({
       WHERE i.visibility != 'draft'
         AND d.country IS NOT NULL AND d.country != ''
         AND d.name   IS NOT NULL AND d.name   != ''
+        AND EXISTS (SELECT 1 FROM "DestItem" di WHERE di."destinationId" = d.id)
     ),
     trip_counts AS (
       SELECT display_name, canonical_country, COUNT(DISTINCT "itineraryId") AS trip_count
