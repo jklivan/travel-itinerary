@@ -410,49 +410,67 @@ export default async function ExplorePage({
   }
 
   // ── Top-level explore: destinations browser ───────────────────────────────────
-  type CountryRow = { country: string; trip_count: bigint; photo_url: string | null }
-  const countryRows = await prisma.$queryRaw<CountryRow[]>(Prisma.sql`
-    WITH trip_counts AS (
-      SELECT d.country, COUNT(DISTINCT d."itineraryId") AS trip_count
+  // For US destinations: card = d.name (state/city). For everywhere else: card = d.country.
+  type DestRow = { display_name: string; canonical_country: string; trip_count: bigint; photo_url: string | null }
+  const destRows = await prisma.$queryRaw<DestRow[]>(Prisma.sql`
+    WITH display_data AS (
+      SELECT
+        CASE
+          WHEN LOWER(d.country) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
+          THEN d.name
+          ELSE d.country
+        END AS display_name,
+        CASE
+          WHEN LOWER(d.country) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
+          THEN 'United States'
+          ELSE d.country
+        END AS canonical_country,
+        d."itineraryId"
       FROM "Destination" d
       JOIN "Itinerary" i ON i.id = d."itineraryId"
       WHERE i.visibility != 'draft'
         AND d.country IS NOT NULL AND d.country != ''
-      GROUP BY d.country
+        AND d.name   IS NOT NULL AND d.name   != ''
     ),
-    country_photos AS (
-      SELECT DISTINCT ON (d.country) d.country, p.url AS photo_url
-      FROM "Destination" d
-      JOIN "Itinerary" i ON i.id = d."itineraryId"
-      JOIN "Photo" p ON p."itineraryId" = i.id
-      WHERE i.visibility != 'draft'
-        AND d.country IS NOT NULL AND d.country != ''
-      ORDER BY d.country, p."isStock" ASC, p.id ASC
+    trip_counts AS (
+      SELECT display_name, canonical_country, COUNT(DISTINCT "itineraryId") AS trip_count
+      FROM display_data
+      GROUP BY display_name, canonical_country
+    ),
+    photo_source AS (
+      SELECT DISTINCT ON (dd.display_name) dd.display_name, p.url AS photo_url
+      FROM display_data dd
+      JOIN "Photo" p ON p."itineraryId" = dd."itineraryId"
+      ORDER BY dd.display_name, p."isStock" ASC, p.id ASC
     )
-    SELECT tc.country, tc.trip_count, cp.photo_url
+    SELECT tc.display_name, tc.canonical_country, tc.trip_count, ps.photo_url
     FROM trip_counts tc
-    LEFT JOIN country_photos cp ON cp.country = tc.country
-    ORDER BY tc.trip_count DESC
+    LEFT JOIN photo_source ps ON ps.display_name = tc.display_name
+    ORDER BY tc.canonical_country, tc.trip_count DESC
   `)
 
-  const destRegionMap = new Map<string, { name: string; tripCount: number; photoUrl: string | null }[]>()
-  for (const row of countryRows) {
-    const name = normalizeCountry(row.country)
-    const region = getRegionLabel(name)
+  type DestCard = { displayName: string; tripCount: number; photoUrl: string | null }
+  const destRegionMap = new Map<string, DestCard[]>()
+  for (const row of destRows) {
+    // Normalize non-US country aliases (UK → United Kingdom, etc.)
+    const canonical = row.canonical_country === 'United States'
+      ? 'United States'
+      : normalizeCountry(row.canonical_country)
+    const region = getRegionLabel(canonical)
     if (!destRegionMap.has(region)) destRegionMap.set(region, [])
-    const existing = destRegionMap.get(region)!.find(x => x.name === name)
+    const existing = destRegionMap.get(region)!.find(x => x.displayName === row.display_name)
     if (existing) {
       existing.tripCount += Number(row.trip_count)
       existing.photoUrl ??= row.photo_url
     } else {
-      destRegionMap.get(region)!.push({ name, tripCount: Number(row.trip_count), photoUrl: row.photo_url })
+      destRegionMap.get(region)!.push({ displayName: row.display_name, tripCount: Number(row.trip_count), photoUrl: row.photo_url })
     }
   }
   const destRegions = REGION_ORDER
-    .map(label => ({ label, countries: destRegionMap.get(label) ?? [] }))
-    .filter(r => r.countries.length > 0)
-  const otherCountries = destRegionMap.get('Other') ?? []
-  if (otherCountries.length > 0) destRegions.push({ label: 'Other', countries: otherCountries })
+    .map(label => ({ label, cards: destRegionMap.get(label) ?? [] }))
+    .filter(r => r.cards.length > 0)
+  const otherCards = destRegionMap.get('Other') ?? []
+  if (otherCards.length > 0) destRegions.push({ label: 'Other', cards: otherCards })
 
   const REGION_GRADIENT: Record<string, string> = {
     'United States':        'from-blue-500 to-indigo-700',
@@ -485,25 +503,32 @@ export default async function ExplorePage({
             <div key={region.label}>
               <h2 className="text-lg font-bold text-gray-900 mb-3">{region.label}</h2>
               <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {region.countries.map(c => (
-                  <Link
-                    key={c.name}
-                    href={`/explore?country=${encodeURIComponent(c.name)}`}
-                    className="relative flex-shrink-0 w-44 h-28 rounded-2xl overflow-hidden block"
-                  >
-                    {c.photoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={c.photoUrl} alt={c.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className={`w-full h-full bg-gradient-to-br ${REGION_GRADIENT[region.label] ?? 'from-gray-400 to-gray-600'}`} />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-2.5">
-                      <p className="text-white font-semibold text-sm leading-tight">{c.name}</p>
-                      <p className="text-white/70 text-xs mt-0.5">{c.tripCount} trip{c.tripCount !== 1 ? 's' : ''}</p>
-                    </div>
-                  </Link>
-                ))}
+                {region.cards.map(c => {
+                  // US region: cards are states/cities → drill into city view
+                  // Other regions: cards are countries → drill into country view
+                  const href = region.label === 'United States'
+                    ? `/explore?country=United+States&city=${encodeURIComponent(c.displayName)}`
+                    : `/explore?country=${encodeURIComponent(c.displayName)}`
+                  return (
+                    <Link
+                      key={c.displayName}
+                      href={href}
+                      className="relative flex-shrink-0 w-44 h-28 rounded-2xl overflow-hidden block"
+                    >
+                      {c.photoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={c.photoUrl} alt={c.displayName} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className={`w-full h-full bg-gradient-to-br ${REGION_GRADIENT[region.label] ?? 'from-gray-400 to-gray-600'}`} />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-2.5">
+                        <p className="text-white font-semibold text-sm leading-tight">{c.displayName}</p>
+                        <p className="text-white/70 text-xs mt-0.5">{c.tripCount} trip{c.tripCount !== 1 ? 's' : ''}</p>
+                      </div>
+                    </Link>
+                  )
+                })}
               </div>
             </div>
           ))}
