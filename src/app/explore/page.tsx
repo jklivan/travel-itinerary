@@ -24,6 +24,23 @@ const TRIP_TYPE_META: Record<string, { label: string; emoji: string; desc: strin
 // ── Region classifier ──────────────────────────────────────────────────────────
 const REGION_ORDER = ['United States', 'Europe', 'Asia', 'Latin America', 'Caribbean & Bahamas', 'Middle East & Africa', 'Pacific & Oceania']
 
+const COUNTRY_ALIASES: Record<string, string> = {
+  'us': 'United States', 'usa': 'United States', 'u.s.': 'United States', 'u.s.a.': 'United States',
+  'america': 'United States', 'united states of america': 'United States',
+  'uk': 'United Kingdom', 'great britain': 'United Kingdom', 'england': 'United Kingdom',
+  'scotland': 'United Kingdom', 'wales': 'United Kingdom',
+  'uae': 'United Arab Emirates',
+  'south korea': 'South Korea', 'republic of korea': 'South Korea',
+  'north korea': 'North Korea',
+  'russia': 'Russia', 'russian federation': 'Russia',
+  'czechia': 'Czech Republic',
+  'türkiye': 'Turkey',
+}
+
+function normalizeCountry(raw: string): string {
+  return COUNTRY_ALIASES[raw.trim().toLowerCase()] ?? raw.trim()
+}
+
 function getRegionLabel(country: string): string {
   const c = country.toLowerCase()
   if (['united states', 'usa', ' us,', 'america'].some(x => c.includes(x)) || c === 'us') return 'United States'
@@ -201,8 +218,12 @@ export default async function ExplorePage({
 
   // ── City view ──────────────────────────────────────────────────────────────
   if (country && city) {
+    const cityAliases = Object.entries(COUNTRY_ALIASES)
+      .filter(([, canonical]) => canonical === country)
+      .map(([alias]) => alias)
+    const cityCountryFilter = [country, ...cityAliases]
     const { itineraries, bucketSet } = await fetchItineraries(
-      { destinations: { some: { name: city, country } } },
+      { destinations: { some: { name: city, country: { in: cityCountryFilter, mode: 'insensitive' } } } },
       userId
     )
     return (
@@ -224,8 +245,18 @@ export default async function ExplorePage({
 
   // ── Country view ───────────────────────────────────────────────────────────
   if (country) {
+    // Collect all raw DB values that normalize to this country name
+    const countryAliases = Object.entries(COUNTRY_ALIASES)
+      .filter(([, canonical]) => canonical === country)
+      .map(([alias]) => alias)
+    const countryFilter = [country, ...countryAliases]
+
     const destinations = await prisma.destination.findMany({
-      where: { country, itinerary: { visibility: { not: 'draft' } }, items: { some: {} } },
+      where: {
+        country: { in: countryFilter, mode: 'insensitive' },
+        itinerary: { visibility: { not: 'draft' } },
+        items: { some: {} },
+      },
       select: { name: true },
     })
     const cityMap = new Map<string, number>()
@@ -406,9 +437,16 @@ export default async function ExplorePage({
 
   const destRegionMap = new Map<string, { name: string; tripCount: number; photoUrl: string | null }[]>()
   for (const row of countryRows) {
-    const region = getRegionLabel(row.country)
+    const name = normalizeCountry(row.country)
+    const region = getRegionLabel(name)
     if (!destRegionMap.has(region)) destRegionMap.set(region, [])
-    destRegionMap.get(region)!.push({ name: row.country, tripCount: Number(row.trip_count), photoUrl: row.photo_url })
+    const existing = destRegionMap.get(region)!.find(x => x.name === name)
+    if (existing) {
+      existing.tripCount += Number(row.trip_count)
+      existing.photoUrl ??= row.photo_url
+    } else {
+      destRegionMap.get(region)!.push({ name, tripCount: Number(row.trip_count), photoUrl: row.photo_url })
+    }
   }
   const destRegions = REGION_ORDER
     .map(label => ({ label, countries: destRegionMap.get(label) ?? [] }))
