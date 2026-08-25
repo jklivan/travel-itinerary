@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@/generated/prisma/client'
 import type { ItineraryWhereInput } from '@/generated/prisma/models/Itinerary'
 import { auth } from '@/auth'
 import Link from 'next/link'
@@ -8,11 +9,8 @@ import ExploreSearchBar from '@/components/ExploreSearchBar'
 import { parseSearchQuery, type ParsedQuery } from '@/lib/parseSearchQuery'
 import { tagMeta } from '@/lib/tags'
 import { MapPin, Globe, ChevronRight } from 'lucide-react'
-import { Caveat } from 'next/font/google'
 import ExploreMap from '@/components/ExploreMap'
 import TagBrowser from '@/components/TagBrowser'
-
-const caveat = Caveat({ subsets: ['latin'] })
 
 // ── Trip type meta (kept for ?type= URLs) ─────────────────────────────────────
 const TRIP_TYPE_META: Record<string, { label: string; emoji: string; desc: string }> = {
@@ -23,13 +21,20 @@ const TRIP_TYPE_META: Record<string, { label: string; emoji: string; desc: strin
   guide:  { label: 'Guides', emoji: '📖',   desc: 'Expert recommendations' },
 }
 
-// ── Nav polaroid definitions ───────────────────────────────────────────────────
-const NAV_CARDS = [
-  { key: 'tags',     href: '/explore?view=tags',     emoji: '🏷️', title: 'Browse by Type', desc: 'Filter by vibe',        bg: '#C4782A', tape: 'rgba(255,243,148,0.88)', rot: '-1.5deg' },
-  { key: 'hotspots', href: '/explore?view=hotspots', emoji: '🔥', title: 'Hot Spots',      desc: "What's trending",       bg: '#B03020', tape: 'rgba(255,210,210,0.88)', rot:  '1.5deg' },
-  { key: 'recs',     href: '/friends',                emoji: '👥', title: "Friends' Trips", desc: 'Trips from friends',    bg: '#1A4F7A', tape: 'rgba(200,232,255,0.88)', rot: '-0.5deg' },
-  { key: 'map',      href: '/explore?view=map',      emoji: '🗺️', title: 'Map',            desc: 'Explore destinations',  bg: '#0F7A65', tape: 'rgba(210,255,220,0.88)', rot:  '2.0deg' },
-]
+// ── Region classifier ──────────────────────────────────────────────────────────
+const REGION_ORDER = ['United States', 'Europe', 'Asia', 'Latin America', 'Caribbean & Bahamas', 'Middle East & Africa', 'Pacific & Oceania']
+
+function getRegionLabel(country: string): string {
+  const c = country.toLowerCase()
+  if (['united states', 'usa', ' us,', 'america'].some(x => c.includes(x)) || c === 'us') return 'United States'
+  if (['france', 'italy', 'spain', 'portugal', 'germany', 'netherlands', 'belgium', 'austria', 'switzerland', 'czech', 'hungary', 'poland', 'croatia', 'greece', 'turkey', 'kingdom', 'england', 'scotland', 'ireland', 'wales', 'norway', 'sweden', 'denmark', 'finland', 'iceland', 'romania', 'bulgaria', 'serbia', 'montenegro', 'slovenia', 'slovakia', 'estonia', 'latvia', 'lithuania', 'malta', 'luxembourg', 'monaco', 'albania', 'macedonia', 'bosnia', 'moldova', 'ukraine', 'cyprus', 'andorra', 'san marino', 'liechtenstein'].some(x => c.includes(x))) return 'Europe'
+  if (['japan', 'china', 'thailand', 'vietnam', 'indonesia', 'bali', 'philippines', 'south korea', 'korea', 'india', 'sri lanka', 'nepal', 'bhutan', 'singapore', 'malaysia', 'myanmar', 'cambodia', 'laos', 'taiwan', 'hong kong', 'maldives', 'bangladesh', 'pakistan', 'mongolia'].some(x => c.includes(x))) return 'Asia'
+  if (['bahamas', 'jamaica', 'cuba', 'dominican', 'puerto rico', 'barbados', 'trinidad', 'saint lucia', 'st. lucia', 'antigua', 'grenada', 'martinique', 'guadeloupe', 'haiti', 'bermuda', 'cayman', 'turks and caicos', 'virgin islands', 'aruba', 'curacao', 'sint maarten', 'saint martin', 'anguilla', 'saint kitts'].some(x => c.includes(x))) return 'Caribbean & Bahamas'
+  if (['mexico', 'colombia', 'peru', 'brazil', 'argentina', 'chile', 'ecuador', 'bolivia', 'paraguay', 'uruguay', 'venezuela', 'panama', 'costa rica', 'guatemala', 'belize', 'honduras', 'nicaragua', 'el salvador'].some(x => c.includes(x))) return 'Latin America'
+  if (['uae', 'united arab emirates', 'dubai', 'saudi', 'qatar', 'bahrain', 'kuwait', 'oman', 'jordan', 'israel', 'egypt', 'morocco', 'tunisia', 'south africa', 'kenya', 'tanzania', 'ghana', 'nigeria', 'ethiopia', 'senegal', 'rwanda', 'uganda', 'mozambique', 'madagascar', 'mauritius', 'seychelles', 'zimbabwe', 'botswana', 'namibia', 'zambia'].some(x => c.includes(x))) return 'Middle East & Africa'
+  if (['australia', 'new zealand', 'fiji', 'hawaii', 'french polynesia', 'tahiti', 'papua', 'samoa', 'tonga', 'vanuatu', 'new caledonia', 'cook islands'].some(x => c.includes(x))) return 'Pacific & Oceania'
+  return 'Other'
+}
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 async function fetchItineraries(where: ItineraryWhereInput, userId: string | null) {
@@ -373,49 +378,99 @@ export default async function ExplorePage({
     )
   }
 
-  // ── Top-level explore ──────────────────────────────────────────────────────
+  // ── Top-level explore: destinations browser ───────────────────────────────────
+  type CountryRow = { country: string; trip_count: bigint; photo_url: string | null }
+  const countryRows = await prisma.$queryRaw<CountryRow[]>(Prisma.sql`
+    WITH trip_counts AS (
+      SELECT d.country, COUNT(DISTINCT d."itineraryId") AS trip_count
+      FROM "Destination" d
+      JOIN "Itinerary" i ON i.id = d."itineraryId"
+      WHERE i.visibility != 'draft'
+        AND d.country IS NOT NULL AND d.country != ''
+      GROUP BY d.country
+    ),
+    country_photos AS (
+      SELECT DISTINCT ON (d.country) d.country, p.url AS photo_url
+      FROM "Destination" d
+      JOIN "Itinerary" i ON i.id = d."itineraryId"
+      JOIN "Photo" p ON p."itineraryId" = i.id
+      WHERE i.visibility != 'draft'
+        AND d.country IS NOT NULL AND d.country != ''
+      ORDER BY d.country, p."isStock" ASC, p.id ASC
+    )
+    SELECT tc.country, tc.trip_count, cp.photo_url
+    FROM trip_counts tc
+    LEFT JOIN country_photos cp ON cp.country = tc.country
+    ORDER BY tc.trip_count DESC
+  `)
+
+  const destRegionMap = new Map<string, { name: string; tripCount: number; photoUrl: string | null }[]>()
+  for (const row of countryRows) {
+    const region = getRegionLabel(row.country)
+    if (!destRegionMap.has(region)) destRegionMap.set(region, [])
+    destRegionMap.get(region)!.push({ name: row.country, tripCount: Number(row.trip_count), photoUrl: row.photo_url })
+  }
+  const destRegions = REGION_ORDER
+    .map(label => ({ label, countries: destRegionMap.get(label) ?? [] }))
+    .filter(r => r.countries.length > 0)
+  const otherCountries = destRegionMap.get('Other') ?? []
+  if (otherCountries.length > 0) destRegions.push({ label: 'Other', countries: otherCountries })
+
+  const REGION_GRADIENT: Record<string, string> = {
+    'United States':        'from-blue-500 to-indigo-700',
+    'Europe':               'from-emerald-500 to-teal-700',
+    'Asia':                 'from-red-400 to-rose-700',
+    'Latin America':        'from-orange-400 to-amber-600',
+    'Caribbean & Bahamas':  'from-cyan-400 to-blue-600',
+    'Middle East & Africa': 'from-yellow-500 to-orange-700',
+    'Pacific & Oceania':    'from-teal-400 to-cyan-700',
+    'Other':                'from-gray-400 to-gray-600',
+  }
+
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
+    <div className="max-w-2xl mx-auto px-4 py-6 pb-10">
       <div className="mb-5">
-        <h2 className="text-xl font-bold text-gray-900">Explore</h2>
-        <p className="text-sm text-gray-500">Discover trips around the world</p>
+        <h1 className="text-2xl font-bold text-gray-900">Destinations</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Beach, mountain, city — it&apos;s all here.</p>
       </div>
 
       <ExploreSearchBar />
 
-      <div className="grid grid-cols-2 gap-5 mt-2">
-        {NAV_CARDS.map((card) => (
-          <Link key={card.key} href={card.href} className="block relative pt-5 group">
-            {/* Tape */}
-            <div
-              className="absolute top-1 left-1/2 z-10 w-12 h-6 rounded-[2px]"
-              style={{
-                backgroundColor: card.tape,
-                transform: `translateX(-50%) rotate(${card.rot})`,
-                boxShadow: '0 1px 3px rgba(0,0,0,0.10)',
-              }}
-            />
-            {/* Card */}
-            <div
-              className="bg-white rounded-[3px] px-4 pt-4 pb-5 transition-transform duration-150 group-hover:-translate-y-1"
-              style={{ boxShadow: '2px 5px 18px rgba(0,0,0,0.14)' }}
-            >
-              {/* Photo area */}
-              <div
-                className="w-full aspect-[4/3] flex items-center justify-center text-5xl mb-3 rounded-[2px]"
-                style={{ backgroundColor: card.bg }}
-              >
-                {card.emoji}
+      {destRegions.length === 0 ? (
+        <div className="text-center py-20 text-gray-400 mt-6">
+          <p className="text-4xl mb-3">🌍</p>
+          <p className="text-sm">No destinations yet. <Link href="/create" className="text-blue-600 hover:underline">Add a trip!</Link></p>
+        </div>
+      ) : (
+        <div className="space-y-8 mt-6">
+          {destRegions.map(region => (
+            <div key={region.label}>
+              <h2 className="text-lg font-bold text-gray-900 mb-3">{region.label}</h2>
+              <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {region.countries.map(c => (
+                  <Link
+                    key={c.name}
+                    href={`/explore?country=${encodeURIComponent(c.name)}`}
+                    className="relative flex-shrink-0 w-44 h-28 rounded-2xl overflow-hidden block"
+                  >
+                    {c.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.photoUrl} alt={c.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className={`w-full h-full bg-gradient-to-br ${REGION_GRADIENT[region.label] ?? 'from-gray-400 to-gray-600'}`} />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-2.5">
+                      <p className="text-white font-semibold text-sm leading-tight">{c.name}</p>
+                      <p className="text-white/70 text-xs mt-0.5">{c.tripCount} trip{c.tripCount !== 1 ? 's' : ''}</p>
+                    </div>
+                  </Link>
+                ))}
               </div>
-              {/* Caption */}
-              <h3 className={`${caveat.className} text-xl text-gray-900 leading-tight`}>
-                {card.title}
-              </h3>
-              <p className="text-xs text-gray-400 mt-0.5">{card.desc}</p>
             </div>
-          </Link>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
