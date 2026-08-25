@@ -222,8 +222,16 @@ export default async function ExplorePage({
       .filter(([, canonical]) => canonical === country)
       .map(([alias]) => alias)
     const cityCountryFilter = [country, ...cityAliases]
+    const cityCountryWhere = country === 'United States'
+      ? { OR: [
+          { country: { in: cityCountryFilter, mode: 'insensitive' as const } },
+          { country: { contains: 'United States', mode: 'insensitive' as const } },
+          { country: { endsWith: ', USA', mode: 'insensitive' as const } },
+          { country: { endsWith: ', US', mode: 'insensitive' as const } },
+        ] }
+      : { country: { in: cityCountryFilter, mode: 'insensitive' as const } }
     const { itineraries, bucketSet } = await fetchItineraries(
-      { destinations: { some: { name: city, country: { in: cityCountryFilter, mode: 'insensitive' } } } },
+      { destinations: { some: { name: city, ...cityCountryWhere } } },
       userId
     )
     return (
@@ -245,23 +253,41 @@ export default async function ExplorePage({
 
   // ── Country view ───────────────────────────────────────────────────────────
   if (country) {
-    // Collect all raw DB values that normalize to this country name
+    const isUS = country === 'United States'
     const countryAliases = Object.entries(COUNTRY_ALIASES)
       .filter(([, canonical]) => canonical === country)
       .map(([alias]) => alias)
     const countryFilter = [country, ...countryAliases]
 
-    const destinations = await prisma.destination.findMany({
-      where: {
-        country: { in: countryFilter, mode: 'insensitive' },
-        itinerary: { visibility: { not: 'draft' } },
-        items: { some: {} },
-      },
-      select: { name: true },
-    })
-    const cityMap = new Map<string, number>()
-    for (const d of destinations) cityMap.set(d.name, (cityMap.get(d.name) ?? 0) + 1)
-    const cities = [...cityMap.entries()].sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count }))
+    const destinations = await prisma.$queryRaw<{ name: string; count: bigint }[]>(
+      isUS
+        ? Prisma.sql`
+            SELECT d.name, COUNT(DISTINCT d."itineraryId") AS count
+            FROM "Destination" d
+            JOIN "Itinerary" i ON i.id = d."itineraryId"
+            WHERE i.visibility != 'draft'
+              AND d.name IS NOT NULL AND d.name != ''
+              AND (
+                LOWER(d.country) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
+                OR d.country ILIKE '%United States%'
+                OR d.country ILIKE '%, USA'
+                OR d.country ILIKE '%, US'
+              )
+            GROUP BY d.name
+          `
+        : Prisma.sql`
+            SELECT d.name, COUNT(DISTINCT d."itineraryId") AS count
+            FROM "Destination" d
+            JOIN "Itinerary" i ON i.id = d."itineraryId"
+            WHERE i.visibility != 'draft'
+              AND d.name IS NOT NULL AND d.name != ''
+              AND LOWER(d.country) = ANY(${countryFilter.map(s => s.toLowerCase())})
+            GROUP BY d.name
+          `
+    )
+    const cities = [...destinations]
+      .sort((a, b) => Number(b.count) - Number(a.count))
+      .map(d => ({ name: d.name, count: Number(d.count) }))
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
@@ -417,11 +443,17 @@ export default async function ExplorePage({
       SELECT
         CASE
           WHEN LOWER(d.country) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
+               OR d.country ILIKE '%United States%'
+               OR d.country ILIKE '%, USA'
+               OR d.country ILIKE '%, US'
           THEN d.name
           ELSE d.country
         END AS display_name,
         CASE
           WHEN LOWER(d.country) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
+               OR d.country ILIKE '%United States%'
+               OR d.country ILIKE '%, USA'
+               OR d.country ILIKE '%, US'
           THEN 'United States'
           ELSE d.country
         END AS canonical_country,
