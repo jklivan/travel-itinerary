@@ -416,7 +416,7 @@ export default async function ItineraryPage({
             <div className="mb-5 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 p-4">
               <div className="flex items-center gap-1.5 mb-3">
                 <span className="text-base">⭐</span>
-                <h2 className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Top Picks</h2>
+                <h2 className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Must Do</h2>
               </div>
               <div className="space-y-3">
                 {highlightGroups.map((group, gi) => (

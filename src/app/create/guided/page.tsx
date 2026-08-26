@@ -522,22 +522,24 @@ export default function GuidedCreatePage() {
     setActiveInput(null)
   }
 
-  function setTopPickFoodGuided(destId: string, itemId: string | null) {
-    setDests(ds => ds.map(d => d.id !== destId ? d : {
-      ...d,
-      items: d.items.map(i => i.type === 'food_drink'
-        ? { ...i, isHighlight: itemId !== null && i.id === itemId }
-        : i
-      )
+  function setTopPickFoodGuided(destId: string, itemId: string) {
+    setDests(ds => ds.map(d => {
+      if (d.id !== destId) return d
+      const item = d.items.find(i => i.id === itemId)
+      if (!item) return d
+      const count = d.items.filter(i => i.type === 'food_drink' && i.isHighlight).length
+      if (!item.isHighlight && count >= 3) return d
+      return { ...d, items: d.items.map(i => i.id === itemId ? { ...i, isHighlight: !i.isHighlight } : i) }
     }))
   }
-  function setTopPickActivityGuided(destId: string, itemId: string | null) {
-    setDests(ds => ds.map(d => d.id !== destId ? d : {
-      ...d,
-      items: d.items.map(i => i.type === 'activity'
-        ? { ...i, isHighlight: itemId !== null && i.id === itemId }
-        : i
-      )
+  function setTopPickActivityGuided(destId: string, itemId: string) {
+    setDests(ds => ds.map(d => {
+      if (d.id !== destId) return d
+      const item = d.items.find(i => i.id === itemId)
+      if (!item) return d
+      const count = d.items.filter(i => i.type === 'activity' && i.isHighlight).length
+      if (!item.isHighlight && count >= 3) return d
+      return { ...d, items: d.items.map(i => i.id === itemId ? { ...i, isHighlight: !i.isHighlight } : i) }
     }))
   }
 
@@ -981,15 +983,15 @@ export default function GuidedCreatePage() {
         {phase === 'picks' && (
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 space-y-5">
             <div>
-              <h2 className="font-bold text-gray-900">Top picks</h2>
-              <p className="text-sm text-gray-500 mt-0.5">Select your favourite from each destination.</p>
+              <h2 className="font-bold text-gray-900">Must Do</h2>
+              <p className="text-sm text-gray-500 mt-0.5">Pick up to 3 restaurants and 3 activities per destination.</p>
             </div>
             {dests.map(dest => {
               const food = dest.items.filter(i => i.type === 'food_drink' && i.name.trim())
               const acts = dest.items.filter(i => i.type === 'activity' && i.name.trim())
               if (food.length === 0 && acts.length === 0) return null
-              const topFoodId = food.find(i => i.isHighlight)?.id ?? null
-              const topActId  = acts.find(i => i.isHighlight)?.id  ?? null
+              const foodCount = food.filter(i => i.isHighlight).length
+              const actCount  = acts.filter(i => i.isHighlight).length
               return (
                 <div key={dest.id} className="space-y-3">
                   {dests.length > 1 && (
@@ -997,13 +999,13 @@ export default function GuidedCreatePage() {
                   )}
                   {food.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-gray-500 mb-1.5">🍽️ Top restaurant</p>
+                      <p className="text-xs font-medium text-gray-500 mb-1.5">🍽️ Must-do restaurants {foodCount > 0 && <span className="text-amber-600">({foodCount}/3)</span>}</p>
                       <div className="space-y-1.5">
                         {food.map(item => (
                           <button key={item.id} type="button"
-                            onClick={() => setTopPickFoodGuided(dest.id, topFoodId === item.id ? null : item.id)}
-                            className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${topFoodId === item.id ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
-                            {topFoodId === item.id ? '⭐ ' : ''}{item.name}
+                            onClick={() => setTopPickFoodGuided(dest.id, item.id)}
+                            className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : foodCount >= 3 ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
+                            {item.isHighlight ? '⭐ ' : ''}{item.name}
                           </button>
                         ))}
                       </div>
@@ -1011,13 +1013,13 @@ export default function GuidedCreatePage() {
                   )}
                   {acts.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-gray-500 mb-1.5">📍 Top activity</p>
+                      <p className="text-xs font-medium text-gray-500 mb-1.5">📍 Must-do activities {actCount > 0 && <span className="text-amber-600">({actCount}/3)</span>}</p>
                       <div className="space-y-1.5">
                         {acts.map(item => (
                           <button key={item.id} type="button"
-                            onClick={() => setTopPickActivityGuided(dest.id, topActId === item.id ? null : item.id)}
-                            className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${topActId === item.id ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
-                            {topActId === item.id ? '⭐ ' : ''}{item.name}
+                            onClick={() => setTopPickActivityGuided(dest.id, item.id)}
+                            className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : actCount >= 3 ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
+                            {item.isHighlight ? '⭐ ' : ''}{item.name}
                           </button>
                         ))}
                       </div>

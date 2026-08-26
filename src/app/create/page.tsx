@@ -541,28 +541,44 @@ export default function CreatePage() {
   function toggleFoodTag(di: number, gi: number, dyi: number, ii: number, tag: string) {
     updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j !== ii ? f : { ...f, tags: f.tags.includes(tag) ? f.tags.filter(t => t !== tag) : [...f.tags, tag] }) }))
   }
-  function setTopPickFood(di: number, name: string | null) {
-    setDestinations(dests => dests.map((dest, i) => i !== di ? dest : {
-      ...dest,
-      groups: dest.groups.map(g => ({
-        ...g,
-        days: g.days.map(d => ({
-          ...d,
-          food: d.food.map(f => ({ ...f, isHighlight: name !== null && f.name.trim() === name }))
+  function setTopPickFood(di: number, name: string) {
+    setDestinations(dests => dests.map((dest, i) => {
+      if (i !== di) return dest
+      const allFood = dest.groups.flatMap(g => g.days.flatMap(d => d.food))
+      const item = allFood.find(f => f.name.trim() === name)
+      if (!item) return dest
+      const count = allFood.filter(f => f.isHighlight).length
+      if (!item.isHighlight && count >= 3) return dest
+      return {
+        ...dest,
+        groups: dest.groups.map(g => ({
+          ...g,
+          days: g.days.map(d => ({
+            ...d,
+            food: d.food.map(f => f.name.trim() === name ? { ...f, isHighlight: !f.isHighlight } : f)
+          }))
         }))
-      }))
+      }
     }))
   }
-  function setTopPickActivity(di: number, name: string | null) {
-    setDestinations(dests => dests.map((dest, i) => i !== di ? dest : {
-      ...dest,
-      groups: dest.groups.map(g => ({
-        ...g,
-        days: g.days.map(d => ({
-          ...d,
-          activities: d.activities.map(a => ({ ...a, isHighlight: name !== null && a.name.trim() === name }))
+  function setTopPickActivity(di: number, name: string) {
+    setDestinations(dests => dests.map((dest, i) => {
+      if (i !== di) return dest
+      const allActs = dest.groups.flatMap(g => g.days.flatMap(d => d.activities))
+      const item = allActs.find(a => a.name.trim() === name)
+      if (!item) return dest
+      const count = allActs.filter(a => a.isHighlight).length
+      if (!item.isHighlight && count >= 3) return dest
+      return {
+        ...dest,
+        groups: dest.groups.map(g => ({
+          ...g,
+          days: g.days.map(d => ({
+            ...d,
+            activities: d.activities.map(a => a.name.trim() === name ? { ...a, isHighlight: !a.isHighlight } : a)
+          }))
         }))
-      }))
+      }
     }))
   }
   function addActivity(di: number, gi: number, dyi: number) { updDay(di, gi, dyi, d => ({ ...d, activities: [...d.activities, emptyActivity()] })) }
@@ -1044,15 +1060,15 @@ export default function CreatePage() {
         {step === 'picks' && (
           <div className="space-y-4">
             <div>
-              <h2 className="font-semibold text-gray-900 text-lg">Top Picks</h2>
-              <p className="text-sm text-gray-500 mt-0.5">Select your favourite restaurant and activity for each destination.</p>
+              <h2 className="font-semibold text-gray-900 text-lg">Must Do</h2>
+              <p className="text-sm text-gray-500 mt-0.5">Pick up to 3 restaurants and 3 activities per destination.</p>
             </div>
             {destinations.map((dest, di) => {
               const allFood = dest.groups.flatMap(g => g.days.flatMap(d => d.food)).filter(f => f.name.trim())
               const allActs = dest.groups.flatMap(g => g.days.flatMap(d => d.activities)).filter(a => a.name.trim())
               if (allFood.length === 0 && allActs.length === 0) return null
-              const topFood = allFood.find(f => f.isHighlight)?.name ?? null
-              const topAct  = allActs.find(a => a.isHighlight)?.name ?? null
+              const foodCount = allFood.filter(f => f.isHighlight).length
+              const actCount  = allActs.filter(a => a.isHighlight).length
               return (
                 <div key={di} className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
                   {destinations.length > 1 && (
@@ -1060,13 +1076,13 @@ export default function CreatePage() {
                   )}
                   {allFood.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-gray-500 mb-2">🍽️ Top restaurant</p>
+                      <p className="text-xs font-medium text-gray-500 mb-2">🍽️ Must-do restaurants {foodCount > 0 && <span className="text-amber-600">({foodCount}/3)</span>}</p>
                       <div className="space-y-1.5">
                         {allFood.map(f => (
                           <button key={f.name} type="button"
-                            onClick={() => setTopPickFood(di, topFood === f.name ? null : f.name)}
-                            className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${topFood === f.name ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : 'border-gray-200 text-gray-700 hover:border-amber-200'}`}>
-                            {topFood === f.name ? '⭐ ' : ''}{f.name}
+                            onClick={() => setTopPickFood(di, f.name)}
+                            className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${f.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : foodCount >= 3 ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700 hover:border-amber-200'}`}>
+                            {f.isHighlight ? '⭐ ' : ''}{f.name}
                           </button>
                         ))}
                       </div>
@@ -1074,13 +1090,13 @@ export default function CreatePage() {
                   )}
                   {allActs.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-gray-500 mb-2">📍 Top activity</p>
+                      <p className="text-xs font-medium text-gray-500 mb-2">📍 Must-do activities {actCount > 0 && <span className="text-amber-600">({actCount}/3)</span>}</p>
                       <div className="space-y-1.5">
                         {allActs.map(a => (
                           <button key={a.name} type="button"
-                            onClick={() => setTopPickActivity(di, topAct === a.name ? null : a.name)}
-                            className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${topAct === a.name ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : 'border-gray-200 text-gray-700 hover:border-amber-200'}`}>
-                            {topAct === a.name ? '⭐ ' : ''}{a.name}
+                            onClick={() => setTopPickActivity(di, a.name)}
+                            className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${a.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : actCount >= 3 ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700 hover:border-amber-200'}`}>
+                            {a.isHighlight ? '⭐ ' : ''}{a.name}
                           </button>
                         ))}
                       </div>
@@ -1107,7 +1123,7 @@ export default function CreatePage() {
             </section>
 
             <section className="bg-amber-50 rounded-2xl border border-amber-200 p-5">
-              <h3 className="font-medium text-gray-900 mb-1 text-sm">⭐ Top Picks</h3>
+              <h3 className="font-medium text-gray-900 mb-1 text-sm">⭐ Must Do</h3>
               {computedHighlightNames.length > 0 ? (
                 <ul className="space-y-1.5 mt-2">
                   {computedHighlightNames.map((name, i) => (

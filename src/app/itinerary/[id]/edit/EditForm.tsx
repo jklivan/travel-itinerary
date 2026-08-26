@@ -474,13 +474,11 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       ? itinerary.destinations.map(d => ({ name: d.name, country: d.country ?? '', notes: d.notes ?? '', groups: itemsToGroups(d.items) }))
       : [emptyDest()]
   )
-  // top picks are derived from items marked isHighlight — one food + one activity per destination
-  const topPickLines = destinations.flatMap(dest => {
-    const allItems = dest.groups.flatMap(g => g.days.flatMap(d => d.items))
-    const food = allItems.find(i => i.type === 'food_drink' && i.isHighlight && i.name.trim())
-    const act  = allItems.find(i => i.type === 'activity'   && i.isHighlight && i.name.trim())
-    return [food?.name, act?.name].filter(Boolean) as string[]
-  })
+  const topPickLines = destinations.flatMap(dest =>
+    dest.groups.flatMap(g => g.days.flatMap(d => d.items))
+      .filter(i => i.isHighlight && i.name.trim())
+      .map(i => i.name.trim())
+  )
   const tripDateRange = dateRangeFromMonthAndDays(tripMonth, tripDays)
   const [photos, setPhotos] = useState<UploadedPhoto[]>(itinerary.photos.map(p => ({ url: p.url, caption: p.caption ?? '' })))
   const photosInputRef = useRef<HTMLInputElement>(null)
@@ -595,34 +593,44 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       return { ...d, items }
     })
   }
-  function setTopPickFood(di: number, itemId: string | null) {
-    setDestinations(dests => dests.map((dest, i) => i !== di ? dest : {
-      ...dest,
-      groups: dest.groups.map(g => ({
-        ...g,
-        days: g.days.map(d => ({
-          ...d,
-          items: d.items.map(item => item.type === 'food_drink'
-            ? { ...item, isHighlight: itemId !== null && item.id === itemId }
-            : item
-          )
+  function setTopPickFood(di: number, itemId: string) {
+    setDestinations(dests => dests.map((dest, i) => {
+      if (i !== di) return dest
+      const allItems = dest.groups.flatMap(g => g.days.flatMap(d => d.items))
+      const item = allItems.find(x => x.id === itemId)
+      if (!item) return dest
+      const count = allItems.filter(x => x.type === 'food_drink' && x.isHighlight).length
+      if (!item.isHighlight && count >= 3) return dest
+      return {
+        ...dest,
+        groups: dest.groups.map(g => ({
+          ...g,
+          days: g.days.map(d => ({
+            ...d,
+            items: d.items.map(x => x.id === itemId ? { ...x, isHighlight: !x.isHighlight } : x)
+          }))
         }))
-      }))
+      }
     }))
   }
-  function setTopPickActivity(di: number, itemId: string | null) {
-    setDestinations(dests => dests.map((dest, i) => i !== di ? dest : {
-      ...dest,
-      groups: dest.groups.map(g => ({
-        ...g,
-        days: g.days.map(d => ({
-          ...d,
-          items: d.items.map(item => item.type === 'activity'
-            ? { ...item, isHighlight: itemId !== null && item.id === itemId }
-            : item
-          )
+  function setTopPickActivity(di: number, itemId: string) {
+    setDestinations(dests => dests.map((dest, i) => {
+      if (i !== di) return dest
+      const allItems = dest.groups.flatMap(g => g.days.flatMap(d => d.items))
+      const item = allItems.find(x => x.id === itemId)
+      if (!item) return dest
+      const count = allItems.filter(x => x.type === 'activity' && x.isHighlight).length
+      if (!item.isHighlight && count >= 3) return dest
+      return {
+        ...dest,
+        groups: dest.groups.map(g => ({
+          ...g,
+          days: g.days.map(d => ({
+            ...d,
+            items: d.items.map(x => x.id === itemId ? { ...x, isHighlight: !x.isHighlight } : x)
+          }))
         }))
-      }))
+      }
     }))
   }
 
@@ -729,20 +737,20 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         </div>
       </section>
 
-      {/* Top Picks — one food + one activity per destination */}
+      {/* Must Do */}
       <input type="hidden" name="highlights" value={topPickLines.join('\n')} />
       <section className="bg-amber-50 rounded-2xl border border-amber-200 p-6 space-y-5">
         <div>
-          <h2 className="font-semibold text-gray-900 mb-1">⭐ Top Picks</h2>
-          <p className="text-xs text-gray-500">Select your favourite restaurant and activity for each destination.</p>
+          <h2 className="font-semibold text-gray-900 mb-1">⭐ Must Do</h2>
+          <p className="text-xs text-gray-500">Pick up to 3 restaurants and 3 activities per destination.</p>
         </div>
         {destinations.map((dest, di) => {
           const allItems = dest.groups.flatMap(g => g.days.flatMap(d => d.items))
           const foodItems = allItems.filter(i => i.type === 'food_drink' && i.name.trim())
           const actItems  = allItems.filter(i => i.type === 'activity'   && i.name.trim())
           if (foodItems.length === 0 && actItems.length === 0) return null
-          const topFoodId = foodItems.find(i => i.isHighlight)?.id ?? null
-          const topActId  = actItems.find(i => i.isHighlight)?.id  ?? null
+          const foodCount = foodItems.filter(i => i.isHighlight).length
+          const actCount  = actItems.filter(i => i.isHighlight).length
           return (
             <div key={di} className="space-y-3">
               {destinations.length > 1 && (
@@ -750,13 +758,13 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
               )}
               {foodItems.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-gray-500 mb-2">🍽️ Top restaurant</p>
+                  <p className="text-xs font-medium text-gray-500 mb-2">🍽️ Must-do restaurants {foodCount > 0 && <span className="text-amber-600">({foodCount}/3)</span>}</p>
                   <div className="space-y-1.5">
                     {foodItems.map(item => (
                       <button key={item.id} type="button"
-                        onClick={() => setTopPickFood(di, topFoodId === item.id ? null : item.id)}
-                        className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${topFoodId === item.id ? 'bg-amber-100 border-amber-400 text-amber-900 font-medium' : 'bg-white border-gray-200 text-gray-700 hover:border-amber-300'}`}>
-                        {topFoodId === item.id ? '⭐ ' : ''}{item.name}
+                        onClick={() => setTopPickFood(di, item.id)}
+                        className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-amber-100 border-amber-400 text-amber-900 font-medium' : foodCount >= 3 ? 'bg-white border-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white border-gray-200 text-gray-700 hover:border-amber-300'}`}>
+                        {item.isHighlight ? '⭐ ' : ''}{item.name}
                       </button>
                     ))}
                   </div>
@@ -764,13 +772,13 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
               )}
               {actItems.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-gray-500 mb-2">📍 Top activity</p>
+                  <p className="text-xs font-medium text-gray-500 mb-2">📍 Must-do activities {actCount > 0 && <span className="text-amber-600">({actCount}/3)</span>}</p>
                   <div className="space-y-1.5">
                     {actItems.map(item => (
                       <button key={item.id} type="button"
-                        onClick={() => setTopPickActivity(di, topActId === item.id ? null : item.id)}
-                        className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${topActId === item.id ? 'bg-amber-100 border-amber-400 text-amber-900 font-medium' : 'bg-white border-gray-200 text-gray-700 hover:border-amber-300'}`}>
-                        {topActId === item.id ? '⭐ ' : ''}{item.name}
+                        onClick={() => setTopPickActivity(di, item.id)}
+                        className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-amber-100 border-amber-400 text-amber-900 font-medium' : actCount >= 3 ? 'bg-white border-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white border-gray-200 text-gray-700 hover:border-amber-300'}`}>
+                        {item.isHighlight ? '⭐ ' : ''}{item.name}
                       </button>
                     ))}
                   </div>
