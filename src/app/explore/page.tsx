@@ -144,20 +144,20 @@ const DEST_SQL = Prisma.sql`
   WITH display_data AS (
     SELECT
       CASE
-        WHEN LOWER(d.country) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
+        WHEN LOWER(TRIM(d.country)) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
              OR d.country ILIKE '%United States%'
              OR d.country ILIKE '%, USA'
              OR d.country ILIKE '%, US'
-        THEN d.name
-        ELSE d.country
+        THEN TRIM(d.name)
+        ELSE INITCAP(LOWER(TRIM(d.country)))
       END AS display_name,
       CASE
-        WHEN LOWER(d.country) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
+        WHEN LOWER(TRIM(d.country)) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
              OR d.country ILIKE '%United States%'
              OR d.country ILIKE '%, USA'
              OR d.country ILIKE '%, US'
         THEN 'United States'
-        ELSE d.country
+        ELSE INITCAP(LOWER(TRIM(d.country)))
       END AS canonical_country,
       d."itineraryId"
     FROM "Destination" d
@@ -192,12 +192,13 @@ function buildRegionMap(rows: DestRow[]): Map<string, DestCard[]> {
       : normalizeCountry(row.canonical_country)
     const region = getRegionLabel(canonical)
     if (!map.has(region)) map.set(region, [])
-    const existing = map.get(region)!.find(x => x.displayName === row.display_name)
+    const normalizedName = row.display_name.trim()
+    const existing = map.get(region)!.find(x => x.displayName.toLowerCase() === normalizedName.toLowerCase())
     if (existing) {
       existing.tripCount += Number(row.trip_count)
       existing.photoUrl ??= row.photo_url
     } else {
-      map.get(region)!.push({ displayName: row.display_name, tripCount: Number(row.trip_count), photoUrl: row.photo_url })
+      map.get(region)!.push({ displayName: normalizedName, tripCount: Number(row.trip_count), photoUrl: row.photo_url })
     }
   }
   return map
