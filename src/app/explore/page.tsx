@@ -236,8 +236,8 @@ export default async function ExplorePage({
     )
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link href={`/explore?country=${encodeURIComponent(country)}`} className="text-sm text-blue-600 hover:underline mb-5 inline-block">
-          ← {country}
+        <Link href={country === 'United States' ? '/explore' : `/explore?country=${encodeURIComponent(country)}`} className="text-sm text-blue-600 hover:underline mb-5 inline-block">
+          ← {country === 'United States' ? 'Destinations' : country}
         </Link>
         <div className="mb-5">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
