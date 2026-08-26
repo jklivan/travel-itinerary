@@ -648,7 +648,7 @@ export default function GuidedCreatePage() {
     })
   }
 
-  const resolvedTitle = title.trim() || (dests[0]?.name ? `Trip to ${dests[0].name}` : 'Untitled Trip')
+  const resolvedTitle = title.trim()
   const tripDateRange = dateRangeFromMonthAndDays(tripMonth, tripDays)
 
   return (
@@ -1063,7 +1063,7 @@ export default function GuidedCreatePage() {
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Title</label>
                 <input type="text" value={title} onChange={e => setTitle(e.target.value)}
-                  placeholder={resolvedTitle} className={inputCls} />
+                  placeholder="e.g. 5 days in Tokyo" className={inputCls} />
               </div>
               {postType === 'itinerary' && (
                 <div className="grid grid-cols-2 gap-3">

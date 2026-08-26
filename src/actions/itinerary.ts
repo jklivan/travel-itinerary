@@ -295,7 +295,7 @@ export async function createItineraryDirect(input: {
   const { title, description, startDate: startDateStr, endDate: endDateStr, postType, audience, isDraft, notes, highlights, tags, tripRating, destinations, photos } = input
   const visibility = isDraft ? 'draft' : 'public'
 
-  const resolvedTitle = title?.trim() || (input.destinations?.[0]?.name ? `Trip to ${input.destinations[0].name}` : 'My Trip')
+  const resolvedTitle = title?.trim() || ''
 
   const today = new Date()
   const startDate = startDateStr ? new Date(startDateStr) : today
@@ -303,7 +303,7 @@ export async function createItineraryDirect(input: {
   if (startDateStr && endDateStr && endDate < startDate) return { error: 'End date must be after start date.' }
 
   if (!isDraft) {
-    if (!title?.trim()) return { error: 'Add a title before publishing.' }
+    if (!resolvedTitle) return { error: 'Add a title before publishing.' }
     if (!destinations.some((destination) => destination.name.trim())) return { error: 'Add at least one destination before publishing.' }
     if (postType !== 'guide' && (!startDateStr || !endDateStr)) return { error: 'Add a month and number of days before publishing.' }
     const totalItems = destinations.flatMap(d => flattenGroups(d.groups ?? [])).length

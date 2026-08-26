@@ -410,7 +410,6 @@ export default function CreatePage() {
 
   function applyExtractionResults(results: ExtractionData[], sources: string[]) {
     const first = results[0]
-    if (first.title) setTitle(first.title)
     if (first.description) setDescription(first.description)
     const extractedDates = monthAndDaysFromDates(first.startDate, first.endDate)
     if (extractedDates.month) setTripMonth(extractedDates.month)
