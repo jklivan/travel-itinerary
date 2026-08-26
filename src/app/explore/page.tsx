@@ -136,14 +136,92 @@ function SearchFiltersDisplay({ parsed }: { parsed: ParsedQuery }) {
   )
 }
 
+// ── Shared SQL for destinations browser ────────────────────────────────────────
+type DestRow = { display_name: string; canonical_country: string; trip_count: bigint; photo_url: string | null }
+type DestCard = { displayName: string; tripCount: number; photoUrl: string | null }
+
+const DEST_SQL = Prisma.sql`
+  WITH display_data AS (
+    SELECT
+      CASE
+        WHEN LOWER(d.country) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
+             OR d.country ILIKE '%United States%'
+             OR d.country ILIKE '%, USA'
+             OR d.country ILIKE '%, US'
+        THEN d.name
+        ELSE d.country
+      END AS display_name,
+      CASE
+        WHEN LOWER(d.country) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
+             OR d.country ILIKE '%United States%'
+             OR d.country ILIKE '%, USA'
+             OR d.country ILIKE '%, US'
+        THEN 'United States'
+        ELSE d.country
+      END AS canonical_country,
+      d."itineraryId"
+    FROM "Destination" d
+    JOIN "Itinerary" i ON i.id = d."itineraryId"
+    WHERE i.visibility != 'draft'
+      AND d.country IS NOT NULL AND d.country != ''
+      AND d.name   IS NOT NULL AND d.name   != ''
+      AND EXISTS (SELECT 1 FROM "DestItem" di WHERE di."destinationId" = d.id)
+  ),
+  trip_counts AS (
+    SELECT display_name, canonical_country, COUNT(DISTINCT "itineraryId") AS trip_count
+    FROM display_data
+    GROUP BY display_name, canonical_country
+  ),
+  photo_source AS (
+    SELECT DISTINCT ON (dd.display_name) dd.display_name, p.url AS photo_url
+    FROM display_data dd
+    JOIN "Photo" p ON p."itineraryId" = dd."itineraryId"
+    ORDER BY dd.display_name, p."isStock" ASC, p.id ASC
+  )
+  SELECT tc.display_name, tc.canonical_country, tc.trip_count, ps.photo_url
+  FROM trip_counts tc
+  LEFT JOIN photo_source ps ON ps.display_name = tc.display_name
+  ORDER BY tc.canonical_country, tc.trip_count DESC
+`
+
+function buildRegionMap(rows: DestRow[]): Map<string, DestCard[]> {
+  const map = new Map<string, DestCard[]>()
+  for (const row of rows) {
+    const canonical = row.canonical_country === 'United States'
+      ? 'United States'
+      : normalizeCountry(row.canonical_country)
+    const region = getRegionLabel(canonical)
+    if (!map.has(region)) map.set(region, [])
+    const existing = map.get(region)!.find(x => x.displayName === row.display_name)
+    if (existing) {
+      existing.tripCount += Number(row.trip_count)
+      existing.photoUrl ??= row.photo_url
+    } else {
+      map.get(region)!.push({ displayName: row.display_name, tripCount: Number(row.trip_count), photoUrl: row.photo_url })
+    }
+  }
+  return map
+}
+
+const REGION_GRADIENT: Record<string, string> = {
+  'United States':        'from-blue-500 to-indigo-700',
+  'Europe':               'from-emerald-500 to-teal-700',
+  'Asia':                 'from-red-400 to-rose-700',
+  'Latin America':        'from-orange-400 to-amber-600',
+  'Caribbean & Bahamas':  'from-cyan-400 to-blue-600',
+  'Middle East & Africa': 'from-yellow-500 to-orange-700',
+  'Pacific & Oceania':    'from-teal-400 to-cyan-700',
+  'Other':                'from-gray-400 to-gray-600',
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default async function ExplorePage({
   searchParams,
 }: {
-  searchParams: Promise<{ country?: string; city?: string; type?: string; q?: string; view?: string; tag?: string; tags?: string }>
+  searchParams: Promise<{ country?: string; city?: string; type?: string; q?: string; view?: string; tag?: string; tags?: string; region?: string }>
 
 }) {
-  const { country, city, type, q, view, tag, tags: tagsParam } = await searchParams
+  const { country, city, type, q, view, tag, tags: tagsParam, region } = await searchParams
   const session = await auth()
   const userId = session?.user?.id ?? null
 
@@ -437,86 +515,54 @@ export default async function ExplorePage({
     )
   }
 
-  // ── Top-level explore: destinations browser ───────────────────────────────────
-  // For US destinations: card = d.name (state/city). For everywhere else: card = d.country.
-  type DestRow = { display_name: string; canonical_country: string; trip_count: bigint; photo_url: string | null }
-  const destRows = await prisma.$queryRaw<DestRow[]>(Prisma.sql`
-    WITH display_data AS (
-      SELECT
-        CASE
-          WHEN LOWER(d.country) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
-               OR d.country ILIKE '%United States%'
-               OR d.country ILIKE '%, USA'
-               OR d.country ILIKE '%, US'
-          THEN d.name
-          ELSE d.country
-        END AS display_name,
-        CASE
-          WHEN LOWER(d.country) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
-               OR d.country ILIKE '%United States%'
-               OR d.country ILIKE '%, USA'
-               OR d.country ILIKE '%, US'
-          THEN 'United States'
-          ELSE d.country
-        END AS canonical_country,
-        d."itineraryId"
-      FROM "Destination" d
-      JOIN "Itinerary" i ON i.id = d."itineraryId"
-      WHERE i.visibility != 'draft'
-        AND d.country IS NOT NULL AND d.country != ''
-        AND d.name   IS NOT NULL AND d.name   != ''
-        AND EXISTS (SELECT 1 FROM "DestItem" di WHERE di."destinationId" = d.id)
-    ),
-    trip_counts AS (
-      SELECT display_name, canonical_country, COUNT(DISTINCT "itineraryId") AS trip_count
-      FROM display_data
-      GROUP BY display_name, canonical_country
-    ),
-    photo_source AS (
-      SELECT DISTINCT ON (dd.display_name) dd.display_name, p.url AS photo_url
-      FROM display_data dd
-      JOIN "Photo" p ON p."itineraryId" = dd."itineraryId"
-      ORDER BY dd.display_name, p."isStock" ASC, p.id ASC
-    )
-    SELECT tc.display_name, tc.canonical_country, tc.trip_count, ps.photo_url
-    FROM trip_counts tc
-    LEFT JOIN photo_source ps ON ps.display_name = tc.display_name
-    ORDER BY tc.canonical_country, tc.trip_count DESC
-  `)
+  // ── Region view ────────────────────────────────────────────────────────────────
+  if (region) {
+    const rows = await prisma.$queryRaw<DestRow[]>(DEST_SQL)
+    const regionMap = buildRegionMap(rows)
+    const cards = regionMap.get(region) ?? []
 
-  type DestCard = { displayName: string; tripCount: number; photoUrl: string | null }
-  const destRegionMap = new Map<string, DestCard[]>()
-  for (const row of destRows) {
-    // Normalize non-US country aliases (UK → United Kingdom, etc.)
-    const canonical = row.canonical_country === 'United States'
-      ? 'United States'
-      : normalizeCountry(row.canonical_country)
-    const region = getRegionLabel(canonical)
-    if (!destRegionMap.has(region)) destRegionMap.set(region, [])
-    const existing = destRegionMap.get(region)!.find(x => x.displayName === row.display_name)
-    if (existing) {
-      existing.tripCount += Number(row.trip_count)
-      existing.photoUrl ??= row.photo_url
-    } else {
-      destRegionMap.get(region)!.push({ displayName: row.display_name, tripCount: Number(row.trip_count), photoUrl: row.photo_url })
-    }
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-6 pb-10">
+        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Destinations</Link>
+        <h1 className="text-xl font-bold text-gray-900 mb-5">{region}</h1>
+        {cards.length === 0 ? (
+          <p className="text-sm text-gray-500 italic">No destinations yet.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {cards.map(c => {
+              const href = region === 'United States'
+                ? `/explore?country=United+States&city=${encodeURIComponent(c.displayName)}`
+                : `/explore?country=${encodeURIComponent(c.displayName)}`
+              return (
+                <Link key={c.displayName} href={href} className="relative h-32 rounded-2xl overflow-hidden block">
+                  {c.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={c.photoUrl} alt={c.displayName} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className={`w-full h-full bg-gradient-to-br ${REGION_GRADIENT[region] ?? 'from-gray-400 to-gray-600'}`} />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-2.5">
+                    <p className="text-white font-semibold text-sm leading-tight">{c.displayName}</p>
+                    <p className="text-white/70 text-xs mt-0.5">{c.tripCount} trip{c.tripCount !== 1 ? 's' : ''}</p>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    )
   }
+
+  // ── Top-level explore: destinations browser ───────────────────────────────────
+  const destRows = await prisma.$queryRaw<DestRow[]>(DEST_SQL)
+  const destRegionMap = buildRegionMap(destRows)
   const destRegions = REGION_ORDER
     .map(label => ({ label, cards: destRegionMap.get(label) ?? [] }))
     .filter(r => r.cards.length > 0)
   const otherCards = destRegionMap.get('Other') ?? []
   if (otherCards.length > 0) destRegions.push({ label: 'Other', cards: otherCards })
-
-  const REGION_GRADIENT: Record<string, string> = {
-    'United States':        'from-blue-500 to-indigo-700',
-    'Europe':               'from-emerald-500 to-teal-700',
-    'Asia':                 'from-red-400 to-rose-700',
-    'Latin America':        'from-orange-400 to-amber-600',
-    'Caribbean & Bahamas':  'from-cyan-400 to-blue-600',
-    'Middle East & Africa': 'from-yellow-500 to-orange-700',
-    'Pacific & Oceania':    'from-teal-400 to-cyan-700',
-    'Other':                'from-gray-400 to-gray-600',
-  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-10">
@@ -535,11 +581,16 @@ export default async function ExplorePage({
         <div className="space-y-8 mt-6">
           {destRegions.map(region => (
             <div key={region.label}>
-              <h2 className="text-lg font-bold text-gray-900 mb-3">{region.label}</h2>
+              <div className="flex items-center justify-between mb-3">
+                <Link href={`/explore?region=${encodeURIComponent(region.label)}`} className="text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors">
+                  {region.label}
+                </Link>
+                <Link href={`/explore?region=${encodeURIComponent(region.label)}`} className="text-sm text-blue-600 hover:underline">
+                  View all
+                </Link>
+              </div>
               <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {region.cards.map(c => {
-                  // US region: cards are states/cities → drill into city view
-                  // Other regions: cards are countries → drill into country view
                   const href = region.label === 'United States'
                     ? `/explore?country=United+States&city=${encodeURIComponent(c.displayName)}`
                     : `/explore?country=${encodeURIComponent(c.displayName)}`
