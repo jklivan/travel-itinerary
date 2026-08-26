@@ -86,9 +86,6 @@ export default async function FeedPage({
           <h2 className="text-lg font-bold text-gray-900">
             Discover trips
           </h2>
-          <p className="text-sm text-gray-500">
-            Popular trips, with the newest first when equally saved
-          </p>
         </div>
       )}
 
