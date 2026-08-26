@@ -338,67 +338,121 @@ export default async function ExplorePage({
       .map(([alias]) => alias)
     const countryFilter = [country, ...countryAliases]
 
-    const destinations = await prisma.$queryRaw<{ name: string; count: bigint }[]>(
+    type CityRow = { name: string; count: bigint; photo_url: string | null }
+    const destinations = await prisma.$queryRaw<CityRow[]>(
       isUS
         ? Prisma.sql`
-            SELECT d.name, COUNT(DISTINCT d."itineraryId") AS count
-            FROM "Destination" d
-            JOIN "Itinerary" i ON i.id = d."itineraryId"
-            WHERE i.visibility != 'draft'
-              AND d.name IS NOT NULL AND d.name != ''
-              AND EXISTS (SELECT 1 FROM "DestItem" di WHERE di."destinationId" = d.id)
-              AND (
-                LOWER(d.country) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
-                OR d.country ILIKE '%United States%'
-                OR d.country ILIKE '%, USA'
-                OR d.country ILIKE '%, US'
-              )
-            GROUP BY d.name
+            WITH counts AS (
+              SELECT d.name, COUNT(DISTINCT d."itineraryId") AS count
+              FROM "Destination" d
+              JOIN "Itinerary" i ON i.id = d."itineraryId"
+              WHERE i.visibility != 'draft'
+                AND d.name IS NOT NULL AND d.name != ''
+                AND EXISTS (SELECT 1 FROM "DestItem" di WHERE di."destinationId" = d.id)
+                AND (
+                  LOWER(d.country) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
+                  OR d.country ILIKE '%United States%'
+                  OR d.country ILIKE '%, USA'
+                  OR d.country ILIKE '%, US'
+                )
+              GROUP BY d.name
+            ),
+            photos AS (
+              SELECT DISTINCT ON (d.name) d.name, p.url AS photo_url
+              FROM "Destination" d
+              JOIN "Itinerary" i ON i.id = d."itineraryId"
+              JOIN "Photo" p ON p."itineraryId" = i.id
+              WHERE i.visibility != 'draft'
+                AND (
+                  LOWER(d.country) = ANY(ARRAY['united states','us','usa','america','u.s.','u.s.a.','united states of america'])
+                  OR d.country ILIKE '%United States%'
+                  OR d.country ILIKE '%, USA'
+                  OR d.country ILIKE '%, US'
+                )
+              ORDER BY d.name, p."isStock" ASC, p.id ASC
+            )
+            SELECT c.name, c.count, ph.photo_url
+            FROM counts c
+            LEFT JOIN photos ph ON ph.name = c.name
+            ORDER BY c.count DESC
           `
         : Prisma.sql`
-            SELECT d.name, COUNT(DISTINCT d."itineraryId") AS count
-            FROM "Destination" d
-            JOIN "Itinerary" i ON i.id = d."itineraryId"
-            WHERE i.visibility != 'draft'
-              AND d.name IS NOT NULL AND d.name != ''
-              AND EXISTS (SELECT 1 FROM "DestItem" di WHERE di."destinationId" = d.id)
-              AND LOWER(d.country) = ANY(${countryFilter.map(s => s.toLowerCase())})
-            GROUP BY d.name
+            WITH counts AS (
+              SELECT d.name, COUNT(DISTINCT d."itineraryId") AS count
+              FROM "Destination" d
+              JOIN "Itinerary" i ON i.id = d."itineraryId"
+              WHERE i.visibility != 'draft'
+                AND d.name IS NOT NULL AND d.name != ''
+                AND EXISTS (SELECT 1 FROM "DestItem" di WHERE di."destinationId" = d.id)
+                AND LOWER(d.country) = ANY(${countryFilter.map(s => s.toLowerCase())})
+              GROUP BY d.name
+            ),
+            photos AS (
+              SELECT DISTINCT ON (d.name) d.name, p.url AS photo_url
+              FROM "Destination" d
+              JOIN "Itinerary" i ON i.id = d."itineraryId"
+              JOIN "Photo" p ON p."itineraryId" = i.id
+              WHERE i.visibility != 'draft'
+                AND LOWER(d.country) = ANY(${countryFilter.map(s => s.toLowerCase())})
+              ORDER BY d.name, p."isStock" ASC, p.id ASC
+            )
+            SELECT c.name, c.count, ph.photo_url
+            FROM counts c
+            LEFT JOIN photos ph ON ph.name = c.name
+            ORDER BY c.count DESC
           `
     )
-    const cities = [...destinations]
-      .sort((a, b) => Number(b.count) - Number(a.count))
-      .map(d => ({ name: d.name, count: Number(d.count) }))
+    const cities = destinations.map(d => ({ name: d.name, count: Number(d.count), photoUrl: d.photo_url }))
+    const gradient = REGION_GRADIENT[getRegionLabel(country)] ?? 'from-gray-400 to-gray-600'
+    const cityHref = (name: string) =>
+      `/explore?country=${encodeURIComponent(country)}&city=${encodeURIComponent(name)}`
 
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-2xl mx-auto px-4 py-6 pb-10">
         <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Globe size={18} className="text-blue-600" />
-            {country}
-          </h2>
+        <div className="mb-5">
+          <h2 className="text-xl font-bold text-gray-900">{country}</h2>
           <p className="text-sm text-gray-500">{cities.length} destination{cities.length !== 1 ? 's' : ''}</p>
         </div>
         {cities.length === 0 ? (
           <p className="text-sm text-gray-500 italic">No destinations yet.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {cities.map(({ name, count }) => (
-              <Link
-                key={name}
-                href={`/explore?country=${encodeURIComponent(country)}&city=${encodeURIComponent(name)}`}
-                className="bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 hover:shadow-md transition-all group"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-gray-900 text-sm group-hover:text-blue-600 transition-colors">{name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{count} trip{count !== 1 ? 's' : ''}</p>
-                  </div>
-                  <ChevronRight size={16} className="text-gray-400 group-hover:text-blue-500 transition-colors" />
-                </div>
-              </Link>
-            ))}
+          <div className="space-y-3">
+            {/* Hero — most popular city */}
+            <Link href={cityHref(cities[0].name)} className="relative block h-48 rounded-2xl overflow-hidden">
+              {cities[0].photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={cities[0].photoUrl} alt={cities[0].name} className="w-full h-full object-cover" />
+              ) : (
+                <div className={`w-full h-full bg-gradient-to-br ${gradient}`} />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-4">
+                <p className="text-white font-bold text-xl leading-tight">{cities[0].name}</p>
+                <p className="text-white/70 text-sm mt-0.5">{cities[0].count} trip{cities[0].count !== 1 ? 's' : ''}</p>
+              </div>
+            </Link>
+
+            {/* Rest — 2-column photo grid */}
+            {cities.length > 1 && (
+              <div className="grid grid-cols-2 gap-3">
+                {cities.slice(1).map(c => (
+                  <Link key={c.name} href={cityHref(c.name)} className="relative h-32 rounded-2xl overflow-hidden block">
+                    {c.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.photoUrl} alt={c.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className={`w-full h-full bg-gradient-to-br ${gradient}`} />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-2.5">
+                      <p className="text-white font-semibold text-sm leading-tight">{c.name}</p>
+                      <p className="text-white/70 text-xs mt-0.5">{c.count} trip{c.count !== 1 ? 's' : ''}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
