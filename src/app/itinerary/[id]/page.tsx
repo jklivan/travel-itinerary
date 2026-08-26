@@ -166,6 +166,9 @@ export default async function ItineraryPage({
   const hotelNamesLower = it.destinations.flatMap(d =>
     d.items.filter(i => i.type === 'hotel' && i.name).map(i => i.name.toLowerCase())
   )
+  const foodNamesLower = it.destinations.flatMap(d =>
+    d.items.filter(i => i.type === 'food_drink' && i.name).map(i => i.name.toLowerCase())
+  )
 
   const friendIds: string[] = session?.user?.id
     ? (await prisma.follow.findMany({
@@ -177,7 +180,7 @@ export default async function ItineraryPage({
   type SocialRow = { name: string; count: bigint }
   type RecommendRow = { name: string; positive: bigint; total: bigint }
 
-  const [friendDestRows, savedDestRows, friendHotelRows, hotelRecommendRows] = await Promise.all([
+  const [friendDestRows, savedDestRows, friendHotelRows, hotelRecommendRows, foodRecommendRows] = await Promise.all([
     friendIds.length > 0 && destNamesLower.length > 0
       ? prisma.$queryRaw<SocialRow[]>(Prisma.sql`
           SELECT LOWER(d.name) AS name, COUNT(DISTINCT i."userId") AS count
@@ -224,12 +227,27 @@ export default async function ItineraryPage({
           GROUP BY LOWER(di.name)
         `)
       : Promise.resolve([] as RecommendRow[]),
+    foodNamesLower.length > 0
+      ? prisma.$queryRaw<RecommendRow[]>(Prisma.sql`
+          SELECT LOWER(di.name) AS name,
+            COUNT(*) FILTER (WHERE di.rating >= 4) AS positive,
+            COUNT(*) FILTER (WHERE di.rating IS NOT NULL) AS total
+          FROM "DestItem" di
+          WHERE di.type = 'food_drink'
+            AND LOWER(di.name) IN (${Prisma.join(foodNamesLower)})
+          GROUP BY LOWER(di.name)
+        `)
+      : Promise.resolve([] as RecommendRow[]),
   ])
 
   const friendDestMap = new Map(friendDestRows.map(r => [r.name, Number(r.count)]))
   const savedDestMap = new Map(savedDestRows.map(r => [r.name, Number(r.count)]))
   const friendHotelMap = new Map(friendHotelRows.map(r => [r.name, Number(r.count)]))
   const hotelRecommendMap = new Map(hotelRecommendRows.map(r => [
+    r.name,
+    Number(r.total) > 0 ? Math.round(Number(r.positive) / Number(r.total) * 100) : null,
+  ]))
+  const foodRecommendMap = new Map(foodRecommendRows.map(r => [
     r.name,
     Number(r.total) > 0 ? Math.round(Number(r.positive) / Number(r.total) * 100) : null,
   ]))
@@ -571,6 +589,7 @@ export default async function ItineraryPage({
                                       {item.description && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold text-gray-500">Description: </span>{item.description}</p>}
                                       {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
                                       {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                                      {(() => { const pct = foodRecommendMap.get(item.name.toLowerCase()) ?? null; return pct !== null ? <span className="text-xs text-gray-400 mt-0.5 inline-block">♥️ {pct}% would recommend</span> : null })()}
                                     </div>
                                   ) : (
                                     <div key={item.id} className="bg-green-50 rounded-lg p-3">
@@ -610,6 +629,7 @@ export default async function ItineraryPage({
                                         </div>
                                         {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
                                         {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                                        {(() => { const pct = foodRecommendMap.get(item.name.toLowerCase()) ?? null; return pct !== null ? <span className="text-xs text-gray-400 mt-0.5 inline-block">♥️ {pct}% would recommend</span> : null })()}
                                       </div>
                                     ) : (
                                       <div key={item.id} className="bg-green-50 rounded-lg p-3">
