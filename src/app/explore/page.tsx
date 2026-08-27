@@ -192,7 +192,8 @@ function buildRegionMap(rows: DestRow[]): Map<string, DestCard[]> {
       : normalizeCountry(row.canonical_country)
     const region = getRegionLabel(canonical)
     if (!map.has(region)) map.set(region, [])
-    const normalizedName = row.display_name.trim()
+    const isUS = row.canonical_country === 'United States'
+    const normalizedName = isUS ? row.display_name.trim() : normalizeCountry(row.display_name.trim())
     const existing = map.get(region)!.find(x => x.displayName.toLowerCase() === normalizedName.toLowerCase())
     if (existing) {
       existing.tripCount += Number(row.trip_count)
