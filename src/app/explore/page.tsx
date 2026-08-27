@@ -27,9 +27,9 @@ const REGION_ORDER = ['United States', 'Europe', 'Asia', 'Latin America', 'Carib
 const COUNTRY_ALIASES: Record<string, string> = {
   'us': 'United States', 'usa': 'United States', 'u.s.': 'United States', 'u.s.a.': 'United States',
   'america': 'United States', 'united states of america': 'United States',
-  'uk': 'United Kingdom', 'great britain': 'United Kingdom', 'england': 'United Kingdom',
-  'scotland': 'United Kingdom', 'wales': 'United Kingdom',
-  'uae': 'United Arab Emirates',
+  'uk': 'UK', 'great britain': 'UK', 'england': 'UK',
+  'scotland': 'UK', 'wales': 'UK', 'united kingdom': 'UK',
+  'uae': 'UAE', 'united arab emirates': 'UAE',
   'south korea': 'South Korea', 'republic of korea': 'South Korea',
   'north korea': 'North Korea',
   'russia': 'Russia', 'russian federation': 'Russia',
@@ -44,7 +44,7 @@ function normalizeCountry(raw: string): string {
 function getRegionLabel(country: string): string {
   const c = country.toLowerCase()
   if (['united states', 'usa', ' us,', 'america'].some(x => c.includes(x)) || c === 'us') return 'United States'
-  if (['france', 'italy', 'spain', 'portugal', 'germany', 'netherlands', 'belgium', 'austria', 'switzerland', 'czech', 'hungary', 'poland', 'croatia', 'greece', 'turkey', 'kingdom', 'england', 'scotland', 'ireland', 'wales', 'norway', 'sweden', 'denmark', 'finland', 'iceland', 'romania', 'bulgaria', 'serbia', 'montenegro', 'slovenia', 'slovakia', 'estonia', 'latvia', 'lithuania', 'malta', 'luxembourg', 'monaco', 'albania', 'macedonia', 'bosnia', 'moldova', 'ukraine', 'cyprus', 'andorra', 'san marino', 'liechtenstein'].some(x => c.includes(x))) return 'Europe'
+  if (['france', 'italy', 'spain', 'portugal', 'germany', 'netherlands', 'belgium', 'austria', 'switzerland', 'czech', 'hungary', 'poland', 'croatia', 'greece', 'turkey', 'kingdom', 'england', 'scotland', 'ireland', 'wales', 'norway', 'sweden', 'denmark', 'finland', 'iceland', 'romania', 'bulgaria', 'serbia', 'montenegro', 'slovenia', 'slovakia', 'estonia', 'latvia', 'lithuania', 'malta', 'luxembourg', 'monaco', 'albania', 'macedonia', 'bosnia', 'moldova', 'ukraine', 'cyprus', 'andorra', 'san marino', 'liechtenstein', 'uk'].some(x => c === x || c.includes(x))) return 'Europe'
   if (['japan', 'china', 'thailand', 'vietnam', 'indonesia', 'bali', 'philippines', 'south korea', 'korea', 'india', 'sri lanka', 'nepal', 'bhutan', 'singapore', 'malaysia', 'myanmar', 'cambodia', 'laos', 'taiwan', 'hong kong', 'maldives', 'bangladesh', 'pakistan', 'mongolia'].some(x => c.includes(x))) return 'Asia'
   if (['bahamas', 'jamaica', 'cuba', 'dominican', 'puerto rico', 'barbados', 'trinidad', 'saint lucia', 'st. lucia', 'antigua', 'grenada', 'martinique', 'guadeloupe', 'haiti', 'bermuda', 'cayman', 'turks and caicos', 'virgin islands', 'aruba', 'curacao', 'sint maarten', 'saint martin', 'anguilla', 'saint kitts'].some(x => c.includes(x))) return 'Caribbean & Bahamas'
   if (['mexico', 'colombia', 'peru', 'brazil', 'argentina', 'chile', 'ecuador', 'bolivia', 'paraguay', 'uruguay', 'venezuela', 'panama', 'costa rica', 'guatemala', 'belize', 'honduras', 'nicaragua', 'el salvador'].some(x => c.includes(x))) return 'Latin America'
