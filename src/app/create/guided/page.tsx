@@ -440,6 +440,14 @@ export default function GuidedCreatePage() {
   const [tripRating, setTripRating] = useState<number | null>(restored.tripRating ?? null)
   const [notes, setNotes] = useState(restored.notes ?? '')
 
+  // Show a "continue or start fresh" prompt if there's meaningful saved progress
+  const [showResume, setShowResume] = useState<boolean>(() =>
+    !!(restored.phase && restored.phase !== 'type') ||
+    (restored.dests?.length ?? 0) > 0 ||
+    !!(restored.title?.trim()) ||
+    !!(restored.curDest?.name?.trim())
+  )
+
   // Save progress to sessionStorage on every relevant state change
   useEffect(() => {
     try {
@@ -691,6 +699,50 @@ export default function GuidedCreatePage() {
       </form>
 
       <div className="space-y-4">
+
+        {/* ── RESUME PROMPT ────────────────────────────────────────────────── */}
+        {showResume ? (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-4">
+              <h2 className="font-bold text-white">Continue your trip?</h2>
+              <p className="text-white/70 text-xs mt-0.5">You have an unfinished trip in progress</p>
+            </div>
+            <div className="p-5 space-y-4">
+              {(restored.title?.trim() || (restored.dests?.length ?? 0) > 0 || restored.curDest?.name?.trim()) && (
+                <div className="space-y-1 text-sm text-gray-600">
+                  {restored.title?.trim() && (
+                    <p className="font-semibold text-gray-900">&ldquo;{restored.title.trim()}&rdquo;</p>
+                  )}
+                  {restored.dests?.map(d => (
+                    <p key={d.id} className="flex items-center gap-1.5">
+                      <MapPin size={13} className="text-blue-400 shrink-0" />
+                      {d.name}{d.country ? `, ${d.country}` : ''}
+                      {d.items.length > 0 && <span className="text-gray-400">· {d.items.length} item{d.items.length !== 1 ? 's' : ''}</span>}
+                    </p>
+                  ))}
+                  {restored.curDest?.name?.trim() && (
+                    <p className="flex items-center gap-1.5 text-gray-400 italic">
+                      <MapPin size={13} className="shrink-0" />
+                      {restored.curDest.name} (in progress)
+                    </p>
+                  )}
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button type="button"
+                  onClick={() => { startOver(); setShowResume(false) }}
+                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600 text-sm font-semibold hover:border-gray-300 transition-colors">
+                  Start fresh
+                </button>
+                <button type="button"
+                  onClick={() => setShowResume(false)}
+                  className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                  Continue <ArrowRight size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (<>
 
         {/* Completed destinations */}
         {dests.map(d => (
@@ -1152,6 +1204,7 @@ export default function GuidedCreatePage() {
           </div>
         )}
 
+        </>)}
       </div>
     </div>
   )
