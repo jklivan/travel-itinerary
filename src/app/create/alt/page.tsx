@@ -21,6 +21,7 @@ type AltItem = {
   tags: string[]
   isHighlight: boolean
   alternative: string
+  dayIndex: number
 }
 
 type AltDest = {
@@ -87,7 +88,7 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 
 function UnifiedSearch({ city, onAdd }: {
   city: string
-  onAdd: (item: Omit<AltItem, 'id' | 'isHighlight' | 'alternative'>) => void
+  onAdd: (item: Omit<AltItem, 'id' | 'isHighlight' | 'alternative' | 'dayIndex'>) => void
 }) {
   const [query, setQuery]               = useState('')
   const [suggestions, setSuggestions]   = useState<AllSuggestion[]>([])
@@ -329,9 +330,10 @@ export default function AltCreatePage() {
   const [tags, setTags]         = useState<string[]>([])
   const [tripRating, setTripRating] = useState<number | null>(null)
 
-  const [dests, setDests]       = useState<AltDest[]>([])
-  const [curDest, setCurDest]   = useState({ name: '', country: '' })
-  const [curItems, setCurItems] = useState<AltItem[]>([])
+  const [dests, setDests]         = useState<AltDest[]>([])
+  const [curDest, setCurDest]     = useState({ name: '', country: '' })
+  const [curItems, setCurItems]   = useState<AltItem[]>([])
+  const [curDayIndex, setCurDayIndex] = useState(1)
 
   // Persist across refreshes
   useEffect(() => {
@@ -344,6 +346,7 @@ export default function AltCreatePage() {
         if (s.dests) setDests(s.dests)
         if (s.curDest) setCurDest(s.curDest)
         if (s.curItems) setCurItems(s.curItems)
+        if (s.curDayIndex) setCurDayIndex(s.curDayIndex)
         if (s.tripMonth) setTripMonth(s.tripMonth)
         if (s.tripDays) setTripDays(s.tripDays)
         if (s.tripAudience) setTripAudience(s.tripAudience)
@@ -356,18 +359,18 @@ export default function AltCreatePage() {
 
   useEffect(() => {
     try {
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ phase, postType, dests, curDest, curItems, tripMonth, tripDays, tripAudience, title, tags, tripRating }))
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ phase, postType, dests, curDest, curItems, curDayIndex, tripMonth, tripDays, tripAudience, title, tags, tripRating }))
     } catch {}
-  }, [phase, postType, dests, curDest, curItems, tripMonth, tripDays, tripAudience, title, tags, tripRating])
+  }, [phase, postType, dests, curDest, curItems, curDayIndex, tripMonth, tripDays, tripAudience, title, tags, tripRating])
 
   function startOver() {
     setPhase('type'); setDests([]); setCurDest({ name: '', country: '' }); setCurItems([])
-    setTitle(''); setTags([]); setTripMonth(''); setTripDays(''); setTripRating(null)
+    setTitle(''); setTags([]); setTripMonth(''); setTripDays(''); setTripRating(null); setCurDayIndex(1)
     try { sessionStorage.removeItem(SESSION_KEY) } catch {}
   }
 
-  function addItem(item: Omit<AltItem, 'id' | 'isHighlight' | 'alternative'>) {
-    setCurItems(i => [...i, { ...item, id: uid(), isHighlight: false, alternative: '' }])
+  function addItem(item: Omit<AltItem, 'id' | 'isHighlight' | 'alternative' | 'dayIndex'>) {
+    setCurItems(i => [...i, { ...item, id: uid(), isHighlight: false, alternative: '', dayIndex: curDayIndex }])
   }
 
   function removeItem(id: string) {
@@ -379,28 +382,54 @@ export default function AltCreatePage() {
     setDests(d => [...d, { id: uid(), name: curDest.name, country: curDest.country, items: curItems }])
     setCurDest({ name: '', country: '' })
     setCurItems([])
+    setCurDayIndex(1)
   }
 
   function buildDestinations() {
     const all: AltDest[] = [...dests]
     if (curDest.name.trim()) all.push({ id: 'cur', name: curDest.name, country: curDest.country, items: curItems })
     return all.map(d => {
-      const hotels   = d.items.filter(i => i.type === 'hotel')
+      const hotels   = d.items.filter(i => i.type === 'hotel').sort((a, b) => a.dayIndex - b.dayIndex)
       const nonHotel = d.items.filter(i => i.type !== 'hotel')
+
+      function buildDays(items: AltItem[]) {
+        const byDay = new Map<number, AltItem[]>()
+        for (const item of items) {
+          const di = item.dayIndex ?? 1
+          if (!byDay.has(di)) byDay.set(di, [])
+          byDay.get(di)!.push(item)
+        }
+        return byDay.size > 0
+          ? [...byDay.entries()].sort(([a], [b]) => a - b).map(([dayIdx, dayItems]) => ({
+              dayIndex: dayIdx,
+              food: dayItems.filter(i => i.type === 'food_drink').map((i, pos) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos, tags: i.isHighlight ? ['__highlight'] : [], alternative: '' })),
+              activities: dayItems.filter(i => i.type === 'activity').map((i, pos) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos, tags: i.isHighlight ? ['__highlight'] : [], alternative: '' })),
+            }))
+          : [{ food: [], activities: [] }]
+      }
+
       if (hotels.length === 0) {
         return {
           name: d.name, country: d.country, notes: '',
-          groups: [{
-            hotelName: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelAlternative: '',
-            days: [{ food: nonHotel.filter(i => i.type === 'food_drink').map((i, pos) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos, tags: i.isHighlight ? ['__highlight'] : [], alternative: '' })), activities: nonHotel.filter(i => i.type === 'activity').map((i, pos) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos, tags: i.isHighlight ? ['__highlight'] : [], alternative: '' })) }],
-          }],
+          groups: [{ hotelName: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelAlternative: '', days: buildDays(nonHotel) }],
         }
+      }
+
+      // Assign non-hotel items to the hotel that covers their day
+      const itemsByHotel: AltItem[][] = hotels.map(() => [])
+      for (const item of nonHotel) {
+        const di = item.dayIndex ?? 1
+        let hi = 0
+        for (let i = 0; i < hotels.length; i++) {
+          if (hotels[i].dayIndex <= di) hi = i; else break
+        }
+        itemsByHotel[hi].push(item)
       }
       return {
         name: d.name, country: d.country, notes: '',
-        groups: hotels.map((hotel, hi) => ({
+        groups: hotels.map((hotel, idx) => ({
           hotelName: hotel.name, hotelNotes: hotel.notes, hotelAddress: '', hotelLink: '', hotelRating: hotel.rating, hotelAlternative: '',
-          days: [{ food: nonHotel.filter(i => i.type === 'food_drink' && d.items.indexOf(i) >= d.items.indexOf(hotel) && (hi === hotels.length - 1 || d.items.indexOf(i) < d.items.indexOf(hotels[hi + 1]))).map((i, pos) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos, tags: i.isHighlight ? ['__highlight'] : [], alternative: '' })), activities: nonHotel.filter(i => i.type === 'activity' && d.items.indexOf(i) >= d.items.indexOf(hotel) && (hi === hotels.length - 1 || d.items.indexOf(i) < d.items.indexOf(hotels[hi + 1]))).map((i, pos) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos, tags: i.isHighlight ? ['__highlight'] : [], alternative: '' })) }],
+          days: buildDays(itemsByHotel[idx]),
         })),
       }
     })
@@ -564,22 +593,48 @@ export default function AltCreatePage() {
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
             <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-3 flex items-center gap-2 rounded-t-2xl overflow-hidden">
               <MapPin size={15} className="text-white/80" />
-              <span className="font-bold text-white text-sm">
+              <span className="font-bold text-white text-sm flex-1">
                 {curDest.name}{curDest.country ? <span className="font-normal opacity-75">, {curDest.country}</span> : null}
               </span>
+              <span className="text-xs font-bold text-white bg-white/20 px-2.5 py-1 rounded-full shrink-0">Day {curDayIndex}</span>
             </div>
             <div className="p-4 space-y-3">
               {/* Search */}
               <UnifiedSearch city={curDest.name} onAdd={addItem} />
 
-              {/* Item list */}
-              {curItems.length > 0 && (
-                <div className="space-y-1.5 pt-1">
-                  {curItems.map(item => (
-                    <ItemChip key={item.id} item={item} onRemove={() => removeItem(item.id)} />
-                  ))}
-                </div>
-              )}
+              {/* Item list grouped by day */}
+              {curItems.length > 0 && (() => {
+                const byDay = new Map<number, AltItem[]>()
+                for (const item of curItems) {
+                  const di = item.dayIndex ?? 1
+                  if (!byDay.has(di)) byDay.set(di, [])
+                  byDay.get(di)!.push(item)
+                }
+                const days = [...byDay.entries()].sort(([a], [b]) => a - b)
+                return (
+                  <div className="space-y-3 pt-1">
+                    {days.map(([dayIdx, items]) => (
+                      <div key={dayIdx}>
+                        {days.length > 1 && (
+                          <p className="text-xs font-semibold text-blue-600 mb-1.5">Day {dayIdx}</p>
+                        )}
+                        <div className="space-y-1.5">
+                          {items.map(item => (
+                            <ItemChip key={item.id} item={item} onRemove={() => removeItem(item.id)} />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
+
+              {/* Add day button */}
+              <button type="button"
+                onClick={() => setCurDayIndex(d => d + 1)}
+                className="w-full py-2 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 text-xs font-medium hover:border-blue-300 hover:text-blue-500 transition-colors">
+                + Add Day {curDayIndex + 1}
+              </button>
 
               {/* Action buttons */}
               <div className="flex gap-2 pt-1">
