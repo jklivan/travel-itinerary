@@ -178,20 +178,25 @@ export default async function ItineraryPage({
     : []
 
   type SocialRow = { name: string; count: bigint }
-  type RecommendRow = { name: string; positive: bigint; total: bigint }
+  type FriendNameRow = { name: string; friend_name: string }
+  type FriendDetailRow = { name: string; friend_name: string; rating: number | null }
+  type AvgRow = { name: string; total: bigint; avg_rating: number | null }
+  type BucketerRow = { friend_name: string }
 
-  const [friendDestRows, savedDestRows, friendHotelRows, hotelRecommendRows, foodRecommendRows] = await Promise.all([
+  const [friendDestRows, savedDestRows, friendHotelRows, friendFoodRows, hotelAvgRows, foodAvgRows, itineraryBucketersRows] = await Promise.all([
+    // Which friends visited the same destinations
     friendIds.length > 0 && destNamesLower.length > 0
-      ? prisma.$queryRaw<SocialRow[]>(Prisma.sql`
-          SELECT LOWER(d.name) AS name, COUNT(DISTINCT i."userId") AS count
+      ? prisma.$queryRaw<FriendNameRow[]>(Prisma.sql`
+          SELECT LOWER(d.name) AS name, u.name AS friend_name
           FROM "Destination" d
           JOIN "Itinerary" i ON i.id = d."itineraryId"
+          JOIN "User" u ON u.id = i."userId"
           WHERE i."userId" IN (${Prisma.join(friendIds)})
             AND LOWER(d.name) IN (${Prisma.join(destNamesLower)})
             AND i.visibility != 'draft'
-          GROUP BY LOWER(d.name)
         `)
-      : Promise.resolve([] as SocialRow[]),
+      : Promise.resolve([] as FriendNameRow[]),
+    // How many travelers saved itineraries containing each destination
     destNamesLower.length > 0
       ? prisma.$queryRaw<SocialRow[]>(Prisma.sql`
           SELECT LOWER(d.name) AS name, COUNT(DISTINCT b."userId") AS count
@@ -203,54 +208,104 @@ export default async function ItineraryPage({
           GROUP BY LOWER(d.name)
         `)
       : Promise.resolve([] as SocialRow[]),
+    // Which friends stayed at the same hotels + their ratings
     friendIds.length > 0 && hotelNamesLower.length > 0
-      ? prisma.$queryRaw<SocialRow[]>(Prisma.sql`
-          SELECT LOWER(di.name) AS name, COUNT(DISTINCT i."userId") AS count
+      ? prisma.$queryRaw<FriendDetailRow[]>(Prisma.sql`
+          SELECT LOWER(di.name) AS name, u.name AS friend_name, di.rating
           FROM "DestItem" di
           JOIN "Destination" d ON d.id = di."destinationId"
           JOIN "Itinerary" i ON i.id = d."itineraryId"
+          JOIN "User" u ON u.id = i."userId"
           WHERE i."userId" IN (${Prisma.join(friendIds)})
             AND di.type = 'hotel'
             AND LOWER(di.name) IN (${Prisma.join(hotelNamesLower)})
             AND i.visibility != 'draft'
-          GROUP BY LOWER(di.name)
         `)
-      : Promise.resolve([] as SocialRow[]),
+      : Promise.resolve([] as FriendDetailRow[]),
+    // Which friends ate at the same restaurants + their ratings
+    friendIds.length > 0 && foodNamesLower.length > 0
+      ? prisma.$queryRaw<FriendDetailRow[]>(Prisma.sql`
+          SELECT LOWER(di.name) AS name, u.name AS friend_name, di.rating
+          FROM "DestItem" di
+          JOIN "Destination" d ON d.id = di."destinationId"
+          JOIN "Itinerary" i ON i.id = d."itineraryId"
+          JOIN "User" u ON u.id = i."userId"
+          WHERE i."userId" IN (${Prisma.join(friendIds)})
+            AND di.type = 'food_drink'
+            AND LOWER(di.name) IN (${Prisma.join(foodNamesLower)})
+            AND i.visibility != 'draft'
+        `)
+      : Promise.resolve([] as FriendDetailRow[]),
+    // Community avg star rating for hotels
     hotelNamesLower.length > 0
-      ? prisma.$queryRaw<RecommendRow[]>(Prisma.sql`
+      ? prisma.$queryRaw<AvgRow[]>(Prisma.sql`
           SELECT LOWER(di.name) AS name,
-            COUNT(*) FILTER (WHERE di.rating >= 4) AS positive,
-            COUNT(*) FILTER (WHERE di.rating IS NOT NULL) AS total
+            COUNT(*) FILTER (WHERE di.rating IS NOT NULL) AS total,
+            AVG(di.rating::float) FILTER (WHERE di.rating IS NOT NULL) AS avg_rating
           FROM "DestItem" di
           WHERE di.type = 'hotel'
             AND LOWER(di.name) IN (${Prisma.join(hotelNamesLower)})
           GROUP BY LOWER(di.name)
         `)
-      : Promise.resolve([] as RecommendRow[]),
+      : Promise.resolve([] as AvgRow[]),
+    // Community avg star rating for food
     foodNamesLower.length > 0
-      ? prisma.$queryRaw<RecommendRow[]>(Prisma.sql`
+      ? prisma.$queryRaw<AvgRow[]>(Prisma.sql`
           SELECT LOWER(di.name) AS name,
-            COUNT(*) FILTER (WHERE di.rating >= 4) AS positive,
-            COUNT(*) FILTER (WHERE di.rating IS NOT NULL) AS total
+            COUNT(*) FILTER (WHERE di.rating IS NOT NULL) AS total,
+            AVG(di.rating::float) FILTER (WHERE di.rating IS NOT NULL) AS avg_rating
           FROM "DestItem" di
           WHERE di.type = 'food_drink'
             AND LOWER(di.name) IN (${Prisma.join(foodNamesLower)})
           GROUP BY LOWER(di.name)
         `)
-      : Promise.resolve([] as RecommendRow[]),
+      : Promise.resolve([] as AvgRow[]),
+    // Which friends saved this specific itinerary
+    friendIds.length > 0
+      ? prisma.$queryRaw<BucketerRow[]>(Prisma.sql`
+          SELECT u.name AS friend_name
+          FROM "BucketListItem" b
+          JOIN "User" u ON u.id = b."userId"
+          WHERE b."itineraryId" = ${id}
+            AND b."userId" IN (${Prisma.join(friendIds)})
+        `)
+      : Promise.resolve([] as BucketerRow[]),
   ])
 
-  const friendDestMap = new Map(friendDestRows.map(r => [r.name, Number(r.count)]))
+  // destination name → [friend names]
+  const friendDestNames = new Map<string, string[]>()
+  for (const r of friendDestRows) {
+    if (!friendDestNames.has(r.name)) friendDestNames.set(r.name, [])
+    friendDestNames.get(r.name)!.push(r.friend_name)
+  }
   const savedDestMap = new Map(savedDestRows.map(r => [r.name, Number(r.count)]))
-  const friendHotelMap = new Map(friendHotelRows.map(r => [r.name, Number(r.count)]))
-  const hotelRecommendMap = new Map(hotelRecommendRows.map(r => [
+
+  // hotel/food name → [{friendName, rating}]
+  const friendHotelDetails = new Map<string, { friendName: string; rating: number | null }[]>()
+  for (const r of friendHotelRows) {
+    if (!friendHotelDetails.has(r.name)) friendHotelDetails.set(r.name, [])
+    friendHotelDetails.get(r.name)!.push({ friendName: r.friend_name, rating: r.rating })
+  }
+  const friendFoodDetails = new Map<string, { friendName: string; rating: number | null }[]>()
+  for (const r of friendFoodRows) {
+    if (!friendFoodDetails.has(r.name)) friendFoodDetails.set(r.name, [])
+    friendFoodDetails.get(r.name)!.push({ friendName: r.friend_name, rating: r.rating })
+  }
+
+  // community avg stars (1 decimal)
+  const hotelAvgMap = new Map(hotelAvgRows.map(r => [
     r.name,
-    Number(r.total) > 0 ? Math.round(Number(r.positive) / Number(r.total) * 100) : null,
+    r.avg_rating != null ? Math.round(Number(r.avg_rating) * 10) / 10 : null,
   ]))
-  const foodRecommendMap = new Map(foodRecommendRows.map(r => [
+  const foodAvgMap = new Map(foodAvgRows.map(r => [
     r.name,
-    Number(r.total) > 0 ? Math.round(Number(r.positive) / Number(r.total) * 100) : null,
+    r.avg_rating != null ? Math.round(Number(r.avg_rating) * 10) / 10 : null,
   ]))
+  const hotelTotalMap = new Map(hotelAvgRows.map(r => [r.name, Number(r.total)]))
+  const foodTotalMap  = new Map(foodAvgRows.map(r => [r.name, Number(r.total)]))
+
+  // friends who saved this itinerary
+  const itineraryFriendBucketers = itineraryBucketersRows.map(r => r.friend_name)
 
   const displayTags = it.tags
   const autoTagged = false
@@ -359,6 +414,20 @@ export default async function ItineraryPage({
               )}
             </div>
           </div>
+
+          {/* Friends who saved this itinerary */}
+          {itineraryFriendBucketers.length > 0 && (
+            <div className="flex items-center gap-1.5 mb-3 text-xs text-gray-500">
+              <span>🔖</span>
+              <span>
+                <span className="font-medium text-gray-700">
+                  {itineraryFriendBucketers.slice(0, 3).map(n => n.split(' ')[0]).join(', ')}
+                </span>
+                {itineraryFriendBucketers.length > 3 && ` +${itineraryFriendBucketers.length - 3} more`}
+                {' '}saved this
+              </span>
+            </div>
+          )}
 
           {/* Title & destination chips */}
           <div className="mb-4">
@@ -476,16 +545,19 @@ export default async function ItineraryPage({
                     </h3>
                     {(() => {
                       const key = dest.name.toLowerCase()
-                      const friends = friendDestMap.get(key) ?? 0
+                      const names = friendDestNames.get(key) ?? []
                       const saved = savedDestMap.get(key) ?? 0
-                      if (friends === 0 && saved === 0) return null
+                      if (names.length === 0 && saved === 0) return null
                       return (
-                        <div className="flex items-center gap-3 mb-2">
-                          {friends > 0 && (
-                            <span className="text-xs text-gray-400">👫 {friends} {friends === 1 ? 'friend' : 'friends'} visited</span>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2">
+                          {names.length > 0 && (
+                            <span className="text-xs text-gray-500">
+                              👫 <span className="font-medium text-gray-700">{names.slice(0, 3).map(n => n.split(' ')[0]).join(', ')}</span>
+                              {names.length > 3 && ` +${names.length - 3} more`} also visited
+                            </span>
                           )}
                           {saved > 0 && (
-                            <span className="text-xs text-gray-400">♥️ Saved by {saved} {saved === 1 ? 'traveler' : 'travelers'}</span>
+                            <span className="text-xs text-gray-400">🔖 Saved by {saved} {saved === 1 ? 'traveler' : 'travelers'}</span>
                           )}
                         </div>
                       )
@@ -531,7 +603,27 @@ export default async function ItineraryPage({
                             {item.description && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold text-gray-500">Description: </span>{item.description}</p>}
                             {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
                             {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
-                            {(() => { const pct = foodRecommendMap.get(item.name.toLowerCase()) ?? null; return pct !== null ? <span className="text-xs text-gray-400 mt-0.5 inline-block">♥️ {pct}% would recommend</span> : null })()}
+                            {(() => {
+                              const key = item.name.toLowerCase()
+                              const friends = friendFoodDetails.get(key) ?? []
+                              const avg = foodAvgMap.get(key) ?? null
+                              const total = foodTotalMap.get(key) ?? 0
+                              if (friends.length === 0 && avg === null) return null
+                              return (
+                                <div className="mt-1 space-y-0.5">
+                                  {friends.map((f, i) => (
+                                    <div key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
+                                      <span>👫</span>
+                                      <span className="font-medium">{f.friendName.split(' ')[0]}</span>
+                                      {f.rating ? <span className="text-yellow-500">{'★'.repeat(f.rating)}<span className="text-gray-200">{'★'.repeat(5 - f.rating)}</span></span> : <span className="text-gray-400">also went</span>}
+                                    </div>
+                                  ))}
+                                  {avg !== null && total > 1 && (
+                                    <p className="text-xs text-gray-400">★ {avg.toFixed(1)} avg · {total} ratings</p>
+                                  )}
+                                </div>
+                              )
+                            })()}
                             {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                           </div>
                         )
@@ -567,13 +659,22 @@ export default async function ItineraryPage({
                                     </div>
                                     {(() => {
                                       const key = hotel.name.toLowerCase()
-                                      const friends = friendHotelMap.get(key) ?? 0
-                                      const pct = hotelRecommendMap.get(key) ?? null
-                                      if (friends === 0 && pct === null) return null
+                                      const friends = friendHotelDetails.get(key) ?? []
+                                      const avg = hotelAvgMap.get(key) ?? null
+                                      const total = hotelTotalMap.get(key) ?? 0
+                                      if (friends.length === 0 && avg === null) return null
                                       return (
-                                        <div className="flex items-center gap-3 mt-1">
-                                          {friends > 0 && <span className="text-xs text-gray-400">👫 {friends} {friends === 1 ? 'friend' : 'friends'} stayed</span>}
-                                          {pct !== null && <span className="text-xs text-gray-400">♥️ {pct}% would recommend</span>}
+                                        <div className="mt-1 space-y-0.5">
+                                          {friends.map((f, i) => (
+                                            <div key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
+                                              <span>👫</span>
+                                              <span className="font-medium">{f.friendName.split(' ')[0]}</span>
+                                              {f.rating ? <span className="text-yellow-500">{'★'.repeat(f.rating)}<span className="text-gray-200">{'★'.repeat(5 - f.rating)}</span></span> : <span className="text-gray-400">stayed here</span>}
+                                            </div>
+                                          ))}
+                                          {avg !== null && total > 1 && (
+                                            <p className="text-xs text-gray-400">★ {avg.toFixed(1)} avg · {total} {total === 1 ? 'rating' : 'ratings'}</p>
+                                          )}
                                         </div>
                                       )
                                     })()}
@@ -631,16 +732,21 @@ export default async function ItineraryPage({
                             </div>
                             {(() => {
                               const key = hotel.name.toLowerCase()
-                              const friends = friendHotelMap.get(key) ?? 0
-                              const pct = hotelRecommendMap.get(key) ?? null
-                              if (friends === 0 && pct === null) return null
+                              const friends = friendHotelDetails.get(key) ?? []
+                              const avg = hotelAvgMap.get(key) ?? null
+                              const total = hotelTotalMap.get(key) ?? 0
+                              if (friends.length === 0 && avg === null) return null
                               return (
-                                <div className="flex items-center gap-3 mt-1">
-                                  {friends > 0 && (
-                                    <span className="text-xs text-gray-400">👫 {friends} {friends === 1 ? 'friend' : 'friends'} stayed</span>
-                                  )}
-                                  {pct !== null && (
-                                    <span className="text-xs text-gray-400">♥️ {pct}% would recommend</span>
+                                <div className="mt-1 space-y-0.5">
+                                  {friends.map((f, i) => (
+                                    <div key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
+                                      <span>👫</span>
+                                      <span className="font-medium">{f.friendName.split(' ')[0]}</span>
+                                      {f.rating ? <span className="text-yellow-500">{'★'.repeat(f.rating)}<span className="text-gray-200">{'★'.repeat(5 - f.rating)}</span></span> : <span className="text-gray-400">stayed here</span>}
+                                    </div>
+                                  ))}
+                                  {avg !== null && total > 1 && (
+                                    <p className="text-xs text-gray-400">★ {avg.toFixed(1)} avg · {total} {total === 1 ? 'rating' : 'ratings'}</p>
                                   )}
                                 </div>
                               )
@@ -710,7 +816,27 @@ export default async function ItineraryPage({
                                       {item.description && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold text-gray-500">Description: </span>{item.description}</p>}
                                       {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
                                       {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
-                                      {(() => { const pct = foodRecommendMap.get(item.name.toLowerCase()) ?? null; return pct !== null ? <span className="text-xs text-gray-400 mt-0.5 inline-block">♥️ {pct}% would recommend</span> : null })()}
+                                      {(() => {
+                              const key = item.name.toLowerCase()
+                              const friends = friendFoodDetails.get(key) ?? []
+                              const avg = foodAvgMap.get(key) ?? null
+                              const total = foodTotalMap.get(key) ?? 0
+                              if (friends.length === 0 && avg === null) return null
+                              return (
+                                <div className="mt-1 space-y-0.5">
+                                  {friends.map((f, i) => (
+                                    <div key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
+                                      <span>👫</span>
+                                      <span className="font-medium">{f.friendName.split(' ')[0]}</span>
+                                      {f.rating ? <span className="text-yellow-500">{'★'.repeat(f.rating)}<span className="text-gray-200">{'★'.repeat(5 - f.rating)}</span></span> : <span className="text-gray-400">also went</span>}
+                                    </div>
+                                  ))}
+                                  {avg !== null && total > 1 && (
+                                    <p className="text-xs text-gray-400">★ {avg.toFixed(1)} avg · {total} ratings</p>
+                                  )}
+                                </div>
+                              )
+                            })()}
                                       {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                                     </div>
                                   ) : (
@@ -751,7 +877,27 @@ export default async function ItineraryPage({
                                         </div>
                                         {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
                                         {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
-                                        {(() => { const pct = foodRecommendMap.get(item.name.toLowerCase()) ?? null; return pct !== null ? <span className="text-xs text-gray-400 mt-0.5 inline-block">♥️ {pct}% would recommend</span> : null })()}
+                                        {(() => {
+                              const key = item.name.toLowerCase()
+                              const friends = friendFoodDetails.get(key) ?? []
+                              const avg = foodAvgMap.get(key) ?? null
+                              const total = foodTotalMap.get(key) ?? 0
+                              if (friends.length === 0 && avg === null) return null
+                              return (
+                                <div className="mt-1 space-y-0.5">
+                                  {friends.map((f, i) => (
+                                    <div key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
+                                      <span>👫</span>
+                                      <span className="font-medium">{f.friendName.split(' ')[0]}</span>
+                                      {f.rating ? <span className="text-yellow-500">{'★'.repeat(f.rating)}<span className="text-gray-200">{'★'.repeat(5 - f.rating)}</span></span> : <span className="text-gray-400">also went</span>}
+                                    </div>
+                                  ))}
+                                  {avg !== null && total > 1 && (
+                                    <p className="text-xs text-gray-400">★ {avg.toFixed(1)} avg · {total} ratings</p>
+                                  )}
+                                </div>
+                              )
+                            })()}
                                         {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                                       </div>
                                     ) : (
