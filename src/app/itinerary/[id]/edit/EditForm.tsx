@@ -636,6 +636,84 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{state.error}</p>
       )}
 
+      {/* ── DETAILS ──────────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-gray-800 to-gray-700 px-5 py-4">
+          <h2 className="font-bold text-white">Details</h2>
+          {itinerary.visibility === 'draft' && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-medium mt-1 inline-block">Draft</span>
+          )}
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium">
+            <button type="button" onClick={() => setPostType('itinerary')}
+              className={`flex-1 py-1.5 rounded-lg transition-colors ${postType === 'itinerary' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600'}`}>
+              ✈️ Itinerary
+            </button>
+            <button type="button" onClick={() => setPostType('guide')}
+              className={`flex-1 py-1.5 rounded-lg transition-colors ${postType === 'guide' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-600'}`}>
+              📖 Guide
+            </button>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Title</label>
+            <input name="title" type="text" required value={title} onChange={e => setTitle(e.target.value)} className={inputCls} />
+          </div>
+          {postType === 'itinerary' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Month and year</label>
+                <input type="month" value={tripMonth} onChange={e => setTripMonth(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Number of days</label>
+                <input type="number" min="1" step="1" inputMode="numeric" value={tripDays} onChange={e => setTripDays(e.target.value)} placeholder="e.g. 8" className={inputCls} />
+              </div>
+            </div>
+          )}
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-2">Trip type</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'family',   label: '👨‍👩‍👧 Family'  },
+                { value: 'friends',  label: '🥳 Friends' },
+                { value: 'romantic', label: '💋 Romantic'},
+                { value: 'adult',    label: '🍷 Other'   },
+              ].map(({ value, label }) => (
+                <button key={value} type="button" onClick={() => setTripAudience(value as typeof tripAudience)}
+                  className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${tripAudience === value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-2">Tags</p>
+            <TagPicker selected={tags} onChange={setTags} />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-2">Budget</p>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map(n => (
+                <button key={n} type="button" onClick={() => setBudget(budget === n ? 0 : n)}
+                  className={`text-base px-1 transition-colors ${n <= budget ? 'text-green-600' : 'text-gray-300'}`}>$</button>
+              ))}
+            </div>
+          </div>
+          {postType === 'itinerary' && (
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-2">Overall trip rating <span className="text-gray-400 font-normal">(optional)</span></p>
+              <TripRatingPicker value={tripRating} onChange={setTripRating} />
+            </div>
+          )}
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-1">General notes</p>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
+              placeholder="Tips, packing list, visa info…" className={inputCls} />
+          </div>
+        </div>
+      </div>
+
       {/* ── DESTINATIONS ─────────────────────────────────────────────────── */}
       {dests.map(dest => (
         <div key={dest.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
@@ -822,84 +900,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
           })}
         </div>
       )}
-
-      {/* ── DETAILS ──────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-        <div className="bg-gradient-to-r from-gray-800 to-gray-700 px-5 py-4">
-          <h2 className="font-bold text-white">Details</h2>
-          {itinerary.visibility === 'draft' && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-medium mt-1 inline-block">Draft</span>
-          )}
-        </div>
-        <div className="p-5 space-y-4">
-          <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium">
-            <button type="button" onClick={() => setPostType('itinerary')}
-              className={`flex-1 py-1.5 rounded-lg transition-colors ${postType === 'itinerary' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600'}`}>
-              ✈️ Itinerary
-            </button>
-            <button type="button" onClick={() => setPostType('guide')}
-              className={`flex-1 py-1.5 rounded-lg transition-colors ${postType === 'guide' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-600'}`}>
-              📖 Guide
-            </button>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Title</label>
-            <input name="title" type="text" required value={title} onChange={e => setTitle(e.target.value)} className={inputCls} />
-          </div>
-          {postType === 'itinerary' && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Month and year</label>
-                <input type="month" value={tripMonth} onChange={e => setTripMonth(e.target.value)} className={inputCls} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Number of days</label>
-                <input type="number" min="1" step="1" inputMode="numeric" value={tripDays} onChange={e => setTripDays(e.target.value)} placeholder="e.g. 8" className={inputCls} />
-              </div>
-            </div>
-          )}
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-2">Trip type</p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { value: 'family',   label: '👨‍👩‍👧 Family'  },
-                { value: 'friends',  label: '🥳 Friends' },
-                { value: 'romantic', label: '💋 Romantic'},
-                { value: 'adult',    label: '🍷 Other'   },
-              ].map(({ value, label }) => (
-                <button key={value} type="button" onClick={() => setTripAudience(value as typeof tripAudience)}
-                  className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${tripAudience === value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-2">Tags</p>
-            <TagPicker selected={tags} onChange={setTags} />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-2">Budget</p>
-            <div className="flex gap-1">
-              {[1, 2, 3, 4, 5].map(n => (
-                <button key={n} type="button" onClick={() => setBudget(budget === n ? 0 : n)}
-                  className={`text-base px-1 transition-colors ${n <= budget ? 'text-green-600' : 'text-gray-300'}`}>$</button>
-              ))}
-            </div>
-          </div>
-          {postType === 'itinerary' && (
-            <div>
-              <p className="text-xs font-medium text-gray-500 mb-2">Overall trip rating <span className="text-gray-400 font-normal">(optional)</span></p>
-              <TripRatingPicker value={tripRating} onChange={setTripRating} />
-            </div>
-          )}
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">General notes</p>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
-              placeholder="Tips, packing list, visa info…" className={inputCls} />
-          </div>
-        </div>
-      </div>
 
       {/* ── PHOTOS ───────────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 space-y-4">

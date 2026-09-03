@@ -72,6 +72,7 @@ type SavedState = {
   tripAudience: 'family' | 'friends' | 'romantic' | 'adult'
   budget: number
   tripRating: number | null
+  notes: string
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -437,11 +438,12 @@ export default function GuidedCreatePage() {
   const [tripAudience, setTripAudience] = useState<'family' | 'friends' | 'romantic' | 'adult'>(restored.tripAudience ?? 'family')
   const [budget, setBudget] = useState(restored.budget ?? 0)
   const [tripRating, setTripRating] = useState<number | null>(restored.tripRating ?? null)
+  const [notes, setNotes] = useState(restored.notes ?? '')
 
   // Save progress to sessionStorage on every relevant state change
   useEffect(() => {
     try {
-      const toSave: SavedState = { dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating }
+      const toSave: SavedState = { dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating, notes }
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(toSave))
     } catch { /* quota exceeded or SSR */ }
   }, [dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating])
@@ -463,6 +465,7 @@ export default function GuidedCreatePage() {
     setTripAudience('family')
     setBudget(0)
     setTripRating(null)
+    setNotes('')
     setActiveInput(null)
   }
 
@@ -684,6 +687,7 @@ export default function GuidedCreatePage() {
         <input type="hidden" name="tags" value={JSON.stringify(tags)} />
         {budget > 0 && <input type="hidden" name="budget" value={budget} />}
         {tripRating && <input type="hidden" name="tripRating" value={tripRating} />}
+        <input type="hidden" name="notes" value={notes} />
       </form>
 
       <div className="space-y-4">
@@ -702,7 +706,7 @@ export default function GuidedCreatePage() {
             </div>
             <div className="p-5 space-y-3">
               <button type="button"
-                onClick={() => { setPostType('itinerary'); setPhase('dest') }}
+                onClick={() => { setPostType('itinerary'); setPhase('details') }}
                 className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 transition-all text-left">
                 <span className="text-3xl">✈️</span>
                 <div>
@@ -711,7 +715,7 @@ export default function GuidedCreatePage() {
                 </div>
               </button>
               <button type="button"
-                onClick={() => { setPostType('guide'); setPhase('dest') }}
+                onClick={() => { setPostType('guide'); setPhase('details') }}
                 className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-green-200 hover:border-green-400 hover:bg-green-50 transition-all text-left">
                 <span className="text-3xl">📖</span>
                 <div>
@@ -1036,16 +1040,36 @@ export default function GuidedCreatePage() {
             {dests.every(d => d.items.filter(i => i.type !== 'hotel').length === 0) && (
               <p className="text-sm text-gray-400 italic">No restaurants or activities added yet.</p>
             )}
+            {formState?.error && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{formState.error}</p>
+            )}
             <div className="flex gap-3">
               <button type="button" onClick={() => setPhase('more')}
                 className="px-5 py-3 rounded-xl border border-gray-300 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors">
                 ← Back
               </button>
-              <button type="button" onClick={() => setPhase('details')}
-                className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
-                Continue →
+              <button form="gf" type="submit" name="isDraft" value="1" disabled={pending}
+                className="flex-1 bg-white text-gray-700 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-colors disabled:opacity-60 text-sm">
+                {pending ? 'Saving…' : 'Save as Draft'}
               </button>
+              {(() => {
+                const hasItems = dests.some(d => d.items.length > 0) || curItems.length > 0
+                return (
+                  <button form="gf" type="submit" disabled={pending || !hasItems}
+                    title={!hasItems ? 'Add at least one hotel, restaurant, or activity first' : undefined}
+                    className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60 text-sm">
+                    {pending ? 'Publishing…' : 'Publish'}
+                  </button>
+                )
+              })()}
             </div>
+            {pending && (
+              <p className="text-center text-xs text-gray-400">
+                Taking too long?{' '}
+                <button type="button" onClick={() => { window.location.reload() }} className="underline hover:text-gray-600">Cancel</button>
+                {' '}— your trip is saved and will be here when you come back.
+              </p>
+            )}
           </div>
         )}
 
@@ -1053,20 +1077,10 @@ export default function GuidedCreatePage() {
         {phase === 'details' && (
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
             <div className="bg-gradient-to-r from-gray-800 to-gray-700 px-5 py-4">
-              <h2 className="font-bold text-white">One last thing</h2>
-              <p className="text-white/70 text-xs mt-0.5">Give your trip a name, month, and length</p>
+              <h2 className="font-bold text-white">Trip details</h2>
+              <p className="text-white/70 text-xs mt-0.5">Tell us about your {postType === 'guide' ? 'guide' : 'trip'}</p>
             </div>
             <div className="p-5 space-y-4">
-              <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium">
-                <button type="button" onClick={() => setPostType('itinerary')}
-                  className={`flex-1 py-1.5 rounded-lg transition-colors ${postType === 'itinerary' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600'}`}>
-                  ✈️ Itinerary
-                </button>
-                <button type="button" onClick={() => setPostType('guide')}
-                  className={`flex-1 py-1.5 rounded-lg transition-colors ${postType === 'guide' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-600'}`}>
-                  📖 Guide
-                </button>
-              </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Title</label>
                 <input type="text" value={title} onChange={e => setTitle(e.target.value)}
@@ -1085,11 +1099,6 @@ export default function GuidedCreatePage() {
                 </div>
               )}
               <div>
-                <p className="text-xs font-medium text-gray-500 mb-2">Tags</p>
-                <TagPicker selected={tags} onChange={setTags} />
-              </div>
-
-              <div>
                 <p className="text-xs font-medium text-gray-500 mb-2">Trip type</p>
                 <div className="flex flex-wrap gap-2">
                   {[
@@ -1105,69 +1114,40 @@ export default function GuidedCreatePage() {
                   ))}
                 </div>
               </div>
-
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-2">Tags</p>
+                <TagPicker selected={tags} onChange={setTags} />
+              </div>
               <div>
                 <p className="text-xs font-medium text-gray-500 mb-2">Budget</p>
                 <div className="flex gap-1">
                   {[1, 2, 3, 4, 5].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setBudget(budget === n ? 0 : n)}
-                      className={`text-base px-1 transition-colors ${n <= budget ? 'text-green-600' : 'text-gray-300'}`}
-                    >
-                      $
-                    </button>
+                    <button key={n} type="button" onClick={() => setBudget(budget === n ? 0 : n)}
+                      className={`text-base px-1 transition-colors ${n <= budget ? 'text-green-600' : 'text-gray-300'}`}>$</button>
                   ))}
                 </div>
               </div>
-
               {postType === 'itinerary' && (
                 <div>
                   <p className="text-xs font-medium text-gray-500 mb-2">Overall trip rating <span className="text-gray-400 font-normal">(optional)</span></p>
                   <TripRatingPicker value={tripRating} onChange={setTripRating} />
                 </div>
               )}
-
-              {formState?.error && (
-                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{formState.error}</p>
-              )}
-
-              <button type="button" onClick={() => setPhase('picks')} className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
-                ← Back
-              </button>
-
-              <div className="flex gap-3 pt-1">
-                <button form="gf" type="submit" name="isDraft" value="1" disabled={pending}
-                  className="flex-1 bg-white text-gray-700 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-colors disabled:opacity-60 text-sm">
-                  {pending ? 'Saving…' : 'Save as Draft'}
-                </button>
-                {(() => {
-                  const hasItems =
-                    dests.some(d => d.items.length > 0) ||
-                    curItems.length > 0
-                  return (
-                    <button form="gf" type="submit" disabled={pending || !hasItems}
-                      title={!hasItems ? 'Add at least one hotel, restaurant, or activity first' : undefined}
-                      className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60 text-sm">
-                      {pending ? 'Publishing…' : 'Publish'}
-                    </button>
-                  )
-                })()}
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-1">General notes</p>
+                <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
+                  placeholder="Tips, packing list, visa info…" className={inputCls} />
               </div>
-              {pending && (
-                <p className="text-center text-xs text-gray-400">
-                  Taking too long?{' '}
-                  <button
-                    type="button"
-                    onClick={() => { window.location.reload() }}
-                    className="underline hover:text-gray-600"
-                  >
-                    Cancel
-                  </button>
-                  {' '}— your trip is saved and will be here when you come back.
-                </p>
-              )}
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={() => setPhase('type')}
+                  className="px-5 py-3 rounded-xl border border-gray-300 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors">
+                  ← Back
+                </button>
+                <button type="button" onClick={() => setPhase('dest')}
+                  className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                  Next <ArrowRight size={15} />
+                </button>
+              </div>
             </div>
           </div>
         )}
