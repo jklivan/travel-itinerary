@@ -528,11 +528,13 @@ export default function AltCreatePage() {
                 placeholder="Country" className={inputCls} />
               {postType === 'itinerary' && (
                 <div className="flex gap-2">
-                  <select value={tripMonth} onChange={e => setTripMonth(e.target.value)} className={`${inputCls} flex-1`}>
+                  <select value={tripMonth} onChange={e => setTripMonth(e.target.value)}
+                    className="flex-1 min-w-0 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
                     <option value="">Month</option>
                     {MONTHS.map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}
                   </select>
-                  <select value={tripDays} onChange={e => setTripDays(e.target.value)} className={`${inputCls} w-20`}>
+                  <select value={tripDays} onChange={e => setTripDays(e.target.value)}
+                    className="w-20 shrink-0 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
                     <option value="">#</option>
                     {Array.from({ length: 30 }, (_, i) => i + 1).map(n => (
                       <option key={n} value={String(n)}>{n}</option>
