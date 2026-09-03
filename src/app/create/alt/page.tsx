@@ -599,9 +599,6 @@ export default function AltCreatePage() {
               <span className="text-xs font-bold text-white bg-white/20 px-2.5 py-1 rounded-full shrink-0">Day {curDayIndex}</span>
             </div>
             <div className="p-4 space-y-3">
-              {/* Search */}
-              <UnifiedSearch city={curDest.name} onAdd={addItem} />
-
               {/* Item list grouped by day */}
               {curItems.length > 0 && (() => {
                 const byDay = new Map<number, AltItem[]>()
@@ -628,6 +625,9 @@ export default function AltCreatePage() {
                   </div>
                 )
               })()}
+
+              {/* Search */}
+              <UnifiedSearch city={curDest.name} onAdd={addItem} />
 
               {/* Add day button */}
               <button type="button"
