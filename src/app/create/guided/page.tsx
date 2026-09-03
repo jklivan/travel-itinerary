@@ -175,8 +175,11 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
         <p className="text-xs text-gray-500">Rate it</p>
         <StarRating value={rating} onChange={setRating} />
       </div>
-      <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
-        placeholder={cfg.notesPh} className={inputCls} />
+      <div className="space-y-1">
+        <p className="text-xs text-gray-500">Notes</p>
+        <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
+          placeholder={cfg.notesPh} className={inputCls} />
+      </div>
       <PlacesAutocomplete value={alternative} onChange={setAlternative} type={cfg.placeType}
         placeholder="↔ Alternative (optional)" className={`${inputCls} text-gray-500`} city={city} />
       <button type="button" onClick={() => setShowMore(s => !s)}
@@ -321,8 +324,11 @@ function ItemForm({ type, onAdd, onClose, city }: {
           <StarRating value={rating} onChange={setRating} />
         </div>
       </div>
-      <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
-        placeholder={cfg.notesPh} className={inputCls} />
+      <div className="space-y-1">
+        <p className="text-xs text-gray-500">Notes</p>
+        <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
+          placeholder={cfg.notesPh} className={inputCls} />
+      </div>
 
       {/* More details toggle */}
       <button type="button" onClick={() => setShowMore(s => !s)}
