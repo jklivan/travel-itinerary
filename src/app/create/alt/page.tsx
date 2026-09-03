@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef, useState } from 'react'
 import { upload } from '@vercel/blob/client'
 import { createItinerary } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
-import { MapPin, Hotel, Utensils, Camera, Star, ArrowRight, Plus, Check, X, FileText, ImageIcon, GripVertical } from 'lucide-react'
+import { MapPin, Hotel, Utensils, Camera, Star, ArrowRight, Plus, Check, X, ImageIcon, GripVertical } from 'lucide-react'
 import TagPicker from '@/components/TagPicker'
 import Link from 'next/link'
 import { TripRatingPicker } from '@/components/TripRatingPicker'
@@ -29,7 +29,7 @@ import { CSS } from '@dnd-kit/utilities'
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type ItemType = 'hotel' | 'food_drink' | 'activity'
-type ActiveInput = 'notes' | 'photos' | null
+type ActiveInput = 'photos' | null
 
 type GuidedItem = {
   id: string
@@ -849,6 +849,8 @@ export default function AltCreatePage() {
                 onChange={e => setCurDest(d => ({ ...d, country: e.target.value }))}
                 placeholder="Country" className={inputCls}
               />
+              <textarea value={curNotes} onChange={e => setCurNotes(e.target.value)} rows={2}
+                placeholder="📝 Notes for this destination (optional)" className={inputCls} />
               <button type="button" disabled={!curDest.name.trim()} onClick={() => setPhase('building')}
                 className="w-full py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2 text-sm">
                 Next <ArrowRight size={15} />
@@ -923,22 +925,6 @@ export default function AltCreatePage() {
                 <UnifiedSearch city={curDest.name} onAdd={addItem} />
               )}
 
-              {/* Notes inline form */}
-              {activeInput === 'notes' && (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Overall Notes</p>
-                    <button type="button" onClick={() => setActiveInput(null)} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
-                  </div>
-                  <textarea value={curNotes} onChange={e => setCurNotes(e.target.value)} rows={3}
-                    placeholder="General notes, tips, or summary for this destination…" className={inputCls} />
-                  <button type="button" onClick={() => setActiveInput(null)}
-                    className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors flex items-center justify-center gap-2">
-                    <Check size={14} /> Save Notes
-                  </button>
-                </div>
-              )}
-
               {/* Photos inline form */}
               {activeInput === 'photos' && (
                 <div className="rounded-2xl border border-purple-200 bg-purple-50 p-4 space-y-3">
@@ -977,21 +963,14 @@ export default function AltCreatePage() {
                 </div>
               )}
 
-              {/* Notes / Photos + day/city/done buttons */}
+              {/* Photos + day/city/done buttons */}
               {!activeInput && !editingItemId && (
                 <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button type="button" onClick={() => setActiveInput('notes')}
-                      className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-amber-200 text-amber-600 hover:border-amber-400 hover:bg-amber-50 transition-all">
-                      <FileText size={20} />
-                      <span className="text-xs font-semibold">{curNotes ? 'Notes ✓' : '+ Notes'}</span>
-                    </button>
-                    <button type="button" onClick={() => setActiveInput('photos')}
-                      className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-purple-200 text-purple-600 hover:border-purple-400 hover:bg-purple-50 transition-all">
-                      <ImageIcon size={20} />
-                      <span className="text-xs font-semibold">{photos.length > 0 ? `Photos (${photos.length})` : '+ Photos'}</span>
-                    </button>
-                  </div>
+                  <button type="button" onClick={() => setActiveInput('photos')}
+                    className="w-full flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-purple-200 text-purple-600 hover:border-purple-400 hover:bg-purple-50 transition-all">
+                    <ImageIcon size={20} />
+                    <span className="text-xs font-semibold">{photos.length > 0 ? `Photos (${photos.length})` : '+ Photos'}</span>
+                  </button>
 
                   {postType !== 'guide' && (
                     <button type="button" onClick={() => setCurDayIndex(d => d + 1)}
