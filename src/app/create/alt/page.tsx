@@ -423,7 +423,7 @@ export default function AltCreatePage() {
     }
   }
 
-  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
   const AUDIENCES = [
     { value: 'family',   label: '👨‍👩‍👧 Family'   },
     { value: 'friends',  label: '👯 Friends'  },
@@ -527,15 +527,15 @@ export default function AltCreatePage() {
                 onChange={e => setCurDest(d => ({ ...d, country: e.target.value }))}
                 placeholder="Country" className={inputCls} />
               {postType === 'itinerary' && (
-                <div className="grid grid-cols-2 gap-2">
-                  <select value={tripMonth} onChange={e => setTripMonth(e.target.value)} className={inputCls}>
+                <div className="flex gap-2">
+                  <select value={tripMonth} onChange={e => setTripMonth(e.target.value)} className={`${inputCls} flex-1`}>
                     <option value="">Month</option>
                     {MONTHS.map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}
                   </select>
-                  <select value={tripDays} onChange={e => setTripDays(e.target.value)} className={inputCls}>
-                    <option value="">Days</option>
+                  <select value={tripDays} onChange={e => setTripDays(e.target.value)} className={`${inputCls} w-20`}>
+                    <option value="">#</option>
                     {Array.from({ length: 30 }, (_, i) => i + 1).map(n => (
-                      <option key={n} value={String(n)}>{n} {n === 1 ? 'day' : 'days'}</option>
+                      <option key={n} value={String(n)}>{n}</option>
                     ))}
                   </select>
                 </div>
