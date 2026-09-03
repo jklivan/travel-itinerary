@@ -130,6 +130,37 @@ export async function GET(req: NextRequest) {
     return Response.json(merged.slice(0, 7))
   }
 
+  if (type === 'all') {
+    // Unified search: no type filter, returns results with a guessedType field
+    const HOTEL_TYPES = new Set(['lodging', 'hotel', 'motel', 'hostel', 'resort_hotel', 'bed_and_breakfast', 'guest_house', 'inn', 'extended_stay_hotel', 'vacation_rental', 'campground', 'rv_park'])
+    const FOOD_TYPES  = new Set(['restaurant', 'food', 'bar', 'cafe', 'bakery', 'meal_delivery', 'meal_takeaway', 'night_club', 'coffee_shop', 'sandwich_shop', 'pizza_restaurant', 'seafood_restaurant', 'fast_food_restaurant', 'chinese_restaurant', 'japanese_restaurant', 'mexican_restaurant', 'american_restaurant', 'italian_restaurant', 'steak_house', 'ice_cream_shop', 'dessert_shop', 'brunch_restaurant', 'breakfast_restaurant', 'wine_bar', 'cocktail_bar', 'pub', 'sports_bar'])
+
+    function guessType(types?: string[]): 'hotel' | 'food_drink' | 'activity' | null {
+      if (!types || types.length === 0) return null
+      for (const t of types) {
+        if (HOTEL_TYPES.has(t)) return 'hotel'
+        if (FOOD_TYPES.has(t))  return 'food_drink'
+      }
+      if (types.some(t => t === 'point_of_interest' || t === 'establishment')) return 'activity'
+      return null
+    }
+
+    try {
+      rawResults = await autocomplete(base)
+    } catch (err) {
+      console.error('[places] fetch error:', err)
+      return Response.json([])
+    }
+
+    type AllSuggestion = { label: string; main: string; secondary: string; placeId: string | null; guessedType: 'hotel' | 'food_drink' | 'activity' | null }
+    const suggestions: AllSuggestion[] = rawResults.slice(0, 8).map(s => {
+      const base = toSuggestion(s)
+      const types = (s as { placePrediction?: { types?: string[] } }).placePrediction?.types
+      return { ...base, guessedType: guessType(types) }
+    })
+    return Response.json(suggestions)
+  }
+
   try {
     rawResults = await autocomplete(base)
   } catch (err) {
