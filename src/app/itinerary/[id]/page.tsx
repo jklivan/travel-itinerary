@@ -494,9 +494,130 @@ export default async function ItineraryPage({
                       <p className="text-xs text-gray-500 italic mb-3 border-l-2 border-blue-200 pl-2">{dest.notes}</p>
                     )}
                     <div className="space-y-3">
-                      {(() => {
-                        // For multi-stay destinations show Day 1/Day 2 with hotel inline
-                        // instead of Stay 1/Stay 2 boxes. Day numbers are sequential across all groups.
+                      {isGuide ? (() => {
+                        // Guide: group all items by type — hotels, then food, then activities
+                        const allItems = dest.items as DestItemRow[]
+                        const hotels = allItems.filter(i => i.type === 'hotel')
+                        const food   = allItems.filter(i => i.type === 'food_drink')
+                        const acts   = allItems.filter(i => i.type === 'activity')
+                        const renderFoodItem = (item: DestItemRow) => (
+                          <div key={item.id} className="bg-orange-50 rounded-lg p-3">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <Utensils size={12} className="text-orange-500 shrink-0" />
+                              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                                <MealPills mealType={item.mealType} />
+                              </div>
+                            </div>
+                            {(item.priceLevel != null || item.familyFriendly) && (
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                {item.priceLevel != null && (
+                                  <p className="text-xs font-medium text-green-700">
+                                    {'$'.repeat(item.priceLevel)}<span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
+                                  </p>
+                                )}
+                                {item.familyFriendly && (
+                                  <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">👨‍👩‍👧 Family friendly</span>
+                                )}
+                              </div>
+                            )}
+                            {item.tags && item.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {item.tags.map(tag => (
+                                  <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">{tag}</span>
+                                ))}
+                              </div>
+                            )}
+                            {item.description && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold text-gray-500">Description: </span>{item.description}</p>}
+                            {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
+                            {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                            {(() => { const pct = foodRecommendMap.get(item.name.toLowerCase()) ?? null; return pct !== null ? <span className="text-xs text-gray-400 mt-0.5 inline-block">♥️ {pct}% would recommend</span> : null })()}
+                            {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
+                          </div>
+                        )
+                        const renderActivityItem = (item: DestItemRow) => (
+                          <div key={item.id} className="bg-green-50 rounded-lg p-3">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <Camera size={12} className="text-green-600 shrink-0" />
+                              <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                            </div>
+                            {item.tags && item.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {item.tags.map(tag => (
+                                  <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">{tag}</span>
+                                ))}
+                              </div>
+                            )}
+                            {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
+                            {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                            {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
+                          </div>
+                        )
+                        return (
+                          <>
+                            {hotels.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5 pt-1">
+                                  <Hotel size={12} className="text-blue-500" /> Where to Stay
+                                </p>
+                                {hotels.map(hotel => (
+                                  <div key={hotel.id} className="bg-blue-50 rounded-lg p-3">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-sm font-medium text-gray-900">{hotel.name}</span>
+                                    </div>
+                                    {(() => {
+                                      const key = hotel.name.toLowerCase()
+                                      const friends = friendHotelMap.get(key) ?? 0
+                                      const pct = hotelRecommendMap.get(key) ?? null
+                                      if (friends === 0 && pct === null) return null
+                                      return (
+                                        <div className="flex items-center gap-3 mt-1">
+                                          {friends > 0 && <span className="text-xs text-gray-400">👫 {friends} {friends === 1 ? 'friend' : 'friends'} stayed</span>}
+                                          {pct !== null && <span className="text-xs text-gray-400">♥️ {pct}% would recommend</span>}
+                                        </div>
+                                      )
+                                    })()}
+                                    {hotel.priceLevel != null && (
+                                      <p className="text-xs font-medium text-green-700 mt-0.5">
+                                        {'$'.repeat(hotel.priceLevel)}<span className="text-gray-300">{'$'.repeat(5 - hotel.priceLevel)}</span>
+                                      </p>
+                                    )}
+                                    {hotel.tags && hotel.tags.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mt-1.5">
+                                        {hotel.tags.map(tag => (
+                                          <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">{tag}</span>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {hotel.description && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold text-gray-500">Description: </span>{hotel.description}</p>}
+                                    {hotel.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{hotel.notes}</p>}
+                                    {hotel.address && <p className="text-xs text-gray-500 mt-0.5">📍 {hotel.address}</p>}
+                                    {hotel.link && <a href={hotel.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                                    {hotel.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Stay here instead: <span className="font-medium text-gray-500">{hotel.alternative}</span></p>}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {food.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5 pt-1">
+                                  <Utensils size={12} className="text-orange-500" /> Food & Drink
+                                </p>
+                                {food.map(renderFoodItem)}
+                              </div>
+                            )}
+                            {acts.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5 pt-1">
+                                  <Camera size={12} className="text-green-600" /> Things to Do
+                                </p>
+                                {acts.map(renderActivityItem)}
+                              </div>
+                            )}
+                          </>
+                        )
+                      })() : (() => {
+                        // Itinerary: day-based layout (unchanged)
                         let dayCounter = 0
                         const hotelCard = (hotel: (typeof groups)[0]['hotel']) => hotel && (
                           <div className="bg-blue-50 rounded-lg p-3">
@@ -506,7 +627,7 @@ export default async function ItineraryPage({
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-sm font-medium text-gray-900">{hotel.name}</span>
-                              {!isGuide && <Stars rating={hotel.rating ?? null} />}
+                              <Stars rating={hotel.rating ?? null} />
                             </div>
                             {(() => {
                               const key = hotel.name.toLowerCase()
@@ -547,7 +668,6 @@ export default async function ItineraryPage({
                         return groups.map((group, gi) => (
                           <div key={gi} className="space-y-2">
                             {multiStay ? (
-                              // Multi-stay: Day N badge, then hotel card only on first day of each stay
                               <>
                                 {group.days.map((day, di) => {
                                   dayCounter++
@@ -565,7 +685,7 @@ export default async function ItineraryPage({
                                         <div className="flex items-center gap-2 flex-wrap min-w-0">
                                           <span className="text-sm font-medium text-gray-900">{item.name}</span>
                                           <MealPills mealType={item.mealType} />
-                                          {!isGuide && <Stars rating={item.rating ?? null} />}
+                                          <Stars rating={item.rating ?? null} />
                                         </div>
                                       </div>
                                       {(item.priceLevel != null || item.familyFriendly) && (
@@ -599,7 +719,7 @@ export default async function ItineraryPage({
                                         <Camera size={12} className="text-green-600 shrink-0" />
                                         <div className="flex items-center gap-2 flex-wrap min-w-0">
                                           <span className="text-sm font-medium text-gray-900">{item.name}</span>
-                                          {!isGuide && <Stars rating={item.rating ?? null} />}
+                                          <Stars rating={item.rating ?? null} />
                                         </div>
                                       </div>
                                       {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
@@ -612,7 +732,6 @@ export default async function ItineraryPage({
                             })}
                               </>
                             ) : (
-                              // Single stay: hotel card + day labels
                               <>
                                 {group.hotel && hotelCard(group.hotel)}
                                 {group.days.map((day, di) => (
@@ -627,7 +746,7 @@ export default async function ItineraryPage({
                                           <div className="flex items-center gap-2 flex-wrap min-w-0">
                                             <span className="text-sm font-medium text-gray-900">{item.name}</span>
                                             <MealPills mealType={item.mealType} />
-                                            {!isGuide && <Stars rating={item.rating ?? null} />}
+                                            <Stars rating={item.rating ?? null} />
                                           </div>
                                         </div>
                                         {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
@@ -641,7 +760,7 @@ export default async function ItineraryPage({
                                           <Camera size={12} className="text-green-600 shrink-0" />
                                           <div className="flex items-center gap-2 flex-wrap min-w-0">
                                             <span className="text-sm font-medium text-gray-900">{item.name}</span>
-                                            {!isGuide && <Stars rating={item.rating ?? null} />}
+                                            <Stars rating={item.rating ?? null} />
                                           </div>
                                         </div>
                                         {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
