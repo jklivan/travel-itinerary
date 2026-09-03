@@ -31,10 +31,11 @@ type DayItem = {
   tags: string[]
   dayIndex: number | null
   isHighlight: boolean
+  alternative: string
 }
 
 type DayGroup    = { dayIndex: number; items: DayItem[] }
-type StayGroup   = { hotelName: string; hotelDescription: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; days: DayGroup[] }
+type StayGroup   = { hotelName: string; hotelDescription: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; hotelAlternative: string; days: DayGroup[] }
 type Destination = { name: string; country: string; notes: string; groups: StayGroup[] }
 type UploadedPhoto = { url: string; caption: string }
 
@@ -44,7 +45,7 @@ type RawItem = {
   priceLevel?: number | null; link: string | null; groupIndex?: number
   dayIndex?: number | null; order?: number | null
   familyFriendly?: boolean | null; familyFriendlySource?: string | null
-  lat?: number | null; lng?: number | null; tags?: string[]
+  lat?: number | null; lng?: number | null; tags?: string[]; alternative?: string | null
 }
 
 type ItineraryData = {
@@ -83,10 +84,10 @@ function nightlyRateToTier(rate: number): number {
   if (rate < 600) return 3; if (rate < 1000) return 4; return 5
 }
 
-const emptyFoodItem = (): DayItem => ({ id: uid(), type: 'food_drink', name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null, isHighlight: false })
-const emptyActItem  = (): DayItem => ({ id: uid(), type: 'activity',   name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null, isHighlight: false })
+const emptyFoodItem = (): DayItem => ({ id: uid(), type: 'food_drink', name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null, isHighlight: false, alternative: '' })
+const emptyActItem  = (): DayItem => ({ id: uid(), type: 'activity',   name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null, isHighlight: false, alternative: '' })
 const emptyDay      = (dayIndex = 0): DayGroup => ({ dayIndex, items: [] })
-const emptyGroup    = (): StayGroup  => ({ hotelName: '', hotelDescription: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: [emptyDay(0)] })
+const emptyGroup    = (): StayGroup  => ({ hotelName: '', hotelDescription: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], hotelAlternative: '', days: [emptyDay(0)] })
 const emptyDest     = (): Destination => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
 
 // ── Data conversion ───────────────────────────────────────────────────────────
@@ -130,6 +131,7 @@ function itemsToGroups(rawItems: RawItem[]): StayGroup[] {
             tags: (i.tags ?? []).filter(t => t !== '__highlight'),
             dayIndex: i.dayIndex ?? null,
             isHighlight: (i.tags ?? []).includes('__highlight'),
+            alternative: i.alternative ?? '',
           }))
       }))
     return {
@@ -144,6 +146,7 @@ function itemsToGroups(rawItems: RawItem[]): StayGroup[] {
       hotelLat: hotel?.lat ?? null,
       hotelLng: hotel?.lng ?? null,
       hotelTags: hotel?.tags ?? [],
+      hotelAlternative: hotel?.alternative ?? '',
       days,
     }
   })
@@ -165,14 +168,14 @@ function toServerFormat(destinations: Destination[]) {
             priceLevel: i.priceLevel, familyFriendly: i.familyFriendly,
             familyFriendlySource: i.familyFriendlySource, lat: i.lat, lng: i.lng,
             tags: i.isHighlight ? [...i.tags, '__highlight'] : i.tags,
-            dayIndex: dyi, order: day.items.indexOf(i),
+            dayIndex: dyi, order: day.items.indexOf(i), alternative: i.alternative,
           })),
         activities: day.items
           .filter(i => i.type === 'activity')
           .map(i => ({
             name: i.name, notes: i.notes, link: i.link, rating: i.rating,
             tags: i.isHighlight ? [...i.tags, '__highlight'] : i.tags,
-            dayIndex: dyi, order: day.items.indexOf(i),
+            dayIndex: dyi, order: day.items.indexOf(i), alternative: i.alternative,
           })),
       }))
     }))
@@ -269,6 +272,8 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
       </div>
       {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
       <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
+      <PlacesAutocomplete value={item.alternative} onChange={val => onUpdate('alternative', val)} type="restaurant"
+        placeholder="↔ Alternative (optional)" className={subInputClass} city={city} />
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
@@ -351,6 +356,8 @@ function ActivityRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRem
       </div>
       {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
       <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
+      <PlacesAutocomplete value={item.alternative} onChange={val => onUpdate('alternative', val)} type="activity"
+        placeholder="↔ Alternative (optional)" className={subInputClass} city={city} />
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
@@ -406,6 +413,8 @@ function HotelSection({ group, dest, showRating, onUpdateHotel, onFetchPriceLeve
         <>
           {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600">Rate it!</span><StarRating value={group.hotelRating} onChange={v => onUpdateHotel('hotelRating', String(v))} /></div>}
           <input type="text" value={group.hotelNotes} onChange={e => onUpdateHotel('hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
+          <PlacesAutocomplete value={group.hotelAlternative} onChange={val => onUpdateHotel('hotelAlternative', val)} type="hotel"
+            placeholder="↔ Stay here instead (optional)" className={subInputClass} city={dest.name || undefined} />
           <button type="button" onClick={() => setShowMore(s => !s)}
             className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
             {showMore ? '▲ Hide details' : '▼ More details'}

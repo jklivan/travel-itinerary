@@ -41,6 +41,7 @@ type GuidedItem = {
   tags: string[]
   dayIndex: number
   isHighlight: boolean
+  alternative: string
 }
 
 type GuidedDest = {
@@ -120,7 +121,7 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 function ItemEditForm({ type, initial, onSave, onClose, city }: {
   type: ItemType
   initial: GuidedItem
-  onSave: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags'>) => void
+  onSave: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative'>) => void
   onClose: () => void
   city?: string
 }) {
@@ -128,6 +129,7 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
   const [mealType, setMealType] = useState(initial.mealType)
   const [rating, setRating] = useState(initial.rating)
   const [notes, setNotes] = useState(initial.notes)
+  const [alternative, setAlternative] = useState(initial.alternative || '')
   const [tags, setTags] = useState<string[]>(initial.tags)
   const [showMore, setShowMore] = useState(initial.tags.length > 0)
 
@@ -143,7 +145,7 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
 
   function submit() {
     if (!name.trim()) return
-    onSave({ name: name.trim(), mealType, rating, notes: notes.trim(), tags })
+    onSave({ name: name.trim(), mealType, rating, notes: notes.trim(), tags, alternative: alternative.trim() })
   }
 
   return (
@@ -174,6 +176,8 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
       </div>
       <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
         placeholder="📝 Notes (optional)" className={inputCls} />
+      <PlacesAutocomplete value={alternative} onChange={setAlternative} type={cfg.placeType}
+        placeholder="↔ Alternative (optional)" className={`${inputCls} text-gray-500`} city={city} />
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
@@ -214,7 +218,7 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, city }: {
   item: GuidedItem
   isEditing: boolean
   onEdit: () => void
-  onUpdate: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags'>) => void
+  onUpdate: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative'>) => void
   onRemove: () => void
   city?: string
 }) {
@@ -259,7 +263,7 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, city }: {
 
 function ItemForm({ type, onAdd, onClose, city }: {
   type: ItemType
-  onAdd: (item: Omit<GuidedItem, 'id' | 'dayIndex' | 'isHighlight'>) => void
+  onAdd: (item: Omit<GuidedItem, 'id' | 'dayIndex' | 'isHighlight' | 'alternative'>) => void
   onClose: () => void
   city?: string
 }) {
@@ -478,12 +482,12 @@ export default function GuidedCreatePage() {
     })
   }
 
-  function addItem(item: Omit<GuidedItem, 'id' | 'dayIndex' | 'isHighlight'>) {
-    setCurItems(i => [...i, { ...item, id: uid(), dayIndex: curDayIndex, isHighlight: false }])
+  function addItem(item: Omit<GuidedItem, 'id' | 'dayIndex' | 'isHighlight' | 'alternative'>) {
+    setCurItems(i => [...i, { ...item, id: uid(), dayIndex: curDayIndex, isHighlight: false, alternative: '' }])
     setActiveInput(null)
   }
 
-  function updateItem(itemId: string, updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags'>) {
+  function updateItem(itemId: string, updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative'>) {
     setCurItems(items => items.map(i => i.id === itemId ? { ...i, ...updated } : i))
     setEditingItemId(null)
   }
@@ -606,11 +610,11 @@ export default function GuidedCreatePage() {
               food: dayItems
                 .map((item, pos) => ({ item, pos }))
                 .filter(({ item }) => item.type === 'food_drink')
-                .map(({ item: i, pos }) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos, tags: [...(i.tags ?? []), ...(i.isHighlight ? ['__highlight'] : [])] })),
+                .map(({ item: i, pos }) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos, tags: [...(i.tags ?? []), ...(i.isHighlight ? ['__highlight'] : [])], alternative: i.alternative || '' })),
               activities: dayItems
                 .map((item, pos) => ({ item, pos }))
                 .filter(({ item }) => item.type === 'activity')
-                .map(({ item: i, pos }) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos, tags: [...(i.tags ?? []), ...(i.isHighlight ? ['__highlight'] : [])] })),
+                .map(({ item: i, pos }) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos, tags: [...(i.tags ?? []), ...(i.isHighlight ? ['__highlight'] : [])], alternative: i.alternative || '' })),
             }))
           : [{ food: [], activities: [] }]
       }
@@ -618,7 +622,7 @@ export default function GuidedCreatePage() {
       if (hotels.length === 0) {
         return {
           name: d.name, country: d.country, notes: d.notes,
-          groups: [{ hotelName: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, days: buildDayGroups(nonHotels) }],
+          groups: [{ hotelName: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelAlternative: '', days: buildDayGroups(nonHotels) }],
         }
       }
 
@@ -644,6 +648,7 @@ export default function GuidedCreatePage() {
           hotelAddress: '',
           hotelLink: '',
           hotelRating: hotel.rating,
+          hotelAlternative: hotel.alternative || '',
           days: buildDayGroups(itemsByHotel[idx]),
         })),
       }

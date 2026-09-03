@@ -27,7 +27,7 @@ function Stars({ rating }: { rating: number | null }) {
   )
 }
 
-type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number; dayIndex?: number | null; tags?: string[] }
+type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number; dayIndex?: number | null; tags?: string[]; alternative?: string | null }
 
 function groupItems(items: DestItemRow[]) {
   const stays = new Map<number, { hotel: DestItemRow | null; days: Map<number, DestItemRow[]> }>()
@@ -541,6 +541,7 @@ export default async function ItineraryPage({
                             {hotel.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{hotel.notes}</p>}
                             {hotel.address && <p className="text-xs text-gray-500 mt-0.5">📍 {hotel.address}</p>}
                             {hotel.link && <a href={hotel.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                            {hotel.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Stay here instead: <span className="font-medium text-gray-500">{hotel.alternative}</span></p>}
                           </div>
                         )
                         return groups.map((group, gi) => (
@@ -590,6 +591,7 @@ export default async function ItineraryPage({
                                       {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
                                       {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
                                       {(() => { const pct = foodRecommendMap.get(item.name.toLowerCase()) ?? null; return pct !== null ? <span className="text-xs text-gray-400 mt-0.5 inline-block">♥️ {pct}% would recommend</span> : null })()}
+                                      {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                                     </div>
                                   ) : (
                                     <div key={item.id} className="bg-green-50 rounded-lg p-3">
@@ -602,6 +604,7 @@ export default async function ItineraryPage({
                                       </div>
                                       {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
                                       {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                                      {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                                     </div>
                                   ))}
                                 </div>
@@ -630,6 +633,7 @@ export default async function ItineraryPage({
                                         {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
                                         {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
                                         {(() => { const pct = foodRecommendMap.get(item.name.toLowerCase()) ?? null; return pct !== null ? <span className="text-xs text-gray-400 mt-0.5 inline-block">♥️ {pct}% would recommend</span> : null })()}
+                                        {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                                       </div>
                                     ) : (
                                       <div key={item.id} className="bg-green-50 rounded-lg p-3">
@@ -642,6 +646,7 @@ export default async function ItineraryPage({
                                         </div>
                                         {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
                                         {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                                        {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                                       </div>
                                     ))}
                                   </div>

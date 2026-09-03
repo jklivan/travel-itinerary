@@ -101,10 +101,10 @@ async function readFileForUpload(
   })
 }
 
-type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null; tags: string[]; dayIndex?: number | null; order?: number; isHighlight?: boolean }
-type ActivityItem = { name: string; notes: string; link: string; rating: number; dayIndex?: number | null; order?: number; isHighlight?: boolean }
+type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null; tags: string[]; dayIndex?: number | null; order?: number; isHighlight?: boolean; alternative?: string }
+type ActivityItem = { name: string; notes: string; link: string; rating: number; dayIndex?: number | null; order?: number; isHighlight?: boolean; alternative?: string }
 type DayGroup    = { dayIndex?: number; food: FoodItem[]; activities: ActivityItem[] }
-type StayGroup   = { hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; days: DayGroup[] }
+type StayGroup   = { hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; hotelAlternative?: string; days: DayGroup[] }
 type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
 type UploadedPhoto = { url: string; caption: string }
 
@@ -163,8 +163,8 @@ function mapExtractionDests(rawDests: RawDest[]): Destination[] {
   })
 }
 
-const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null, isHighlight: false })
-const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0, dayIndex: null, isHighlight: false })
+const emptyFood     = (): FoodItem     => ({ name: '', mealType: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null, isHighlight: false, alternative: '' })
+const emptyActivity = (): ActivityItem => ({ name: '', notes: '', link: '', rating: 0, dayIndex: null, isHighlight: false, alternative: '' })
 const emptyDay      = (): DayGroup     => ({ food: [], activities: [] })
 const emptyGroup    = (): StayGroup    => ({ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: [emptyDay()] })
 
@@ -267,6 +267,7 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
       <div className="grid gap-2">
         <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
+        <input type="text" value={item.alternative ?? ''} onChange={e => onUpdate('alternative', e.target.value)} className={subInputClass} placeholder="↔ Alternative (optional)" />
       </div>
       </>}
     </div>
@@ -296,6 +297,7 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
       <div className="grid gap-2">
         <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
+        <input type="text" value={item.alternative ?? ''} onChange={e => onUpdate('alternative', e.target.value)} className={subInputClass} placeholder="↔ Alternative (optional)" />
       </div>
       </>}
     </div>
@@ -972,6 +974,7 @@ export default function CreatePage() {
                           </div>
                           <input type="text" value={group.hotelNotes} onChange={e => updateHotel(di, gi, 'hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
                           <input type="url" value={group.hotelLink} onChange={e => updateHotel(di, gi, 'hotelLink', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
+                          <input type="text" value={group.hotelAlternative ?? ''} onChange={e => updateHotel(di, gi, 'hotelAlternative', e.target.value)} className={subInputClass} placeholder="↔ Stay here instead (optional)" />
                           </>}
                         </>)}
                       </div>

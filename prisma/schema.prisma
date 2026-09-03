@@ -99,6 +99,7 @@ model DestItem {
   dayIndex      Int?
   order         Int         @default(0)
   tags          String[]    @default([])
+  alternative   String?
   lat           Float?
   lng           Float?
   destinationId String
