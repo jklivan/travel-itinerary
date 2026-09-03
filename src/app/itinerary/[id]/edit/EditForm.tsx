@@ -8,35 +8,59 @@ import TagPicker from '@/components/TagPicker'
 import DeleteButton from '@/components/DeleteButton'
 import { TripRatingPicker } from '@/components/TripRatingPicker'
 import { dateRangeFromMonthAndDays, monthAndDaysFromDates } from '@/lib/tripDates'
-import { ChevronUp, ChevronDown } from 'lucide-react'
-
-function uid() { return Math.random().toString(36).slice(2) }
+import { MapPin, Hotel, Utensils, Camera, Star, Check, X, ImageIcon, GripVertical, ArrowRight, Plus } from 'lucide-react'
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type DayItem = {
+type ItemType = 'hotel' | 'food_drink' | 'activity'
+
+type EditItem = {
   id: string
-  type: 'food_drink' | 'activity'
+  type: ItemType
   name: string
   mealType: string
-  description: string
-  notes: string
-  link: string
   rating: number
+  notes: string
+  tags: string[]
+  dayIndex: number
+  isHighlight: boolean
+  alternative: string
+  // extra fields preserved from DB
+  description: string
+  link: string
+  address: string
   priceLevel: number | null
   familyFriendly: boolean | null
   familyFriendlySource: string | null
   lat: number | null
   lng: number | null
-  tags: string[]
-  dayIndex: number | null
-  isHighlight: boolean
-  alternative: string
 }
 
-type DayGroup    = { dayIndex: number; items: DayItem[] }
-type StayGroup   = { hotelName: string; hotelDescription: string; hotelNotes: string; hotelAddress: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; hotelAlternative: string; days: DayGroup[] }
-type Destination = { name: string; country: string; notes: string; groups: StayGroup[] }
+type EditDest = {
+  id: string
+  name: string
+  country: string
+  notes: string
+  items: EditItem[]
+  curDayIndex: number
+}
+
 type UploadedPhoto = { url: string; caption: string }
 
 type RawItem = {
@@ -59,221 +83,237 @@ type ItineraryData = {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const inputClass    = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-const subInputClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400'
-const labelClass    = 'block text-sm font-medium text-gray-900 mb-1'
+const inputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white'
+const subInputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white'
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] as const
-const MEAL_TYPE_META: Record<string, { emoji: string; active: string }> = {
-  breakfast: { emoji: '🍳', active: 'bg-yellow-500 text-white border-yellow-500' },
-  lunch:     { emoji: '☀️', active: 'bg-orange-500 text-white border-orange-500' },
-  dinner:    { emoji: '🌙', active: 'bg-purple-600 text-white border-purple-600' },
-  drinks:    { emoji: '🍹', active: 'bg-blue-500 text-white border-blue-500'     },
-  coffee:    { emoji: '☕', active: 'bg-amber-700 text-white border-amber-700'   },
-  dessert:   { emoji: '🍰', active: 'bg-pink-500 text-white border-pink-500'     },
-  bakery:    { emoji: '🥐', active: 'bg-orange-400 text-white border-orange-400' },
+const MEAL_EMOJI: Record<string, string> = {
+  breakfast: '🍳', lunch: '☀️', dinner: '🌙', drinks: '🍹', coffee: '☕', dessert: '🍰', bakery: '🥐',
 }
-const FOOD_TAGS  = ['Worth the Hype', 'Great Food', 'Hidden Gem', 'Local Favorite', "Can't-Miss", 'Good for Groups', 'Family Friendly', 'Great Cocktails', 'Great Ambiance', 'Lively', 'Romantic', 'Chic', 'Casual', 'Outdoor Dining', 'Great Views']
-const HOTEL_TAGS = ['Great Service', 'Worth the Splurge', 'Great Value', 'Hidden Gem', 'Boutique', 'Luxury', 'Romantic', 'Family-Friendly', 'Great Location', 'Great Views', 'Amazing Spa']
-const ACTIVITY_TAGS = ['Must-Do', 'Hidden Gem', 'Family Friendly', 'Great Views', 'Free', 'Outdoor', 'Cultural', 'Adventurous']
+const MEAL_ACTIVE: Record<string, string> = {
+  breakfast: 'bg-yellow-500 text-white border-yellow-500',
+  lunch:     'bg-orange-500 text-white border-orange-500',
+  dinner:    'bg-purple-600 text-white border-purple-600',
+  drinks:    'bg-blue-500 text-white border-blue-500',
+  coffee:    'bg-amber-700 text-white border-amber-700',
+  dessert:   'bg-pink-500 text-white border-pink-500',
+  bakery:    'bg-orange-400 text-white border-orange-400',
+}
 
+const FOOD_TAGS     = ['Worth the Hype', 'Great Food', 'Hidden Gem', 'Local Favorite', "Can't-Miss", 'Good for Groups', 'Family Friendly', 'Great Cocktails', 'Great Ambiance', 'Lively', 'Romantic', 'Casual', 'Outdoor Dining', 'Great Views']
+const HOTEL_TAGS    = ['Great Service', 'Worth the Splurge', 'Great Value', 'Hidden Gem', 'Boutique', 'Luxury', 'Romantic', 'Family-Friendly', 'Great Location', 'Great Views', 'Amazing Spa']
+const ACTIVITY_TAGS = ['Must-Do', 'Hidden Gem', 'Family Friendly', 'Great Views', 'Free', 'Outdoor', 'Cultural', 'Adventurous']
+const ITEM_TAGS: Record<ItemType, string[]> = { food_drink: FOOD_TAGS, hotel: HOTEL_TAGS, activity: ACTIVITY_TAGS }
+
+function uid() { return Math.random().toString(36).slice(2) }
 function fmt(d: Date) { return new Date(d).toISOString().slice(0, 10) }
 
-function nightlyRateToTier(rate: number): number {
-  if (rate < 150) return 1; if (rate < 350) return 2
-  if (rate < 600) return 3; if (rate < 1000) return 4; return 5
-}
+// ── Data conversion: DB → flat EditItem[] ─────────────────────────────────────
 
-const emptyFoodItem = (): DayItem => ({ id: uid(), type: 'food_drink', name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null, isHighlight: false, alternative: '' })
-const emptyActItem  = (): DayItem => ({ id: uid(), type: 'activity',   name: '', mealType: '', description: '', notes: '', link: '', rating: 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: null, isHighlight: false, alternative: '' })
-const emptyDay      = (dayIndex = 0): DayGroup => ({ dayIndex, items: [] })
-const emptyGroup    = (): StayGroup  => ({ hotelName: '', hotelDescription: '', hotelNotes: '', hotelAddress: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], hotelAlternative: '', days: [emptyDay(0)] })
-const emptyDest     = (): Destination => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
-
-// ── Data conversion ───────────────────────────────────────────────────────────
-
-function itemsToGroups(rawItems: RawItem[]): StayGroup[] {
+function destFromRaw(d: ItineraryData['destinations'][number]): EditDest {
   const byGi = new Map<number, RawItem[]>()
-  for (const item of rawItems) {
+  for (const item of d.items) {
     const gi = item.groupIndex ?? 0
     if (!byGi.has(gi)) byGi.set(gi, [])
     byGi.get(gi)!.push(item)
   }
-  if (byGi.size === 0) return [emptyGroup()]
-  return [...byGi.entries()].sort(([a], [b]) => a - b).map(([, grpItems]) => {
-    const hotel = grpItems.find(i => i.type === 'hotel')
+
+  const items: EditItem[] = []
+  const groups = byGi.size > 0
+    ? [...byGi.entries()].sort(([a], [b]) => a - b)
+    : [[0, []] as [number, RawItem[]]]
+
+  for (const [, grpItems] of groups) {
+    const hotel    = grpItems.find(i => i.type === 'hotel')
     const nonHotel = grpItems.filter(i => i.type !== 'hotel')
-    const byDay = new Map<number, RawItem[]>()
-    for (const item of nonHotel) {
-      const di = item.dayIndex ?? 0
-      if (!byDay.has(di)) byDay.set(di, [])
-      byDay.get(di)!.push(item)
+
+    if (hotel) {
+      const hotelDay = nonHotel.length > 0
+        ? Math.min(...nonHotel.map(i => (i.dayIndex ?? 0))) + 1
+        : 1
+      items.push({
+        id: uid(), type: 'hotel', name: hotel.name,
+        mealType: '', rating: hotel.rating ?? 0, notes: hotel.notes ?? '',
+        tags: hotel.tags ?? [], dayIndex: hotelDay, isHighlight: false,
+        alternative: hotel.alternative ?? '', description: hotel.description ?? '',
+        link: hotel.link ?? '', address: hotel.address ?? '',
+        priceLevel: hotel.priceLevel ?? null, familyFriendly: null,
+        familyFriendlySource: null, lat: hotel.lat ?? null, lng: hotel.lng ?? null,
+      })
     }
-    const days: DayGroup[] = byDay.size === 0 ? [emptyDay(0)] :
-      [...byDay.entries()].sort(([a], [b]) => a - b).map(([dayIdx, dayItems]) => ({
-        dayIndex: dayIdx,
-        items: [...dayItems]
-          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-          .map(i => ({
-            id: uid(),
-            type: i.type as 'food_drink' | 'activity',
-            name: i.name,
-            mealType: i.mealType ?? '',
-            description: i.description ?? '',
-            notes: i.notes ?? '',
-            link: i.link ?? '',
-            rating: i.rating ?? 0,
-            priceLevel: i.priceLevel ?? null,
-            familyFriendly: i.familyFriendly ?? null,
-            familyFriendlySource: i.familyFriendlySource ?? null,
-            lat: i.lat ?? null,
-            lng: i.lng ?? null,
-            tags: (i.tags ?? []).filter(t => t !== '__highlight'),
-            dayIndex: i.dayIndex ?? null,
-            isHighlight: (i.tags ?? []).includes('__highlight'),
-            alternative: i.alternative ?? '',
-          }))
-      }))
-    return {
-      hotelName: hotel?.name ?? '',
-      hotelDescription: hotel?.description ?? '',
-      hotelNotes: hotel?.notes ?? '',
-      hotelAddress: hotel?.address ?? '',
-      hotelLink: hotel?.link ?? '',
-      hotelRating: hotel?.rating ?? 0,
-      hotelPriceLevel: hotel?.priceLevel ?? null,
-      hotelNightlyRate: '',
-      hotelLat: hotel?.lat ?? null,
-      hotelLng: hotel?.lng ?? null,
-      hotelTags: hotel?.tags ?? [],
-      hotelAlternative: hotel?.alternative ?? '',
-      days,
+
+    for (const item of nonHotel.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))) {
+      items.push({
+        id: uid(), type: item.type as 'food_drink' | 'activity',
+        name: item.name, mealType: item.mealType ?? '',
+        rating: item.rating ?? 0, notes: item.notes ?? '',
+        tags: (item.tags ?? []).filter(t => t !== '__highlight'),
+        dayIndex: (item.dayIndex ?? 0) + 1,
+        isHighlight: (item.tags ?? []).includes('__highlight'),
+        alternative: item.alternative ?? '', description: item.description ?? '',
+        link: item.link ?? '', address: '',
+        priceLevel: item.priceLevel ?? null,
+        familyFriendly: item.familyFriendly ?? null,
+        familyFriendlySource: item.familyFriendlySource ?? null,
+        lat: item.lat ?? null, lng: item.lng ?? null,
+      })
     }
-  })
+  }
+
+  const maxDay = items.reduce((m, i) => Math.max(m, i.dayIndex), 1)
+  return { id: uid(), name: d.name, country: d.country ?? '', notes: d.notes ?? '', items, curDayIndex: maxDay }
 }
 
-// Convert merged items back to the { food, activities } format the server action expects,
-// using each item's position in the merged list as its `order` value.
-function toServerFormat(destinations: Destination[]) {
-  return destinations.map(dest => ({
-    ...dest,
-    groups: dest.groups.map(group => ({
-      ...group,
-      days: group.days.map((day, dyi) => ({
-        food: day.items
-          .filter(i => i.type === 'food_drink')
-          .map(i => ({
-            name: i.name, mealType: i.mealType, description: i.description,
-            notes: i.notes, link: i.link, rating: i.rating,
-            priceLevel: i.priceLevel, familyFriendly: i.familyFriendly,
-            familyFriendlySource: i.familyFriendlySource, lat: i.lat, lng: i.lng,
-            tags: i.isHighlight ? [...i.tags, '__highlight'] : i.tags,
-            dayIndex: dyi, order: day.items.indexOf(i), alternative: i.alternative,
-          })),
-        activities: day.items
-          .filter(i => i.type === 'activity')
-          .map(i => ({
-            name: i.name, notes: i.notes, link: i.link, rating: i.rating,
-            tags: i.isHighlight ? [...i.tags, '__highlight'] : i.tags,
-            dayIndex: dyi, order: day.items.indexOf(i), alternative: i.alternative,
-          })),
-      }))
-    }))
-  }))
+// ── Server format conversion ───────────────────────────────────────────────────
+
+function buildDestinations(dests: EditDest[]) {
+  return dests.map(d => {
+    const hotels    = d.items.filter(i => i.type === 'hotel').sort((a, b) => a.dayIndex - b.dayIndex)
+    const nonHotels = d.items.filter(i => i.type !== 'hotel')
+
+    function buildDayGroups(items: EditItem[]) {
+      const byDay = new Map<number, EditItem[]>()
+      for (const item of items) {
+        const di = item.dayIndex ?? 1
+        if (!byDay.has(di)) byDay.set(di, [])
+        byDay.get(di)!.push(item)
+      }
+      return byDay.size > 0
+        ? [...byDay.entries()].sort(([a], [b]) => a - b).map(([dayIdx, dayItems]) => ({
+            dayIndex: dayIdx,
+            food: dayItems.filter(i => i.type === 'food_drink').map((i, pos) => ({
+              name: i.name, mealType: i.mealType, description: i.description,
+              notes: i.notes, link: i.link, rating: i.rating,
+              priceLevel: i.priceLevel, familyFriendly: i.familyFriendly,
+              familyFriendlySource: i.familyFriendlySource, lat: i.lat, lng: i.lng,
+              order: pos, tags: [...i.tags, ...(i.isHighlight ? ['__highlight'] : [])],
+              alternative: i.alternative,
+            })),
+            activities: dayItems.filter(i => i.type === 'activity').map((i, pos) => ({
+              name: i.name, notes: i.notes, link: i.link, rating: i.rating,
+              order: pos, tags: [...i.tags, ...(i.isHighlight ? ['__highlight'] : [])],
+              alternative: i.alternative,
+            })),
+          }))
+        : [{ food: [], activities: [] }]
+    }
+
+    if (hotels.length === 0) {
+      return {
+        name: d.name, country: d.country, notes: d.notes,
+        groups: [{
+          hotelName: '', hotelNotes: '', hotelAddress: '', hotelLink: '',
+          hotelRating: 0, hotelAlternative: '',
+          days: buildDayGroups(nonHotels),
+        }],
+      }
+    }
+
+    const itemsByHotel: EditItem[][] = hotels.map(() => [])
+    for (const item of nonHotels) {
+      const di = item.dayIndex ?? 1
+      let hi = 0
+      for (let i = 0; i < hotels.length; i++) {
+        if (hotels[i].dayIndex <= di) hi = i; else break
+      }
+      itemsByHotel[hi].push(item)
+    }
+
+    return {
+      name: d.name, country: d.country, notes: d.notes,
+      groups: hotels.map((hotel, idx) => ({
+        hotelName: hotel.name, hotelNotes: hotel.notes, hotelAddress: hotel.address,
+        hotelLink: hotel.link, hotelRating: hotel.rating, hotelAlternative: hotel.alternative,
+        hotelDescription: hotel.description, hotelPriceLevel: hotel.priceLevel,
+        hotelLat: hotel.lat, hotelLng: hotel.lng, hotelTags: hotel.tags,
+        days: buildDayGroups(itemsByHotel[idx]),
+      })),
+    }
+  })
 }
 
 // ── Star rating ───────────────────────────────────────────────────────────────
 
 function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button key={star} type="button" onClick={() => onChange(value === star ? 0 : star)}
-          className="text-lg leading-none focus:outline-none" aria-label={`${star} star${star !== 1 ? 's' : ''}`}>
-          <span className={star <= value ? 'text-yellow-400' : 'text-gray-300'}>★</span>
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map(s => (
+        <button key={s} type="button" onClick={() => onChange(value === s ? 0 : s)} className="focus:outline-none">
+          <Star size={22} className={s <= value ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />
         </button>
       ))}
     </div>
   )
 }
 
-// ── FoodRow ───────────────────────────────────────────────────────────────────
+// ── Item edit form ─────────────────────────────────────────────────────────────
 
-type DayMove = { currentDyi: number; totalDays: number; onMove: (toDyi: number) => void }
-
-function DayMoveBar({ dayMove }: { dayMove: DayMove }) {
-  if (dayMove.totalDays <= 1) return null
-  return (
-    <div className="flex items-center gap-1.5 flex-wrap">
-      <span className="text-xs text-gray-400">Move to:</span>
-      {Array.from({ length: dayMove.totalDays }, (_, i) => i).filter(i => i !== dayMove.currentDyi).map(i => (
-        <button key={i} type="button" onClick={() => dayMove.onMove(i)}
-          className="text-xs px-2 py-0.5 rounded-full border border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
-          Day {i + 1}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove, showRating, onSelectPlace, onMoveUp, onMoveDown, dayMove, city }: {
-  item: DayItem; index: number; total: number
-  onUpdate: (field: string, val: string) => void
-  onPatch: (patch: Partial<DayItem>) => void
-  onToggleTag: (tag: string) => void
-  onRemove: () => void; showRating: boolean
-  onSelectPlace?: (placeId: string | null) => void
-  onMoveUp: () => void; onMoveDown: () => void
-  dayMove?: DayMove
+function ItemEditForm({ type, initial, onSave, onClose, city }: {
+  type: ItemType
+  initial: EditItem
+  onSave: (updated: Partial<EditItem>) => void
+  onClose: () => void
   city?: string
 }) {
-  const [showMore, setShowMore] = useState(false)
-  const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
-  const moreCount = (item.priceLevel != null ? 1 : 0) + (item.familyFriendly === true ? 1 : 0) + item.tags.length + (item.description ? 1 : 0) + (item.link ? 1 : 0)
+  const [name, setName]           = useState(initial.name)
+  const [mealType, setMealType]   = useState(initial.mealType)
+  const [rating, setRating]       = useState(initial.rating)
+  const [notes, setNotes]         = useState(initial.notes)
+  const [alternative, setAlternative] = useState(initial.alternative)
+  const [tags, setTags]           = useState<string[]>(initial.tags)
+  const [description, setDescription] = useState(initial.description)
+  const [link, setLink]           = useState(initial.link)
+  const [address, setAddress]     = useState(initial.address)
+  const [showMore, setShowMore]   = useState(initial.tags.length > 0 || !!initial.description || !!initial.link || !!initial.address)
+
+  const cfg = {
+    hotel:     { color: 'bg-blue-50 border-blue-200',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const      },
+    food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const },
+    activity:  { color: 'bg-green-50 border-green-200',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const   },
+  }[type]
+
+  function toggleTag(tag: string) {
+    setTags(t => t.includes(tag) ? t.filter(x => x !== tag) : [...t, tag])
+  }
+
+  function submit() {
+    if (!name.trim()) return
+    onSave({ name: name.trim(), mealType, rating, notes: notes.trim(), tags, alternative: alternative.trim(), description: description.trim(), link: link.trim(), address: address.trim() })
+  }
+
+  const moreCount = tags.length + (description ? 1 : 0) + (link ? 1 : 0) + (address ? 1 : 0)
+
   return (
-    <div className="flex gap-1 items-stretch">
-      <div className="flex flex-col justify-center gap-0.5 shrink-0">
-        <button type="button" onClick={onMoveUp} disabled={index === 0}
-          className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-20 disabled:cursor-default transition-colors">
-          <ChevronUp size={16} />
-        </button>
-        <button type="button" onClick={onMoveDown} disabled={index === total - 1}
-          className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-20 disabled:cursor-default transition-colors">
-          <ChevronDown size={16} />
-        </button>
+    <div className={`rounded-2xl border ${cfg.color} p-4 space-y-3`}>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Edit {cfg.label}</p>
+        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
       </div>
-      <div className={`flex-1 rounded-xl border border-l-4 border-l-orange-400 ${rowBg} p-4 space-y-3`}>
-      <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide">🍜 Food & Drink</p>
-      <div className="flex gap-2 items-start">
-        <PlacesAutocomplete
-          value={item.name}
-          onChange={val => { onUpdate('name', val); if (!val) onSelectPlace?.(null) }}
-          onSelect={(_, __, placeId) => { if (placeId) onSelectPlace?.(placeId) }}
-          type="restaurant"
-          placeholder="e.g. Ramen Ichiran, Rooftop bar, Street market"
-          className={inputClass}
-          city={city}
-        />
-        <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
+      <PlacesAutocomplete value={name} onChange={setName} type={cfg.placeType}
+        placeholder={cfg.placeholder} className={inputCls} city={city} />
+      {type === 'food_drink' && (
+        <div className="flex flex-wrap gap-1.5">
+          {MEAL_TYPES.map(mt => {
+            const sel = mealType.split(',').filter(Boolean)
+            const isSel = sel.includes(mt)
+            return (
+              <button key={mt} type="button"
+                onClick={() => setMealType(isSel ? sel.filter(t => t !== mt).join(',') : [...sel, mt].join(','))}
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSel ? MEAL_ACTIVE[mt] : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+                {MEAL_EMOJI[mt]} {mt}
+              </button>
+            )
+          })}
+        </div>
+      )}
+      <div className="space-y-1">
+        <p className="text-xs text-gray-500">Rate it</p>
+        <StarRating value={rating} onChange={setRating} />
       </div>
-      <div className="flex gap-1 flex-wrap">
-        {MEAL_TYPES.map(mt => {
-          const meta = MEAL_TYPE_META[mt]
-          const selected = item.mealType.split(',').filter(Boolean)
-          const isSelected = selected.includes(mt)
-          return (
-            <button key={mt} type="button"
-              onClick={() => onUpdate('mealType', isSelected ? selected.filter(t => t !== mt).join(',') : [...selected, mt].join(','))}
-              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSelected ? meta.active : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
-              {meta.emoji} {mt}
-            </button>
-          )
-        })}
-      </div>
-      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
-      <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
-      <PlacesAutocomplete value={item.alternative} onChange={val => onUpdate('alternative', val)} type="restaurant"
-        placeholder="↔ Alternative (optional)" className={subInputClass} city={city} />
+      <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
+        placeholder="📝 Notes (optional)" className={inputCls} />
+      <PlacesAutocomplete value={alternative} onChange={setAlternative} type={cfg.placeType}
+        placeholder="↔ Alternative (optional)" className={`${inputCls} text-gray-500`} city={city} />
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
@@ -282,180 +322,171 @@ function FoodRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove,
         )}
       </button>
       {showMore && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 flex-wrap">
-            {item.priceLevel != null && (
-              <p className="text-xs text-green-700 font-medium">
-                {'$'.repeat(item.priceLevel)}<span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
-              </p>
-            )}
-            <button type="button" onClick={() => onPatch({ familyFriendly: item.familyFriendly === true ? null : true, familyFriendlySource: item.familyFriendly === true ? null : 'user' })}
-              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.familyFriendly === true ? 'bg-green-500 text-white border-green-500' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
-              👨‍👩‍👧 Family friendly
-            </button>
-          </div>
+        <div className="space-y-2 pt-1">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Tags</p>
           <div className="flex flex-wrap gap-1.5">
-            {FOOD_TAGS.map(tag => (
-              <button key={tag} type="button" onClick={() => onToggleTag(tag)}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.tags.includes(tag) ? 'bg-orange-500 text-white border-orange-500' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+            {ITEM_TAGS[type].map(tag => (
+              <button key={tag} type="button" onClick={() => toggleTag(tag)}
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
                 {tag}
               </button>
             ))}
           </div>
-          <div className="grid gap-2">
-            <input type="text" value={item.description} onChange={e => onUpdate('description', e.target.value)} className={subInputClass} placeholder="✨ Description (auto-generated if blank)" />
-            <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
-          </div>
-        </div>
-      )}
-      {dayMove && <DayMoveBar dayMove={dayMove} />}
-      </div>
-    </div>
-  )
-}
-
-// ── ActivityRow ───────────────────────────────────────────────────────────────
-
-function ActivityRow({ item, index, total, onUpdate, onPatch, onToggleTag, onRemove, showRating, onMoveUp, onMoveDown, dayMove, city }: {
-  item: DayItem; index: number; total: number
-  onUpdate: (field: string, val: string) => void
-  onPatch: (patch: Partial<DayItem>) => void
-  onToggleTag: (tag: string) => void
-  onRemove: () => void; showRating: boolean
-  onMoveUp: () => void; onMoveDown: () => void
-  dayMove?: DayMove
-  city?: string
-}) {
-  const [showMore, setShowMore] = useState(false)
-  const rowBg = index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'
-  const moreCount = item.tags.length + (item.link ? 1 : 0)
-  return (
-    <div className="flex gap-1 items-stretch">
-      <div className="flex flex-col justify-center gap-0.5 shrink-0">
-        <button type="button" onClick={onMoveUp} disabled={index === 0}
-          className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-20 disabled:cursor-default transition-colors">
-          <ChevronUp size={16} />
-        </button>
-        <button type="button" onClick={onMoveDown} disabled={index === total - 1}
-          className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-20 disabled:cursor-default transition-colors">
-          <ChevronDown size={16} />
-        </button>
-      </div>
-      <div className={`flex-1 rounded-xl border border-l-4 border-l-green-400 ${rowBg} p-4 space-y-3`}>
-      <p className="text-xs font-semibold text-green-600 uppercase tracking-wide">🎯 Activity</p>
-      <div className="flex gap-2 items-start">
-        <PlacesAutocomplete
-          value={item.name}
-          onChange={val => onUpdate('name', val)}
-          type="activity"
-          placeholder="e.g. Temple tour, Hiking, Museum visit"
-          className={inputClass}
-          city={city}
-        />
-        <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
-      </div>
-      {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onPatch({ rating: v })} /></div>}
-      <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
-      <PlacesAutocomplete value={item.alternative} onChange={val => onUpdate('alternative', val)} type="activity"
-        placeholder="↔ Alternative (optional)" className={subInputClass} city={city} />
-      <button type="button" onClick={() => setShowMore(s => !s)}
-        className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
-        {showMore ? '▲ Hide details' : '▼ More details'}
-        {moreCount > 0 && !showMore && (
-          <span className="ml-1 bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{moreCount}</span>
-        )}
-      </button>
-      {showMore && (
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-1.5">
-            {ACTIVITY_TAGS.map(tag => (
-              <button key={tag} type="button" onClick={() => onToggleTag(tag)}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${item.tags.includes(tag) ? 'bg-green-500 text-white border-green-500' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
-                {tag}
-              </button>
-            ))}
-          </div>
-          <div className="grid gap-2">
-            <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
-          </div>
-        </div>
-      )}
-      {dayMove && <DayMoveBar dayMove={dayMove} />}
-      </div>
-    </div>
-  )
-}
-
-// ── HotelSection ─────────────────────────────────────────────────────────────
-
-function HotelSection({ group, dest, showRating, onUpdateHotel, onFetchPriceLevel, onToggleHotelTag, onUpdateGroup }: {
-  group: StayGroup
-  dest: Destination
-  showRating: boolean
-  onUpdateHotel: (field: keyof StayGroup, val: string) => void
-  onFetchPriceLevel: (placeId: string) => void
-  onToggleHotelTag: (tag: string) => void
-  onUpdateGroup: (fn: (g: StayGroup) => StayGroup) => void
-}) {
-  const [showMore, setShowMore] = useState(false)
-  const moreCount = (group.hotelNightlyRate ? 1 : 0) + group.hotelTags.length + (group.hotelDescription ? 1 : 0) + (group.hotelAddress ? 1 : 0) + (group.hotelLink ? 1 : 0)
-  return (
-    <div className="bg-blue-50 rounded-xl border border-l-4 border-l-blue-400 p-3 space-y-2">
-      <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">🏨 Lodging</p>
-      <PlacesAutocomplete
-        value={group.hotelName}
-        onChange={val => { onUpdateHotel('hotelName', val); if (!val) onUpdateGroup(g => ({ ...g, hotelPriceLevel: null, hotelNightlyRate: '' })) }}
-        onSelect={(_, __, placeId) => { if (placeId) onFetchPriceLevel(placeId) }}
-        type="hotel" placeholder="Hotel name (optional)" className={inputClass}
-        city={dest.name || undefined}
-      />
-      {group.hotelName && (
-        <>
-          {showRating && <div className="flex items-center gap-2"><span className="text-xs text-gray-600">Rate it!</span><StarRating value={group.hotelRating} onChange={v => onUpdateHotel('hotelRating', String(v))} /></div>}
-          <input type="text" value={group.hotelNotes} onChange={e => onUpdateHotel('hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
-          <PlacesAutocomplete value={group.hotelAlternative} onChange={val => onUpdateHotel('hotelAlternative', val)} type="hotel"
-            placeholder="↔ Stay here instead (optional)" className={subInputClass} city={dest.name || undefined} />
-          <button type="button" onClick={() => setShowMore(s => !s)}
-            className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
-            {showMore ? '▲ Hide details' : '▼ More details'}
-            {moreCount > 0 && !showMore && (
-              <span className="ml-1 bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{moreCount}</span>
-            )}
-          </button>
-          {showMore && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 shrink-0">$/night</span>
-                <input type="number" min="0" step="1" value={group.hotelNightlyRate}
-                  onChange={e => {
-                    const val = e.target.value
-                    onUpdateGroup(g => {
-                      const rate = parseFloat(val)
-                      return { ...g, hotelNightlyRate: val, hotelPriceLevel: val && !isNaN(rate) && rate > 0 ? nightlyRateToTier(rate) : g.hotelPriceLevel }
-                    })
-                  }}
-                  className={subInputClass} placeholder="What did you pay per night? (optional)" />
-              </div>
-              {group.hotelPriceLevel !== null && (
-                <p className="text-xs text-green-700 font-medium">
-                  {'$'.repeat(group.hotelPriceLevel)}<span className="text-gray-300">{'$'.repeat(5 - group.hotelPriceLevel)}</span>
-                </p>
-              )}
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {HOTEL_TAGS.map(tag => (
-                  <button key={tag} type="button" onClick={() => onToggleHotelTag(tag)}
-                    className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${group.hotelTags.includes(tag) ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
-                    {tag}
-                  </button>
-                ))}
-              </div>
-              <input type="text" value={group.hotelDescription} onChange={e => onUpdateHotel('hotelDescription', e.target.value)} className={subInputClass} placeholder="✨ Description (auto-generated if blank)" />
-              <input type="text" value={group.hotelAddress} onChange={e => onUpdateHotel('hotelAddress', e.target.value)} className={subInputClass} placeholder="📍 Address (optional — for Airbnbs, apartments…)" />
-              <input type="url" value={group.hotelLink} onChange={e => onUpdateHotel('hotelLink', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
-            </div>
+          <input type="text" value={description} onChange={e => setDescription(e.target.value)}
+            placeholder="✨ Description (optional)" className={subInputCls} />
+          {type === 'hotel' && (
+            <input type="text" value={address} onChange={e => setAddress(e.target.value)}
+              placeholder="📍 Address (for Airbnbs, apartments…)" className={subInputCls} />
           )}
-        </>
+          <input type="url" value={link} onChange={e => setLink(e.target.value)}
+            placeholder="🔗 Website link (optional)" className={subInputCls} />
+        </div>
       )}
+      <div className="flex gap-2">
+        <button type="button" onClick={onClose}
+          className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-gray-500 text-sm font-medium hover:border-gray-300 transition-colors">
+          Cancel
+        </button>
+        <button type="button" onClick={submit} disabled={!name.trim()}
+          className="flex-1 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+          <Check size={14} /> Save
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Item add form ──────────────────────────────────────────────────────────────
+
+function ItemForm({ type, onAdd, onClose, city }: {
+  type: ItemType
+  onAdd: (item: Omit<EditItem, 'id' | 'dayIndex' | 'isHighlight' | 'alternative' | 'description' | 'link' | 'address' | 'priceLevel' | 'familyFriendly' | 'familyFriendlySource' | 'lat' | 'lng'>) => void
+  onClose: () => void
+  city?: string
+}) {
+  const [name, setName]         = useState('')
+  const [mealType, setMealType] = useState('')
+  const [rating, setRating]     = useState(0)
+  const [notes, setNotes]       = useState('')
+  const [tags, setTags]         = useState<string[]>([])
+  const [showMore, setShowMore] = useState(false)
+
+  const cfg = {
+    hotel:     { color: 'bg-blue-50 border-blue-200',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const      },
+    food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const },
+    activity:  { color: 'bg-green-50 border-green-200',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const   },
+  }[type]
+
+  function toggleTag(tag: string) { setTags(t => t.includes(tag) ? t.filter(x => x !== tag) : [...t, tag]) }
+
+  function submit() {
+    if (!name.trim()) return
+    onAdd({ type, name: name.trim(), mealType, rating, notes: notes.trim(), tags })
+    setName(''); setMealType(''); setRating(0); setNotes(''); setTags([]); setShowMore(false)
+  }
+
+  return (
+    <div className={`rounded-2xl border ${cfg.color} p-4 space-y-3`}>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{cfg.label}</p>
+        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+      </div>
+      <PlacesAutocomplete value={name} onChange={setName} type={cfg.placeType}
+        placeholder={cfg.placeholder} className={inputCls} city={city} />
+      {type === 'food_drink' && (
+        <div className="flex flex-wrap gap-1.5">
+          {MEAL_TYPES.map(mt => {
+            const sel = mealType.split(',').filter(Boolean)
+            const isSel = sel.includes(mt)
+            return (
+              <button key={mt} type="button"
+                onClick={() => setMealType(isSel ? sel.filter(t => t !== mt).join(',') : [...sel, mt].join(','))}
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSel ? MEAL_ACTIVE[mt] : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+                {MEAL_EMOJI[mt]} {mt}
+              </button>
+            )
+          })}
+        </div>
+      )}
+      <div className="space-y-1">
+        <p className="text-xs text-gray-500">Rate it</p>
+        <StarRating value={rating} onChange={setRating} />
+      </div>
+      <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
+        placeholder="📝 Notes (optional)" className={inputCls} />
+      <button type="button" onClick={() => setShowMore(s => !s)}
+        className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
+        {showMore ? '▲ Hide details' : '▼ More details'}
+        {tags.length > 0 && !showMore && (
+          <span className="ml-1 bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{tags.length}</span>
+        )}
+      </button>
+      {showMore && (
+        <div className="space-y-2 pt-1">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Tags</p>
+          <div className="flex flex-wrap gap-1.5">
+            {ITEM_TAGS[type].map(tag => (
+              <button key={tag} type="button" onClick={() => toggleTag(tag)}
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <button type="button" onClick={submit} disabled={!name.trim()}
+        className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+        <Check size={14} /> Add
+      </button>
+    </div>
+  )
+}
+
+// ── Sortable item row ──────────────────────────────────────────────────────────
+
+function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, city }: {
+  item: EditItem
+  isEditing: boolean
+  onEdit: () => void
+  onUpdate: (updated: Partial<EditItem>) => void
+  onRemove: () => void
+  city?: string
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
+
+  const icon = item.type === 'hotel'
+    ? <Hotel size={13} className="text-blue-500 shrink-0" />
+    : item.type === 'food_drink'
+    ? <Utensils size={13} className="text-orange-500 shrink-0" />
+    : <Camera size={13} className="text-green-500 shrink-0" />
+
+  if (isEditing) {
+    return (
+      <div ref={setNodeRef} style={style}>
+        <ItemEditForm type={item.type} initial={item} onSave={onUpdate} onClose={onEdit} city={city} />
+      </div>
+    )
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 gap-2">
+      <button type="button" {...attributes} {...listeners} className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0 touch-none">
+        <GripVertical size={14} />
+      </button>
+      <button type="button" onClick={onEdit} className="flex items-center gap-2 min-w-0 flex-1 text-left hover:opacity-75 transition-opacity">
+        {icon}
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            {item.mealType && <span className="text-xs text-gray-500">{item.mealType.split(',').map(t => `${MEAL_EMOJI[t]} ${t}`).join(' · ')}</span>}
+            {item.rating > 0 && <span className="text-xs text-yellow-500">{'★'.repeat(item.rating)}</span>}
+            {item.isHighlight && <span className="text-amber-400 text-xs">⭐</span>}
+            {item.notes && <span className="text-xs text-gray-400 truncate">{item.notes}</span>}
+          </div>
+        </div>
+      </button>
+      <button type="button" onClick={onRemove} className="text-gray-300 hover:text-red-400 text-lg leading-none shrink-0">×</button>
     </div>
   )
 }
@@ -466,532 +497,448 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   const boundAction = updateItinerary.bind(null, itinerary.id)
   const [state, action, pending] = useActionState(boundAction, undefined)
 
-  const [postType, setPostType] = useState<'itinerary' | 'guide'>(itinerary.postType === 'guide' ? 'guide' : 'itinerary')
-  const [title, setTitle] = useState(itinerary.title)
-  const [description, setDescription] = useState(itinerary.description ?? '')
-  const initialTripDates = monthAndDaysFromDates(fmt(itinerary.startDate), fmt(itinerary.endDate))
-  const [tripMonth, setTripMonth] = useState(initialTripDates.month)
-  const [tripDays, setTripDays] = useState(initialTripDates.days)
+  const initialDates = monthAndDaysFromDates(fmt(itinerary.startDate), fmt(itinerary.endDate))
+
+  const [postType, setPostType]   = useState<'itinerary' | 'guide'>(itinerary.postType === 'guide' ? 'guide' : 'itinerary')
+  const [title, setTitle]         = useState(itinerary.title)
+  const [tripMonth, setTripMonth] = useState(initialDates.month)
+  const [tripDays, setTripDays]   = useState(initialDates.days)
   const [tripAudience, setTripAudience] = useState<'family' | 'friends' | 'romantic' | 'adult'>(
     ['family', 'friends', 'romantic'].includes(itinerary.audience) ? itinerary.audience as 'family' | 'friends' | 'romantic' : 'adult'
   )
-  const [notes, setNotes] = useState(itinerary.notes ?? '')
-  const [tags, setTags] = useState<string[]>(itinerary.tags ?? [])
+  const [budget, setBudget]         = useState(itinerary.budget ?? 0)
+  const [tags, setTags]             = useState<string[]>(itinerary.tags ?? [])
   const [tripRating, setTripRating] = useState<number | null>(itinerary.tripRating ?? null)
-  const [destinations, setDestinations] = useState<Destination[]>(
+  const [notes, setNotes]           = useState(itinerary.notes ?? '')
+
+  const [dests, setDests] = useState<EditDest[]>(
     itinerary.destinations.length > 0
-      ? itinerary.destinations.map(d => ({ name: d.name, country: d.country ?? '', notes: d.notes ?? '', groups: itemsToGroups(d.items) }))
-      : [emptyDest()]
+      ? itinerary.destinations.map(destFromRaw)
+      : [{ id: uid(), name: '', country: '', notes: '', items: [], curDayIndex: 1 }]
   )
-  const topPickLines = destinations.flatMap(dest =>
-    dest.groups.flatMap(g => g.days.flatMap(d => d.items))
-      .filter(i => i.isHighlight && i.name.trim())
-      .map(i => i.name.trim())
-  )
-  const tripDateRange = dateRangeFromMonthAndDays(tripMonth, tripDays)
-  const [photos, setPhotos] = useState<UploadedPhoto[]>(itinerary.photos.map(p => ({ url: p.url, caption: p.caption ?? '' })))
-  const photosInputRef = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    if (photosInputRef.current) photosInputRef.current.value = JSON.stringify(photos)
-  }, [photos])
+
+  const [activeInput, setActiveInput] = useState<{ destId: string; type: ItemType } | null>(null)
+  const [editingItemId, setEditingItemId] = useState<string | null>(null)
+
+  const [photos, setPhotos]     = useState<UploadedPhoto[]>(itinerary.photos.map(p => ({ url: p.url, caption: p.caption ?? '' })))
   const [uploading, setUploading] = useState(false)
+  const [photoError, setPhotoError] = useState<string | null>(null)
+  const photosRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { if (photosRef.current) photosRef.current.value = JSON.stringify(photos) }, [photos])
 
-  const showRating = postType === 'itinerary'
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  )
 
-  // ── State helpers ────────────────────────────────────────────────────────────
+  const tripDateRange = dateRangeFromMonthAndDays(tripMonth, tripDays)
 
-  function addDest() { setDestinations(d => [...d, emptyDest()]) }
-  function removeDest(i: number) { setDestinations(d => d.filter((_, idx) => idx !== i)) }
-  function updateDest(i: number, field: 'name' | 'country' | 'notes', val: string) {
-    setDestinations(d => d.map((dest, idx) => idx === i ? { ...dest, [field]: val } : dest))
+  // ── Dest helpers ────────────────────────────────────────────────────────────
+
+  function updDest(destId: string, fn: (d: EditDest) => EditDest) {
+    setDests(ds => ds.map(d => d.id !== destId ? d : fn(d)))
   }
-  function updGroup(di: number, gi: number, fn: (g: StayGroup) => StayGroup) {
-    setDestinations(d => d.map((dest, i) => i !== di ? dest : { ...dest, groups: dest.groups.map((g, j) => j !== gi ? g : fn(g)) }))
+
+  function addItem(destId: string, item: Omit<EditItem, 'id' | 'dayIndex' | 'isHighlight' | 'alternative' | 'description' | 'link' | 'address' | 'priceLevel' | 'familyFriendly' | 'familyFriendlySource' | 'lat' | 'lng'>) {
+    updDest(destId, d => ({
+      ...d,
+      items: [...d.items, {
+        ...item, id: uid(), dayIndex: d.curDayIndex, isHighlight: false,
+        alternative: '', description: '', link: '', address: '',
+        priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null,
+      }]
+    }))
+    setActiveInput(null)
   }
-  function addGroup(di: number) { setDestinations(d => d.map((dest, i) => i !== di ? dest : { ...dest, groups: [...dest.groups, emptyGroup()] })) }
-  function removeGroup(di: number, gi: number) { setDestinations(d => d.map((dest, i) => i !== di ? dest : { ...dest, groups: dest.groups.filter((_, j) => j !== gi) })) }
-  function updateHotel(di: number, gi: number, field: keyof StayGroup, val: string) {
-    updGroup(di, gi, g => ({ ...g, [field]: field === 'hotelRating' ? Number(val) : val }))
+
+  function updateItem(destId: string, itemId: string, updated: Partial<EditItem>) {
+    updDest(destId, d => ({ ...d, items: d.items.map(i => i.id === itemId ? { ...i, ...updated } : i) }))
+    setEditingItemId(null)
   }
-  async function fetchHotelPriceLevel(di: number, gi: number, placeId: string) {
-    try {
-      const res = await fetch(`/api/place-details?id=${encodeURIComponent(placeId)}`)
-      const { priceLevel, lat, lng, website } = await res.json()
-      updGroup(di, gi, g => ({
-        ...g,
-        ...(priceLevel !== null ? { hotelPriceLevel: priceLevel } : {}),
-        ...(lat !== null ? { hotelLat: lat, hotelLng: lng } : {}),
-        ...(!g.hotelLink && website ? { hotelLink: website } : {}),
-      }))
-    } catch { /* ignore */ }
+
+  function removeItem(destId: string, itemId: string) {
+    updDest(destId, d => ({ ...d, items: d.items.filter(i => i.id !== itemId) }))
   }
-  function updDay(di: number, gi: number, dyi: number, fn: (d: DayGroup) => DayGroup) {
-    updGroup(di, gi, g => ({ ...g, days: g.days.map((d, i) => i !== dyi ? d : fn(d)) }))
-  }
-  function addDay(di: number, gi: number) {
-    updGroup(di, gi, g => {
-      const nextDayIndex = Math.max(...g.days.map(d => d.dayIndex)) + 1
-      return { ...g, days: [...g.days, emptyDay(nextDayIndex)] }
+
+  function handleDragEnd(destId: string, event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    updDest(destId, d => {
+      const oldIndex = d.items.findIndex(i => i.id === active.id)
+      const newIndex = d.items.findIndex(i => i.id === over.id)
+      if (oldIndex === -1 || newIndex === -1) return d
+      return { ...d, items: arrayMove(d.items, oldIndex, newIndex) }
     })
   }
-  function removeDay(di: number, gi: number, dyi: number) { updGroup(di, gi, g => ({ ...g, days: g.days.filter((_, i) => i !== dyi) })) }
 
-  function addItem(di: number, gi: number, dyi: number, type: 'food_drink' | 'activity') {
-    updGroup(di, gi, g => {
-      const item = type === 'food_drink' ? emptyFoodItem() : emptyActItem()
-      item.dayIndex = g.days[dyi].dayIndex
-      return { ...g, days: g.days.map((d, i) => i !== dyi ? d : { ...d, items: [...d.items, item] }) }
+  function setTopPickFood(destId: string, itemId: string) {
+    updDest(destId, d => {
+      const item = d.items.find(i => i.id === itemId)
+      if (!item) return d
+      const count = d.items.filter(i => i.type === 'food_drink' && i.isHighlight).length
+      if (!item.isHighlight && count >= 3) return d
+      return { ...d, items: d.items.map(i => i.id === itemId ? { ...i, isHighlight: !i.isHighlight } : i) }
     })
   }
 
-  function moveItemToDay(di: number, gi: number, itemId: string, fromDyi: number, toDyi: number) {
-    if (fromDyi === toDyi) return
-    updGroup(di, gi, g => {
-      const item = g.days[fromDyi]?.items.find(i => i.id === itemId)
-      if (!item) return g
-      const movedItem = { ...item, dayIndex: g.days[toDyi].dayIndex }
-      return {
-        ...g,
-        days: g.days.map((d, i) => {
-          if (i === fromDyi) return { ...d, items: d.items.filter(i => i.id !== itemId) }
-          if (i === toDyi)   return { ...d, items: [...d.items, movedItem] }
-          return d
-        })
-      }
+  function setTopPickActivity(destId: string, itemId: string) {
+    updDest(destId, d => {
+      const item = d.items.find(i => i.id === itemId)
+      if (!item) return d
+      const count = d.items.filter(i => i.type === 'activity' && i.isHighlight).length
+      if (!item.isHighlight && count >= 3) return d
+      return { ...d, items: d.items.map(i => i.id === itemId ? { ...i, isHighlight: !i.isHighlight } : i) }
     })
-  }
-  function removeItem(di: number, gi: number, dyi: number, itemId: string) {
-    updDay(di, gi, dyi, d => ({ ...d, items: d.items.filter(i => i.id !== itemId) }))
-  }
-  function updateItem(di: number, gi: number, dyi: number, itemId: string, field: string, val: string) {
-    updDay(di, gi, dyi, d => ({
-      ...d, items: d.items.map(i => i.id !== itemId ? i : { ...i, [field]: val })
-    }))
-  }
-  function patchItem(di: number, gi: number, dyi: number, itemId: string, patch: Partial<DayItem>) {
-    updDay(di, gi, dyi, d => ({
-      ...d, items: d.items.map(i => i.id !== itemId ? i : { ...i, ...patch })
-    }))
-  }
-  function toggleItemTag(di: number, gi: number, dyi: number, itemId: string, tag: string) {
-    updDay(di, gi, dyi, d => ({
-      ...d, items: d.items.map(i => i.id !== itemId ? i : {
-        ...i, tags: i.tags.includes(tag) ? i.tags.filter(t => t !== tag) : [...i.tags, tag]
-      })
-    }))
-  }
-  async function fetchItemPriceLevel(di: number, gi: number, dyi: number, itemId: string, placeId: string) {
-    try {
-      const res = await fetch(`/api/place-details?id=${encodeURIComponent(placeId)}`)
-      const { priceLevel, lat, lng, website } = await res.json()
-      patchItem(di, gi, dyi, itemId, {
-        ...(priceLevel !== null ? { priceLevel } : {}),
-        ...(lat !== null ? { lat, lng } : {}),
-      })
-      // set link only if blank
-      updDay(di, gi, dyi, d => ({
-        ...d, items: d.items.map(i => i.id !== itemId ? i : { ...i, link: !i.link && website ? website : i.link })
-      }))
-    } catch { /* ignore */ }
-  }
-  function moveItem(di: number, gi: number, dyi: number, fromIndex: number, toIndex: number) {
-    updDay(di, gi, dyi, d => {
-      const items = [...d.items]
-      const [item] = items.splice(fromIndex, 1)
-      items.splice(toIndex, 0, item)
-      return { ...d, items }
-    })
-  }
-  function setTopPickFood(di: number, itemId: string) {
-    setDestinations(dests => dests.map((dest, i) => {
-      if (i !== di) return dest
-      const allItems = dest.groups.flatMap(g => g.days.flatMap(d => d.items))
-      const item = allItems.find(x => x.id === itemId)
-      if (!item) return dest
-      const count = allItems.filter(x => x.type === 'food_drink' && x.isHighlight).length
-      if (!item.isHighlight && count >= 3) return dest
-      return {
-        ...dest,
-        groups: dest.groups.map(g => ({
-          ...g,
-          days: g.days.map(d => ({
-            ...d,
-            items: d.items.map(x => x.id === itemId ? { ...x, isHighlight: !x.isHighlight } : x)
-          }))
-        }))
-      }
-    }))
-  }
-  function setTopPickActivity(di: number, itemId: string) {
-    setDestinations(dests => dests.map((dest, i) => {
-      if (i !== di) return dest
-      const allItems = dest.groups.flatMap(g => g.days.flatMap(d => d.items))
-      const item = allItems.find(x => x.id === itemId)
-      if (!item) return dest
-      const count = allItems.filter(x => x.type === 'activity' && x.isHighlight).length
-      if (!item.isHighlight && count >= 3) return dest
-      return {
-        ...dest,
-        groups: dest.groups.map(g => ({
-          ...g,
-          days: g.days.map(d => ({
-            ...d,
-            items: d.items.map(x => x.id === itemId ? { ...x, isHighlight: !x.isHighlight } : x)
-          }))
-        }))
-      }
-    }))
   }
 
-  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files
-    if (!files?.length) return
-    setUploading(true)
+  async function uploadPhotos(files: File[]) {
+    if (!files.length) return
+    setUploading(true); setPhotoError(null)
     try {
       const uploaded: UploadedPhoto[] = []
-      for (const file of Array.from(files)) {
+      for (const file of files) {
         const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : ''
         const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
         const blob = await upload(uniqueName, file, { access: 'private', handleUploadUrl: '/api/upload' })
         uploaded.push({ url: `/api/img?url=${encodeURIComponent(blob.url)}`, caption: '' })
       }
       setPhotos(p => [...p, ...uploaded])
-    } catch (err) {
-      console.error('[upload] error:', err)
-    } finally {
-      setUploading(false)
-      e.target.value = ''
-    }
+    } catch { setPhotoError('Some photos could not be uploaded.') }
+    finally { setUploading(false) }
   }
-  function removePhoto(i: number) { setPhotos(p => p.filter((_, idx) => idx !== i)) }
-  function updateCaption(i: number, val: string) { setPhotos(p => p.map((ph, idx) => idx === i ? { ...ph, caption: val } : ph)) }
+
+  const computedHighlights = dests
+    .flatMap(d => d.items)
+    .filter(i => i.isHighlight && i.type !== 'hotel' && i.name.trim())
+    .map(i => i.name.trim())
+    .join('\n')
+
+  const hasItems = dests.some(d => d.items.some(i => i.name.trim()))
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <form action={action} className="space-y-8">
-      <input type="hidden" name="startDate" value={tripDateRange.startDate} />
-      <input type="hidden" name="endDate" value={tripDateRange.endDate} />
-      <input type="hidden" name="destinations" value={JSON.stringify(toServerFormat(destinations))} />
-      <input type="hidden" name="photos" ref={photosInputRef} defaultValue={JSON.stringify(photos)} />
-      <input type="hidden" name="audience" value={tripAudience} />
-      <input type="hidden" name="visibility" value="public" />
-      <input type="hidden" name="postType" value={postType} />
-      <input type="hidden" name="tripRating" value={tripRating ?? ''} />
+    <form action={action} className="space-y-4 pb-36">
+      <input type="hidden" name="startDate"    value={tripDateRange.startDate} />
+      <input type="hidden" name="endDate"      value={tripDateRange.endDate} />
+      <input type="hidden" name="destinations" value={JSON.stringify(buildDestinations(dests))} />
+      <input type="hidden" name="highlights"   value={computedHighlights} />
+      <input type="hidden" name="photos"       ref={photosRef} defaultValue={JSON.stringify(photos)} />
+      <input type="hidden" name="audience"     value={tripAudience} />
+      <input type="hidden" name="visibility"   value="public" />
+      <input type="hidden" name="postType"     value={postType} />
+      <input type="hidden" name="tripRating"   value={tripRating ?? ''} />
+      <input type="hidden" name="tags"         value={JSON.stringify(tags)} />
+      {budget > 0 && <input type="hidden" name="budget" value={budget} />}
+      <input type="hidden" name="notes"        value={notes} />
 
       {state?.error && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{state.error}</p>
+        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{state.error}</p>
       )}
 
-      {/* Basic Info */}
-      <section className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-gray-900">Basic Info</h2>
-            {itinerary.visibility === 'draft' && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Draft</span>
+      {/* ── DESTINATIONS ─────────────────────────────────────────────────── */}
+      {dests.map(dest => (
+        <div key={dest.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-3 flex items-center gap-2">
+            <MapPin size={15} className="text-white/80" />
+            <span className="font-bold text-white text-sm flex-1">
+              {dest.name || 'Destination'}{dest.country ? `, ${dest.country}` : ''}
+            </span>
+            {dests.length > 1 && (
+              <button type="button" onClick={() => setDests(ds => ds.filter(d => d.id !== dest.id))}
+                className="text-white/60 hover:text-white text-lg leading-none">×</button>
             )}
           </div>
+
+          <div className="p-5 space-y-4">
+            {/* Dest name / country / notes */}
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <PlacesAutocomplete
+                  value={dest.name}
+                  onChange={val => updDest(dest.id, d => ({ ...d, name: val }))}
+                  onSelect={(main, secondary) => updDest(dest.id, d => ({ ...d, name: main, country: secondary || d.country }))}
+                  type="destination" placeholder="City or place" className={inputCls}
+                />
+                <input type="text" value={dest.country}
+                  onChange={e => updDest(dest.id, d => ({ ...d, country: e.target.value }))}
+                  placeholder="Country" className={`${inputCls} w-32 shrink-0`} />
+              </div>
+              <textarea value={dest.notes} onChange={e => updDest(dest.id, d => ({ ...d, notes: e.target.value }))}
+                rows={2} placeholder="📝 Notes for this destination (optional)" className={inputCls} />
+            </div>
+
+            {/* Items grouped by day */}
+            {dest.items.length > 0 && (
+              <DndContext sensors={sensors} collisionDetection={closestCenter}
+                onDragEnd={e => handleDragEnd(dest.id, e)}>
+                <SortableContext items={dest.items.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-3">
+                    {postType === 'guide' ? (
+                      <div className="space-y-2">
+                        {dest.items.map(item => (
+                          <SortableItem key={item.id} item={item}
+                            isEditing={editingItemId === item.id}
+                            onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
+                            onUpdate={updated => updateItem(dest.id, item.id, updated)}
+                            onRemove={() => removeItem(dest.id, item.id)}
+                            city={dest.name || undefined}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      (() => {
+                        const byDay = new Map<number, EditItem[]>()
+                        for (const item of dest.items) {
+                          if (!byDay.has(item.dayIndex)) byDay.set(item.dayIndex, [])
+                          byDay.get(item.dayIndex)!.push(item)
+                        }
+                        return [...byDay.entries()].sort(([a], [b]) => a - b).map(([day, items]) => (
+                          <div key={day}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full shrink-0">Day {day}</span>
+                              <div className="flex-1 h-px bg-blue-100" />
+                            </div>
+                            <div className="space-y-2">
+                              {items.map(item => (
+                                <SortableItem key={item.id} item={item}
+                                  isEditing={editingItemId === item.id}
+                                  onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
+                                  onUpdate={updated => updateItem(dest.id, item.id, updated)}
+                                  onRemove={() => removeItem(dest.id, item.id)}
+                                  city={dest.name || undefined}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ))
+                      })()
+                    )}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )}
+
+            {/* Add item form */}
+            {activeInput?.destId === dest.id && (
+              <ItemForm
+                type={activeInput.type}
+                onAdd={item => addItem(dest.id, item)}
+                onClose={() => setActiveInput(null)}
+                city={dest.name || undefined}
+              />
+            )}
+
+            {/* Buttons */}
+            {(!activeInput || activeInput.destId !== dest.id) && !editingItemId && (
+              <div className="space-y-2">
+                {postType !== 'guide' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">Day {dest.curDayIndex}</span>
+                    <span className="text-xs text-gray-400">Add places for this day</span>
+                  </div>
+                )}
+                <div className="grid grid-cols-3 gap-2">
+                  <button type="button" onClick={() => setActiveInput({ destId: dest.id, type: 'hotel' })}
+                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-blue-200 text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-all">
+                    <Hotel size={20} />
+                    <span className="text-xs font-semibold">+ Hotel</span>
+                  </button>
+                  <button type="button" onClick={() => setActiveInput({ destId: dest.id, type: 'food_drink' })}
+                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-orange-200 text-orange-600 hover:border-orange-400 hover:bg-orange-50 transition-all">
+                    <Utensils size={20} />
+                    <span className="text-xs font-semibold">+ Food</span>
+                  </button>
+                  <button type="button" onClick={() => setActiveInput({ destId: dest.id, type: 'activity' })}
+                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-green-200 text-green-600 hover:border-green-400 hover:bg-green-50 transition-all">
+                    <Camera size={20} />
+                    <span className="text-xs font-semibold">+ Activity</span>
+                  </button>
+                </div>
+                {postType !== 'guide' && (
+                  <button type="button" onClick={() => updDest(dest.id, d => ({ ...d, curDayIndex: d.curDayIndex + 1 }))}
+                    className="w-full py-2.5 rounded-xl border-2 border-indigo-200 text-indigo-700 text-sm font-semibold hover:border-indigo-300 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2">
+                    <ArrowRight size={14} /> Add Day {dest.curDayIndex + 1}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+
+      <button type="button" onClick={() => setDests(ds => [...ds, { id: uid(), name: '', country: '', notes: '', items: [], curDayIndex: 1 }])}
+        className="w-full py-3 rounded-xl border-2 border-dashed border-blue-200 text-blue-600 text-sm font-semibold hover:border-blue-400 hover:bg-blue-50 transition-all flex items-center justify-center gap-2">
+        <Plus size={15} /> Add destination
+      </button>
+
+      {/* ── MUST DO ──────────────────────────────────────────────────────────── */}
+      {dests.some(d => d.items.filter(i => i.type !== 'hotel' && i.name.trim()).length > 0) && (
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 space-y-5">
+          <div>
+            <h2 className="font-bold text-gray-900">Must Do</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Pick up to 3 restaurants and 3 activities per destination.</p>
+          </div>
+          {dests.map(dest => {
+            const food = dest.items.filter(i => i.type === 'food_drink' && i.name.trim())
+            const acts = dest.items.filter(i => i.type === 'activity' && i.name.trim())
+            if (food.length === 0 && acts.length === 0) return null
+            const foodCount = food.filter(i => i.isHighlight).length
+            const actCount  = acts.filter(i => i.isHighlight).length
+            return (
+              <div key={dest.id} className="space-y-3">
+                {dests.length > 1 && (
+                  <p className="text-sm font-semibold text-gray-800">{dest.name || 'Destination'}{dest.country ? `, ${dest.country}` : ''}</p>
+                )}
+                {food.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-1.5">🍽️ Must-do restaurants {foodCount > 0 && <span className="text-amber-600">({foodCount}/3)</span>}</p>
+                    <div className="space-y-1.5">
+                      {food.map(item => (
+                        <button key={item.id} type="button" onClick={() => setTopPickFood(dest.id, item.id)}
+                          className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : foodCount >= 3 ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
+                          {item.isHighlight ? '⭐ ' : ''}{item.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {acts.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-1.5">📍 Must-do activities {actCount > 0 && <span className="text-amber-600">({actCount}/3)</span>}</p>
+                    <div className="space-y-1.5">
+                      {acts.map(item => (
+                        <button key={item.id} type="button" onClick={() => setTopPickActivity(dest.id, item.id)}
+                          className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : actCount >= 3 ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
+                          {item.isHighlight ? '⭐ ' : ''}{item.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── DETAILS ──────────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-gray-800 to-gray-700 px-5 py-4">
+          <h2 className="font-bold text-white">Details</h2>
+          {itinerary.visibility === 'draft' && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-medium mt-1 inline-block">Draft</span>
+          )}
+        </div>
+        <div className="p-5 space-y-4">
           <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium">
             <button type="button" onClick={() => setPostType('itinerary')}
-              className={`px-3 py-1.5 rounded-lg transition-colors ${postType === 'itinerary' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
+              className={`flex-1 py-1.5 rounded-lg transition-colors ${postType === 'itinerary' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600'}`}>
               ✈️ Itinerary
             </button>
             <button type="button" onClick={() => setPostType('guide')}
-              className={`px-3 py-1.5 rounded-lg transition-colors ${postType === 'guide' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
+              className={`flex-1 py-1.5 rounded-lg transition-colors ${postType === 'guide' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-600'}`}>
               📖 Guide
             </button>
           </div>
-        </div>
-        {postType === 'guide' && (
-          <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-            Guide mode — share your recommendations without dates or personal ratings.
-          </p>
-        )}
-        <div>
-          <label htmlFor="title" className={labelClass}>Title *</label>
-          <input id="title" name="title" type="text" required className={inputClass} value={title} onChange={e => setTitle(e.target.value)} />
-        </div>
-        <div>
-          <label htmlFor="description" className={labelClass}>Short description</label>
-          <textarea id="description" name="description" rows={2} className={inputClass} value={description} onChange={e => setDescription(e.target.value)} />
-        </div>
-        {postType === 'itinerary' && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="tripMonth" className={labelClass}>Month and year *</label>
-              <input id="tripMonth" type="month" required className={inputClass} value={tripMonth} onChange={e => setTripMonth(e.target.value)} />
-            </div>
-            <div>
-              <label htmlFor="tripDays" className={labelClass}>Number of days *</label>
-              <input id="tripDays" type="number" min="1" step="1" inputMode="numeric" required className={inputClass} value={tripDays} onChange={e => setTripDays(e.target.value)} />
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Title</label>
+            <input name="title" type="text" required value={title} onChange={e => setTitle(e.target.value)} className={inputCls} />
           </div>
-        )}
-        <div>
-          <p className="text-xs font-medium text-gray-500 mb-2">Trip type</p>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { value: 'family', label: '👨‍👩‍👧 Family' },
-              { value: 'friends', label: '🥳 Friends' },
-              { value: 'romantic', label: '💋 Romantic' },
-              { value: 'adult', label: '🍷 Other' },
-            ].map(({ value, label }) => (
-              <button key={value} type="button" onClick={() => setTripAudience(value as typeof tripAudience)}
-                className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${tripAudience === value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Must Do */}
-      <input type="hidden" name="highlights" value={topPickLines.join('\n')} />
-      <section className="bg-amber-50 rounded-2xl border border-amber-200 p-6 space-y-5">
-        <div>
-          <h2 className="font-semibold text-gray-900 mb-1">⭐ Must Do</h2>
-          <p className="text-xs text-gray-500">Pick up to 3 restaurants and 3 activities per destination.</p>
-        </div>
-        {destinations.map((dest, di) => {
-          const allItems = dest.groups.flatMap(g => g.days.flatMap(d => d.items))
-          const foodItems = allItems.filter(i => i.type === 'food_drink' && i.name.trim())
-          const actItems  = allItems.filter(i => i.type === 'activity'   && i.name.trim())
-          if (foodItems.length === 0 && actItems.length === 0) return null
-          const foodCount = foodItems.filter(i => i.isHighlight).length
-          const actCount  = actItems.filter(i => i.isHighlight).length
-          return (
-            <div key={di} className="space-y-3">
-              {destinations.length > 1 && (
-                <p className="text-sm font-semibold text-amber-800">{dest.name || `Destination ${di + 1}`}</p>
-              )}
-              {foodItems.length > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-gray-500 mb-2">🍽️ Must-do restaurants {foodCount > 0 && <span className="text-amber-600">({foodCount}/3)</span>}</p>
-                  <div className="space-y-1.5">
-                    {foodItems.map(item => (
-                      <button key={item.id} type="button"
-                        onClick={() => setTopPickFood(di, item.id)}
-                        className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-amber-100 border-amber-400 text-amber-900 font-medium' : foodCount >= 3 ? 'bg-white border-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white border-gray-200 text-gray-700 hover:border-amber-300'}`}>
-                        {item.isHighlight ? '⭐ ' : ''}{item.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {actItems.length > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-gray-500 mb-2">📍 Must-do activities {actCount > 0 && <span className="text-amber-600">({actCount}/3)</span>}</p>
-                  <div className="space-y-1.5">
-                    {actItems.map(item => (
-                      <button key={item.id} type="button"
-                        onClick={() => setTopPickActivity(di, item.id)}
-                        className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-amber-100 border-amber-400 text-amber-900 font-medium' : actCount >= 3 ? 'bg-white border-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white border-gray-200 text-gray-700 hover:border-amber-300'}`}>
-                        {item.isHighlight ? '⭐ ' : ''}{item.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </section>
-
-      {/* Destinations */}
-      <section className="space-y-4">
-        <h2 className="font-semibold text-gray-900 text-lg">Destinations</h2>
-
-        {destinations.map((dest, di) => (
-          <div key={di} className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-            <div className="flex gap-3 items-start">
-              <div className="flex-1 grid grid-cols-2 gap-3">
-                <PlacesAutocomplete
-                  value={dest.name}
-                  onChange={val => updateDest(di, 'name', val)}
-                  onSelect={(main, secondary) => setDestinations(d => d.map((dst, idx) => idx === di ? { ...dst, name: main, country: secondary || dst.country } : dst))}
-                  type="destination"
-                  placeholder={`City / place${destinations.length > 1 ? ` ${di + 1}` : ''}`}
-                  className={inputClass}
-                />
-                <input type="text" value={dest.country} onChange={e => updateDest(di, 'country', e.target.value)}
-                  className={inputClass} placeholder="Country" />
+          {postType === 'itinerary' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Month and year</label>
+                <input type="month" value={tripMonth} onChange={e => setTripMonth(e.target.value)} className={inputCls} />
               </div>
-              {destinations.length > 1 && (
-                <button type="button" onClick={() => removeDest(di)} className="mt-1 text-gray-400 hover:text-red-500 text-xl leading-none">×</button>
-              )}
-            </div>
-            <textarea value={dest.notes} onChange={e => updateDest(di, 'notes', e.target.value)}
-              rows={2} className={inputClass} placeholder="Overview / notes for this destination (optional)" />
-
-            {/* Stays */}
-            {dest.groups.map((group, gi) => (
-              <div key={gi} className="rounded-xl border border-gray-200 overflow-hidden">
-                {dest.groups.length > 1 && (
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
-                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Stay {gi + 1}</span>
-                    <button type="button" onClick={() => removeGroup(di, gi)} className="text-xs text-red-400 hover:text-red-600 font-medium">Remove stay</button>
-                  </div>
-                )}
-                <div className="p-4 space-y-4">
-                  {/* Lodging */}
-                  <HotelSection
-                    group={group}
-                    dest={dest}
-                    showRating={showRating}
-                    onUpdateHotel={(field, val) => updateHotel(di, gi, field, val)}
-                    onFetchPriceLevel={placeId => fetchHotelPriceLevel(di, gi, placeId)}
-                    onToggleHotelTag={tag => updGroup(di, gi, g => ({ ...g, hotelTags: g.hotelTags.includes(tag) ? g.hotelTags.filter(t => t !== tag) : [...g.hotelTags, tag] }))}
-                    onUpdateGroup={fn => updGroup(di, gi, fn)}
-                  />
-
-                  {/* Days — single merged item list */}
-                  {group.days.map((day, dyi) => (
-                    <div key={dyi} className="rounded-xl border border-gray-100 overflow-hidden">
-                      <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100">
-                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Day {dyi + 1}</span>
-                        {group.days.length > 1 && (
-                          <button type="button" onClick={() => removeDay(di, gi, dyi)} className="text-xs text-red-400 hover:text-red-600 font-medium">Remove day</button>
-                        )}
-                      </div>
-                      <div className="p-3 space-y-3">
-                        {day.items.length === 0 && (
-                          <p className="text-xs text-gray-400 italic">No items yet — add food or an activity below.</p>
-                        )}
-                        <div className="space-y-1">
-                          {day.items.map((item, ii) => {
-                            const dayMove: DayMove | undefined = group.days.length > 1
-                              ? { currentDyi: dyi, totalDays: group.days.length, onMove: toDyi => moveItemToDay(di, gi, item.id, dyi, toDyi) }
-                              : undefined
-                            return item.type === 'food_drink'
-                              ? <FoodRow key={item.id} item={item} index={ii} total={day.items.length} showRating={showRating}
-                                  onUpdate={(f, v) => updateItem(di, gi, dyi, item.id, f, v)}
-                                  onPatch={patch => patchItem(di, gi, dyi, item.id, patch)}
-                                  onToggleTag={tag => toggleItemTag(di, gi, dyi, item.id, tag)}
-                                  onRemove={() => removeItem(di, gi, dyi, item.id)}
-                                  onSelectPlace={id => id
-                                    ? fetchItemPriceLevel(di, gi, dyi, item.id, id)
-                                    : patchItem(di, gi, dyi, item.id, { priceLevel: null })}
-                                  onMoveUp={() => moveItem(di, gi, dyi, ii, ii - 1)}
-                                  onMoveDown={() => moveItem(di, gi, dyi, ii, ii + 1)}
-                                  dayMove={dayMove}
-                                  city={dest.name || undefined}
-                                />
-                              : <ActivityRow key={item.id} item={item} index={ii} total={day.items.length} showRating={showRating}
-                                  onUpdate={(f, v) => updateItem(di, gi, dyi, item.id, f, v)}
-                                  onPatch={patch => patchItem(di, gi, dyi, item.id, patch)}
-                                  onToggleTag={tag => toggleItemTag(di, gi, dyi, item.id, tag)}
-                                  onRemove={() => removeItem(di, gi, dyi, item.id)}
-                                  onMoveUp={() => moveItem(di, gi, dyi, ii, ii - 1)}
-                                  onMoveDown={() => moveItem(di, gi, dyi, ii, ii + 1)}
-                                  dayMove={dayMove}
-                                  city={dest.name || undefined}
-                                />
-                          })}
-                        </div>
-                        <div className="flex gap-2">
-                          <button type="button" onClick={() => addItem(di, gi, dyi, 'food_drink')}
-                            className="flex-1 text-xs text-orange-600 hover:text-orange-800 font-medium border border-dashed border-orange-300 hover:border-orange-500 rounded-lg py-2 transition-colors">
-                            + Food / Drink
-                          </button>
-                          <button type="button" onClick={() => addItem(di, gi, dyi, 'activity')}
-                            className="flex-1 text-xs text-green-600 hover:text-green-800 font-medium border border-dashed border-green-300 hover:border-green-500 rounded-lg py-2 transition-colors">
-                            + Activity
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  <button type="button" onClick={() => addDay(di, gi)}
-                    className="w-full text-xs text-gray-500 hover:text-blue-600 border border-dashed border-gray-200 hover:border-blue-300 rounded-lg py-2 transition-colors">
-                    + Add day
-                  </button>
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Number of days</label>
+                <input type="number" min="1" step="1" inputMode="numeric" value={tripDays} onChange={e => setTripDays(e.target.value)} placeholder="e.g. 8" className={inputCls} />
               </div>
-            ))}
-
-            <button type="button" onClick={() => addGroup(di)}
-              className="w-full text-sm text-gray-500 hover:text-blue-600 border border-dashed border-gray-300 hover:border-blue-300 rounded-xl py-3 transition-colors">
-              + Add another stay (different hotel)
-            </button>
+            </div>
+          )}
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-2">Trip type</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'family',   label: '👨‍👩‍👧 Family'  },
+                { value: 'friends',  label: '🥳 Friends' },
+                { value: 'romantic', label: '💋 Romantic'},
+                { value: 'adult',    label: '🍷 Other'   },
+              ].map(({ value, label }) => (
+                <button key={value} type="button" onClick={() => setTripAudience(value as typeof tripAudience)}
+                  className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${tripAudience === value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-        ))}
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-2">Tags</p>
+            <TagPicker selected={tags} onChange={setTags} />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-2">Budget</p>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map(n => (
+                <button key={n} type="button" onClick={() => setBudget(budget === n ? 0 : n)}
+                  className={`text-base px-1 transition-colors ${n <= budget ? 'text-green-600' : 'text-gray-300'}`}>$</button>
+              ))}
+            </div>
+          </div>
+          {postType === 'itinerary' && (
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-2">Overall trip rating <span className="text-gray-400 font-normal">(optional)</span></p>
+              <TripRatingPicker value={tripRating} onChange={setTripRating} />
+            </div>
+          )}
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-1">General notes</p>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
+              placeholder="Tips, packing list, visa info…" className={inputCls} />
+          </div>
+        </div>
+      </div>
 
-        <button type="button" onClick={addDest}
-          className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-xl py-3 transition-colors">
-          + Add destination
-        </button>
-      </section>
-
-      {/* Tags */}
-      <input type="hidden" name="tags" value={JSON.stringify(tags)} />
-      <section className="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-1">Tags</h2>
-        <p className="text-xs text-gray-500 mb-3">Pick what best describes this trip</p>
-        <TagPicker selected={tags} onChange={setTags} />
-      </section>
-
-      {/* Notes */}
-      <section className="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-4">General Notes</h2>
-        <textarea name="notes" rows={3} className={inputClass} placeholder="Tips, packing list, visa info…" value={notes} onChange={e => setNotes(e.target.value)} />
-      </section>
-
-      {/* Trip Rating */}
-      {postType === 'itinerary' && (
-        <section className="bg-white rounded-2xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-0.5">Overall trip rating <span className="font-normal text-gray-400 text-sm">(optional)</span></h2>
-          <p className="text-xs text-gray-500 mb-3">Would you go back?</p>
-          <TripRatingPicker value={tripRating} onChange={setTripRating} />
-        </section>
-      )}
-
-      {/* Photos */}
-      <section className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+      {/* ── PHOTOS ───────────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 space-y-4">
         <h2 className="font-semibold text-gray-900">Photos</h2>
-        <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-8 cursor-pointer hover:border-blue-400 transition-colors">
-          <span className="text-2xl mb-2">📸</span>
-          <span className="text-sm font-medium text-gray-900">{uploading ? 'Uploading…' : 'Click to upload photos'}</span>
-          <span className="text-xs text-gray-600 mt-1">JPG, PNG, WEBP, GIF</span>
-          <input type="file" accept="image/*" multiple className="sr-only" onChange={handlePhotoUpload} disabled={uploading} />
+        <label className={`flex flex-col items-center justify-center border-2 border-dashed border-purple-300 rounded-xl p-5 cursor-pointer hover:border-purple-400 transition-colors ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}>
+          <ImageIcon size={22} className="text-purple-400 mb-1" />
+          <span className="text-sm font-medium text-purple-700">{uploading ? 'Uploading…' : 'Click to upload photos'}</span>
+          <span className="text-xs text-purple-400 mt-0.5">JPG, PNG, WEBP</span>
+          <input type="file" accept="image/*" multiple className="sr-only" disabled={uploading}
+            onChange={e => { uploadPhotos(Array.from(e.target.files ?? [])); e.target.value = '' }} />
         </label>
+        {photoError && <p className="text-xs text-red-600">{photoError}</p>}
         {photos.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             {photos.map((photo, i) => (
               <div key={i} className="relative group">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.url} alt="" className="w-full h-32 object-cover rounded-lg" />
-                <button type="button" onClick={() => removePhoto(i)}
+                <img src={photo.url} alt="" className="w-full h-20 object-cover rounded-lg" />
+                <button type="button" onClick={() => setPhotos(p => p.filter((_, idx) => idx !== i))}
                   className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
-                <input type="text" value={photo.caption} onChange={e => updateCaption(i, e.target.value)}
-                  className="mt-1 w-full rounded border border-gray-200 px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                  placeholder="Caption (optional)" />
               </div>
             ))}
           </div>
         )}
-      </section>
+      </div>
 
+      {/* ── SUBMIT ───────────────────────────────────────────────────────────── */}
       <div className="flex gap-3">
         <button type="submit" name="isDraft" value="1" disabled={pending || uploading}
-          className="flex-1 bg-white text-gray-700 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-colors disabled:opacity-60 text-base">
+          className="flex-1 bg-white text-gray-700 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-colors disabled:opacity-60 text-sm">
           {pending ? 'Saving…' : 'Save as Draft'}
         </button>
-        {(() => {
-          const hasItems = destinations.some(d =>
-            d.groups.some(g => g.hotelName.trim() || g.days.some(day => day.items.some(i => i.name.trim())))
-          )
-          const label = itinerary.visibility === 'draft' ? 'Publish' : 'Save changes'
-          return (
-            <button type="submit" disabled={pending || uploading || !hasItems}
-              title={!hasItems ? 'Add at least one hotel, restaurant, or activity first' : undefined}
-              className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60 text-base">
-              {pending ? 'Saving…' : label}
-            </button>
-          )
-        })()}
+        <button type="submit" disabled={pending || uploading || !hasItems}
+          title={!hasItems ? 'Add at least one item first' : undefined}
+          className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60 text-sm">
+          {pending ? 'Saving…' : itinerary.visibility === 'draft' ? 'Publish' : 'Save changes'}
+        </button>
       </div>
-      <div className="flex justify-center pt-1">
+      <div className="flex justify-center">
         <DeleteButton id={itinerary.id} />
       </div>
     </form>
