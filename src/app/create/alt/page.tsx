@@ -428,11 +428,11 @@ export default function AltCreatePage() {
     { value: 'family',   label: '👨‍👩‍👧 Family'   },
     { value: 'friends',  label: '👯 Friends'  },
     { value: 'romantic', label: '💑 Romantic' },
-    { value: 'adult',    label: '🧑 Solo / adults' },
+    { value: 'adult',    label: '🧑 Solo' },
   ] as const
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-6 pb-36">
+    <div className="max-w-lg mx-auto px-4 py-6 pb-52">
       <div className="flex items-center justify-between mb-5">
         <Link href="/" className="text-sm text-blue-600 hover:underline">← Back</Link>
         {(dests.length > 0 || curItems.length > 0 || curDest.name.trim()) && (
@@ -461,8 +461,8 @@ export default function AltCreatePage() {
 
       <div className="space-y-4">
 
-        {/* Completed destinations */}
-        {dests.map(d => (
+        {/* Completed destinations — only shown while still building, not on picks/details */}
+        {phase === 'building' && dests.map(d => (
           <div key={d.id} className="bg-white rounded-2xl border border-gray-100 p-4">
             <div className="flex items-center gap-2 mb-3">
               <MapPin size={14} className="text-blue-500 shrink-0" />
@@ -506,8 +506,8 @@ export default function AltCreatePage() {
 
         {/* ── DEST ── */}
         {phase === 'dest' && (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-4 flex items-center gap-3">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-4 flex items-center gap-3 rounded-t-2xl overflow-hidden">
               <div className="w-10 h-10 rounded-xl bg-white/25 flex items-center justify-center">
                 <MapPin size={20} className="text-white" />
               </div>
@@ -535,7 +535,7 @@ export default function AltCreatePage() {
                   </select>
                   <select value={tripDays} onChange={e => setTripDays(e.target.value)}
                     className="w-20 shrink-0 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
-                    <option value="">#</option>
+                    <option value="">Days</option>
                     {Array.from({ length: 30 }, (_, i) => i + 1).map(n => (
                       <option key={n} value={String(n)}>{n}</option>
                     ))}
@@ -561,8 +561,8 @@ export default function AltCreatePage() {
 
         {/* ── BUILDING ── */}
         {phase === 'building' && (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-3 flex items-center gap-2">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-3 flex items-center gap-2 rounded-t-2xl overflow-hidden">
               <MapPin size={15} className="text-white/80" />
               <span className="font-bold text-white text-sm">
                 {curDest.name}{curDest.country ? <span className="font-normal opacity-75">, {curDest.country}</span> : null}
@@ -583,14 +583,14 @@ export default function AltCreatePage() {
 
               {/* Action buttons */}
               <div className="flex gap-2 pt-1">
-                {allDests > 0 || curItems.length > 0 ? (
+                {(allDests > 0 || curItems.length > 0) && (
                   <button type="button"
                     onClick={() => { finishDest(); setPhase('building') }}
                     disabled={!curDest.name.trim()}
                     className="flex-1 py-2.5 rounded-xl border-2 border-blue-200 text-blue-600 text-sm font-semibold hover:border-blue-400 transition-colors disabled:opacity-40">
                     + Add another city
                   </button>
-                ) : null}
+                )}
                 <button type="button"
                   disabled={allItems === 0 && curItems.length === 0}
                   onClick={() => { finishDest(); setPhase('picks') }}
