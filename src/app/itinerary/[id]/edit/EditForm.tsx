@@ -267,9 +267,9 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
   const [showMore, setShowMore]   = useState(initial.tags.length > 0 || !!initial.description || !!initial.link || !!initial.address)
 
   const cfg = {
-    hotel:     { color: 'bg-blue-50 border-blue-200',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const      },
-    food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const },
-    activity:  { color: 'bg-green-50 border-green-200',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const   },
+    hotel:     { color: 'bg-blue-50 border-blue-200',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
+    food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const, notesPh: 'e.g. Order the truffle pasta, great for groups…'           },
+    activity:  { color: 'bg-green-50 border-green-200',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const,   notesPh: 'e.g. Book tickets online, go early to beat the crowds…'   },
   }[type]
 
   function toggleTag(tag: string) {
@@ -311,7 +311,7 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
         <StarRating value={rating} onChange={setRating} />
       </div>
       <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
-        placeholder="📝 Notes (optional)" className={inputCls} />
+        placeholder={cfg.notesPh} className={inputCls} />
       <PlacesAutocomplete value={alternative} onChange={setAlternative} type={cfg.placeType}
         placeholder="↔ Alternative (optional)" className={`${inputCls} text-gray-500`} city={city} />
       <button type="button" onClick={() => setShowMore(s => !s)}
@@ -372,9 +372,9 @@ function ItemForm({ type, onAdd, onClose, city }: {
   const [showMore, setShowMore] = useState(false)
 
   const cfg = {
-    hotel:     { color: 'bg-blue-50 border-blue-200',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const      },
-    food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const },
-    activity:  { color: 'bg-green-50 border-green-200',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const   },
+    hotel:     { color: 'bg-blue-50 border-blue-200',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
+    food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const, notesPh: 'e.g. Order the truffle pasta, great for groups…'           },
+    activity:  { color: 'bg-green-50 border-green-200',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const,   notesPh: 'e.g. Book tickets online, go early to beat the crowds…'   },
   }[type]
 
   function toggleTag(tag: string) { setTags(t => t.includes(tag) ? t.filter(x => x !== tag) : [...t, tag]) }
@@ -413,7 +413,7 @@ function ItemForm({ type, onAdd, onClose, city }: {
         <StarRating value={rating} onChange={setRating} />
       </div>
       <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
-        placeholder="📝 Notes (optional)" className={inputCls} />
+        placeholder={cfg.notesPh} className={inputCls} />
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
