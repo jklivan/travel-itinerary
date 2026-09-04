@@ -243,16 +243,18 @@ export default async function ItineraryPage({
   type BucketerRow = { friend_name: string }
 
   const [friendDestRows, savedDestRows, friendHotelRows, friendFoodRows, hotelAvgRows, foodAvgRows, itineraryBucketersRows] = await Promise.all([
-    // Which friends visited the same destinations
+    // Which friends visited the same destinations (exclude the current itinerary itself)
     friendIds.length > 0 && destNamesLower.length > 0
       ? prisma.$queryRaw<FriendNameRow[]>(Prisma.sql`
-          SELECT LOWER(d.name) AS name, u.name AS friend_name
+          SELECT DISTINCT ON (LOWER(d.name), i."userId") LOWER(d.name) AS name, u.name AS friend_name
           FROM "Destination" d
           JOIN "Itinerary" i ON i.id = d."itineraryId"
           JOIN "User" u ON u.id = i."userId"
           WHERE i."userId" IN (${Prisma.join(friendIds)})
             AND LOWER(d.name) IN (${Prisma.join(destNamesLower)})
             AND i.visibility != 'draft'
+            AND i.id != ${id}
+          ORDER BY LOWER(d.name), i."userId"
         `)
       : Promise.resolve([] as FriendNameRow[]),
     // How many travelers saved itineraries containing each destination
@@ -267,10 +269,10 @@ export default async function ItineraryPage({
           GROUP BY LOWER(d.name)
         `)
       : Promise.resolve([] as SocialRow[]),
-    // Which friends stayed at the same hotels + their ratings
+    // Which friends stayed at the same hotels + their ratings (exclude current itinerary, one row per friend per place)
     friendIds.length > 0 && hotelNamesLower.length > 0
       ? prisma.$queryRaw<FriendDetailRow[]>(Prisma.sql`
-          SELECT LOWER(di.name) AS name, u.name AS friend_name, di.rating, i.id AS itinerary_id
+          SELECT DISTINCT ON (LOWER(di.name), i."userId") LOWER(di.name) AS name, u.name AS friend_name, di.rating, i.id AS itinerary_id
           FROM "DestItem" di
           JOIN "Destination" d ON d.id = di."destinationId"
           JOIN "Itinerary" i ON i.id = d."itineraryId"
@@ -279,12 +281,14 @@ export default async function ItineraryPage({
             AND di.type = 'hotel'
             AND LOWER(di.name) IN (${Prisma.join(hotelNamesLower)})
             AND i.visibility != 'draft'
+            AND i.id != ${id}
+          ORDER BY LOWER(di.name), i."userId", di.rating DESC NULLS LAST
         `)
       : Promise.resolve([] as FriendDetailRow[]),
-    // Which friends ate at the same restaurants + their ratings
+    // Which friends ate at the same restaurants + their ratings (exclude current itinerary, one row per friend per place)
     friendIds.length > 0 && foodNamesLower.length > 0
       ? prisma.$queryRaw<FriendDetailRow[]>(Prisma.sql`
-          SELECT LOWER(di.name) AS name, u.name AS friend_name, di.rating, i.id AS itinerary_id
+          SELECT DISTINCT ON (LOWER(di.name), i."userId") LOWER(di.name) AS name, u.name AS friend_name, di.rating, i.id AS itinerary_id
           FROM "DestItem" di
           JOIN "Destination" d ON d.id = di."destinationId"
           JOIN "Itinerary" i ON i.id = d."itineraryId"
@@ -293,6 +297,8 @@ export default async function ItineraryPage({
             AND di.type = 'food_drink'
             AND LOWER(di.name) IN (${Prisma.join(foodNamesLower)})
             AND i.visibility != 'draft'
+            AND i.id != ${id}
+          ORDER BY LOWER(di.name), i."userId", di.rating DESC NULLS LAST
         `)
       : Promise.resolve([] as FriendDetailRow[]),
     // Community avg star rating for hotels
