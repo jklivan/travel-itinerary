@@ -228,20 +228,26 @@ export default async function ItineraryPage({
   const foodNamesLower = it.destinations.flatMap(d =>
     d.items.filter(i => i.type === 'food_drink' && i.name).map(i => i.name.toLowerCase())
   )
+  const activityNamesLower = it.destinations.flatMap(d =>
+    d.items.filter(i => i.type === 'activity' && i.name).map(i => i.name.toLowerCase())
+  )
 
   // placeId → canonical name (from this itinerary) for placeId-based matching
   const hotelPlaceIdToName = new Map<string, string>()
   const foodPlaceIdToName = new Map<string, string>()
+  const activityPlaceIdToName = new Map<string, string>()
   for (const d of it.destinations) {
     for (const item of d.items) {
       if (item.placeId) {
         if (item.type === 'hotel') hotelPlaceIdToName.set(item.placeId, item.name.toLowerCase())
         if (item.type === 'food_drink') foodPlaceIdToName.set(item.placeId, item.name.toLowerCase())
+        if (item.type === 'activity') activityPlaceIdToName.set(item.placeId, item.name.toLowerCase())
       }
     }
   }
   const hotelPlaceIds = [...hotelPlaceIdToName.keys()]
   const foodPlaceIds = [...foodPlaceIdToName.keys()]
+  const activityPlaceIds = [...activityPlaceIdToName.keys()]
 
   const friendIds: string[] = session?.user?.id
     ? (await prisma.follow.findMany({
@@ -256,7 +262,7 @@ export default async function ItineraryPage({
   type AvgRow = { name: string; total: bigint; avg_rating: number | null }
   type BucketerRow = { friend_name: string }
 
-  const [friendDestRows, savedDestRows, friendHotelRows, friendFoodRows, hotelAvgRows, foodAvgRows, itineraryBucketersRows] = await Promise.all([
+  const [friendDestRows, savedDestRows, friendHotelRows, friendFoodRows, friendActivityRows, hotelAvgRows, foodAvgRows, itineraryBucketersRows] = await Promise.all([
     // Which friends visited the same destinations (exclude the current itinerary itself)
     friendIds.length > 0 && destNamesLower.length > 0
       ? prisma.$queryRaw<FriendNameRow[]>(Prisma.sql`
@@ -325,6 +331,26 @@ export default async function ItineraryPage({
           ORDER BY LOWER(di.name), i."userId", di.rating DESC NULLS LAST
         `)
       : Promise.resolve([] as FriendDetailRow[]),
+    // Which friends did the same activities (exclude current itinerary, one row per friend per place)
+    friendIds.length > 0 && (activityNamesLower.length > 0 || activityPlaceIds.length > 0)
+      ? prisma.$queryRaw<FriendDetailRow[]>(Prisma.sql`
+          SELECT DISTINCT ON (LOWER(di.name), i."userId") LOWER(di.name) AS name, u.name AS friend_name, di.rating, i.id AS itinerary_id, di."placeId" AS place_id
+          FROM "DestItem" di
+          JOIN "Destination" d ON d.id = di."destinationId"
+          JOIN "Itinerary" i ON i.id = d."itineraryId"
+          JOIN "User" u ON u.id = i."userId"
+          WHERE i."userId" IN (${Prisma.join(friendIds)})
+            AND di.type = 'activity'
+            AND i.visibility != 'draft'
+            AND i.id != ${id}
+            AND (
+              ${activityNamesLower.length > 0 ? Prisma.sql`LOWER(di.name) IN (${Prisma.join(activityNamesLower)})` : Prisma.sql`FALSE`}
+              OR
+              ${activityPlaceIds.length > 0 ? Prisma.sql`(di."placeId" IS NOT NULL AND di."placeId" IN (${Prisma.join(activityPlaceIds)}))` : Prisma.sql`FALSE`}
+            )
+          ORDER BY LOWER(di.name), i."userId", di.rating DESC NULLS LAST
+        `)
+      : Promise.resolve([] as FriendDetailRow[]),
     // Community avg star rating for hotels
     hotelNamesLower.length > 0
       ? prisma.$queryRaw<AvgRow[]>(Prisma.sql`
@@ -382,6 +408,12 @@ export default async function ItineraryPage({
     const key = (r.place_id && foodPlaceIdToName.has(r.place_id)) ? foodPlaceIdToName.get(r.place_id)! : r.name
     if (!friendFoodDetails.has(key)) friendFoodDetails.set(key, [])
     friendFoodDetails.get(key)!.push({ friendName: r.friend_name, rating: r.rating, itineraryId: r.itinerary_id })
+  }
+  const friendActivityDetails = new Map<string, { friendName: string; rating: number | null; itineraryId: string }[]>()
+  for (const r of friendActivityRows) {
+    const key = (r.place_id && activityPlaceIdToName.has(r.place_id)) ? activityPlaceIdToName.get(r.place_id)! : r.name
+    if (!friendActivityDetails.has(key)) friendActivityDetails.set(key, [])
+    friendActivityDetails.get(key)!.push({ friendName: r.friend_name, rating: r.rating, itineraryId: r.itinerary_id })
   }
 
   // community avg stars (1 decimal)
@@ -726,6 +758,12 @@ export default async function ItineraryPage({
                               </div>
                               {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
                               {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                              <FriendProof
+                                friends={friendActivityDetails.get(item.name.toLowerCase()) ?? []}
+                                avg={null}
+                                total={0}
+                                verb="also did this"
+                              />
                               {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                             </div>
                           </div>
@@ -888,6 +926,12 @@ export default async function ItineraryPage({
                                         </div>
                                         {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
                                         {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                                        <FriendProof
+                                          friends={friendActivityDetails.get(item.name.toLowerCase()) ?? []}
+                                          avg={null}
+                                          total={0}
+                                          verb="also did this"
+                                        />
                                         {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                                       </div>
                                     </div>
@@ -940,6 +984,12 @@ export default async function ItineraryPage({
                                           </div>
                                           {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
                                           {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                                          <FriendProof
+                                            friends={friendActivityDetails.get(item.name.toLowerCase()) ?? []}
+                                            avg={null}
+                                            total={0}
+                                            verb="also did this"
+                                          />
                                           {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                                         </div>
                                       </div>
