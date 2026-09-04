@@ -15,6 +15,65 @@ import { TRIP_STAMPS } from '@/lib/tripStamps'
 import ItineraryMap from '@/components/ItineraryMap'
 import type { ItemPin } from '@/components/ItineraryMapInner'
 
+function FriendProof({
+  friends,
+  avg,
+  total,
+  verb = 'also went',
+}: {
+  friends: { friendName: string; rating: number | null; itineraryId: string }[]
+  avg: number | null
+  total: number
+  verb?: string
+}) {
+  if (friends.length === 0 && avg === null) return null
+  return (
+    <div className="mt-1 space-y-0.5">
+      {friends.length === 1 ? (
+        <div className="flex items-center gap-1.5 text-xs text-gray-600">
+          <span>👫</span>
+          <span className="font-medium">{friends[0].friendName.split(' ')[0]}</span>
+          {friends[0].rating ? (
+            <span className="text-yellow-500">
+              {'★'.repeat(friends[0].rating)}
+              <span className="text-gray-200">{'★'.repeat(5 - friends[0].rating)}</span>
+            </span>
+          ) : (
+            <span className="text-gray-400">{verb}</span>
+          )}
+          <Link href={`/itinerary/${friends[0].itineraryId}`} className="text-blue-400 hover:underline text-[10px]">their trip</Link>
+        </div>
+      ) : friends.length > 1 ? (
+        <details className="text-xs text-gray-600">
+          <summary className="list-none cursor-pointer flex items-center gap-1.5">
+            <span>👫</span>
+            <span className="font-medium text-gray-700">{friends.length} friends {verb}</span>
+          </summary>
+          <div className="mt-1 space-y-0.5 pl-5">
+            {friends.map((f, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <span className="font-medium">{f.friendName.split(' ')[0]}</span>
+                {f.rating ? (
+                  <span className="text-yellow-500">
+                    {'★'.repeat(f.rating)}
+                    <span className="text-gray-200">{'★'.repeat(5 - f.rating)}</span>
+                  </span>
+                ) : (
+                  <span className="text-gray-400">{verb}</span>
+                )}
+                <Link href={`/itinerary/${f.itineraryId}`} className="text-blue-400 hover:underline">their trip</Link>
+              </div>
+            ))}
+          </div>
+        </details>
+      ) : null}
+      {avg !== null && total > 1 && (
+        <p className="text-xs text-gray-400 mt-0.5">★ {avg.toFixed(1)} avg · {total} ratings</p>
+      )}
+    </div>
+  )
+}
+
 function Stars({ rating }: { rating: number | null }) {
   if (!rating) return null
   return (
@@ -27,7 +86,7 @@ function Stars({ rating }: { rating: number | null }) {
   )
 }
 
-type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number; dayIndex?: number | null; tags?: string[]; alternative?: string | null }
+type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number; dayIndex?: number | null; tags?: string[]; alternative?: string | null; photoUrl?: string | null }
 
 function groupItems(items: DestItemRow[]) {
   const stays = new Map<number, { hotel: DestItemRow | null; days: Map<number, DestItemRow[]> }>()
@@ -179,7 +238,7 @@ export default async function ItineraryPage({
 
   type SocialRow = { name: string; count: bigint }
   type FriendNameRow = { name: string; friend_name: string }
-  type FriendDetailRow = { name: string; friend_name: string; rating: number | null }
+  type FriendDetailRow = { name: string; friend_name: string; rating: number | null; itinerary_id: string }
   type AvgRow = { name: string; total: bigint; avg_rating: number | null }
   type BucketerRow = { friend_name: string }
 
@@ -211,7 +270,7 @@ export default async function ItineraryPage({
     // Which friends stayed at the same hotels + their ratings
     friendIds.length > 0 && hotelNamesLower.length > 0
       ? prisma.$queryRaw<FriendDetailRow[]>(Prisma.sql`
-          SELECT LOWER(di.name) AS name, u.name AS friend_name, di.rating
+          SELECT LOWER(di.name) AS name, u.name AS friend_name, di.rating, i.id AS itinerary_id
           FROM "DestItem" di
           JOIN "Destination" d ON d.id = di."destinationId"
           JOIN "Itinerary" i ON i.id = d."itineraryId"
@@ -225,7 +284,7 @@ export default async function ItineraryPage({
     // Which friends ate at the same restaurants + their ratings
     friendIds.length > 0 && foodNamesLower.length > 0
       ? prisma.$queryRaw<FriendDetailRow[]>(Prisma.sql`
-          SELECT LOWER(di.name) AS name, u.name AS friend_name, di.rating
+          SELECT LOWER(di.name) AS name, u.name AS friend_name, di.rating, i.id AS itinerary_id
           FROM "DestItem" di
           JOIN "Destination" d ON d.id = di."destinationId"
           JOIN "Itinerary" i ON i.id = d."itineraryId"
@@ -280,16 +339,16 @@ export default async function ItineraryPage({
   }
   const savedDestMap = new Map(savedDestRows.map(r => [r.name, Number(r.count)]))
 
-  // hotel/food name → [{friendName, rating}]
-  const friendHotelDetails = new Map<string, { friendName: string; rating: number | null }[]>()
+  // hotel/food name → [{friendName, rating, itineraryId}]
+  const friendHotelDetails = new Map<string, { friendName: string; rating: number | null; itineraryId: string }[]>()
   for (const r of friendHotelRows) {
     if (!friendHotelDetails.has(r.name)) friendHotelDetails.set(r.name, [])
-    friendHotelDetails.get(r.name)!.push({ friendName: r.friend_name, rating: r.rating })
+    friendHotelDetails.get(r.name)!.push({ friendName: r.friend_name, rating: r.rating, itineraryId: r.itinerary_id })
   }
-  const friendFoodDetails = new Map<string, { friendName: string; rating: number | null }[]>()
+  const friendFoodDetails = new Map<string, { friendName: string; rating: number | null; itineraryId: string }[]>()
   for (const r of friendFoodRows) {
     if (!friendFoodDetails.has(r.name)) friendFoodDetails.set(r.name, [])
-    friendFoodDetails.get(r.name)!.push({ friendName: r.friend_name, rating: r.rating })
+    friendFoodDetails.get(r.name)!.push({ friendName: r.friend_name, rating: r.rating, itineraryId: r.itinerary_id })
   }
 
   // community avg stars (1 decimal)
@@ -478,6 +537,14 @@ export default async function ItineraryPage({
                 &ldquo;{it.description}&rdquo;
               </p>
             )}
+            {it.bestMonths && it.bestMonths.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap mt-3">
+                <span className="text-xs text-gray-500 font-medium">🗓 Best time to go:</span>
+                {it.bestMonths.map(m => (
+                  <span key={m} className="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 font-medium">{m}</span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Highlights */}
@@ -573,76 +640,61 @@ export default async function ItineraryPage({
                         const food   = allItems.filter(i => i.type === 'food_drink')
                         const acts   = allItems.filter(i => i.type === 'activity')
                         const renderFoodItem = (item: DestItemRow) => (
-                          <div key={item.id} className="bg-orange-50 rounded-lg p-3">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <Utensils size={12} className="text-orange-500 shrink-0" />
-                              <div className="flex items-center gap-2 flex-wrap min-w-0">
-                                <span className="text-sm font-medium text-gray-900">{item.name}</span>
-                                <MealPills mealType={item.mealType} />
-                              </div>
-                            </div>
-                            {(item.priceLevel != null || item.familyFriendly) && (
-                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                {item.priceLevel != null && (
-                                  <p className="text-xs font-medium text-green-700">
-                                    {'$'.repeat(item.priceLevel)}<span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
-                                  </p>
-                                )}
-                                {item.familyFriendly && (
-                                  <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">👨‍👩‍👧 Family friendly</span>
-                                )}
+                          <div key={item.id} className="bg-orange-50 rounded-lg overflow-hidden">
+                            {item.photoUrl && (
+                              <div className="w-full h-36 relative">
+                                <Image src={item.photoUrl} alt={item.name} fill className="object-cover" />
                               </div>
                             )}
-                            {item.tags && item.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {item.tags.map(tag => (
-                                  <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">{tag}</span>
-                                ))}
+                            <div className="p-3">
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <Utensils size={12} className="text-orange-500 shrink-0" />
+                                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                  <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                                  <MealPills mealType={item.mealType} />
+                                </div>
                               </div>
-                            )}
-                            {item.description && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold text-gray-500">Description: </span>{item.description}</p>}
-                            {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
-                            {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
-                            {(() => {
-                              const key = item.name.toLowerCase()
-                              const friends = friendFoodDetails.get(key) ?? []
-                              const avg = foodAvgMap.get(key) ?? null
-                              const total = foodTotalMap.get(key) ?? 0
-                              if (friends.length === 0 && avg === null) return null
-                              return (
-                                <div className="mt-1 space-y-0.5">
-                                  {friends.map((f, i) => (
-                                    <div key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
-                                      <span>👫</span>
-                                      <span className="font-medium">{f.friendName.split(' ')[0]}</span>
-                                      {f.rating ? <span className="text-yellow-500">{'★'.repeat(f.rating)}<span className="text-gray-200">{'★'.repeat(5 - f.rating)}</span></span> : <span className="text-gray-400">also went</span>}
-                                    </div>
-                                  ))}
-                                  {avg !== null && total > 1 && (
-                                    <p className="text-xs text-gray-400">★ {avg.toFixed(1)} avg · {total} ratings</p>
+                              {(item.priceLevel != null || item.familyFriendly) && (
+                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                  {item.priceLevel != null && (
+                                    <p className="text-xs font-medium text-green-700">
+                                      {'$'.repeat(item.priceLevel)}<span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
+                                    </p>
+                                  )}
+                                  {item.familyFriendly && (
+                                    <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">👨‍👩‍👧 Family friendly</span>
                                   )}
                                 </div>
-                              )
-                            })()}
-                            {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
+                              )}
+                              {item.description && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold text-gray-500">Description: </span>{item.description}</p>}
+                              {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
+                              {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                              <FriendProof
+                                friends={friendFoodDetails.get(item.name.toLowerCase()) ?? []}
+                                avg={foodAvgMap.get(item.name.toLowerCase()) ?? null}
+                                total={foodTotalMap.get(item.name.toLowerCase()) ?? 0}
+                                verb="also went"
+                              />
+                              {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
+                            </div>
                           </div>
                         )
                         const renderActivityItem = (item: DestItemRow) => (
-                          <div key={item.id} className="bg-green-50 rounded-lg p-3">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <Camera size={12} className="text-green-600 shrink-0" />
-                              <span className="text-sm font-medium text-gray-900">{item.name}</span>
-                            </div>
-                            {item.tags && item.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {item.tags.map(tag => (
-                                  <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">{tag}</span>
-                                ))}
+                          <div key={item.id} className="bg-green-50 rounded-lg overflow-hidden">
+                            {item.photoUrl && (
+                              <div className="w-full h-36 relative">
+                                <Image src={item.photoUrl} alt={item.name} fill className="object-cover" />
                               </div>
                             )}
-                            {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
-                            {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
-                            {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
+                            <div className="p-3">
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <Camera size={12} className="text-green-600 shrink-0" />
+                                <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                              </div>
+                              {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
+                              {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                              {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
+                            </div>
                           </div>
                         )
                         return (
@@ -653,48 +705,33 @@ export default async function ItineraryPage({
                                   <Hotel size={12} className="text-blue-500" /> Where to Stay
                                 </p>
                                 {hotels.map(hotel => (
-                                  <div key={hotel.id} className="bg-blue-50 rounded-lg p-3">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="text-sm font-medium text-gray-900">{hotel.name}</span>
-                                    </div>
-                                    {(() => {
-                                      const key = hotel.name.toLowerCase()
-                                      const friends = friendHotelDetails.get(key) ?? []
-                                      const avg = hotelAvgMap.get(key) ?? null
-                                      const total = hotelTotalMap.get(key) ?? 0
-                                      if (friends.length === 0 && avg === null) return null
-                                      return (
-                                        <div className="mt-1 space-y-0.5">
-                                          {friends.map((f, i) => (
-                                            <div key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
-                                              <span>👫</span>
-                                              <span className="font-medium">{f.friendName.split(' ')[0]}</span>
-                                              {f.rating ? <span className="text-yellow-500">{'★'.repeat(f.rating)}<span className="text-gray-200">{'★'.repeat(5 - f.rating)}</span></span> : <span className="text-gray-400">stayed here</span>}
-                                            </div>
-                                          ))}
-                                          {avg !== null && total > 1 && (
-                                            <p className="text-xs text-gray-400">★ {avg.toFixed(1)} avg · {total} {total === 1 ? 'rating' : 'ratings'}</p>
-                                          )}
-                                        </div>
-                                      )
-                                    })()}
-                                    {hotel.priceLevel != null && (
-                                      <p className="text-xs font-medium text-green-700 mt-0.5">
-                                        {'$'.repeat(hotel.priceLevel)}<span className="text-gray-300">{'$'.repeat(5 - hotel.priceLevel)}</span>
-                                      </p>
-                                    )}
-                                    {hotel.tags && hotel.tags.length > 0 && (
-                                      <div className="flex flex-wrap gap-1 mt-1.5">
-                                        {hotel.tags.map(tag => (
-                                          <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">{tag}</span>
-                                        ))}
+                                  <div key={hotel.id} className="bg-blue-50 rounded-lg overflow-hidden">
+                                    {hotel.photoUrl && (
+                                      <div className="w-full h-36 relative">
+                                        <Image src={hotel.photoUrl} alt={hotel.name} fill className="object-cover" />
                                       </div>
                                     )}
-                                    {hotel.description && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold text-gray-500">Description: </span>{hotel.description}</p>}
-                                    {hotel.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{hotel.notes}</p>}
-                                    {hotel.address && <p className="text-xs text-gray-500 mt-0.5">📍 {hotel.address}</p>}
-                                    {hotel.link && <a href={hotel.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
-                                    {hotel.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Stay here instead: <span className="font-medium text-gray-500">{hotel.alternative}</span></p>}
+                                    <div className="p-3">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-sm font-medium text-gray-900">{hotel.name}</span>
+                                      </div>
+                                      <FriendProof
+                                        friends={friendHotelDetails.get(hotel.name.toLowerCase()) ?? []}
+                                        avg={hotelAvgMap.get(hotel.name.toLowerCase()) ?? null}
+                                        total={hotelTotalMap.get(hotel.name.toLowerCase()) ?? 0}
+                                        verb="stayed here"
+                                      />
+                                      {hotel.priceLevel != null && (
+                                        <p className="text-xs font-medium text-green-700 mt-0.5">
+                                          {'$'.repeat(hotel.priceLevel)}<span className="text-gray-300">{'$'.repeat(5 - hotel.priceLevel)}</span>
+                                        </p>
+                                      )}
+                                      {hotel.description && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold text-gray-500">Description: </span>{hotel.description}</p>}
+                                      {hotel.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{hotel.notes}</p>}
+                                      {hotel.address && <p className="text-xs text-gray-500 mt-0.5">📍 {hotel.address}</p>}
+                                      {hotel.link && <a href={hotel.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                                      {hotel.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Stay here instead: <span className="font-medium text-gray-500">{hotel.alternative}</span></p>}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
@@ -721,54 +758,39 @@ export default async function ItineraryPage({
                         // Itinerary: day-based layout (unchanged)
                         let dayCounter = 0
                         const hotelCard = (hotel: (typeof groups)[0]['hotel']) => hotel && (
-                          <div className="bg-blue-50 rounded-lg p-3">
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <Hotel size={14} className="text-blue-600" />
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Lodging</p>
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-medium text-gray-900">{hotel.name}</span>
-                              <Stars rating={hotel.rating ?? null} />
-                            </div>
-                            {(() => {
-                              const key = hotel.name.toLowerCase()
-                              const friends = friendHotelDetails.get(key) ?? []
-                              const avg = hotelAvgMap.get(key) ?? null
-                              const total = hotelTotalMap.get(key) ?? 0
-                              if (friends.length === 0 && avg === null) return null
-                              return (
-                                <div className="mt-1 space-y-0.5">
-                                  {friends.map((f, i) => (
-                                    <div key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
-                                      <span>👫</span>
-                                      <span className="font-medium">{f.friendName.split(' ')[0]}</span>
-                                      {f.rating ? <span className="text-yellow-500">{'★'.repeat(f.rating)}<span className="text-gray-200">{'★'.repeat(5 - f.rating)}</span></span> : <span className="text-gray-400">stayed here</span>}
-                                    </div>
-                                  ))}
-                                  {avg !== null && total > 1 && (
-                                    <p className="text-xs text-gray-400">★ {avg.toFixed(1)} avg · {total} {total === 1 ? 'rating' : 'ratings'}</p>
-                                  )}
-                                </div>
-                              )
-                            })()}
-                            {hotel.priceLevel != null && (
-                              <p className="text-xs font-medium text-green-700 mt-0.5">
-                                {'$'.repeat(hotel.priceLevel)}
-                                <span className="text-gray-300">{'$'.repeat(5 - hotel.priceLevel)}</span>
-                              </p>
-                            )}
-                            {hotel.tags && hotel.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1.5">
-                                {hotel.tags.map(tag => (
-                                  <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">{tag}</span>
-                                ))}
+                          <div className="bg-blue-50 rounded-lg overflow-hidden">
+                            {hotel.photoUrl && (
+                              <div className="w-full h-36 relative">
+                                <Image src={hotel.photoUrl} alt={hotel.name} fill className="object-cover" />
                               </div>
                             )}
-                            {hotel.description && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold text-gray-500">Description: </span>{hotel.description}</p>}
-                            {hotel.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{hotel.notes}</p>}
-                            {hotel.address && <p className="text-xs text-gray-500 mt-0.5">📍 {hotel.address}</p>}
-                            {hotel.link && <a href={hotel.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
-                            {hotel.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Stay here instead: <span className="font-medium text-gray-500">{hotel.alternative}</span></p>}
+                            <div className="p-3">
+                              <div className="flex items-center gap-1.5 mb-1.5">
+                                <Hotel size={14} className="text-blue-600" />
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Lodging</p>
+                              </div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-medium text-gray-900">{hotel.name}</span>
+                                <Stars rating={hotel.rating ?? null} />
+                              </div>
+                              <FriendProof
+                                friends={friendHotelDetails.get(hotel.name.toLowerCase()) ?? []}
+                                avg={hotelAvgMap.get(hotel.name.toLowerCase()) ?? null}
+                                total={hotelTotalMap.get(hotel.name.toLowerCase()) ?? 0}
+                                verb="stayed here"
+                              />
+                              {hotel.priceLevel != null && (
+                                <p className="text-xs font-medium text-green-700 mt-0.5">
+                                  {'$'.repeat(hotel.priceLevel)}
+                                  <span className="text-gray-300">{'$'.repeat(5 - hotel.priceLevel)}</span>
+                                </p>
+                              )}
+                              {hotel.description && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold text-gray-500">Description: </span>{hotel.description}</p>}
+                              {hotel.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{hotel.notes}</p>}
+                              {hotel.address && <p className="text-xs text-gray-500 mt-0.5">📍 {hotel.address}</p>}
+                              {hotel.link && <a href={hotel.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                              {hotel.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Stay here instead: <span className="font-medium text-gray-500">{hotel.alternative}</span></p>}
+                            </div>
                           </div>
                         )
                         return groups.map((group, gi) => (
@@ -785,72 +807,56 @@ export default async function ItineraryPage({
                                       </div>
                                       {di === 0 && group.hotel && hotelCard(group.hotel)}
                                     {day.items.map(item => item.type === 'food_drink' ? (
-                                    <div key={item.id} className="bg-orange-50 rounded-lg p-3">
-                                      <div className="flex items-center gap-1.5 mb-1">
-                                        <Utensils size={12} className="text-orange-500 shrink-0" />
-                                        <div className="flex items-center gap-2 flex-wrap min-w-0">
-                                          <span className="text-sm font-medium text-gray-900">{item.name}</span>
-                                          <MealPills mealType={item.mealType} />
-                                          <Stars rating={item.rating ?? null} />
+                                    <div key={item.id} className="bg-orange-50 rounded-lg overflow-hidden">
+                                      {item.photoUrl && <div className="w-full h-32 relative"><Image src={item.photoUrl} alt={item.name} fill className="object-cover" /></div>}
+                                      <div className="p-3">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                          <Utensils size={12} className="text-orange-500 shrink-0" />
+                                          <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                            <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                                            <MealPills mealType={item.mealType} />
+                                            <Stars rating={item.rating ?? null} />
+                                          </div>
                                         </div>
+                                        {(item.priceLevel != null || item.familyFriendly) && (
+                                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                            {item.priceLevel != null && (
+                                              <p className="text-xs font-medium text-green-700">
+                                                {'$'.repeat(item.priceLevel)}<span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
+                                              </p>
+                                            )}
+                                            {item.familyFriendly && (
+                                              <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">👨‍👩‍👧 Family friendly</span>
+                                            )}
+                                          </div>
+                                        )}
+                                        {item.description && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold text-gray-500">Description: </span>{item.description}</p>}
+                                        {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
+                                        {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                                        <FriendProof
+                                          friends={friendFoodDetails.get(item.name.toLowerCase()) ?? []}
+                                          avg={foodAvgMap.get(item.name.toLowerCase()) ?? null}
+                                          total={foodTotalMap.get(item.name.toLowerCase()) ?? 0}
+                                          verb="also went"
+                                        />
+                                        {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                                       </div>
-                                      {(item.priceLevel != null || item.familyFriendly) && (
-                                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                          {item.priceLevel != null && (
-                                            <p className="text-xs font-medium text-green-700">
-                                              {'$'.repeat(item.priceLevel)}<span className="text-gray-300">{'$'.repeat(4 - item.priceLevel)}</span>
-                                            </p>
-                                          )}
-                                          {item.familyFriendly && (
-                                            <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">👨‍👩‍👧 Family friendly</span>
-                                          )}
-                                        </div>
-                                      )}
-                                      {item.tags && item.tags.length > 0 && (
-                                        <div className="flex flex-wrap gap-1 mt-1">
-                                          {item.tags.map(tag => (
-                                            <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">{tag}</span>
-                                          ))}
-                                        </div>
-                                      )}
-                                      {item.description && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold text-gray-500">Description: </span>{item.description}</p>}
-                                      {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
-                                      {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
-                                      {(() => {
-                              const key = item.name.toLowerCase()
-                              const friends = friendFoodDetails.get(key) ?? []
-                              const avg = foodAvgMap.get(key) ?? null
-                              const total = foodTotalMap.get(key) ?? 0
-                              if (friends.length === 0 && avg === null) return null
-                              return (
-                                <div className="mt-1 space-y-0.5">
-                                  {friends.map((f, i) => (
-                                    <div key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
-                                      <span>👫</span>
-                                      <span className="font-medium">{f.friendName.split(' ')[0]}</span>
-                                      {f.rating ? <span className="text-yellow-500">{'★'.repeat(f.rating)}<span className="text-gray-200">{'★'.repeat(5 - f.rating)}</span></span> : <span className="text-gray-400">also went</span>}
-                                    </div>
-                                  ))}
-                                  {avg !== null && total > 1 && (
-                                    <p className="text-xs text-gray-400">★ {avg.toFixed(1)} avg · {total} ratings</p>
-                                  )}
-                                </div>
-                              )
-                            })()}
-                                      {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                                     </div>
                                   ) : (
-                                    <div key={item.id} className="bg-green-50 rounded-lg p-3">
-                                      <div className="flex items-center gap-1.5 mb-1">
-                                        <Camera size={12} className="text-green-600 shrink-0" />
-                                        <div className="flex items-center gap-2 flex-wrap min-w-0">
-                                          <span className="text-sm font-medium text-gray-900">{item.name}</span>
-                                          <Stars rating={item.rating ?? null} />
+                                    <div key={item.id} className="bg-green-50 rounded-lg overflow-hidden">
+                                      {item.photoUrl && <div className="w-full h-32 relative"><Image src={item.photoUrl} alt={item.name} fill className="object-cover" /></div>}
+                                      <div className="p-3">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                          <Camera size={12} className="text-green-600 shrink-0" />
+                                          <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                            <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                                            <Stars rating={item.rating ?? null} />
+                                          </div>
                                         </div>
+                                        {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
+                                        {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                                        {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                                       </div>
-                                      {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
-                                      {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
-                                      {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                                     </div>
                                   ))}
                                 </div>
@@ -866,52 +872,43 @@ export default async function ItineraryPage({
                                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2 mb-1">Day {di + 1}</p>
                                     )}
                                     {day.items.map(item => item.type === 'food_drink' ? (
-                                      <div key={item.id} className="bg-orange-50 rounded-lg p-3">
-                                        <div className="flex items-center gap-1.5 mb-1">
-                                          <Utensils size={12} className="text-orange-500 shrink-0" />
-                                          <div className="flex items-center gap-2 flex-wrap min-w-0">
-                                            <span className="text-sm font-medium text-gray-900">{item.name}</span>
-                                            <MealPills mealType={item.mealType} />
-                                            <Stars rating={item.rating ?? null} />
+                                      <div key={item.id} className="bg-orange-50 rounded-lg overflow-hidden">
+                                        {item.photoUrl && <div className="w-full h-32 relative"><Image src={item.photoUrl} alt={item.name} fill className="object-cover" /></div>}
+                                        <div className="p-3">
+                                          <div className="flex items-center gap-1.5 mb-1">
+                                            <Utensils size={12} className="text-orange-500 shrink-0" />
+                                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                              <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                                              <MealPills mealType={item.mealType} />
+                                              <Stars rating={item.rating ?? null} />
+                                            </div>
                                           </div>
+                                          {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
+                                          {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                                          <FriendProof
+                                            friends={friendFoodDetails.get(item.name.toLowerCase()) ?? []}
+                                            avg={foodAvgMap.get(item.name.toLowerCase()) ?? null}
+                                            total={foodTotalMap.get(item.name.toLowerCase()) ?? 0}
+                                            verb="also went"
+                                          />
+                                          {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                                         </div>
-                                        {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
-                                        {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
-                                        {(() => {
-                              const key = item.name.toLowerCase()
-                              const friends = friendFoodDetails.get(key) ?? []
-                              const avg = foodAvgMap.get(key) ?? null
-                              const total = foodTotalMap.get(key) ?? 0
-                              if (friends.length === 0 && avg === null) return null
-                              return (
-                                <div className="mt-1 space-y-0.5">
-                                  {friends.map((f, i) => (
-                                    <div key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
-                                      <span>👫</span>
-                                      <span className="font-medium">{f.friendName.split(' ')[0]}</span>
-                                      {f.rating ? <span className="text-yellow-500">{'★'.repeat(f.rating)}<span className="text-gray-200">{'★'.repeat(5 - f.rating)}</span></span> : <span className="text-gray-400">also went</span>}
-                                    </div>
-                                  ))}
-                                  {avg !== null && total > 1 && (
-                                    <p className="text-xs text-gray-400">★ {avg.toFixed(1)} avg · {total} ratings</p>
-                                  )}
-                                </div>
-                              )
-                            })()}
-                                        {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                                       </div>
                                     ) : (
-                                      <div key={item.id} className="bg-green-50 rounded-lg p-3">
-                                        <div className="flex items-center gap-1.5 mb-1">
-                                          <Camera size={12} className="text-green-600 shrink-0" />
-                                          <div className="flex items-center gap-2 flex-wrap min-w-0">
-                                            <span className="text-sm font-medium text-gray-900">{item.name}</span>
-                                            <Stars rating={item.rating ?? null} />
+                                      <div key={item.id} className="bg-green-50 rounded-lg overflow-hidden">
+                                        {item.photoUrl && <div className="w-full h-32 relative"><Image src={item.photoUrl} alt={item.name} fill className="object-cover" /></div>}
+                                        <div className="p-3">
+                                          <div className="flex items-center gap-1.5 mb-1">
+                                            <Camera size={12} className="text-green-600 shrink-0" />
+                                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                              <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                                              <Stars rating={item.rating ?? null} />
+                                            </div>
                                           </div>
+                                          {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
+                                          {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
+                                          {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                                         </div>
-                                        {item.notes && <p className="text-xs text-gray-500 italic mt-0.5"><span className="font-semibold not-italic">User notes: </span>{item.notes}</p>}
-                                        {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 inline-block">🔗 Official site</a>}
-                                        {item.alternative && <p className="text-xs text-gray-400 mt-0.5">↔ Alternative: <span className="font-medium text-gray-500">{item.alternative}</span></p>}
                                       </div>
                                     ))}
                                   </div>

@@ -42,6 +42,7 @@ type GuidedItem = {
   dayIndex: number
   isHighlight: boolean
   alternative: string
+  photo: string
 }
 
 type GuidedDest = {
@@ -73,6 +74,7 @@ type SavedState = {
   budget: number
   tripRating: number | null
   notes: string
+  bestMonths: string[]
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -122,7 +124,7 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 function ItemEditForm({ type, initial, onSave, onClose, city }: {
   type: ItemType
   initial: GuidedItem
-  onSave: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative'>) => void
+  onSave: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative' | 'photo'>) => void
   onClose: () => void
   city?: string
 }) {
@@ -132,7 +134,24 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
   const [notes, setNotes] = useState(initial.notes)
   const [alternative, setAlternative] = useState(initial.alternative || '')
   const [tags, setTags] = useState<string[]>(initial.tags)
+  const [photo, setPhoto] = useState(initial.photo || '')
+  const [photoUploading, setPhotoUploading] = useState(false)
   const [showMore, setShowMore] = useState(initial.tags.length > 0)
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setPhotoUploading(true)
+    try {
+      const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : ''
+      const uniqueName = `item-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
+      const blob = await upload(uniqueName, file, { access: 'private', handleUploadUrl: '/api/upload' })
+      setPhoto(`/api/img?url=${encodeURIComponent(blob.url)}`)
+    } catch { /* ignore */ } finally {
+      setPhotoUploading(false)
+    }
+  }
 
   const cfg = {
     hotel:     { color: 'bg-blue-50 border-blue-200',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
@@ -146,7 +165,7 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
 
   function submit() {
     if (!name.trim()) return
-    onSave({ name: name.trim(), mealType, rating, notes: notes.trim(), tags, alternative: alternative.trim() })
+    onSave({ name: name.trim(), mealType, rating, notes: notes.trim(), tags, alternative: alternative.trim(), photo })
   }
 
   return (
@@ -202,6 +221,24 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
           </div>
         </div>
       )}
+      {/* Photo upload */}
+      <div>
+        {photo ? (
+          <div className="relative w-full h-32 rounded-xl overflow-hidden">
+            <img src={photo} alt="item photo" className="w-full h-full object-cover" />
+            <button type="button" onClick={() => setPhoto('')}
+              className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs leading-none hover:bg-black/80">
+              ×
+            </button>
+          </div>
+        ) : (
+          <label className={`flex items-center gap-2 text-xs font-medium cursor-pointer w-fit px-3 py-1.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-gray-500 hover:text-gray-600 transition-colors ${photoUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+            <ImageIcon size={13} />
+            {photoUploading ? 'Uploading…' : 'Add photo'}
+            <input type="file" accept="image/*" className="sr-only" onChange={handlePhotoChange} disabled={photoUploading} />
+          </label>
+        )}
+      </div>
       <div className="flex gap-2">
         <button type="button" onClick={onClose}
           className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-gray-500 text-sm font-medium hover:border-gray-300 transition-colors">
@@ -222,7 +259,7 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, city }: {
   item: GuidedItem
   isEditing: boolean
   onEdit: () => void
-  onUpdate: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative'>) => void
+  onUpdate: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative' | 'photo'>) => void
   onRemove: () => void
   city?: string
 }) {
@@ -247,7 +284,9 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, city }: {
         <GripVertical size={14} />
       </button>
       <button type="button" onClick={onEdit} className="flex items-center gap-2 min-w-0 flex-1 text-left hover:opacity-75 transition-opacity">
-        {icon}
+        {item.photo
+          ? <img src={item.photo} alt="" className="w-8 h-8 rounded-md object-cover shrink-0" />
+          : icon}
         <div className="min-w-0">
           <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
           <div className="flex items-center gap-2 flex-wrap">
@@ -276,7 +315,24 @@ function ItemForm({ type, onAdd, onClose, city }: {
   const [rating, setRating] = useState(0)
   const [notes, setNotes] = useState('')
   const [tags, setTags] = useState<string[]>([])
+  const [photo, setPhoto] = useState('')
+  const [photoUploading, setPhotoUploading] = useState(false)
   const [showMore, setShowMore] = useState(false)
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setPhotoUploading(true)
+    try {
+      const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : ''
+      const uniqueName = `item-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
+      const blob = await upload(uniqueName, file, { access: 'private', handleUploadUrl: '/api/upload' })
+      setPhoto(`/api/img?url=${encodeURIComponent(blob.url)}`)
+    } catch { /* ignore */ } finally {
+      setPhotoUploading(false)
+    }
+  }
 
   const cfg = {
     hotel:     { color: 'bg-blue-50 border-blue-200',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
@@ -290,8 +346,8 @@ function ItemForm({ type, onAdd, onClose, city }: {
 
   function submit() {
     if (!name.trim()) return
-    onAdd({ type, name: name.trim(), mealType, rating, notes: notes.trim(), tags })
-    setName(''); setMealType(''); setRating(0); setNotes(''); setTags([]); setShowMore(false)
+    onAdd({ type, name: name.trim(), mealType, rating, notes: notes.trim(), tags, photo })
+    setName(''); setMealType(''); setRating(0); setNotes(''); setTags([]); setPhoto(''); setShowMore(false)
   }
 
   return (
@@ -352,6 +408,25 @@ function ItemForm({ type, onAdd, onClose, city }: {
           </div>
         </div>
       )}
+
+      {/* Photo upload */}
+      <div>
+        {photo ? (
+          <div className="relative w-full h-32 rounded-xl overflow-hidden">
+            <img src={photo} alt="item photo" className="w-full h-full object-cover" />
+            <button type="button" onClick={() => setPhoto('')}
+              className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs leading-none hover:bg-black/80">
+              ×
+            </button>
+          </div>
+        ) : (
+          <label className={`flex items-center gap-2 text-xs font-medium cursor-pointer w-fit px-3 py-1.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-gray-500 hover:text-gray-600 transition-colors ${photoUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+            <ImageIcon size={13} />
+            {photoUploading ? 'Uploading…' : 'Add photo'}
+            <input type="file" accept="image/*" className="sr-only" onChange={handlePhotoChange} disabled={photoUploading} />
+          </label>
+        )}
+      </div>
 
       <button type="button" onClick={submit} disabled={!name.trim()}
         className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
@@ -423,9 +498,10 @@ export default function GuidedCreatePage() {
     } catch { return {} }
   })
 
-  const [dests, setDests] = useState<GuidedDest[]>(restored.dests ?? [])
+  const normaliseItem = (i: GuidedItem) => ({ ...i, photo: i.photo ?? '' })
+  const [dests, setDests] = useState<GuidedDest[]>((restored.dests ?? []).map(d => ({ ...d, items: d.items.map(normaliseItem) })))
   const [curDest, setCurDest] = useState(restored.curDest ?? { name: '', country: '' })
-  const [curItems, setCurItems] = useState<GuidedItem[]>(restored.curItems ?? [])
+  const [curItems, setCurItems] = useState<GuidedItem[]>((restored.curItems ?? []).map(normaliseItem))
   const [curDayIndex, setCurDayIndex] = useState(restored.curDayIndex ?? 1)
   const [curNotes, setCurNotes] = useState(restored.curNotes ?? '')
   const [photos, setPhotos] = useState<UploadedPhoto[]>(restored.photos ?? [])
@@ -445,6 +521,7 @@ export default function GuidedCreatePage() {
   const [budget, setBudget] = useState(restored.budget ?? 0)
   const [tripRating, setTripRating] = useState<number | null>(restored.tripRating ?? null)
   const [notes, setNotes] = useState(restored.notes ?? '')
+  const [bestMonths, setBestMonths] = useState<string[]>(restored.bestMonths ?? [])
 
   // Show a "continue or start fresh" prompt if there's meaningful saved progress
   const [showResume, setShowResume] = useState<boolean>(() =>
@@ -457,10 +534,10 @@ export default function GuidedCreatePage() {
   // Save progress to sessionStorage on every relevant state change
   useEffect(() => {
     try {
-      const toSave: SavedState = { dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating, notes }
+      const toSave: SavedState = { dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating, notes, bestMonths }
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(toSave))
     } catch { /* quota exceeded or SSR */ }
-  }, [dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating])
+  }, [dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating, bestMonths])
 
   function startOver() {
     try { sessionStorage.removeItem(SESSION_KEY) } catch {}
@@ -500,11 +577,11 @@ export default function GuidedCreatePage() {
   }
 
   function addItem(item: Omit<GuidedItem, 'id' | 'dayIndex' | 'isHighlight' | 'alternative'>) {
-    setCurItems(i => [...i, { ...item, id: uid(), dayIndex: curDayIndex, isHighlight: false, alternative: '' }])
+    setCurItems(i => [...i, { ...item, id: uid(), dayIndex: curDayIndex, isHighlight: false, alternative: '', photo: item.photo ?? '' }])
     setActiveInput(null)
   }
 
-  function updateItem(itemId: string, updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative'>) {
+  function updateItem(itemId: string, updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative' | 'photo'>) {
     setCurItems(items => items.map(i => i.id === itemId ? { ...i, ...updated } : i))
     setEditingItemId(null)
   }
@@ -627,11 +704,11 @@ export default function GuidedCreatePage() {
               food: dayItems
                 .map((item, pos) => ({ item, pos }))
                 .filter(({ item }) => item.type === 'food_drink')
-                .map(({ item: i, pos }) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos, tags: [...(i.tags ?? []), ...(i.isHighlight ? ['__highlight'] : [])], alternative: i.alternative || '' })),
+                .map(({ item: i, pos }) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos, tags: [...(i.tags ?? []), ...(i.isHighlight ? ['__highlight'] : [])], alternative: i.alternative || '', photo: i.photo || '' })),
               activities: dayItems
                 .map((item, pos) => ({ item, pos }))
                 .filter(({ item }) => item.type === 'activity')
-                .map(({ item: i, pos }) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos, tags: [...(i.tags ?? []), ...(i.isHighlight ? ['__highlight'] : [])], alternative: i.alternative || '' })),
+                .map(({ item: i, pos }) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos, tags: [...(i.tags ?? []), ...(i.isHighlight ? ['__highlight'] : [])], alternative: i.alternative || '', photo: i.photo || '' })),
             }))
           : [{ food: [], activities: [] }]
       }
@@ -666,6 +743,7 @@ export default function GuidedCreatePage() {
           hotelLink: '',
           hotelRating: hotel.rating,
           hotelAlternative: hotel.alternative || '',
+          hotelPhoto: hotel.photo || '',
           days: buildDayGroups(itemsByHotel[idx]),
         })),
       }
@@ -702,6 +780,7 @@ export default function GuidedCreatePage() {
         {budget > 0 && <input type="hidden" name="budget" value={budget} />}
         {tripRating && <input type="hidden" name="tripRating" value={tripRating} />}
         <input type="hidden" name="notes" value={notes} />
+        <input type="hidden" name="bestMonths" value={JSON.stringify(bestMonths)} />
       </form>
 
       <div className="space-y-4">
@@ -1156,6 +1235,21 @@ export default function GuidedCreatePage() {
                   </div>
                 </div>
               )}
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-2">When to go <span className="text-gray-400 font-normal">(optional)</span></p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map(m => {
+                    const on = bestMonths.includes(m)
+                    return (
+                      <button key={m} type="button"
+                        onClick={() => setBestMonths(on ? bestMonths.filter(x => x !== m) : [...bestMonths, m])}
+                        className={`text-xs py-1.5 rounded-lg border font-medium transition-colors ${on ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+                        {m}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
               <div>
                 <p className="text-xs font-medium text-gray-500 mb-2">Trip type</p>
                 <div className="flex flex-wrap gap-2">

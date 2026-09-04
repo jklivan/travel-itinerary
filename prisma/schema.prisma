@@ -45,6 +45,7 @@ model Itinerary {
   notes        String?
   highlights   String?
   tags         String[] @default([])
+  bestMonths   String[] @default([])
   budget       Int?
   tripRating   Int?
   userId       String
@@ -100,6 +101,7 @@ model DestItem {
   order         Int         @default(0)
   tags          String[]    @default([])
   alternative   String?
+  photoUrl      String?
   lat           Float?
   lng           Float?
   destinationId String
