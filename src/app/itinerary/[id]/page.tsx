@@ -229,6 +229,20 @@ export default async function ItineraryPage({
     d.items.filter(i => i.type === 'food_drink' && i.name).map(i => i.name.toLowerCase())
   )
 
+  // placeId → canonical name (from this itinerary) for placeId-based matching
+  const hotelPlaceIdToName = new Map<string, string>()
+  const foodPlaceIdToName = new Map<string, string>()
+  for (const d of it.destinations) {
+    for (const item of d.items) {
+      if (item.placeId) {
+        if (item.type === 'hotel') hotelPlaceIdToName.set(item.placeId, item.name.toLowerCase())
+        if (item.type === 'food_drink') foodPlaceIdToName.set(item.placeId, item.name.toLowerCase())
+      }
+    }
+  }
+  const hotelPlaceIds = [...hotelPlaceIdToName.keys()]
+  const foodPlaceIds = [...foodPlaceIdToName.keys()]
+
   const friendIds: string[] = session?.user?.id
     ? (await prisma.follow.findMany({
         where: { followerId: session.user.id, status: 'accepted' },
@@ -238,7 +252,7 @@ export default async function ItineraryPage({
 
   type SocialRow = { name: string; count: bigint }
   type FriendNameRow = { name: string; friend_name: string }
-  type FriendDetailRow = { name: string; friend_name: string; rating: number | null; itinerary_id: string }
+  type FriendDetailRow = { name: string; friend_name: string; rating: number | null; itinerary_id: string; place_id: string | null }
   type AvgRow = { name: string; total: bigint; avg_rating: number | null }
   type BucketerRow = { friend_name: string }
 
@@ -270,34 +284,44 @@ export default async function ItineraryPage({
         `)
       : Promise.resolve([] as SocialRow[]),
     // Which friends stayed at the same hotels + their ratings (exclude current itinerary, one row per friend per place)
-    friendIds.length > 0 && hotelNamesLower.length > 0
+    // Matches by name (case-insensitive) OR by placeId for cross-spelling detection
+    friendIds.length > 0 && (hotelNamesLower.length > 0 || hotelPlaceIds.length > 0)
       ? prisma.$queryRaw<FriendDetailRow[]>(Prisma.sql`
-          SELECT DISTINCT ON (LOWER(di.name), i."userId") LOWER(di.name) AS name, u.name AS friend_name, di.rating, i.id AS itinerary_id
+          SELECT DISTINCT ON (LOWER(di.name), i."userId") LOWER(di.name) AS name, u.name AS friend_name, di.rating, i.id AS itinerary_id, di."placeId" AS place_id
           FROM "DestItem" di
           JOIN "Destination" d ON d.id = di."destinationId"
           JOIN "Itinerary" i ON i.id = d."itineraryId"
           JOIN "User" u ON u.id = i."userId"
           WHERE i."userId" IN (${Prisma.join(friendIds)})
             AND di.type = 'hotel'
-            AND LOWER(di.name) IN (${Prisma.join(hotelNamesLower)})
             AND i.visibility != 'draft'
             AND i.id != ${id}
+            AND (
+              ${hotelNamesLower.length > 0 ? Prisma.sql`LOWER(di.name) IN (${Prisma.join(hotelNamesLower)})` : Prisma.sql`FALSE`}
+              OR
+              ${hotelPlaceIds.length > 0 ? Prisma.sql`(di."placeId" IS NOT NULL AND di."placeId" IN (${Prisma.join(hotelPlaceIds)}))` : Prisma.sql`FALSE`}
+            )
           ORDER BY LOWER(di.name), i."userId", di.rating DESC NULLS LAST
         `)
       : Promise.resolve([] as FriendDetailRow[]),
     // Which friends ate at the same restaurants + their ratings (exclude current itinerary, one row per friend per place)
-    friendIds.length > 0 && foodNamesLower.length > 0
+    // Matches by name (case-insensitive) OR by placeId for cross-spelling detection
+    friendIds.length > 0 && (foodNamesLower.length > 0 || foodPlaceIds.length > 0)
       ? prisma.$queryRaw<FriendDetailRow[]>(Prisma.sql`
-          SELECT DISTINCT ON (LOWER(di.name), i."userId") LOWER(di.name) AS name, u.name AS friend_name, di.rating, i.id AS itinerary_id
+          SELECT DISTINCT ON (LOWER(di.name), i."userId") LOWER(di.name) AS name, u.name AS friend_name, di.rating, i.id AS itinerary_id, di."placeId" AS place_id
           FROM "DestItem" di
           JOIN "Destination" d ON d.id = di."destinationId"
           JOIN "Itinerary" i ON i.id = d."itineraryId"
           JOIN "User" u ON u.id = i."userId"
           WHERE i."userId" IN (${Prisma.join(friendIds)})
             AND di.type = 'food_drink'
-            AND LOWER(di.name) IN (${Prisma.join(foodNamesLower)})
             AND i.visibility != 'draft'
             AND i.id != ${id}
+            AND (
+              ${foodNamesLower.length > 0 ? Prisma.sql`LOWER(di.name) IN (${Prisma.join(foodNamesLower)})` : Prisma.sql`FALSE`}
+              OR
+              ${foodPlaceIds.length > 0 ? Prisma.sql`(di."placeId" IS NOT NULL AND di."placeId" IN (${Prisma.join(foodPlaceIds)}))` : Prisma.sql`FALSE`}
+            )
           ORDER BY LOWER(di.name), i."userId", di.rating DESC NULLS LAST
         `)
       : Promise.resolve([] as FriendDetailRow[]),
@@ -346,15 +370,18 @@ export default async function ItineraryPage({
   const savedDestMap = new Map(savedDestRows.map(r => [r.name, Number(r.count)]))
 
   // hotel/food name → [{friendName, rating, itineraryId}]
+  // When matched by placeId, use the current itinerary's canonical name as key so render lookup works correctly
   const friendHotelDetails = new Map<string, { friendName: string; rating: number | null; itineraryId: string }[]>()
   for (const r of friendHotelRows) {
-    if (!friendHotelDetails.has(r.name)) friendHotelDetails.set(r.name, [])
-    friendHotelDetails.get(r.name)!.push({ friendName: r.friend_name, rating: r.rating, itineraryId: r.itinerary_id })
+    const key = (r.place_id && hotelPlaceIdToName.has(r.place_id)) ? hotelPlaceIdToName.get(r.place_id)! : r.name
+    if (!friendHotelDetails.has(key)) friendHotelDetails.set(key, [])
+    friendHotelDetails.get(key)!.push({ friendName: r.friend_name, rating: r.rating, itineraryId: r.itinerary_id })
   }
   const friendFoodDetails = new Map<string, { friendName: string; rating: number | null; itineraryId: string }[]>()
   for (const r of friendFoodRows) {
-    if (!friendFoodDetails.has(r.name)) friendFoodDetails.set(r.name, [])
-    friendFoodDetails.get(r.name)!.push({ friendName: r.friend_name, rating: r.rating, itineraryId: r.itinerary_id })
+    const key = (r.place_id && foodPlaceIdToName.has(r.place_id)) ? foodPlaceIdToName.get(r.place_id)! : r.name
+    if (!friendFoodDetails.has(key)) friendFoodDetails.set(key, [])
+    friendFoodDetails.get(key)!.push({ friendName: r.friend_name, rating: r.rating, itineraryId: r.itinerary_id })
   }
 
   // community avg stars (1 decimal)

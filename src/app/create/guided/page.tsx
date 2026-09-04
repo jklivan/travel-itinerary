@@ -43,6 +43,7 @@ type GuidedItem = {
   isHighlight: boolean
   alternative: string
   photo: string
+  placeId: string
 }
 
 type GuidedDest = {
@@ -124,7 +125,7 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 function ItemEditForm({ type, initial, onSave, onClose, city }: {
   type: ItemType
   initial: GuidedItem
-  onSave: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative' | 'photo'>) => void
+  onSave: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative' | 'photo' | 'placeId'>) => void
   onClose: () => void
   city?: string
 }) {
@@ -135,6 +136,7 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
   const [alternative, setAlternative] = useState(initial.alternative || '')
   const [tags, setTags] = useState<string[]>(initial.tags)
   const [photo, setPhoto] = useState(initial.photo || '')
+  const [placeId, setPlaceId] = useState(initial.placeId || '')
   const [photoUploading, setPhotoUploading] = useState(false)
   const [showMore, setShowMore] = useState(initial.tags.length > 0)
 
@@ -165,7 +167,7 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
 
   function submit() {
     if (!name.trim()) return
-    onSave({ name: name.trim(), mealType, rating, notes: notes.trim(), tags, alternative: alternative.trim(), photo })
+    onSave({ name: name.trim(), mealType, rating, notes: notes.trim(), tags, alternative: alternative.trim(), photo, placeId })
   }
 
   return (
@@ -174,8 +176,9 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
         <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Edit {cfg.label}</p>
         <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
       </div>
-      <PlacesAutocomplete value={name} onChange={setName} type={cfg.placeType}
-        placeholder={cfg.placeholder} className={inputCls} city={city} />
+      <PlacesAutocomplete value={name} onChange={v => { setName(v); setPlaceId('') }}
+        onSelect={(_m, _s, pid) => setPlaceId(pid ?? '')}
+        type={cfg.placeType} placeholder={cfg.placeholder} className={inputCls} city={city} />
       {type === 'food_drink' && (
         <div className="flex flex-wrap gap-1.5">
           {MEAL_TYPES.map(mt => {
@@ -259,7 +262,7 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, city }: {
   item: GuidedItem
   isEditing: boolean
   onEdit: () => void
-  onUpdate: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative' | 'photo'>) => void
+  onUpdate: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative' | 'photo' | 'placeId'>) => void
   onRemove: () => void
   city?: string
 }) {
@@ -316,6 +319,7 @@ function ItemForm({ type, onAdd, onClose, city }: {
   const [notes, setNotes] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [photo, setPhoto] = useState('')
+  const [placeId, setPlaceId] = useState('')
   const [photoUploading, setPhotoUploading] = useState(false)
   const [showMore, setShowMore] = useState(false)
 
@@ -346,8 +350,8 @@ function ItemForm({ type, onAdd, onClose, city }: {
 
   function submit() {
     if (!name.trim()) return
-    onAdd({ type, name: name.trim(), mealType, rating, notes: notes.trim(), tags, photo })
-    setName(''); setMealType(''); setRating(0); setNotes(''); setTags([]); setPhoto(''); setShowMore(false)
+    onAdd({ type, name: name.trim(), mealType, rating, notes: notes.trim(), tags, photo, placeId })
+    setName(''); setMealType(''); setRating(0); setNotes(''); setTags([]); setPhoto(''); setPlaceId(''); setShowMore(false)
   }
 
   return (
@@ -358,8 +362,9 @@ function ItemForm({ type, onAdd, onClose, city }: {
           <X size={16} />
         </button>
       </div>
-      <PlacesAutocomplete value={name} onChange={setName} type={cfg.placeType}
-        placeholder={cfg.placeholder} className={inputCls} city={city} />
+      <PlacesAutocomplete value={name} onChange={v => { setName(v); setPlaceId('') }}
+        onSelect={(_m, _s, pid) => setPlaceId(pid ?? '')}
+        type={cfg.placeType} placeholder={cfg.placeholder} className={inputCls} city={city} />
       {type === 'food_drink' && (
         <div className="flex flex-wrap gap-1.5">
           {MEAL_TYPES.map(mt => {
@@ -498,7 +503,7 @@ export default function GuidedCreatePage() {
     } catch { return {} }
   })
 
-  const normaliseItem = (i: GuidedItem) => ({ ...i, photo: i.photo ?? '' })
+  const normaliseItem = (i: GuidedItem) => ({ ...i, photo: i.photo ?? '', placeId: i.placeId ?? '' })
   const [dests, setDests] = useState<GuidedDest[]>((restored.dests ?? []).map(d => ({ ...d, items: d.items.map(normaliseItem) })))
   const [curDest, setCurDest] = useState(restored.curDest ?? { name: '', country: '' })
   const [curItems, setCurItems] = useState<GuidedItem[]>((restored.curItems ?? []).map(normaliseItem))
@@ -581,7 +586,7 @@ export default function GuidedCreatePage() {
     setActiveInput(null)
   }
 
-  function updateItem(itemId: string, updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative' | 'photo'>) {
+  function updateItem(itemId: string, updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative' | 'photo' | 'placeId'>) {
     setCurItems(items => items.map(i => i.id === itemId ? { ...i, ...updated } : i))
     setEditingItemId(null)
   }
@@ -704,11 +709,11 @@ export default function GuidedCreatePage() {
               food: dayItems
                 .map((item, pos) => ({ item, pos }))
                 .filter(({ item }) => item.type === 'food_drink')
-                .map(({ item: i, pos }) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos, tags: [...(i.tags ?? []), ...(i.isHighlight ? ['__highlight'] : [])], alternative: i.alternative || '', photo: i.photo || '' })),
+                .map(({ item: i, pos }) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos, tags: [...(i.tags ?? []), ...(i.isHighlight ? ['__highlight'] : [])], alternative: i.alternative || '', photo: i.photo || '', placeId: i.placeId || '' })),
               activities: dayItems
                 .map((item, pos) => ({ item, pos }))
                 .filter(({ item }) => item.type === 'activity')
-                .map(({ item: i, pos }) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos, tags: [...(i.tags ?? []), ...(i.isHighlight ? ['__highlight'] : [])], alternative: i.alternative || '', photo: i.photo || '' })),
+                .map(({ item: i, pos }) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos, tags: [...(i.tags ?? []), ...(i.isHighlight ? ['__highlight'] : [])], alternative: i.alternative || '', photo: i.photo || '', placeId: i.placeId || '' })),
             }))
           : [{ food: [], activities: [] }]
       }
@@ -744,6 +749,7 @@ export default function GuidedCreatePage() {
           hotelRating: hotel.rating,
           hotelAlternative: hotel.alternative || '',
           hotelPhoto: hotel.photo || '',
+          hotelPlaceId: hotel.placeId || '',
           days: buildDayGroups(itemsByHotel[idx]),
         })),
       }
