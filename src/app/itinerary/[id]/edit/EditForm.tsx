@@ -22,9 +22,9 @@ import {
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
-  arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { reorderItems } from '@/lib/reorderItems'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -111,6 +111,9 @@ function fmt(d: Date) { return new Date(d).toISOString().slice(0, 10) }
 // ── Data conversion: DB → flat EditItem[] ─────────────────────────────────────
 
 function destFromRaw(d: ItineraryData['destinations'][number]): EditDest {
+  // Saved day numbers are already one-based. Only shift legacy zero-based data.
+  const dayOffset = d.items.some(item => item.type !== 'hotel' && item.dayIndex === 0) ? 1 : 0
+  const editDay = (item: RawItem) => item.dayIndex == null ? 1 : Math.max(1, item.dayIndex + dayOffset)
   const byGi = new Map<number, RawItem[]>()
   for (const item of d.items) {
     const gi = item.groupIndex ?? 0
@@ -129,7 +132,7 @@ function destFromRaw(d: ItineraryData['destinations'][number]): EditDest {
 
     if (hotel) {
       const hotelDay = nonHotel.length > 0
-        ? Math.min(...nonHotel.map(i => (i.dayIndex ?? 0))) + 1
+        ? Math.min(...nonHotel.map(editDay))
         : 1
       items.push({
         id: uid(), type: 'hotel', name: hotel.name,
@@ -148,7 +151,7 @@ function destFromRaw(d: ItineraryData['destinations'][number]): EditDest {
         name: item.name, mealType: item.mealType ?? '',
         rating: item.rating ?? 0, notes: item.notes ?? '',
         tags: (item.tags ?? []).filter(t => t !== '__highlight'),
-        dayIndex: (item.dayIndex ?? 0) + 1,
+        dayIndex: editDay(item),
         isHighlight: (item.tags ?? []).includes('__highlight'),
         alternative: item.alternative ?? '', description: item.description ?? '',
         link: item.link ?? '', address: '',
@@ -181,17 +184,17 @@ function buildDestinations(dests: EditDest[]) {
       return byDay.size > 0
         ? [...byDay.entries()].sort(([a], [b]) => a - b).map(([dayIdx, dayItems]) => ({
             dayIndex: dayIdx,
-            food: dayItems.filter(i => i.type === 'food_drink').map((i, pos) => ({
+            food: dayItems.filter(i => i.type === 'food_drink').map(i => ({
               name: i.name, mealType: i.mealType, description: i.description,
               notes: i.notes, link: i.link, rating: i.rating,
               priceLevel: i.priceLevel, familyFriendly: i.familyFriendly,
               familyFriendlySource: i.familyFriendlySource, lat: i.lat, lng: i.lng,
-              order: pos, tags: [...i.tags, ...(i.isHighlight ? ['__highlight'] : [])],
+              order: dayItems.indexOf(i), tags: [...i.tags, ...(i.isHighlight ? ['__highlight'] : [])],
               alternative: i.alternative,
             })),
-            activities: dayItems.filter(i => i.type === 'activity').map((i, pos) => ({
+            activities: dayItems.filter(i => i.type === 'activity').map(i => ({
               name: i.name, notes: i.notes, link: i.link, rating: i.rating,
-              order: pos, tags: [...i.tags, ...(i.isHighlight ? ['__highlight'] : [])],
+              order: dayItems.indexOf(i), tags: [...i.tags, ...(i.isHighlight ? ['__highlight'] : [])],
               alternative: i.alternative,
             })),
           }))
@@ -566,14 +569,14 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
     updDest(destId, d => ({ ...d, items: d.items.filter(i => i.id !== itemId) }))
   }
 
-  function handleDragEnd(destId: string, event: DragEndEvent) {
+  function handleDragEnd(destId: string, event: DragEndEvent, day?: number) {
     const { active, over } = event
     if (!over || active.id === over.id) return
     updDest(destId, d => {
-      const oldIndex = d.items.findIndex(i => i.id === active.id)
-      const newIndex = d.items.findIndex(i => i.id === over.id)
-      if (oldIndex === -1 || newIndex === -1) return d
-      return { ...d, items: arrayMove(d.items, oldIndex, newIndex) }
+      // Itineraries must always provide a day; guides use a single flat list.
+      if (postType !== 'guide' && day === undefined) return d
+      const items = reorderItems(d.items, String(active.id), String(over.id), day)
+      return items === d.items ? d : { ...d, items }
     })
   }
 
@@ -753,56 +756,48 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 rows={2} placeholder="📝 Notes for this destination (optional)" className={inputCls} />
             </div>
 
-            {/* Items grouped by day */}
-            {dest.items.length > 0 && (
-              <DndContext sensors={sensors} collisionDetection={closestCenter}
-                onDragEnd={e => handleDragEnd(dest.id, e)}>
-                <SortableContext items={dest.items.map(i => i.id)} strategy={verticalListSortingStrategy}>
-                  <div className="space-y-3">
-                    {postType === 'guide' ? (
-                      <div className="space-y-2">
-                        {dest.items.map(item => (
-                          <SortableItem key={item.id} item={item}
-                            isEditing={editingItemId === item.id}
-                            onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
-                            onUpdate={updated => updateItem(dest.id, item.id, updated)}
-                            onRemove={() => removeItem(dest.id, item.id)}
-                            city={dest.name || undefined}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      (() => {
-                        const byDay = new Map<number, EditItem[]>()
-                        for (const item of dest.items) {
-                          if (!byDay.has(item.dayIndex)) byDay.set(item.dayIndex, [])
-                          byDay.get(item.dayIndex)!.push(item)
-                        }
-                        return [...byDay.entries()].sort(([a], [b]) => a - b).map(([day, items]) => (
-                          <div key={day}>
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full shrink-0">Day {day}</span>
-                              <div className="flex-1 h-px bg-blue-100" />
-                            </div>
-                            <div className="space-y-2">
-                              {items.map(item => (
-                                <SortableItem key={item.id} item={item}
-                                  isEditing={editingItemId === item.id}
-                                  onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
-                                  onUpdate={updated => updateItem(dest.id, item.id, updated)}
-                                  onRemove={() => removeItem(dest.id, item.id)}
-                                  city={dest.name || undefined}
-                                />
-                              ))}
-                            </div>
+            {/* Each day owns its drag context so other days never shift. */}
+            {dest.items.length > 0 && (() => {
+              const byDay = new Map<number, EditItem[]>()
+              for (const item of dest.items) {
+                if (!byDay.has(item.dayIndex)) byDay.set(item.dayIndex, [])
+                byDay.get(item.dayIndex)!.push(item)
+              }
+              const lists = postType === 'guide'
+                ? [{ day: undefined, items: dest.items }]
+                : [...byDay.entries()].sort(([a], [b]) => a - b).map(([day, items]) => ({ day, items }))
+
+              return (
+                <div className="space-y-3">
+                  {lists.map(({ day, items }) => (
+                    <div key={day ?? 'guide'}>
+                      {day !== undefined && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full shrink-0">Day {day}</span>
+                          <div className="flex-1 h-px bg-blue-100" />
+                        </div>
+                      )}
+                      <DndContext sensors={sensors} collisionDetection={closestCenter}
+                        onDragEnd={e => handleDragEnd(dest.id, e, day)}>
+                        <SortableContext items={items.map(item => item.id)} strategy={verticalListSortingStrategy}>
+                          <div className="space-y-2">
+                            {items.map(item => (
+                              <SortableItem key={item.id} item={item}
+                                isEditing={editingItemId === item.id}
+                                onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
+                                onUpdate={updated => updateItem(dest.id, item.id, updated)}
+                                onRemove={() => removeItem(dest.id, item.id)}
+                                city={dest.name || undefined}
+                              />
+                            ))}
                           </div>
-                        ))
-                      })()
-                    )}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            )}
+                        </SortableContext>
+                      </DndContext>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
 
             {/* Add item form */}
             {activeInput?.destId === dest.id && (
