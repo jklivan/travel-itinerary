@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { reorderItems } from '../src/lib/reorderItems.ts'
+import { moveItemToDay, reorderItems } from '../src/lib/reorderItems.ts'
 
 const items = [
   { id: 'breakfast', dayIndex: 1 },
@@ -36,4 +36,25 @@ test('guides can still reorder their flat list without a day restriction', () =>
   assert.deepEqual(reorderItems(items, 'dinner', 'breakfast').map(item => item.id), [
     'dinner', 'breakfast', 'museum', 'walk',
   ])
+})
+
+
+test('moving day 1 to the end of day 3 changes only the dragged event', () => {
+  const original = [...items, { id: 'tour', dayIndex: 3 }]
+  const moved = moveItemToDay(original, 'breakfast', 3)
+  assert.deepEqual(moved.filter(item => item.dayIndex === 3).map(item => item.id), ['tour', 'breakfast'])
+  assert.deepEqual(moved.filter(item => item.dayIndex === 2), original.filter(item => item.dayIndex === 2))
+  assert.deepEqual(moved.filter(item => item.dayIndex === 1).map(item => item.id), ['walk'])
+  for (const item of original.slice(1)) assert.equal(moved.find(other => other.id === item.id), item)
+  assert.equal(original[0].dayIndex, 1)
+})
+
+test('supports empty days and insertion before or after an event', () => {
+  assert.equal(moveItemToDay(items, 'breakfast', 3).find(item => item.id === 'breakfast').dayIndex, 3)
+  for (const after of [false, true]) {
+    const moved = moveItemToDay(items, 'breakfast', 2, 'museum', after)
+    assert.deepEqual(moved.filter(item => item.dayIndex === 2).map(item => item.id),
+      after ? ['museum', 'breakfast', 'dinner'] : ['breakfast', 'museum', 'dinner'])
+  }
+  assert.equal(moveItemToDay(items, 'breakfast', 3, 'museum'), items)
 })

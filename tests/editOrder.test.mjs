@@ -4,7 +4,7 @@ import { createRequire } from 'node:module'
 import { test } from 'node:test'
 import vm from 'node:vm'
 import ts from 'typescript'
-import { reorderItems } from '../src/lib/reorderItems.ts'
+import { moveItemToDay, reorderItems } from '../src/lib/reorderItems.ts'
 
 // Exercise the editor's real load/save conversion without mounting its UI.
 const require = createRequire(import.meta.url)
@@ -51,5 +51,17 @@ test('legacy zero-based days normalize once without shifting on subsequent edits
   for (const dest of [initial, reopened]) {
     assert.deepEqual(namesOnDay(dest, 1), ['Breakfast', 'Walk', 'Dinner'])
     assert.deepEqual(namesOnDay(dest, 2), ['Museum'])
+  }
+})
+
+
+test('cross-day moves survive saving without pulling other events into earlier days', () => {
+  const initial = destFromRaw(raw)
+  const breakfast = initial.items.find(item => item.name === 'Breakfast')
+  const moved = { ...initial, items: moveItemToDay(initial.items, breakfast.id, 3) }
+  for (const dest of [moved, saveAndReopen(moved)]) {
+    assert.deepEqual(namesOnDay(dest, 1), ['Walk', 'Dinner'])
+    assert.deepEqual(namesOnDay(dest, 2), ['Museum'])
+    assert.deepEqual(namesOnDay(dest, 3), ['Breakfast'])
   }
 })

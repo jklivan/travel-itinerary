@@ -646,7 +646,8 @@ export default async function ItineraryPage({
                   {it.destinations.map((dest) => {
                     const groups = groupItems(dest.items as DestItemRow[])
                     const multiStay = groups.length > 1
-                    let dayCounter = 0
+                    const dayOffset = dest.items.some(item => item.type !== 'hotel' && item.dayIndex === 0) ? 1 : 0
+                    const dayNumber = (day: number) => Math.max(1, day + dayOffset)
                     const dFriends = friendDestNames.get(dest.name.toLowerCase()) ?? []
                     const dSaved = savedDestMap.get(dest.name.toLowerCase()) ?? 0
                     return (
@@ -673,8 +674,7 @@ export default async function ItineraryPage({
                               return (
                                 <div key={gi} className="space-y-4">
                                   {group.days.map((day, di) => {
-                                    dayCounter++
-                                    const dn = dayCounter
+                                    const dn = dayNumber(day.dayIndex)
                                     return (
                                       <div key={di}>
                                         <div className="flex items-center gap-2 mb-2">
@@ -695,9 +695,9 @@ export default async function ItineraryPage({
                                   {group.hotel && renderHotelCard(group.hotel)}
                                   {group.days.map((day, di) => (
                                     <div key={di}>
-                                      {group.days.length > 1 && (
+                                      {(group.days.length > 1 || dayNumber(day.dayIndex) > 1) && (
                                         <div className="flex items-center gap-2 mb-2 mt-2">
-                                          <span className="text-xs font-bold text-[#FAF7F2] bg-[#2C1810] px-2.5 py-1 rounded-full">Day {di + 1}</span>
+                                          <span className="text-xs font-bold text-[#FAF7F2] bg-[#2C1810] px-2.5 py-1 rounded-full">Day {dayNumber(day.dayIndex)}</span>
                                         </div>
                                       )}
                                       <div className="space-y-2">

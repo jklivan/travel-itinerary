@@ -14,6 +14,7 @@ import {
   PointerSensor,
   TouchSensor,
   closestCenter,
+  useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -24,7 +25,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { reorderItems } from '@/lib/reorderItems'
+import { moveItemToDay, reorderItems } from '@/lib/reorderItems'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -451,6 +452,18 @@ function ItemForm({ type, onAdd, onClose, city }: {
   )
 }
 
+function DayDropZone({ destId, day, empty }: { destId: string; day: number; empty: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `day-end-${destId}-${day}`,
+    data: { day },
+  })
+  return (
+    <div ref={setNodeRef} className={`mt-2 rounded-lg border border-dashed px-3 py-3 text-xs text-center ${isOver ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-400'}`}>
+      {empty ? 'Drop an event into this day' : 'Drop here to move to the end of this day'}
+    </div>
+  )
+}
+
 // ── Sortable item row ──────────────────────────────────────────────────────────
 
 function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, city }: {
@@ -569,14 +582,23 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
     updDest(destId, d => ({ ...d, items: d.items.filter(i => i.id !== itemId) }))
   }
 
-  function handleDragEnd(destId: string, event: DragEndEvent, day?: number) {
+  function handleDragEnd(destId: string, event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
     updDest(destId, d => {
-      // Itineraries must always provide a day; guides use a single flat list.
-      if (postType !== 'guide' && day === undefined) return d
-      const items = reorderItems(d.items, String(active.id), String(over.id), day)
-      return items === d.items ? d : { ...d, items }
+      const activeId = String(active.id)
+      const overId = String(over.id)
+      if (postType === 'guide') return { ...d, items: reorderItems(d.items, activeId, overId) }
+      const source = d.items.find(item => item.id === activeId)
+      const target = d.items.find(item => item.id === overId)
+      const day = target?.dayIndex ?? over.data.current?.day
+      if (!source || typeof day !== 'number') return d
+      if (target && source.dayIndex === day) {
+        return { ...d, items: reorderItems(d.items, activeId, overId, day) }
+      }
+      const dragged = active.rect.current.translated
+      const after = !!dragged && dragged.top + dragged.height / 2 > over.rect.top + over.rect.height / 2
+      return { ...d, items: moveItemToDay(d.items, activeId, day, target?.id, after) }
     })
   }
 
@@ -756,18 +778,23 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 rows={2} placeholder="📝 Notes for this destination (optional)" className={inputCls} />
             </div>
 
-            {/* Each day owns its drag context so other days never shift. */}
+            {/* Days have separate sortable lists within one transfer context. */}
             {dest.items.length > 0 && (() => {
               const byDay = new Map<number, EditItem[]>()
               for (const item of dest.items) {
                 if (!byDay.has(item.dayIndex)) byDay.set(item.dayIndex, [])
                 byDay.get(item.dayIndex)!.push(item)
               }
+              for (let day = 1; day <= Math.max(Number(tripDays) || 1, dest.curDayIndex); day++) {
+                if (!byDay.has(day)) byDay.set(day, [])
+              }
               const lists = postType === 'guide'
                 ? [{ day: undefined, items: dest.items }]
                 : [...byDay.entries()].sort(([a], [b]) => a - b).map(([day, items]) => ({ day, items }))
 
               return (
+                <DndContext sensors={sensors} collisionDetection={closestCenter}
+                  onDragEnd={e => handleDragEnd(dest.id, e)}>
                 <div className="space-y-3">
                   {lists.map(({ day, items }) => (
                     <div key={day ?? 'guide'}>
@@ -777,8 +804,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                           <div className="flex-1 h-px bg-blue-100" />
                         </div>
                       )}
-                      <DndContext sensors={sensors} collisionDetection={closestCenter}
-                        onDragEnd={e => handleDragEnd(dest.id, e, day)}>
                         <SortableContext items={items.map(item => item.id)} strategy={verticalListSortingStrategy}>
                           <div className="space-y-2">
                             {items.map(item => (
@@ -792,10 +817,11 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                             ))}
                           </div>
                         </SortableContext>
-                      </DndContext>
+                      {day !== undefined && <DayDropZone destId={dest.id} day={day} empty={items.length === 0} />}
                     </div>
                   ))}
                 </div>
+                </DndContext>
               )
             })()}
 
