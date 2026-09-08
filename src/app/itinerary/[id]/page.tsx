@@ -536,6 +536,13 @@ export default async function ItineraryPage({
             </div>
           </div>
 
+          {it.notes && (
+            <section className="mb-5 border-l-2 border-[#C4A882] pl-4">
+              <h2 className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-2">Notes &amp; Tips</h2>
+              <p className="text-sm leading-relaxed text-[#5C3D2E] whitespace-pre-line break-words">{it.notes}</p>
+            </section>
+          )}
+
           {/* Tags + social meta */}
           <div className="flex flex-wrap gap-2 items-center">
             {!isGuide && it.audience === 'family' && (
@@ -752,17 +759,6 @@ export default async function ItineraryPage({
                       </div>
                     )
                   })}
-                </div>
-              </div>
-            )}
-
-            {/* Notes & Tips */}
-            {it.notes && (
-              <div className="mb-8">
-                <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-1">Notes & Tips</h2>
-                <div className="h-px bg-[#C4A882] mb-4" />
-                <div className="bg-[#FAF7F2] border border-[#E8D5B7] rounded-2xl p-4 text-sm text-[#2C1810] whitespace-pre-line">
-                  {it.notes}
                 </div>
               </div>
             )}
