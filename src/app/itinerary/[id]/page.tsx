@@ -381,20 +381,10 @@ export default async function ItineraryPage({
   const days =
     Math.ceil((new Date(it.endDate).getTime() - new Date(it.startDate).getTime()) / 86400000) + 1
 
-  // Must Dos: pick highlights or top-rated from all destinations
-  const allItems = it.destinations.flatMap(d => d.items as DestItemRow[])
-  function pickMustDos(items: DestItemRow[], max: number): DestItemRow[] {
-    const tagged = items.filter(i => i.tags?.includes('__highlight'))
-    if (tagged.length >= max) return tagged.slice(0, max)
-    const rated = items
-      .filter(i => !i.tags?.includes('__highlight') && (i.rating ?? 0) > 0)
-      .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
-    return [...tagged, ...rated].slice(0, max)
-  }
-  const mustHotels = allItems.filter(i => i.type === 'hotel').slice(0, 3)
-  const mustFood = pickMustDos(allItems.filter(i => i.type === 'food_drink'), 4)
-  const mustActivities = pickMustDos(allItems.filter(i => i.type === 'activity'), 4)
-  const mustDoIds = new Set([...mustHotels, ...mustFood, ...mustActivities].map(item => item.id))
+  // Only the poster's explicit Must Do selections receive a stamp.
+  const mustDoIds = new Set(it.destinations.flatMap(destination =>
+    destination.items.filter(item => item.tags.includes('__highlight')).map(item => item.id)
+  ))
   const stamp = it.tripRating ? TRIP_STAMPS.find(s => s.value === it.tripRating) : null
 
   // Use the same paper cards throughout highlights, daily plans, and guides.
