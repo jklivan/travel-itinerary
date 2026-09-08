@@ -110,7 +110,6 @@ export default async function ItineraryPage({
 }) {
   const { id } = await params
   const { view } = await searchParams
-  const showMap = view === 'map'
   const session = await auth()
 
   const it = await prisma.itinerary.findUnique({
@@ -129,6 +128,9 @@ export default async function ItineraryPage({
 
   const isOwn = session?.user?.id === it.user.id
   const isGuide = it.postType === 'guide'
+  const hasDailyPlan = !isGuide && it.destinations.some(dest => dest.items.some(item => item.type !== 'hotel' && item.dayIndex != null))
+  const showDayByDay = view === 'day-by-day' && hasDailyPlan
+  const showMap = view === 'map'
 
   if (it.visibility === 'draft' && !isOwn) notFound()
 
@@ -392,7 +394,7 @@ export default async function ItineraryPage({
   const mustHotels = allItems.filter(i => i.type === 'hotel').slice(0, 3)
   const mustFood = pickMustDos(allItems.filter(i => i.type === 'food_drink'), 4)
   const mustActivities = pickMustDos(allItems.filter(i => i.type === 'activity'), 4)
-  const showMustDos = mustHotels.length > 0 || mustFood.length > 0 || mustActivities.length > 0
+  const mustDoIds = new Set([...mustHotels, ...mustFood, ...mustActivities].map(item => item.id))
   const stamp = it.tripRating ? TRIP_STAMPS.find(s => s.value === it.tripRating) : null
 
   // Use the same paper cards throughout highlights, daily plans, and guides.
@@ -407,7 +409,8 @@ export default async function ItineraryPage({
     const price = item.priceLevel == null ? null : Math.max(0, Math.min(type === 'hotel' ? 5 : 4, item.priceLevel))
 
     return (
-      <article key={item.id} className={`${styles.card} ${styles[type]}`}>
+      <article key={item.id} className={`${styles.card} ${styles[type]} ${mustDoIds.has(item.id) ? styles.stamped : ''}`}>
+        {mustDoIds.has(item.id) && <Image src="/must-do-stamp.png" alt="Must do" width={60} height={54} unoptimized className={styles.mustDoStamp} />}
         <div className={styles.thumbnail}>
           {item.photoUrl ? (
             <Image src={item.photoUrl} alt="" fill sizes="88px" className="object-cover" />
@@ -587,19 +590,20 @@ export default async function ItineraryPage({
           return null
         })()}
 
-        {/* Map toggle */}
-        {mapPins.length > 0 && (
-          <div className="flex gap-1 bg-[#E8D5B7] rounded-xl p-1 text-sm font-medium mb-6 w-fit">
-            <Link href={`/itinerary/${it.id}`}
-              className={`px-4 py-1.5 rounded-lg transition-colors ${!showMap ? 'bg-[#FAF7F2] shadow-sm text-[#2C1810]' : 'text-[#8B6F4E] hover:text-[#5C3D2E]'}`}>
-              Details
-            </Link>
-            <Link href={`/itinerary/${it.id}?view=map`}
-              className={`px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${showMap ? 'bg-[#FAF7F2] shadow-sm text-[#2C1810]' : 'text-[#8B6F4E] hover:text-[#5C3D2E]'}`}>
-              🗺️ Map
-            </Link>
-          </div>
-        )}
+        <nav aria-label="Itinerary view" className="flex flex-wrap gap-1 bg-[#E8D5B7] rounded-xl p-1 text-sm font-medium mb-6 w-fit">
+          <Link href={`/itinerary/${it.id}`} aria-current={!showMap && !showDayByDay ? 'page' : undefined}
+            className={`px-4 py-2 rounded-lg transition-colors ${!showMap && !showDayByDay ? 'bg-[#FAF7F2] shadow-sm text-[#2C1810]' : 'text-[#8B6F4E] hover:text-[#5C3D2E]'}`}>
+            All places
+          </Link>
+          {hasDailyPlan && <Link href={`/itinerary/${it.id}?view=day-by-day`} aria-current={showDayByDay ? 'page' : undefined}
+            className={`px-4 py-2 rounded-lg transition-colors ${showDayByDay ? 'bg-[#FAF7F2] shadow-sm text-[#2C1810]' : 'text-[#8B6F4E] hover:text-[#5C3D2E]'}`}>
+            Day by day view
+          </Link>}
+          {mapPins.length > 0 && <Link href={`/itinerary/${it.id}?view=map`} aria-current={showMap ? 'page' : undefined}
+            className={`px-4 py-2 rounded-lg transition-colors ${showMap ? 'bg-[#FAF7F2] shadow-sm text-[#2C1810]' : 'text-[#8B6F4E] hover:text-[#5C3D2E]'}`}>
+            Map
+          </Link>}
+        </nav>
 
         {showMap && (
           <div className="h-[60vh] rounded-2xl overflow-hidden border border-[#C4A882] mb-6">
@@ -609,36 +613,8 @@ export default async function ItineraryPage({
 
         {!showMap && (
           <>
-            {/* ── Must Dos ── */}
-            {showMustDos && (
-              <div className="mb-10">
-                <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-1">Must Dos</h2>
-                <div className="h-px bg-[#C4A882] mb-5" />
-                <div className={styles.placeGrid}>
-                  {mustHotels.length > 0 && (
-                    <div>
-                      <CategoryHeading type="hotel" count={mustHotels.length} />
-                      <div className="space-y-2">{mustHotels.map(item => renderHotelCard(item, true))}</div>
-                    </div>
-                  )}
-                  {mustFood.length > 0 && (
-                    <div>
-                      <CategoryHeading type="food_drink" count={mustFood.length} />
-                      <div className="space-y-2">{mustFood.map(item => renderFoodCard(item, true))}</div>
-                    </div>
-                  )}
-                  {mustActivities.length > 0 && (
-                    <div>
-                      <CategoryHeading type="activity" count={mustActivities.length} />
-                      <div className="space-y-2">{mustActivities.map(item => renderActivityCard(item, true))}</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
             {/* ── Day by Day (itineraries) ── */}
-            {!isGuide && it.destinations.length > 0 && (
+            {showDayByDay && it.destinations.length > 0 && (
               <div className="mb-10">
                 <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-1">Day by Day</h2>
                 <div className="h-px bg-[#C4A882] mb-5" />
@@ -717,10 +693,10 @@ export default async function ItineraryPage({
               </div>
             )}
 
-            {/* ── Guide: All Picks (three-column per destination) ── */}
-            {isGuide && it.destinations.length > 0 && (
+            {/* All places grouped by category, for both itineraries and guides. */}
+            {!showDayByDay && it.destinations.length > 0 && (
               <div className="mb-10">
-                <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-1">All Picks</h2>
+                <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-1">Places from the trip</h2>
                 <div className="h-px bg-[#C4A882] mb-5" />
                 <div className="space-y-10">
                   {it.destinations.map((dest) => {
