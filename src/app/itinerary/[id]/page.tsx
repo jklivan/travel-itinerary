@@ -422,7 +422,7 @@ export default async function ItineraryPage({
         <div className={styles.cardBody}>
           <p className={styles.eyebrow}>{label}</p>
           <h4 className={styles.placeName}>
-            {item.link ? (
+            {item.link && type !== 'food_drink' ? (
               <a href={item.link} target="_blank" rel="noopener noreferrer" className={styles.placeLink}>
                 {item.name}<ArrowUpRight size={13} className={styles.linkArrow} aria-hidden="true" />
                 <span className="sr-only"> (official site, opens in a new tab)</span>
