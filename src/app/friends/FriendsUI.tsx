@@ -50,7 +50,7 @@ function FollowButton({
   if (status === 'following') {
     return (
       <button onClick={() => onUnfollow(userId)}
-        className="text-xs font-medium px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-500 transition-colors">
+        className="text-xs font-medium px-3 py-1.5 rounded-full border border-[#C4A882] text-[#5C3D2E] hover:border-red-300 hover:text-red-500 transition-colors">
         Following
       </button>
     )
@@ -65,7 +65,7 @@ function FollowButton({
   }
   return (
     <button onClick={() => onFollow(userId)}
-      className="text-xs font-medium px-3 py-1.5 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center gap-1">
+      className="text-xs font-medium px-3 py-1.5 rounded-full bg-[#2C1810] text-white hover:bg-[#5C3D2E] transition-colors flex items-center gap-1">
       <UserPlus size={12} />
       Follow
     </button>
@@ -145,28 +145,28 @@ export default function FriendsUI({
     <div className="space-y-5">
       {/* Incoming requests */}
       {requests.length > 0 && (
-        <section className="bg-white rounded-xl shadow-md overflow-hidden">
+        <section className="bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] overflow-hidden">
           <div className="bg-amber-50 border-b border-amber-100 px-5 py-3 flex items-center gap-2">
             <Users size={16} className="text-amber-600" />
-            <h2 className="font-semibold text-gray-900 text-sm">
+            <h2 className="font-semibold text-[#2C1810] text-sm">
               Follow requests
               <span className="ml-2 text-amber-700">({requests.length})</span>
             </h2>
           </div>
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-[#E8D5B7]">
             {requests.map((user) => (
               <li key={user.id} className="flex items-center justify-between px-5 py-3">
                 <Link href={`/user/${user.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                   <Avatar name={user.name} />
-                  <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                  <p className="text-sm font-medium text-[#2C1810]">{user.name}</p>
                 </Link>
                 <div className="flex gap-2">
                   <button onClick={() => handleAccept(user)}
-                    className="text-xs font-medium px-3 py-1.5 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                    className="text-xs font-medium px-3 py-1.5 rounded-full bg-[#2C1810] text-white hover:bg-[#5C3D2E] transition-colors">
                     Accept
                   </button>
                   <button onClick={() => handleReject(user.id)}
-                    className="text-xs font-medium px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-500 transition-colors">
+                    className="text-xs font-medium px-3 py-1.5 rounded-full border border-[#C4A882] text-[#5C3D2E] hover:border-red-300 hover:text-red-500 transition-colors">
                     Decline
                   </button>
                 </div>
@@ -177,32 +177,32 @@ export default function FriendsUI({
       )}
 
       {/* Search */}
-      <section className="bg-white rounded-xl shadow-md overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
-          <Search size={16} className="text-gray-400" />
-          <h2 className="font-semibold text-gray-900 text-sm">Find travelers</h2>
+      <section className="bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] overflow-hidden">
+        <div className="px-5 py-3 border-b border-[#E8D5B7] flex items-center gap-2">
+          <Search size={16} className="text-[#8B6F4E]" />
+          <h2 className="font-semibold text-[#2C1810] text-sm">Find travelers</h2>
         </div>
         <div className="p-4">
           <form onSubmit={handleNameSearch} className="flex gap-2">
             <input type="text" value={nameQuery}
               onChange={(e) => { setNameQuery(e.target.value); setNameSearched(false) }}
               placeholder="Search by name…"
-              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="flex-1 rounded-lg border border-[#C4A882] px-3 py-2 text-sm text-[#2C1810] bg-white focus:outline-none focus:ring-2 focus:ring-[#8B6F4E]" />
             <button type="submit"
-              className="bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+              className="bg-[#2C1810] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#5C3D2E] transition-colors">
               Search
             </button>
           </form>
           {nameSearched && nameResults.length === 0 && (
-            <p className="mt-4 text-sm text-gray-500 italic">No users found.</p>
+            <p className="mt-4 text-sm text-[#8B6F4E] italic">No users found.</p>
           )}
           {nameResults.length > 0 && (
-            <ul className="mt-4 divide-y divide-gray-100">
+            <ul className="mt-4 divide-y divide-[#E8D5B7]">
               {nameResults.map((user) => (
                 <li key={user.id} className="flex items-center justify-between py-3">
                   <Link href={`/user/${user.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                     <Avatar name={user.name} />
-                    <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                    <p className="text-sm font-medium text-[#2C1810]">{user.name}</p>
                   </Link>
                   <FollowButton userId={user.id} status={followStatus(user.id)}
                     onFollow={handleFollow} onCancel={handleCancel} onUnfollow={handleUnfollow} />
@@ -214,30 +214,30 @@ export default function FriendsUI({
       </section>
 
       {/* Following list */}
-      <section className="bg-white rounded-xl shadow-md overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
-          <Users size={16} className="text-gray-400" />
-          <h2 className="font-semibold text-gray-900 text-sm">
+      <section className="bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] overflow-hidden">
+        <div className="px-5 py-3 border-b border-[#E8D5B7] flex items-center gap-2">
+          <Users size={16} className="text-[#8B6F4E]" />
+          <h2 className="font-semibold text-[#2C1810] text-sm">
             People you follow
             {followingList.length > 0 && (
-              <span className="ml-2 text-gray-400 font-normal">({followingList.length})</span>
+              <span className="ml-2 text-[#8B6F4E] font-normal">({followingList.length})</span>
             )}
           </h2>
         </div>
         {followingList.length === 0 ? (
-          <p className="text-sm text-gray-500 italic p-5">
+          <p className="text-sm text-[#8B6F4E] italic p-5">
             You&apos;re not following anyone yet. Search above to find travelers.
           </p>
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-[#E8D5B7]">
             {followingList.map((user) => (
               <li key={user.id} className="flex items-center justify-between px-5 py-3">
                 <Link href={`/user/${user.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                   <Avatar name={user.name} />
-                  <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                  <p className="text-sm font-medium text-[#2C1810]">{user.name}</p>
                 </Link>
                 <button onClick={() => handleUnfollow(user.id)}
-                  className="text-xs font-medium px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-500 transition-colors">
+                  className="text-xs font-medium px-3 py-1.5 rounded-full border border-[#C4A882] text-[#5C3D2E] hover:border-red-300 hover:text-red-500 transition-colors">
                   Unfollow
                 </button>
               </li>

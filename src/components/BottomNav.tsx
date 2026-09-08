@@ -16,7 +16,7 @@ function BottomNavInner({ userId, pendingCount }: { userId: string | null; pendi
   const isProfile = pathname.startsWith('/user/')
 
   function cls(active: boolean) {
-    return `flex flex-col items-center gap-0.5 px-4 py-2 transition-colors ${active ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`
+    return `flex flex-col items-center gap-0.5 px-4 py-2 transition-colors ${active ? 'text-[#2C1810]' : 'text-[#8B6F4E] hover:text-[#5C3D2E]'}`
   }
 
   useEffect(() => {
@@ -30,40 +30,40 @@ function BottomNavInner({ userId, pendingCount }: { userId: string | null; pendi
   }, [showCreate])
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
+    <div className="fixed bottom-0 left-0 right-0 bg-[#FAF7F2] border-t border-[#E8D5B7] shadow-lg z-50">
       {/* Create popup */}
       {showCreate && (
-        <div ref={popupRef} className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <span className="text-sm font-semibold text-gray-900">Create a trip</span>
-            <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-gray-600">
+        <div ref={popupRef} className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-64 bg-[#FAF7F2] rounded-2xl shadow-xl border border-[#E8D5B7] overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#E8D5B7]">
+            <span className="text-sm font-semibold text-[#2C1810]">Create a trip</span>
+            <button onClick={() => setShowCreate(false)} className="text-[#8B6F4E] hover:text-[#5C3D2E]">
               <X size={16} />
             </button>
           </div>
           <Link
             href="/create"
             onClick={() => setShowCreate(false)}
-            className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100"
+            className="flex items-start gap-3 px-4 py-3 hover:bg-[#E8D5B7] transition-colors border-b border-[#E8D5B7]"
           >
-            <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-              <FileText size={18} className="text-blue-600" />
+            <div className="w-9 h-9 rounded-xl bg-[#E8D5B7] flex items-center justify-center shrink-0">
+              <FileText size={18} className="text-[#2C1810]" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900">Import a trip</p>
-              <p className="text-xs text-gray-500 mt-0.5">Upload a file or paste notes</p>
+              <p className="text-sm font-medium text-[#2C1810]">Import a trip</p>
+              <p className="text-xs text-[#8B6F4E] mt-0.5">Upload a file or paste notes</p>
             </div>
           </Link>
           <Link
             href="/create/guided"
             onClick={() => setShowCreate(false)}
-            className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+            className="flex items-start gap-3 px-4 py-3 hover:bg-[#E8D5B7] transition-colors"
           >
-            <div className="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center shrink-0">
-              <LayoutList size={18} className="text-purple-600" />
+            <div className="w-9 h-9 rounded-xl bg-[#DDE8D5] flex items-center justify-center shrink-0">
+              <LayoutList size={18} className="text-[#4E6B4E]" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900">Build a trip</p>
-              <p className="text-xs text-gray-500 mt-0.5">Add places yourself</p>
+              <p className="text-sm font-medium text-[#2C1810]">Build a trip</p>
+              <p className="text-xs text-[#8B6F4E] mt-0.5">Add places yourself</p>
             </div>
           </Link>
         </div>
@@ -84,8 +84,8 @@ function BottomNavInner({ userId, pendingCount }: { userId: string | null; pendi
           onClick={() => setShowCreate(v => !v)}
           className={`flex flex-col items-center gap-0.5 px-4 py-2 -mt-5 rounded-full shadow-lg transition-all ${
             showCreate
-              ? 'bg-gray-800 text-white'
-              : 'bg-gradient-to-r from-blue-600 to-yellow-400 text-white hover:shadow-xl'
+              ? 'bg-[#5C3D2E] text-white'
+              : 'bg-[#2C1810] text-white hover:shadow-xl'
           }`}
         >
           <Plus className="w-7 h-7" />

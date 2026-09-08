@@ -45,10 +45,7 @@ export default async function UserProfilePage({
 
   const [itineraries, drafts, bucketItems, followRecord, followerCount, followingCount, viewerBucketIds] = await Promise.all([
     prisma.itinerary.findMany({
-      where: {
-        userId: id,
-        visibility: { not: 'draft' },
-      },
+      where: { userId: id, visibility: { not: 'draft' } },
       orderBy: { createdAt: 'desc' },
       include: {
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
@@ -67,7 +64,6 @@ export default async function UserProfilePage({
           },
         })
       : Promise.resolve([]),
-    // Bucket list — only fetch if viewing own profile or if tab=bucket and isOwn
     isOwn
       ? prisma.bucketListItem.findMany({
           where: { userId: id },
@@ -91,7 +87,6 @@ export default async function UserProfilePage({
       : Promise.resolve(null),
     prisma.follow.count({ where: { followingId: id, status: 'accepted' } }),
     prisma.follow.count({ where: { followerId: id, status: 'accepted' } }),
-    // For non-owner viewer, fetch their bucket IDs to show bucket state on cards
     viewerId && !isOwn
       ? prisma.bucketListItem.findMany({ where: { userId: viewerId }, select: { itineraryId: true } })
       : Promise.resolve([]),
@@ -101,19 +96,17 @@ export default async function UserProfilePage({
   const avatarColor = hashPick(user.name, AVATAR_COLORS)
   const initials = getInitials(user.name)
 
-  // Bucket set for showing bucket state on cards
   const viewerBucketSet = new Set(viewerBucketIds.map((b) => b.itineraryId))
-  // For own profile, the bucket list items themselves are bucketed
   const ownBucketSet = new Set(bucketItems.map((b) => b.itineraryId))
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <Link href="/friends" className="text-sm text-blue-600 hover:underline mb-5 inline-block">
+      <Link href="/friends" className="text-sm text-[#8B6F4E] hover:underline mb-5 inline-block">
         ← Friends
       </Link>
 
       {/* Profile header */}
-      <div className="bg-white rounded-xl shadow-md p-5 mb-5 flex items-center gap-4">
+      <div className="bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] p-5 mb-5 flex items-center gap-4">
         <div
           className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold shrink-0"
           style={{ backgroundColor: avatarColor }}
@@ -121,8 +114,8 @@ export default async function UserProfilePage({
           {initials}
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold text-gray-900">{user.name}</h1>
-          <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+          <h1 className="font-[family-name:var(--font-playfair)] text-xl text-[#2C1810]">{user.name}</h1>
+          <div className="flex items-center gap-3 mt-1 text-xs text-[#8B6F4E]">
             <span className="flex items-center gap-1">
               <Users size={12} />
               {followerCount} follower{followerCount !== 1 ? 's' : ''}
@@ -144,10 +137,10 @@ export default async function UserProfilePage({
             <button type="submit"
               className={`text-sm font-medium px-4 py-2 rounded-full border transition-colors ${
                 followStatus === 'accepted'
-                  ? 'border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-500'
+                  ? 'border-[#C4A882] text-[#5C3D2E] hover:border-red-300 hover:text-red-500'
                   : followStatus === 'pending'
                   ? 'border-amber-300 text-amber-700 hover:border-red-300 hover:text-red-500'
-                  : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-[#2C1810] border-[#2C1810] text-white hover:bg-[#5C3D2E]'
               }`}>
               {followStatus === 'accepted' ? 'Following' : followStatus === 'pending' ? 'Requested' : '+ Follow'}
             </button>
@@ -155,13 +148,13 @@ export default async function UserProfilePage({
         )}
       </div>
 
-      {/* Tabs — only show on own profile */}
+      {/* Tabs */}
       {isOwn && (
-        <div className="flex gap-1 bg-white rounded-xl p-1 text-sm font-medium shadow-sm border border-gray-100 mb-5 w-fit">
+        <div className="flex gap-1 bg-[#FAF7F2] rounded-xl p-1 text-sm font-medium border border-[#E8D5B7] mb-5 w-fit">
           <Link
             href={`/user/${id}`}
             className={`px-4 py-1.5 rounded-lg transition-colors ${
-              !showBucket ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              !showBucket && !showDrafts ? 'bg-[#2C1810] text-white shadow-sm' : 'text-[#8B6F4E] hover:text-[#2C1810]'
             }`}
           >
             My Posts
@@ -169,13 +162,13 @@ export default async function UserProfilePage({
           <Link
             href={`/user/${id}?tab=bucket`}
             className={`px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              showBucket ? 'bg-red-500 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              showBucket ? 'bg-red-500 text-white shadow-sm' : 'text-[#8B6F4E] hover:text-[#2C1810]'
             }`}
           >
             <span>❤️</span> Saved
             {bucketItems.length > 0 && (
               <span className={`text-xs rounded-full px-1.5 py-0.5 font-bold ${
-                showBucket ? 'bg-red-400 text-white' : 'bg-gray-100 text-gray-600'
+                showBucket ? 'bg-red-400 text-white' : 'bg-[#E8D5B7] text-[#5C3D2E]'
               }`}>
                 {bucketItems.length}
               </span>
@@ -184,13 +177,13 @@ export default async function UserProfilePage({
           <Link
             href={`/user/${id}?tab=drafts`}
             className={`px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              showDrafts ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              showDrafts ? 'bg-amber-500 text-white shadow-sm' : 'text-[#8B6F4E] hover:text-[#2C1810]'
             }`}
           >
             Drafts
             {drafts.length > 0 && (
               <span className={`text-xs rounded-full px-1.5 py-0.5 font-bold ${
-                showDrafts ? 'bg-amber-400 text-white' : 'bg-gray-100 text-gray-600'
+                showDrafts ? 'bg-amber-400 text-white' : 'bg-[#E8D5B7] text-[#5C3D2E]'
               }`}>
                 {drafts.length}
               </span>
@@ -201,10 +194,10 @@ export default async function UserProfilePage({
 
       {showDrafts ? (
         <>
-          <h2 className="font-semibold text-gray-900 text-sm mb-3">Drafts</h2>
+          <h2 className="font-semibold text-[#2C1810] text-sm mb-3">Drafts</h2>
           {drafts.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-md p-8 text-center">
-              <p className="text-gray-500 italic text-sm">No drafts yet.</p>
+            <div className="bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] p-8 text-center">
+              <p className="text-[#8B6F4E] italic text-sm">No drafts yet.</p>
             </div>
           ) : (
             <HorizontalScrollFeed>
@@ -231,12 +224,12 @@ export default async function UserProfilePage({
         </>
       ) : !showBucket ? (
         <>
-          <h2 className="font-semibold text-gray-900 text-sm mb-3">
+          <h2 className="font-semibold text-[#2C1810] text-sm mb-3">
             {isOwn ? 'Your itineraries' : 'Itineraries'}
           </h2>
           {itineraries.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-md p-8 text-center">
-              <p className="text-gray-500 italic text-sm">No public itineraries yet.</p>
+            <div className="bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] p-8 text-center">
+              <p className="text-[#8B6F4E] italic text-sm">No public itineraries yet.</p>
             </div>
           ) : (
             <HorizontalScrollFeed>
@@ -263,14 +256,14 @@ export default async function UserProfilePage({
         </>
       ) : (
         <>
-          <h2 className="font-semibold text-gray-900 text-sm mb-3 flex items-center gap-2">
+          <h2 className="font-semibold text-[#2C1810] text-sm mb-3 flex items-center gap-2">
             <span>❤️</span> Saved
           </h2>
           {bucketItems.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-md p-8 text-center">
+            <div className="bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] p-8 text-center">
               <p className="text-4xl mb-3">❤️</p>
-              <p className="text-gray-500 text-sm">Nothing saved yet.</p>
-              <p className="text-gray-400 text-xs mt-1">
+              <p className="text-[#8B6F4E] text-sm">Nothing saved yet.</p>
+              <p className="text-[#8B6F4E] text-xs mt-1">
                 Tap the ❤️ on any itinerary to save it.
               </p>
             </div>

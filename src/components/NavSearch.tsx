@@ -77,19 +77,19 @@ function NavSearchInner() {
           onFocus={() => suggestions.length > 0 && setOpen(true)}
           placeholder="Search destinations…"
           autoComplete="off"
-          className="w-full pl-8 pr-3 py-1.5 text-sm text-white placeholder-white/60 rounded-lg bg-white/20 border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 focus:bg-white/30 transition-all"
+          className="w-full pl-8 pr-3 py-1.5 text-sm text-white placeholder-white/60 rounded-lg bg-white/10 border border-white/20 focus:outline-none focus:ring-2 focus:ring-white/40 focus:bg-white/20 transition-all"
         />
         {open && suggestions.length > 0 && (
-          <ul className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
+          <ul className="absolute z-50 mt-1 w-full bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] shadow-lg overflow-hidden">
             {suggestions.map((s, i) => (
               <li
                 key={i}
                 onMouseDown={() => pick(s)}
-                className={`px-3 py-2.5 cursor-pointer text-sm transition-colors ${i === activeIdx ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                className={`px-3 py-2.5 cursor-pointer text-sm transition-colors ${i === activeIdx ? 'bg-[#E8D5B7]' : 'hover:bg-[#E8D5B7]'}`}
               >
-                <span className="font-medium text-gray-900">{s.main}</span>
+                <span className="font-medium text-[#2C1810]">{s.main}</span>
                 {s.secondary && (
-                  <span className="text-gray-400 text-xs ml-1.5">{s.secondary}</span>
+                  <span className="text-[#8B6F4E] text-xs ml-1.5">{s.secondary}</span>
                 )}
               </li>
             ))}

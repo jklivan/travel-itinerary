@@ -82,9 +82,9 @@ function ItineraryList({
 }) {
   if (itineraries.length === 0) {
     return (
-      <div className="text-center py-20 bg-white rounded-xl shadow-sm">
+      <div className="text-center py-20 bg-[#FAF7F2] rounded-xl border border-[#E8D5B7]">
         <p className="text-4xl mb-4">🌍</p>
-        <p className="text-base font-medium text-gray-900">No trips here yet.</p>
+        <p className="text-base font-medium text-[#2C1810]">No trips here yet.</p>
       </div>
     )
   }
@@ -130,7 +130,7 @@ function SearchFiltersDisplay({ parsed }: { parsed: ParsedQuery }) {
   return (
     <div className="flex flex-wrap gap-2 mb-4">
       {chips.map((c) => (
-        <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-medium">{c}</span>
+        <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-[#E8D5B7] text-[#5C3D2E] font-medium">{c}</span>
       ))}
     </div>
   )
@@ -265,10 +265,10 @@ export default async function ExplorePage({
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
+        <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
         <ExploreSearchBar />
         <SearchFiltersDisplay parsed={parsed} />
-        <p className="text-sm text-gray-500 mb-4">
+        <p className="text-sm text-[#8B6F4E] mb-4">
           {itineraries.length} result{itineraries.length !== 1 ? 's' : ''} for &ldquo;{q}&rdquo;
         </p>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
@@ -282,14 +282,14 @@ export default async function ExplorePage({
     const { itineraries, bucketSet } = await fetchItineraries({ tags: { has: tag } }, userId)
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link href="/explore?view=tags" className="text-sm text-blue-600 hover:underline mb-5 inline-block">
+        <Link href="/explore?view=tags" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">
           ← Browse by Type
         </Link>
         <div className="mb-5">
-          <h2 className="text-xl font-bold text-gray-900">
+          <h2 className="text-xl font-bold text-[#2C1810]">
             {meta ? `${meta.emoji} ${meta.label}` : tag}
           </h2>
-          <p className="text-sm text-gray-500">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
+          <p className="text-sm text-[#8B6F4E]">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
       </div>
@@ -316,15 +316,15 @@ export default async function ExplorePage({
     )
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link href={country === 'United States' ? '/explore' : `/explore?country=${encodeURIComponent(country)}`} className="text-sm text-blue-600 hover:underline mb-5 inline-block">
+        <Link href={country === 'United States' ? '/explore' : `/explore?country=${encodeURIComponent(country)}`} className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">
           ← {country === 'United States' ? 'Destinations' : country}
         </Link>
         <div className="mb-5">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <MapPin size={18} className="text-blue-600" />
+          <h2 className="text-xl font-bold text-[#2C1810] flex items-center gap-2">
+            <MapPin size={18} className="text-[#5C3D2E]" />
             {city}, {country}
           </h2>
-          <p className="text-sm text-gray-500">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
+          <p className="text-sm text-[#8B6F4E]">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
       </div>
@@ -410,13 +410,13 @@ export default async function ExplorePage({
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-6 pb-10">
-        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
+        <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
         <div className="mb-5">
-          <h2 className="text-xl font-bold text-gray-900">{country}</h2>
-          <p className="text-sm text-gray-500">{cities.length} destination{cities.length !== 1 ? 's' : ''}</p>
+          <h2 className="text-xl font-bold text-[#2C1810]">{country}</h2>
+          <p className="text-sm text-[#8B6F4E]">{cities.length} destination{cities.length !== 1 ? 's' : ''}</p>
         </div>
         {cities.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">No destinations yet.</p>
+          <p className="text-sm text-[#8B6F4E] italic">No destinations yet.</p>
         ) : (
           <div className="space-y-3">
             {/* Hero — most popular city */}
@@ -472,10 +472,10 @@ export default async function ExplorePage({
     const meta = TRIP_TYPE_META[type]
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
+        <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
         <div className="mb-5">
-          <h2 className="text-xl font-bold text-gray-900">{meta.emoji} {meta.label}</h2>
-          <p className="text-sm text-gray-500">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
+          <h2 className="text-xl font-bold text-[#2C1810]">{meta.emoji} {meta.label}</h2>
+          <p className="text-sm text-[#8B6F4E]">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
       </div>
@@ -491,13 +491,13 @@ export default async function ExplorePage({
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Browse by Type</h2>
-        <p className="text-sm text-gray-500 mb-4">Pick one or more vibes</p>
+        <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
+        <h2 className="text-xl font-bold text-[#2C1810] mb-1">Browse by Type</h2>
+        <p className="text-sm text-[#8B6F4E] mb-4">Pick one or more vibes</p>
         <TagBrowser selected={selectedTags} />
         {selectedTags.length > 0 && (
           <div className="mt-6">
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-[#8B6F4E] mb-4">
               {itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}
             </p>
             <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
@@ -511,11 +511,11 @@ export default async function ExplorePage({
   if (view === 'hotspots') {
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
+        <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
         <div className="text-center py-24">
           <p className="text-5xl mb-4">🔥</p>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Hot Spots</h2>
-          <p className="text-sm text-gray-400">Coming soon</p>
+          <h2 className="text-xl font-bold text-[#2C1810] mb-2">Hot Spots</h2>
+          <p className="text-sm text-[#8B6F4E]">Coming soon</p>
         </div>
       </div>
     )
@@ -525,11 +525,11 @@ export default async function ExplorePage({
   if (view === 'recs') {
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Explore</Link>
+        <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
         <div className="text-center py-24">
           <p className="text-5xl mb-4">👥</p>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Friends&apos; Trips</h2>
-          <Link href="/friends" className="text-sm text-blue-600 hover:underline">See your friends</Link>
+          <h2 className="text-xl font-bold text-[#2C1810] mb-2">Friends&apos; Trips</h2>
+          <Link href="/friends" className="text-sm text-[#5C3D2E] hover:underline">See your friends</Link>
         </div>
       </div>
     )
@@ -560,9 +560,9 @@ export default async function ExplorePage({
 
     return (
       <div className="flex flex-col" style={{ height: 'calc(100dvh - 3.5rem)' }}>
-        <div className="px-4 py-3 flex items-center justify-between border-b border-gray-100 bg-white shrink-0">
-          <Link href="/explore" className="text-sm text-blue-600 hover:underline">← Explore</Link>
-          <span className="text-sm text-gray-400">{pins.length} place{pins.length !== 1 ? 's' : ''} mapped</span>
+        <div className="px-4 py-3 flex items-center justify-between border-b border-[#E8D5B7] bg-[#FAF7F2] shrink-0">
+          <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline">← Explore</Link>
+          <span className="text-sm text-[#8B6F4E]">{pins.length} place{pins.length !== 1 ? 's' : ''} mapped</span>
         </div>
         <div className="flex-1 min-h-0">
           <ExploreMap pins={pins} />
@@ -579,10 +579,10 @@ export default async function ExplorePage({
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-6 pb-10">
-        <Link href="/explore" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Destinations</Link>
-        <h1 className="text-xl font-bold text-gray-900 mb-5">{region}</h1>
+        <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Destinations</Link>
+        <h1 className="text-xl font-bold text-[#2C1810] mb-5">{region}</h1>
         {cards.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">No destinations yet.</p>
+          <p className="text-sm text-[#8B6F4E] italic">No destinations yet.</p>
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {cards.map(c => {
@@ -623,25 +623,25 @@ export default async function ExplorePage({
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-10">
       <div className="mb-5">
-        <h1 className="text-2xl font-bold text-gray-900">Destinations</h1>
+        <h1 className="text-2xl font-bold text-[#2C1810]">Destinations</h1>
       </div>
 
       <ExploreSearchBar />
 
       {destRegions.length === 0 ? (
-        <div className="text-center py-20 text-gray-400 mt-6">
+        <div className="text-center py-20 text-[#8B6F4E] mt-6">
           <p className="text-4xl mb-3">🌍</p>
-          <p className="text-sm">No destinations yet. <Link href="/create" className="text-blue-600 hover:underline">Add a trip!</Link></p>
+          <p className="text-sm">No destinations yet. <Link href="/create" className="text-[#5C3D2E] hover:underline">Add a trip!</Link></p>
         </div>
       ) : (
         <div className="space-y-8 mt-6">
           {destRegions.map(region => (
             <div key={region.label}>
               <div className="flex items-center justify-between mb-3">
-                <Link href={`/explore?region=${encodeURIComponent(region.label)}`} className="text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors">
+                <Link href={`/explore?region=${encodeURIComponent(region.label)}`} className="text-lg font-bold text-[#2C1810] hover:text-[#5C3D2E] transition-colors">
                   {region.label}
                 </Link>
-                <Link href={`/explore?region=${encodeURIComponent(region.label)}`} className="text-sm text-blue-600 hover:underline">
+                <Link href={`/explore?region=${encodeURIComponent(region.label)}`} className="text-sm text-[#5C3D2E] hover:underline">
                   View all
                 </Link>
               </div>

@@ -37,8 +37,6 @@ export default async function FeedPage({
           },
         } : {}),
       },
-      // Public discovery: show the most-saved trips first, with newer trips
-      // winning ties so the feed is both useful and fresh.
       orderBy: [
         { bucketedBy: { _count: 'desc' } },
         { createdAt: 'desc' },
@@ -78,24 +76,24 @@ export default async function FeedPage({
     <div className="max-w-5xl mx-auto px-4 py-6">
       {searchQuery ? (
         <div className="mb-5">
-          <h2 className="text-lg font-bold text-gray-900">&quot;{searchQuery}&quot;</h2>
-          <Link href="/" className="text-sm text-blue-600 hover:underline">← Clear search</Link>
+          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">&quot;{searchQuery}&quot;</h2>
+          <Link href="/" className="text-sm text-[#5C3D2E] hover:underline">← Clear search</Link>
         </div>
       ) : (
         <div className="mb-5">
-          <h2 className="text-lg font-bold text-gray-900">
+          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">
             Discover trips
           </h2>
         </div>
       )}
 
       {itineraries.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-xl shadow-sm">
+        <div className="text-center py-20 bg-[#FAF7F2] rounded-xl border border-[#E8D5B7]">
           <p className="text-4xl mb-4">🌍</p>
-          <p className="text-base font-medium text-gray-900">
+          <p className="text-base font-medium text-[#2C1810]">
             No itineraries yet.
           </p>
-          <p className="text-sm mt-1 text-gray-500">
+          <p className="text-sm mt-1 text-[#8B6F4E]">
             Be the first to share a trip!
           </p>
         </div>
@@ -126,8 +124,8 @@ export default async function FeedPage({
       {!searchQuery && userId && (
         <div className="mt-10">
           <div className="mb-4">
-            <h2 className="text-lg font-bold text-gray-900">Friends&apos; Trips</h2>
-            <p className="text-sm text-gray-500">Recent itineraries from people you follow</p>
+            <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">Friends&apos; Trips</h2>
+            <p className="text-sm text-[#8B6F4E]">Recent itineraries from people you follow</p>
           </div>
           {friendItineraries.length > 0 ? (
             <HorizontalScrollFeed>
@@ -152,7 +150,7 @@ export default async function FeedPage({
               ))}
             </HorizontalScrollFeed>
           ) : (
-            <p className="text-sm text-gray-500">Follow friends to see their trips here.</p>
+            <p className="text-sm text-[#8B6F4E]">Follow friends to see their trips here.</p>
           )}
         </div>
       )}

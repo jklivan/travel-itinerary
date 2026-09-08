@@ -142,11 +142,11 @@ export default function ItineraryCard({
 
         {/* Caption */}
         <div>
-          <h2 className={`${caveat.className} text-xl text-gray-900 leading-tight line-clamp-2 mb-2`}>
+          <h2 className={`${caveat.className} text-xl text-[#2C1810] leading-tight line-clamp-2 mb-2`}>
             {title}
           </h2>
 
-          <div className="text-xs text-gray-400 space-y-0.5">
+          <div className="text-xs text-[#8B6F4E] space-y-0.5">
             {location && (
               <span className="flex items-center gap-1 truncate min-w-0">
                 <MapPin size={9} className="shrink-0" />
@@ -160,19 +160,19 @@ export default function ItineraryCard({
             )}
           </div>
 
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#E8D5B7]">
             <div
               className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
               style={{ backgroundColor: avatarColor }}
             >
               {initials}
             </div>
-            <span className={`${kalam.className} text-sm text-gray-500 truncate flex-1`}>
+            <span className={`${kalam.className} text-sm text-[#8B6F4E] truncate flex-1`}>
               {authorName}
             </span>
             <div className="flex items-center gap-1.5 shrink-0">
               {saveCount > 0 && (
-                <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                <span className="text-[10px] text-[#8B6F4E] flex items-center gap-0.5">
                   🤍 {saveCount}
                 </span>
               )}
