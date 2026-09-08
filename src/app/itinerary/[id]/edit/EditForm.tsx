@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { upload } from '@vercel/blob/client'
 import { updateItinerary } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
@@ -11,6 +12,7 @@ import { dateRangeFromMonthAndDays, monthAndDaysFromDates } from '@/lib/tripDate
 import { MapPin, Hotel, Utensils, Camera, Star, Check, X, ImageIcon, GripVertical, ArrowRight, Plus } from 'lucide-react'
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   TouchSensor,
   closestCenter,
@@ -452,19 +454,52 @@ function ItemForm({ type, onAdd, onClose, city }: {
   )
 }
 
-function DayDropZone({ destId, day, empty }: { destId: string; day: number; empty: boolean }) {
+function DayDropZone({ destId, day }: { destId: string; day: number }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `day-end-${destId}-${day}`,
     data: { day },
   })
   return (
     <div ref={setNodeRef} className={`mt-2 rounded-lg border border-dashed px-3 py-3 text-xs text-center ${isOver ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-400'}`}>
-      {empty ? 'Drop an event into this day' : 'Drop here to move to the end of this day'}
+      Drop here to move to the end of this day
     </div>
   )
 }
 
 // ── Sortable item row ──────────────────────────────────────────────────────────
+
+function ItemSummary({ item }: { item: EditItem }) {
+  const icon = item.type === 'hotel'
+    ? <Hotel size={13} className="text-blue-500 shrink-0" />
+    : item.type === 'food_drink'
+    ? <Utensils size={13} className="text-orange-500 shrink-0" />
+    : <Camera size={13} className="text-green-500 shrink-0" />
+
+  return (
+    <>
+        {icon}
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            {item.mealType && <span className="text-xs text-gray-500">{item.mealType.split(',').map(t => `${MEAL_EMOJI[t]} ${t}`).join(' · ')}</span>}
+            {item.rating > 0 && <span className="text-xs text-yellow-500">{'★'.repeat(item.rating)}</span>}
+            {item.isHighlight && <span className="text-amber-400 text-xs">⭐</span>}
+            {item.notes && <span className="text-xs text-gray-400 truncate">{item.notes}</span>}
+          </div>
+        </div>
+    </>
+  )
+}
+
+function DraggedItem({ item }: { item: EditItem }) {
+  return (
+    <div aria-hidden="true" className="pointer-events-none flex items-center gap-2 rounded-xl border border-blue-200 bg-gray-50 px-3 py-2.5 shadow-xl cursor-grabbing">
+      <GripVertical size={14} className="shrink-0 text-gray-400" />
+      <div className="flex min-w-0 flex-1 items-center gap-2 text-left"><ItemSummary item={item} /></div>
+      <span className="shrink-0 text-lg leading-none text-gray-300">×</span>
+    </div>
+  )
+}
 
 function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, city }: {
   item: EditItem
@@ -475,13 +510,8 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, city }: {
   city?: string
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.2 : 1 }
 
-  const icon = item.type === 'hotel'
-    ? <Hotel size={13} className="text-blue-500 shrink-0" />
-    : item.type === 'food_drink'
-    ? <Utensils size={13} className="text-orange-500 shrink-0" />
-    : <Camera size={13} className="text-green-500 shrink-0" />
 
   if (isEditing) {
     return (
@@ -497,16 +527,7 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, city }: {
         <GripVertical size={14} />
       </button>
       <button type="button" onClick={onEdit} className="flex items-center gap-2 min-w-0 flex-1 text-left hover:opacity-75 transition-opacity">
-        {icon}
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-          <div className="flex items-center gap-2 flex-wrap">
-            {item.mealType && <span className="text-xs text-gray-500">{item.mealType.split(',').map(t => `${MEAL_EMOJI[t]} ${t}`).join(' · ')}</span>}
-            {item.rating > 0 && <span className="text-xs text-yellow-500">{'★'.repeat(item.rating)}</span>}
-            {item.isHighlight && <span className="text-amber-400 text-xs">⭐</span>}
-            {item.notes && <span className="text-xs text-gray-400 truncate">{item.notes}</span>}
-          </div>
-        </div>
+        <ItemSummary item={item} />
       </button>
       <button type="button" onClick={onRemove} className="text-gray-300 hover:text-red-400 text-lg leading-none shrink-0">×</button>
     </div>
@@ -541,6 +562,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
 
   const [activeInput, setActiveInput] = useState<{ destId: string; type: ItemType } | null>(null)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
+  const [draggedItem, setDraggedItem] = useState<{ destId: string; item: EditItem } | null>(null)
 
   const [photos, setPhotos]     = useState<UploadedPhoto[]>(itinerary.photos.map(p => ({ url: p.url, caption: p.caption ?? '' })))
   const [uploading, setUploading] = useState(false)
@@ -583,6 +605,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   }
 
   function handleDragEnd(destId: string, event: DragEndEvent) {
+    setDraggedItem(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
     updDest(destId, d => {
@@ -785,15 +808,17 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 if (!byDay.has(item.dayIndex)) byDay.set(item.dayIndex, [])
                 byDay.get(item.dayIndex)!.push(item)
               }
-              for (let day = 1; day <= Math.max(Number(tripDays) || 1, dest.curDayIndex); day++) {
-                if (!byDay.has(day)) byDay.set(day, [])
-              }
               const lists = postType === 'guide'
                 ? [{ day: undefined, items: dest.items }]
                 : [...byDay.entries()].sort(([a], [b]) => a - b).map(([day, items]) => ({ day, items }))
 
               return (
                 <DndContext sensors={sensors} collisionDetection={closestCenter}
+                  onDragStart={({ active }) => {
+                    const item = dest.items.find(item => item.id === active.id)
+                    setDraggedItem(item ? { destId: dest.id, item } : null)
+                  }}
+                  onDragCancel={() => setDraggedItem(null)}
                   onDragEnd={e => handleDragEnd(dest.id, e)}>
                 <div className="space-y-3">
                   {lists.map(({ day, items }) => (
@@ -817,10 +842,16 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                             ))}
                           </div>
                         </SortableContext>
-                      {day !== undefined && <DayDropZone destId={dest.id} day={day} empty={items.length === 0} />}
+                      {day !== undefined && <DayDropZone destId={dest.id} day={day} />}
                     </div>
                   ))}
                 </div>
+                {typeof document !== 'undefined' && createPortal(
+                  <DragOverlay zIndex={1000} dropAnimation={null}>
+                    {draggedItem?.destId === dest.id ? <DraggedItem item={draggedItem.item} /> : null}
+                  </DragOverlay>,
+                  document.body,
+                )}
                 </DndContext>
               )
             })()}
