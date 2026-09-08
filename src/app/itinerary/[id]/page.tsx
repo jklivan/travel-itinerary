@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
-import { Hotel, Utensils, Camera, MapPin, Star, Check, ArrowUpRight } from 'lucide-react'
+import { Hotel, Utensils, Camera, MapPin, Star, Check } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import PhotoStrip from '@/components/PhotoStrip'
 import { tagMeta } from '@/lib/tags'
@@ -15,6 +15,7 @@ import { TRIP_STAMPS } from '@/lib/tripStamps'
 import ItineraryMap from '@/components/ItineraryMap'
 import type { ItemPin } from '@/components/ItineraryMapInner'
 import styles from './places.module.css'
+import PlaceDetailsCard from '@/components/PlaceDetailsCard'
 
 function FriendProof({
   friends,
@@ -61,7 +62,7 @@ function FriendProof({
   )
 }
 
-type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number; dayIndex?: number | null; tags?: string[]; alternative?: string | null; photoUrl?: string | null }
+type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number; dayIndex?: number | null; tags?: string[]; alternative?: string | null; photoUrl?: string | null; lat?: number | null; lng?: number | null; placeId?: string | null }
 
 function groupItems(items: DestItemRow[]) {
   const stays = new Map<number, { hotel: DestItemRow | null; days: Map<number, DestItemRow[]> }>()
@@ -381,6 +382,10 @@ export default async function ItineraryPage({
   const days =
     Math.ceil((new Date(it.endDate).getTime() - new Date(it.startDate).getTime()) / 86400000) + 1
 
+  const placeDestinations = new Map(it.destinations.flatMap(destination =>
+    destination.items.map(item => [item.id, [destination.name, destination.country].filter(Boolean).join(', ')] as const)
+  ))
+
   // Only the poster's explicit Must Do selections receive a stamp.
   const mustDoIds = new Set(it.destinations.flatMap(destination =>
     destination.items.filter(item => item.tags.includes('__highlight')).map(item => item.id)
@@ -399,7 +404,7 @@ export default async function ItineraryPage({
     const price = item.priceLevel == null ? null : Math.max(0, Math.min(type === 'hotel' ? 5 : 4, item.priceLevel))
 
     return (
-      <article key={item.id} className={`${styles.card} ${styles[type]} ${mustDoIds.has(item.id) ? styles.stamped : ''}`}>
+      <PlaceDetailsCard key={item.id} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} className={`${styles.card} ${styles[type]} ${mustDoIds.has(item.id) ? styles.stamped : ''}`}>
         {mustDoIds.has(item.id) && <Image src="/must-do-stamp.png" alt="Must do" width={60} height={54} unoptimized className={styles.mustDoStamp} />}
         <div className={styles.thumbnail}>
           {item.photoUrl ? (
@@ -414,14 +419,7 @@ export default async function ItineraryPage({
         </div>
         <div className={styles.cardBody}>
           <p className={styles.eyebrow}>{label}</p>
-          <h4 className={styles.placeName}>
-            {item.link && type !== 'food_drink' ? (
-              <a href={item.link} target="_blank" rel="noopener noreferrer" className={styles.placeLink}>
-                {item.name}<ArrowUpRight size={13} className={styles.linkArrow} aria-hidden="true" />
-                <span className="sr-only"> (official site, opens in a new tab)</span>
-              </a>
-            ) : item.name}
-          </h4>
+          <h4 className={styles.placeName}>{item.name}</h4>
           {(!!item.rating || (!compact && price !== null && price > 0)) && (
             <div className={styles.meta}>
               {!!item.rating && <span className={styles.rating} aria-label={`Trip author rated ${item.rating} out of 5 stars`}><Star size={12} aria-hidden="true" />{item.rating.toFixed(1)} <span className={styles.ratingLabel}>Author</span></span>}
@@ -432,7 +430,7 @@ export default async function ItineraryPage({
           {item.tags?.includes('__highlight') && <p className={styles.recommendation}><Check size={12} /> Trip highlight</p>}
           <FriendProof friends={friends} avg={avg} total={total} verb={type === 'hotel' ? 'stayed here' : type === 'activity' ? 'also did this' : 'also went'} />
         </div>
-      </article>
+      </PlaceDetailsCard>
     )
   }
 
