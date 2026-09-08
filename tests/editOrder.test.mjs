@@ -65,3 +65,21 @@ test('cross-day moves survive saving without pulling other events into earlier d
     assert.deepEqual(namesOnDay(dest, 3), ['Breakfast'])
   }
 })
+
+test('event photos load and serialize for hotels, restaurants, and activities', () => {
+  const initial = destFromRaw({ ...raw, items: [
+    { type: 'hotel', name: 'Hotel', photoUrl: '/hotel.jpg', groupIndex: 0 },
+    { type: 'food_drink', name: 'Cafe', photoUrl: '/cafe.jpg', dayIndex: 1, groupIndex: 0 },
+    { type: 'activity', name: 'Tour', photoUrl: '/tour.jpg', dayIndex: 1, groupIndex: 0 },
+  ] })
+  assert.deepEqual(Array.from(initial.items, item => item.photo), ['/hotel.jpg', '/cafe.jpg', '/tour.jpg'])
+  let saved = buildDestinations([initial])[0].groups[0]
+  assert.equal(saved.hotelPhoto, '/hotel.jpg')
+  assert.equal(saved.days[0].food[0].photo, '/cafe.jpg')
+  assert.equal(saved.days[0].activities[0].photo, '/tour.jpg')
+  const updated = { ...initial, items: initial.items.map(item => ({ ...item, photo: item.type === 'activity' ? '' : '/replacement.jpg' })) }
+  saved = buildDestinations([updated])[0].groups[0]
+  assert.equal(saved.hotelPhoto, '/replacement.jpg')
+  assert.equal(saved.days[0].food[0].photo, '/replacement.jpg')
+  assert.equal(saved.days[0].activities[0].photo, '')
+})

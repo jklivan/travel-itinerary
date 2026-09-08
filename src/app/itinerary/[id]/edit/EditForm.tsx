@@ -44,6 +44,7 @@ type EditItem = {
   dayIndex: number
   isHighlight: boolean
   alternative: string
+  photo: string
   // extra fields preserved from DB
   description: string
   link: string
@@ -70,7 +71,7 @@ type RawItem = {
   type: string; mealType?: string | null; name: string; description?: string | null
   notes: string | null; address?: string | null; rating: number | null
   priceLevel?: number | null; link: string | null; groupIndex?: number
-  dayIndex?: number | null; order?: number | null
+  dayIndex?: number | null; order?: number | null; photoUrl?: string | null
   familyFriendly?: boolean | null; familyFriendlySource?: string | null
   lat?: number | null; lng?: number | null; tags?: string[]; alternative?: string | null
 }
@@ -138,7 +139,7 @@ function destFromRaw(d: ItineraryData['destinations'][number]): EditDest {
         ? Math.min(...nonHotel.map(editDay))
         : 1
       items.push({
-        id: uid(), type: 'hotel', name: hotel.name,
+        id: uid(), type: 'hotel', name: hotel.name, photo: hotel.photoUrl ?? '',
         mealType: '', rating: hotel.rating ?? 0, notes: hotel.notes ?? '',
         tags: hotel.tags ?? [], dayIndex: hotelDay, isHighlight: false,
         alternative: hotel.alternative ?? '', description: hotel.description ?? '',
@@ -151,7 +152,7 @@ function destFromRaw(d: ItineraryData['destinations'][number]): EditDest {
     for (const item of nonHotel.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))) {
       items.push({
         id: uid(), type: item.type as 'food_drink' | 'activity',
-        name: item.name, mealType: item.mealType ?? '',
+        name: item.name, mealType: item.mealType ?? '', photo: item.photoUrl ?? '',
         rating: item.rating ?? 0, notes: item.notes ?? '',
         tags: (item.tags ?? []).filter(t => t !== '__highlight'),
         dayIndex: editDay(item),
@@ -193,12 +194,12 @@ function buildDestinations(dests: EditDest[]) {
               priceLevel: i.priceLevel, familyFriendly: i.familyFriendly,
               familyFriendlySource: i.familyFriendlySource, lat: i.lat, lng: i.lng,
               order: dayItems.indexOf(i), tags: [...i.tags, ...(i.isHighlight ? ['__highlight'] : [])],
-              alternative: i.alternative,
+              alternative: i.alternative, photo: i.photo,
             })),
             activities: dayItems.filter(i => i.type === 'activity').map(i => ({
               name: i.name, notes: i.notes, link: i.link, rating: i.rating,
               order: dayItems.indexOf(i), tags: [...i.tags, ...(i.isHighlight ? ['__highlight'] : [])],
-              alternative: i.alternative,
+              alternative: i.alternative, photo: i.photo,
             })),
           }))
         : [{ food: [], activities: [] }]
@@ -229,7 +230,7 @@ function buildDestinations(dests: EditDest[]) {
       name: d.name, country: d.country, notes: d.notes,
       groups: hotels.map((hotel, idx) => ({
         hotelName: hotel.name, hotelNotes: hotel.notes, hotelAddress: hotel.address,
-        hotelLink: hotel.link, hotelRating: hotel.rating, hotelAlternative: hotel.alternative,
+        hotelLink: hotel.link, hotelRating: hotel.rating, hotelAlternative: hotel.alternative, hotelPhoto: hotel.photo,
         hotelDescription: hotel.description, hotelPriceLevel: hotel.priceLevel,
         hotelLat: hotel.lat, hotelLng: hotel.lng, hotelTags: hotel.tags,
         days: buildDayGroups(itemsByHotel[idx]),
@@ -369,7 +370,7 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
 
 function ItemForm({ type, onAdd, onClose, city }: {
   type: ItemType
-  onAdd: (item: Omit<EditItem, 'id' | 'dayIndex' | 'isHighlight' | 'alternative' | 'description' | 'link' | 'address' | 'priceLevel' | 'familyFriendly' | 'familyFriendlySource' | 'lat' | 'lng'>) => void
+  onAdd: (item: Omit<EditItem, 'id' | 'dayIndex' | 'isHighlight' | 'photo' | 'alternative' | 'description' | 'link' | 'address' | 'priceLevel' | 'familyFriendly' | 'familyFriendlySource' | 'lat' | 'lng'>) => void
   onClose: () => void
   city?: string
 }) {
@@ -454,6 +455,60 @@ function ItemForm({ type, onAdd, onClose, city }: {
   )
 }
 
+function ItemPhotoInput({ photo, name, onChange, onBusyChange }: {
+  photo: string
+  name: string
+  onChange: (photo: string) => void
+  onBusyChange: (busy: boolean) => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function uploadPhoto(file: File) {
+    setError(null)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Choose a photo smaller than 10 MB.')
+      return
+    }
+    setBusy(true)
+    onBusyChange(true)
+    try {
+      const blob = await upload(`event-${crypto.randomUUID()}-${file.name}`, file, {
+        access: 'private', handleUploadUrl: '/api/upload',
+      })
+      onChange(`/api/img?url=${encodeURIComponent(blob.url)}`)
+    } catch {
+      setError('Photo upload failed. Please try again.')
+    } finally {
+      setBusy(false)
+      onBusyChange(false)
+    }
+  }
+
+  return (
+    <div className="px-3 pb-2 pt-1">
+      <div className="flex items-center gap-3">
+        {photo && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photo} alt={`Photo for ${name}`} className="h-12 w-12 rounded-lg object-cover" />
+        )}
+        <label className={`inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 ${busy ? 'opacity-50' : 'cursor-pointer hover:text-blue-800'}`}>
+          <ImageIcon size={14} />{busy ? 'Uploading…' : photo ? 'Replace photo' : 'Add photo'}
+          <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif" className="sr-only" disabled={busy}
+            aria-label={`${photo ? 'Replace' : 'Add'} photo for ${name}`}
+            onChange={e => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (file) void uploadPhoto(file)
+            }} />
+        </label>
+        {photo && <button type="button" disabled={busy} onClick={() => onChange('')} className="text-xs text-gray-500 hover:text-red-600 disabled:opacity-50" aria-label={`Remove photo for ${name}`}>Remove photo</button>}
+      </div>
+      {error && <p role="alert" className="mt-1 text-xs text-red-600">{error}</p>}
+    </div>
+  )
+}
+
 function DayDropZone({ destId, day }: { destId: string; day: number }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `day-end-${destId}-${day}`,
@@ -501,12 +556,14 @@ function DraggedItem({ item }: { item: EditItem }) {
   )
 }
 
-function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, city }: {
+function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, onPhotoChange, onPhotoBusyChange, city }: {
   item: EditItem
   isEditing: boolean
   onEdit: () => void
   onUpdate: (updated: Partial<EditItem>) => void
   onRemove: () => void
+  onPhotoChange: (photo: string) => void
+  onPhotoBusyChange: (busy: boolean) => void
   city?: string
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
@@ -517,12 +574,14 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, city }: {
     return (
       <div ref={setNodeRef} style={style}>
         <ItemEditForm type={item.type} initial={item} onSave={onUpdate} onClose={onEdit} city={city} />
+        <ItemPhotoInput photo={item.photo} name={item.name} onChange={onPhotoChange} onBusyChange={onPhotoBusyChange} />
       </div>
     )
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 gap-2">
+    <div ref={setNodeRef} style={style} className="bg-gray-50 rounded-xl">
+      <div className="flex items-center justify-between px-3 py-2.5 gap-2">
       <button type="button" {...attributes} {...listeners} className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0 touch-none">
         <GripVertical size={14} />
       </button>
@@ -530,6 +589,8 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, city }: {
         <ItemSummary item={item} />
       </button>
       <button type="button" onClick={onRemove} className="text-gray-300 hover:text-red-400 text-lg leading-none shrink-0">×</button>
+      </div>
+      <ItemPhotoInput photo={item.photo} name={item.name} onChange={onPhotoChange} onBusyChange={onPhotoBusyChange} />
     </div>
   )
 }
@@ -566,6 +627,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
 
   const [photos, setPhotos]     = useState<UploadedPhoto[]>(itinerary.photos.map(p => ({ url: p.url, caption: p.caption ?? '' })))
   const [uploading, setUploading] = useState(false)
+  const [itemUploads, setItemUploads] = useState(0)
   const [photoError, setPhotoError] = useState<string | null>(null)
   const photosRef = useRef<HTMLInputElement>(null)
   useEffect(() => { if (photosRef.current) photosRef.current.value = JSON.stringify(photos) }, [photos])
@@ -583,11 +645,11 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
     setDests(ds => ds.map(d => d.id !== destId ? d : fn(d)))
   }
 
-  function addItem(destId: string, item: Omit<EditItem, 'id' | 'dayIndex' | 'isHighlight' | 'alternative' | 'description' | 'link' | 'address' | 'priceLevel' | 'familyFriendly' | 'familyFriendlySource' | 'lat' | 'lng'>) {
+  function addItem(destId: string, item: Omit<EditItem, 'id' | 'dayIndex' | 'isHighlight' | 'photo' | 'alternative' | 'description' | 'link' | 'address' | 'priceLevel' | 'familyFriendly' | 'familyFriendlySource' | 'lat' | 'lng'>) {
     updDest(destId, d => ({
       ...d,
       items: [...d.items, {
-        ...item, id: uid(), dayIndex: d.curDayIndex, isHighlight: false,
+        ...item, id: uid(), dayIndex: d.curDayIndex, isHighlight: false, photo: '',
         alternative: '', description: '', link: '', address: '',
         priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null,
       }]
@@ -672,7 +734,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <form action={action} className="space-y-4 pb-36">
+    <form action={action} onSubmit={e => { if (itemUploads > 0) e.preventDefault() }} className="space-y-4 pb-36">
       <input type="hidden" name="startDate"    value={tripDateRange.startDate} />
       <input type="hidden" name="endDate"      value={tripDateRange.endDate} />
       <input type="hidden" name="destinations" value={JSON.stringify(buildDestinations(dests))} />
@@ -837,6 +899,8 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                                 onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
                                 onUpdate={updated => updateItem(dest.id, item.id, updated)}
                                 onRemove={() => removeItem(dest.id, item.id)}
+                                onPhotoChange={photo => updDest(dest.id, d => ({ ...d, items: d.items.map(i => i.id === item.id ? { ...i, photo } : i) }))}
+                                onPhotoBusyChange={busy => setItemUploads(count => count + (busy ? 1 : -1))}
                                 city={dest.name || undefined}
                               />
                             ))}
@@ -986,11 +1050,11 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
 
       {/* ── SUBMIT ───────────────────────────────────────────────────────────── */}
       <div className="flex gap-3">
-        <button type="submit" name="isDraft" value="1" disabled={pending || uploading}
+        <button type="submit" name="isDraft" value="1" disabled={pending || uploading || itemUploads > 0}
           className="flex-1 bg-white text-gray-700 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-colors disabled:opacity-60 text-sm">
           {pending ? 'Saving…' : 'Save as Draft'}
         </button>
-        <button type="submit" disabled={pending || uploading || !hasItems}
+        <button type="submit" disabled={pending || uploading || itemUploads > 0 || !hasItems}
           title={!hasItems ? 'Add at least one item first' : undefined}
           className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60 text-sm">
           {pending ? 'Saving…' : itinerary.visibility === 'draft' ? 'Publish' : 'Save changes'}
