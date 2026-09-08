@@ -14,6 +14,7 @@ import Comments from '@/components/Comments'
 import { TRIP_STAMPS } from '@/lib/tripStamps'
 import ItineraryMap from '@/components/ItineraryMap'
 import type { ItemPin } from '@/components/ItineraryMapInner'
+import styles from './places.module.css'
 
 function FriendProof({
   friends,
@@ -26,63 +27,37 @@ function FriendProof({
   total: number
   verb?: string
 }) {
-  if (friends.length === 0 && avg === null) return null
-  return (
-    <div className="mt-1 space-y-0.5">
-      {friends.length === 1 ? (
-        <div className="flex items-center gap-1.5 text-xs text-gray-600">
-          <span>👫</span>
-          <span className="font-medium">{friends[0].friendName.split(' ')[0]}</span>
-          {friends[0].rating ? (
-            <span className="text-yellow-500">
-              {'★'.repeat(friends[0].rating)}
-              <span className="text-gray-200">{'★'.repeat(5 - friends[0].rating)}</span>
-            </span>
-          ) : (
-            <span className="text-gray-400">{verb}</span>
-          )}
-          <Link href={`/itinerary/${friends[0].itineraryId}`} className="text-blue-400 hover:underline text-[10px]">their trip</Link>
-        </div>
-      ) : friends.length > 1 ? (
-        <details className="text-xs text-gray-600">
-          <summary className="list-none cursor-pointer flex items-center gap-1.5">
-            <span>👫</span>
-            <span className="font-medium text-gray-700">{friends.length} friends {verb}</span>
-          </summary>
-          <div className="mt-1 space-y-0.5 pl-5">
-            {friends.map((f, i) => (
-              <div key={i} className="flex items-center gap-1.5">
-                <span className="font-medium">{f.friendName.split(' ')[0]}</span>
-                {f.rating ? (
-                  <span className="text-yellow-500">
-                    {'★'.repeat(f.rating)}
-                    <span className="text-gray-200">{'★'.repeat(5 - f.rating)}</span>
-                  </span>
-                ) : (
-                  <span className="text-gray-400">{verb}</span>
-                )}
-                <Link href={`/itinerary/${f.itineraryId}`} className="text-blue-400 hover:underline">their trip</Link>
-              </div>
-            ))}
-          </div>
-        </details>
-      ) : null}
-      {avg !== null && total > 1 && (
-        <p className="text-xs text-gray-400 mt-0.5">★ {avg.toFixed(1)} avg · {total} ratings</p>
-      )}
+  const ratedFriends = friends.filter(friend => friend.rating != null && friend.rating > 0)
+  const friendAverage = ratedFriends.length > 0
+    ? ratedFriends.reduce((sum, friend) => sum + friend.rating!, 0) / ratedFriends.length
+    : null
+  if (friends.length === 0 && (avg === null || total === 0)) return null
+
+  const renderFriend = (friend: typeof friends[number], index: number) => (
+    <div key={`${friend.itineraryId}-${index}`} className={styles.friendRow}>
+      <span className={styles.friendName}>{friend.friendName.split(' ')[0]}</span>
+      {friend.rating != null && friend.rating > 0 ? (
+        <span className={styles.rating} aria-label={`${friend.rating} out of 5 stars`}><Star size={11} aria-hidden="true" />{friend.rating.toFixed(1)}</span>
+      ) : <span>{verb}</span>}
+      <Link href={`/itinerary/${friend.itineraryId}`} className={styles.friendLink}>their trip</Link>
     </div>
   )
-}
 
-function Stars({ rating }: { rating: number | null }) {
-  if (!rating) return null
   return (
-    <span className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((s) => (
-        <Star key={s} size={12}
-          className={s <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
-      ))}
-    </span>
+    <div className={styles.socialProof}>
+      {friends.length === 1 ? renderFriend(friends[0], 0) : friends.length > 1 ? (
+        <details className={styles.friendDetails}>
+          <summary>
+            <span>{friends.length} friends {verb}</span>
+            {friendAverage !== null && <span className={styles.rating} aria-label={`Friends average ${friendAverage.toFixed(1)} out of 5 from ${ratedFriends.length} ratings`}><Star size={11} aria-hidden="true" />{friendAverage.toFixed(1)} friends’ avg</span>}
+          </summary>
+          <div className={styles.friendList}>{friends.map(renderFriend)}</div>
+        </details>
+      ) : null}
+      {avg !== null && total > 0 && (
+        <p className={styles.communityRating}><span className={styles.rating}><Star size={11} aria-hidden="true" />{avg.toFixed(1)}</span> Community · {total} {total === 1 ? 'rating' : 'ratings'}</p>
+      )}
+    </div>
   )
 }
 
@@ -108,26 +83,22 @@ function groupItems(items: DestItemRow[]) {
   }))
 }
 
-const MEAL_PILL_STYLES: Record<string, string> = {
-  breakfast: 'bg-yellow-100 text-yellow-700',
-  lunch: 'bg-orange-100 text-orange-700',
-  dinner: 'bg-purple-100 text-purple-700',
-  drinks: 'bg-blue-100 text-blue-700',
-  coffee: 'bg-amber-100 text-amber-800',
-  dessert: 'bg-pink-100 text-pink-700',
-  bakery: 'bg-orange-50 text-orange-600',
-}
-const MEAL_EMOJIS: Record<string, string> = {
-  breakfast: '🍳', lunch: '☀️', dinner: '🌙', drinks: '🍹', coffee: '☕', dessert: '🍰', bakery: '🥐',
-}
+const PLACE_CATEGORIES = {
+  hotel: { label: 'Hotels', eyebrow: 'Stay', Icon: Hotel },
+  food_drink: { label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils },
+  activity: { label: 'Activities', eyebrow: 'Explore', Icon: Camera },
+} as const
 
-function MealPills({ mealType }: { mealType: string | null | undefined }) {
-  if (!mealType) return null
-  return mealType.split(',').filter(Boolean).map((type) => (
-    <span key={type} className={`text-xs px-2 py-0.5 rounded-full font-medium ${MEAL_PILL_STYLES[type] ?? 'bg-blue-100 text-blue-700'}`}>
-      {MEAL_EMOJIS[type] ?? '🍽️'} {type.charAt(0).toUpperCase() + type.slice(1)}
-    </span>
-  ))
+type PlaceCategory = keyof typeof PLACE_CATEGORIES
+
+function CategoryHeading({ type, count }: { type: PlaceCategory; count: number }) {
+  const { label, Icon } = PLACE_CATEGORIES[type]
+  return (
+    <div className={`${styles.categoryHeading} ${styles[type]}`}>
+      <h3><span className={styles.categoryIcon}><Icon size={16} strokeWidth={1.5} /></span>{label}</h3>
+      <span className={styles.count}>{count} {count === 1 ? 'place' : 'places'}</span>
+    </div>
+  )
 }
 
 export default async function ItineraryPage({
@@ -227,10 +198,10 @@ export default async function ItineraryPage({
   type SocialRow = { name: string; count: bigint }
   type FriendNameRow = { name: string; friend_name: string }
   type FriendDetailRow = { name: string; friend_name: string; rating: number | null; itinerary_id: string; place_id: string | null }
-  type AvgRow = { name: string; total: bigint; avg_rating: number | null }
+  type AvgRow = { item_id: string; total: bigint; avg_rating: number | null }
   type BucketerRow = { friend_name: string }
 
-  const [friendDestRows, savedDestRows, friendHotelRows, friendFoodRows, friendActivityRows, hotelAvgRows, foodAvgRows, itineraryBucketersRows] = await Promise.all([
+  const [friendDestRows, savedDestRows, friendHotelRows, friendFoodRows, friendActivityRows, placeAvgRows, itineraryBucketersRows] = await Promise.all([
     // Which friends visited the same destinations (exclude the current itinerary itself)
     friendIds.length > 0 && destNamesLower.length > 0
       ? prisma.$queryRaw<FriendNameRow[]>(Prisma.sql`
@@ -319,30 +290,25 @@ export default async function ItineraryPage({
           ORDER BY LOWER(di.name), i."userId", di.rating DESC NULLS LAST
         `)
       : Promise.resolve([] as FriendDetailRow[]),
-    // Community avg star rating for hotels
-    hotelNamesLower.length > 0
-      ? prisma.$queryRaw<AvgRow[]>(Prisma.sql`
-          SELECT LOWER(di.name) AS name,
-            COUNT(*) FILTER (WHERE di.rating IS NOT NULL) AS total,
-            AVG(di.rating::float) FILTER (WHERE di.rating IS NOT NULL) AS avg_rating
-          FROM "DestItem" di
-          WHERE di.type = 'hotel'
-            AND LOWER(di.name) IN (${Prisma.join(hotelNamesLower)})
-          GROUP BY LOWER(di.name)
-        `)
-      : Promise.resolve([] as AvgRow[]),
-    // Community avg star rating for food
-    foodNamesLower.length > 0
-      ? prisma.$queryRaw<AvgRow[]>(Prisma.sql`
-          SELECT LOWER(di.name) AS name,
-            COUNT(*) FILTER (WHERE di.rating IS NOT NULL) AS total,
-            AVG(di.rating::float) FILTER (WHERE di.rating IS NOT NULL) AS avg_rating
-          FROM "DestItem" di
-          WHERE di.type = 'food_drink'
-            AND LOWER(di.name) IN (${Prisma.join(foodNamesLower)})
-          GROUP BY LOWER(di.name)
-        `)
-      : Promise.resolve([] as AvgRow[]),
+    // Match every current place to published ratings by place ID or name.
+    // Key by item ID so spelling variants resolve to the correct card.
+    prisma.$queryRaw<AvgRow[]>(Prisma.sql`
+      SELECT current_item.id AS item_id, COUNT(rated.id) AS total,
+        AVG(rated.rating::float) AS avg_rating
+      FROM "DestItem" current_item
+      JOIN "Destination" current_dest ON current_dest.id = current_item."destinationId"
+      JOIN "DestItem" rated ON rated.type = current_item.type
+        AND (
+          (current_item."placeId" IS NOT NULL AND rated."placeId" = current_item."placeId")
+          OR LOWER(rated.name) = LOWER(current_item.name)
+        )
+      JOIN "Destination" rated_dest ON rated_dest.id = rated."destinationId"
+      JOIN "Itinerary" rated_trip ON rated_trip.id = rated_dest."itineraryId"
+      WHERE current_dest."itineraryId" = ${id}
+        AND rated_trip.visibility != 'draft'
+        AND rated.rating > 0
+      GROUP BY current_item.id
+    `),
     // Which friends saved this specific itinerary
     friendIds.length > 0
       ? prisma.$queryRaw<BucketerRow[]>(Prisma.sql`
@@ -384,17 +350,10 @@ export default async function ItineraryPage({
     friendActivityDetails.get(key)!.push({ friendName: r.friend_name, rating: r.rating, itineraryId: r.itinerary_id })
   }
 
-  // community avg stars (1 decimal)
-  const hotelAvgMap = new Map(hotelAvgRows.map(r => [
-    r.name,
-    r.avg_rating != null ? Math.round(Number(r.avg_rating) * 10) / 10 : null,
-  ]))
-  const foodAvgMap = new Map(foodAvgRows.map(r => [
-    r.name,
-    r.avg_rating != null ? Math.round(Number(r.avg_rating) * 10) / 10 : null,
-  ]))
-  const hotelTotalMap = new Map(hotelAvgRows.map(r => [r.name, Number(r.total)]))
-  const foodTotalMap  = new Map(foodAvgRows.map(r => [r.name, Number(r.total)]))
+  const placeRatings = new Map(placeAvgRows.map(row => [row.item_id, {
+    avg: row.avg_rating == null ? null : Number(row.avg_rating),
+    total: Number(row.total),
+  }]))
 
   // friends who saved this itinerary
   const itineraryFriendBucketers = itineraryBucketersRows.map(r => r.friend_name)
@@ -436,104 +395,57 @@ export default async function ItineraryPage({
   const showMustDos = mustHotels.length > 0 || mustFood.length > 0 || mustActivities.length > 0
   const stamp = it.tripRating ? TRIP_STAMPS.find(s => s.value === it.tripRating) : null
 
-  // Horizontal card renderers — compact=true for Must Dos (no notes/links)
-  const renderHotelCard = (item: DestItemRow, compact = false) => (
-    <div key={item.id} className="flex bg-[#FAF7F2] rounded-xl overflow-hidden border border-[#E8D5B7]">
-      <div className="w-20 shrink-0 relative min-h-[80px] bg-[#E8D5B7] flex items-center justify-center">
-        {item.photoUrl
-          ? <Image src={item.photoUrl} alt={item.name} fill className="object-cover" />
-          : <Hotel size={22} className="text-[#8B6F4E]" />}
-      </div>
-      <div className="flex-1 py-2.5 px-3 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-semibold text-[#2C1810] leading-tight">{item.name}</p>
-          {item.rating && <Stars rating={item.rating} />}
-        </div>
-        {!compact && item.priceLevel != null && (
-          <p className="text-xs font-medium text-green-700 mt-0.5">
-            {'$'.repeat(item.priceLevel)}<span className="text-[#C4A882]">{'$'.repeat(5 - item.priceLevel)}</span>
-          </p>
-        )}
-        {!compact && item.notes && <p className="text-xs text-[#8B6F4E] italic mt-0.5 line-clamp-2">{item.notes}</p>}
-        <FriendProof
-          friends={friendHotelDetails.get(item.name.toLowerCase()) ?? []}
-          avg={hotelAvgMap.get(item.name.toLowerCase()) ?? null}
-          total={hotelTotalMap.get(item.name.toLowerCase()) ?? 0}
-          verb="stayed here"
-        />
-        {!compact && item.link && (
-          <a href={item.link} target="_blank" rel="noopener noreferrer"
-            className="text-xs text-blue-500 hover:underline mt-0.5 inline-flex items-center gap-0.5">
-            <ArrowUpRight size={10} /> Official site
-          </a>
-        )}
-      </div>
-    </div>
-  )
+  // Use the same paper cards throughout highlights, daily plans, and guides.
+  const renderPlaceCard = (item: DestItemRow, type: PlaceCategory, compact = false) => {
+    const { eyebrow, Icon } = PLACE_CATEGORIES[type]
+    const nameKey = item.name.toLowerCase()
+    const friends = (type === 'hotel' ? friendHotelDetails : type === 'food_drink' ? friendFoodDetails : friendActivityDetails).get(nameKey) ?? []
+    const { avg = null, total = 0 } = placeRatings.get(item.id) ?? {}
+    const label = type === 'food_drink' && item.mealType
+      ? item.mealType.split(',').map(meal => meal.trim()).filter(Boolean).join(' · ')
+      : eyebrow
+    const price = item.priceLevel == null ? null : Math.max(0, Math.min(type === 'hotel' ? 5 : 4, item.priceLevel))
 
-  const renderFoodCard = (item: DestItemRow, compact = false) => (
-    <div key={item.id} className="flex bg-[#FAF7F2] rounded-xl overflow-hidden border border-[#E8D5B7]">
-      <div className="w-20 shrink-0 relative min-h-[80px] bg-[#EDE0CC] flex items-center justify-center">
-        {item.photoUrl
-          ? <Image src={item.photoUrl} alt={item.name} fill className="object-cover" />
-          : <Utensils size={22} className="text-[#8B6F4E]" />}
-      </div>
-      <div className="flex-1 py-2.5 px-3 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-semibold text-[#2C1810] leading-tight">{item.name}</p>
-          {item.rating && <Stars rating={item.rating} />}
+    return (
+      <article key={item.id} className={`${styles.card} ${styles[type]}`}>
+        <div className={styles.thumbnail}>
+          {item.photoUrl ? (
+            <Image src={item.photoUrl} alt="" fill sizes="88px" className="object-cover" />
+          ) : (
+            <div className={styles.keepsake} aria-hidden="true">
+              <span>{eyebrow}</span>
+              <Icon size={25} strokeWidth={1} />
+              <span>{item.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span>
+            </div>
+          )}
         </div>
-        {item.mealType && <div className="flex gap-1 mt-0.5 flex-wrap"><MealPills mealType={item.mealType} /></div>}
-        {!compact && item.priceLevel != null && (
-          <p className="text-xs font-medium text-green-700 mt-0.5">
-            {'$'.repeat(item.priceLevel)}<span className="text-[#C4A882]">{'$'.repeat(4 - item.priceLevel)}</span>
-          </p>
-        )}
-        {!compact && item.notes && <p className="text-xs text-[#8B6F4E] italic mt-0.5 line-clamp-2">{item.notes}</p>}
-        <FriendProof
-          friends={friendFoodDetails.get(item.name.toLowerCase()) ?? []}
-          avg={foodAvgMap.get(item.name.toLowerCase()) ?? null}
-          total={foodTotalMap.get(item.name.toLowerCase()) ?? 0}
-          verb="also went"
-        />
-        {!compact && item.link && (
-          <a href={item.link} target="_blank" rel="noopener noreferrer"
-            className="text-xs text-blue-500 hover:underline mt-0.5 inline-flex items-center gap-0.5">
-            <ArrowUpRight size={10} /> Official site
-          </a>
-        )}
-      </div>
-    </div>
-  )
+        <div className={styles.cardBody}>
+          <p className={styles.eyebrow}>{label}</p>
+          <h4 className={styles.placeName}>
+            {item.link ? (
+              <a href={item.link} target="_blank" rel="noopener noreferrer" className={styles.placeLink}>
+                {item.name}<ArrowUpRight size={13} className={styles.linkArrow} aria-hidden="true" />
+                <span className="sr-only"> (official site, opens in a new tab)</span>
+              </a>
+            ) : item.name}
+          </h4>
+          {(!!item.rating || (!compact && price !== null && price > 0)) && (
+            <div className={styles.meta}>
+              {!!item.rating && <span className={styles.rating} aria-label={`Trip author rated ${item.rating} out of 5 stars`}><Star size={12} aria-hidden="true" />{item.rating.toFixed(1)} <span className={styles.ratingLabel}>Author</span></span>}
+              {!compact && price !== null && price > 0 && <span className={styles.price}>{'$'.repeat(price)}</span>}
+            </div>
+          )}
+          {!compact && item.notes && <p className={styles.note}>{item.notes}</p>}
+          {item.tags?.includes('__highlight') && <p className={styles.recommendation}><Check size={12} /> Trip highlight</p>}
+          <FriendProof friends={friends} avg={avg} total={total} verb={type === 'hotel' ? 'stayed here' : type === 'activity' ? 'also did this' : 'also went'} />
+        </div>
+      </article>
+    )
+  }
 
-  const renderActivityCard = (item: DestItemRow, compact = false) => (
-    <div key={item.id} className="flex bg-[#FAF7F2] rounded-xl overflow-hidden border border-[#E8D5B7]">
-      <div className="w-20 shrink-0 relative min-h-[80px] bg-[#DDE8D5] flex items-center justify-center">
-        {item.photoUrl
-          ? <Image src={item.photoUrl} alt={item.name} fill className="object-cover" />
-          : <Camera size={22} className="text-[#4E6B4E]" />}
-      </div>
-      <div className="flex-1 py-2.5 px-3 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-semibold text-[#2C1810] leading-tight">{item.name}</p>
-          {item.rating && <Stars rating={item.rating} />}
-        </div>
-        {!compact && item.notes && <p className="text-xs text-[#8B6F4E] italic mt-0.5 line-clamp-2">{item.notes}</p>}
-        <FriendProof
-          friends={friendActivityDetails.get(item.name.toLowerCase()) ?? []}
-          avg={null}
-          total={0}
-          verb="also did this"
-        />
-        {!compact && item.link && (
-          <a href={item.link} target="_blank" rel="noopener noreferrer"
-            className="text-xs text-blue-500 hover:underline mt-0.5 inline-flex items-center gap-0.5">
-            <ArrowUpRight size={10} /> Official site
-          </a>
-        )}
-      </div>
-    </div>
-  )
+  const renderHotelCard = (item: DestItemRow, compact = false) => renderPlaceCard(item, 'hotel', compact)
+  const renderFoodCard = (item: DestItemRow, compact = false) => renderPlaceCard(item, 'food_drink', compact)
+  const renderActivityCard = (item: DestItemRow, compact = false) => renderPlaceCard(item, 'activity', compact)
 
   return (
     <div className="min-h-screen bg-[#F0E8D9]">
@@ -695,28 +607,22 @@ export default async function ItineraryPage({
               <div className="mb-10">
                 <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-1">Must Dos</h2>
                 <div className="h-px bg-[#C4A882] mb-5" />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className={styles.placeGrid}>
                   {mustHotels.length > 0 && (
                     <div>
-                      <p className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-3 flex items-center gap-1.5">
-                        <Hotel size={11} /> Hotels
-                      </p>
+                      <CategoryHeading type="hotel" count={mustHotels.length} />
                       <div className="space-y-2">{mustHotels.map(item => renderHotelCard(item, true))}</div>
                     </div>
                   )}
                   {mustFood.length > 0 && (
                     <div>
-                      <p className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-3 flex items-center gap-1.5">
-                        <Utensils size={11} /> Restaurants
-                      </p>
+                      <CategoryHeading type="food_drink" count={mustFood.length} />
                       <div className="space-y-2">{mustFood.map(item => renderFoodCard(item, true))}</div>
                     </div>
                   )}
                   {mustActivities.length > 0 && (
                     <div>
-                      <p className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-3 flex items-center gap-1.5">
-                        <Camera size={11} /> Activities
-                      </p>
+                      <CategoryHeading type="activity" count={mustActivities.length} />
                       <div className="space-y-2">{mustActivities.map(item => renderActivityCard(item, true))}</div>
                     </div>
                   )}
@@ -823,22 +729,22 @@ export default async function ItineraryPage({
                           </p>
                         )}
                         {dest.notes && <p className="text-xs text-[#8B6F4E] italic mb-3 border-l-2 border-[#C4A882] pl-2">{dest.notes}</p>}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className={styles.placeGrid}>
                           {dHotels.length > 0 && (
                             <div>
-                              <p className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-2 flex items-center gap-1.5"><Hotel size={11} /> Hotels</p>
+                              <CategoryHeading type="hotel" count={dHotels.length} />
                               <div className="space-y-2">{dHotels.map(item => renderHotelCard(item))}</div>
                             </div>
                           )}
                           {dFood.length > 0 && (
                             <div>
-                              <p className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-2 flex items-center gap-1.5"><Utensils size={11} /> Restaurants</p>
+                              <CategoryHeading type="food_drink" count={dFood.length} />
                               <div className="space-y-2">{dFood.map(item => renderFoodCard(item))}</div>
                             </div>
                           )}
                           {dActs.length > 0 && (
                             <div>
-                              <p className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-2 flex items-center gap-1.5"><Camera size={11} /> Activities</p>
+                              <CategoryHeading type="activity" count={dActs.length} />
                               <div className="space-y-2">{dActs.map(item => renderActivityCard(item))}</div>
                             </div>
                           )}
