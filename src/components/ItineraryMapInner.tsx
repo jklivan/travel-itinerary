@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { mapDayColor } from '@/lib/mapDays'
+import type { PlaceRecommendation } from '@/lib/placeRecommendation'
 
 export type ItemPin = {
   id: string
@@ -12,6 +13,7 @@ export type ItemPin = {
   lat: number
   lng: number
   day: number | null
+  recommendation: PlaceRecommendation
 }
 
 const TYPE_STYLE: Record<string, { emoji: string }> = {
@@ -97,6 +99,9 @@ export default function ItineraryMapInner({ pins }: { pins: ItemPin[] }) {
               <p style={{ fontWeight: 700, fontSize: 13, color: '#111', margin: 0 }}>
                 {TYPE_STYLE[pin.type]?.emoji ?? '📍'} {pin.name}
               </p>
+              {pin.recommendation !== 'none' && <p style={{ margin: '6px 0 0', color: pin.recommendation === 'avoid' ? '#a44138' : '#507c76', fontWeight: 700 }}>
+                {pin.recommendation === 'avoid' ? 'Avoid' : pin.type === 'hotel' ? 'Must stay' : 'Must do'} · Poster’s recommendation
+              </p>}
               <p style={{ margin: '6px 0 0', color: mapDayColor(pin.day), fontWeight: 600 }}>
                 {pin.day === null ? pin.type === 'hotel' ? 'Hotel' : 'No day assigned' : `Day ${pin.day}`}
               </p>

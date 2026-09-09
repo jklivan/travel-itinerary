@@ -377,6 +377,7 @@ export default async function ItineraryPage({
         lat: i.lat!,
         lng: i.lng!,
         day: isGuide || i.type === 'hotel' ? null : mapDayNumber(i.dayIndex, zeroBased),
+        recommendation: getRecommendation(i.tags),
       }))
   })
 

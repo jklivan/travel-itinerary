@@ -58,7 +58,7 @@ type GuidedDest = {
 
 type UploadedPhoto = { url: string; caption: string }
 
-type Phase = 'type' | 'dest' | 'building' | 'more' | 'picks' | 'details'
+type Phase = 'type' | 'dest' | 'building' | 'more' | 'review' | 'details'
 
 type SavedState = {
   dests: GuidedDest[]
@@ -124,11 +124,12 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 
 // ── Item edit form (pre-filled) ────────────────────────────────────────────
 
-function ItemEditForm({ type, initial, onSave, onClose, city }: {
+function ItemEditForm({ type, initial, onSave, onClose, onRecommendationChange, city }: {
   type: ItemType
   initial: GuidedItem
   onSave: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative' | 'photo' | 'placeId' | 'isHighlight'>) => void
   onClose: () => void
+  onRecommendationChange: (value: PlaceRecommendation) => void
   city?: string
 }) {
   const [name, setName] = useState(initial.name)
@@ -136,7 +137,9 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
   const [rating, setRating] = useState(initial.rating)
   const [notes, setNotes] = useState(initial.notes)
   const [alternative, setAlternative] = useState(initial.alternative || '')
-  const [recommendation, setRecommendation] = useState<PlaceRecommendation>(getRecommendation(initial.tags, initial.isHighlight))
+  const recommendation = getRecommendation(initial.tags, initial.isHighlight)
+  const [originalRecommendation] = useState(recommendation)
+  function cancel() { onRecommendationChange(originalRecommendation); onClose() }
   const [tags, setTags] = useState<string[]>(initial.tags)
   const [photo, setPhoto] = useState(initial.photo || '')
   const [placeId, setPlaceId] = useState(initial.placeId || '')
@@ -177,7 +180,7 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
     <div className={`rounded-2xl border ${cfg.color} p-4 space-y-3`}>
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Edit {cfg.label}</p>
-        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+        <button type="button" onClick={cancel} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
       </div>
       <PlacesAutocomplete value={name} onChange={v => { setName(v); setPlaceId('') }}
         onSelect={(_m, _s, pid) => setPlaceId(pid ?? '')}
@@ -207,7 +210,7 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
       </div>
       <PlacesAutocomplete value={alternative} onChange={setAlternative} type={cfg.placeType}
         placeholder="↔ Alternative (optional)" className={`${inputCls} text-gray-500`} city={city} />
-      <RecommendationPicker type={type} value={recommendation} onChange={setRecommendation} />
+      <RecommendationPicker type={type} value={recommendation} onChange={onRecommendationChange} />
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
@@ -247,7 +250,7 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
         )}
       </div>
       <div className="flex gap-2">
-        <button type="button" onClick={onClose}
+        <button type="button" onClick={cancel}
           className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-gray-500 text-sm font-medium hover:border-gray-300 transition-colors">
           Cancel
         </button>
@@ -262,12 +265,13 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
 
 // ── Sortable item row (view or edit) ──────────────────────────────────────────
 
-function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, city }: {
+function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, onRecommendationChange, city }: {
   item: GuidedItem
   isEditing: boolean
   onEdit: () => void
   onUpdate: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative' | 'photo' | 'placeId' | 'isHighlight'>) => void
   onRemove: () => void
+  onRecommendationChange: (value: PlaceRecommendation) => void
   city?: string
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
@@ -280,7 +284,7 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, city }: {
   if (isEditing) {
     return (
       <div ref={setNodeRef} style={style}>
-        <ItemEditForm type={item.type} initial={item} onSave={onUpdate} onClose={onEdit} city={city} />
+        <ItemEditForm type={item.type} initial={item} onSave={onUpdate} onClose={onEdit} onRecommendationChange={onRecommendationChange} city={city} />
       </div>
     )
   }
@@ -521,7 +525,7 @@ export default function GuidedCreatePage() {
   const [failedPhotoFiles, setFailedPhotoFiles] = useState<File[]>([])
   const [activeInput, setActiveInput] = useState<ActiveInput>(null)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
-  const [phase, setPhase] = useState<Phase>(restored.phase ?? 'type')
+  const [phase, setPhase] = useState<Phase>((restored.phase as string) === 'picks' ? 'review' : restored.phase ?? 'type')
 
   const [title, setTitle] = useState(restored.title ?? '')
   const [tags, setTags] = useState<string[]>(restored.tags ?? [])
@@ -629,23 +633,6 @@ export default function GuidedCreatePage() {
     setDests(ds => ds.filter(d => d.id !== destId))
     setPhase('building')
     setActiveInput(null)
-  }
-
-  function setTopPickFoodGuided(destId: string, itemId: string) {
-    setDests(ds => ds.map(d => {
-      if (d.id !== destId) return d
-      const item = d.items.find(i => i.id === itemId)
-      if (!item) return d
-      return { ...d, items: d.items.map(i => i.id === itemId ? { ...i, isHighlight: !i.isHighlight, tags: recommendationTags(i.tags, i.isHighlight ? 'none' : 'must') } : i) }
-    }))
-  }
-  function setTopPickActivityGuided(destId: string, itemId: string) {
-    setDests(ds => ds.map(d => {
-      if (d.id !== destId) return d
-      const item = d.items.find(i => i.id === itemId)
-      if (!item) return d
-      return { ...d, items: d.items.map(i => i.id === itemId ? { ...i, isHighlight: !i.isHighlight, tags: recommendationTags(i.tags, i.isHighlight ? 'none' : 'must') } : i) }
-    }))
   }
 
   const computedHighlights = [...dests, ...(curDest.name.trim() ? [{ items: curItems }] : [])]
@@ -930,6 +917,7 @@ export default function GuidedCreatePage() {
                               isEditing={editingItemId === item.id}
                               onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
                               onUpdate={updated => updateItem(item.id, updated)}
+                              onRecommendationChange={value => setCurItems(items => items.map(i => i.id === item.id ? { ...i, tags: recommendationTags(i.tags, value), isHighlight: value === 'must' } : i))}
                               onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))}
                               city={curDest.name || undefined}
                             />
@@ -954,6 +942,7 @@ export default function GuidedCreatePage() {
                                     isEditing={editingItemId === item.id}
                                     onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
                                     onUpdate={updated => updateItem(item.id, updated)}
+                              onRecommendationChange={value => setCurItems(items => items.map(i => i.id === item.id ? { ...i, tags: recommendationTags(i.tags, value), isHighlight: value === 'must' } : i))}
                                     onRemove={() => setCurItems(is => is.filter(x => x.id !== item.id))}
                                     city={curDest.name || undefined}
                                   />
@@ -1122,7 +1111,7 @@ export default function GuidedCreatePage() {
                 className="flex-1 py-3 rounded-xl border-2 border-blue-200 text-blue-700 text-sm font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
                 <Plus size={15} /> Add destination
               </button>
-              <button type="button" onClick={() => setPhase('picks')}
+              <button type="button" onClick={() => setPhase('review')}
                 className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
                 Finish <ArrowRight size={15} />
               </button>
@@ -1134,58 +1123,13 @@ export default function GuidedCreatePage() {
           </div>
         )}
 
-        {/* ── PICKS card ─────────────────────────────────────────────────── */}
-        {phase === 'picks' && (
+        {/* ── REVIEW card ─────────────────────────────────────────────────── */}
+        {phase === 'review' && (
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 space-y-5">
             <div>
-              <h2 className="font-bold text-gray-900">Must Do</h2>
-              <p className="text-sm text-gray-500 mt-0.5">Mark the places you recommend. You can also set Must stay or Avoid on each place.</p>
+              <h2 className="font-bold text-gray-900">Ready to publish</h2>
+              <p className="text-sm text-gray-500 mt-0.5">Your recommendations are set on each place. Go back to edit them before publishing.</p>
             </div>
-            {dests.map(dest => {
-              const food = dest.items.filter(i => i.type === 'food_drink' && i.name.trim())
-              const acts = dest.items.filter(i => i.type === 'activity' && i.name.trim())
-              if (food.length === 0 && acts.length === 0) return null
-              const foodCount = food.filter(i => i.isHighlight).length
-              const actCount  = acts.filter(i => i.isHighlight).length
-              return (
-                <div key={dest.id} className="space-y-3">
-                  {dests.length > 1 && (
-                    <p className="text-sm font-semibold text-gray-800">{dest.name}{dest.country ? `, ${dest.country}` : ''}</p>
-                  )}
-                  {food.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 mb-1.5">🍽️ Must-do restaurants {foodCount > 0 && <span className="text-amber-600">({foodCount} selected)</span>}</p>
-                      <div className="space-y-1.5">
-                        {food.map(item => (
-                          <button key={item.id} type="button"
-                            onClick={() => setTopPickFoodGuided(dest.id, item.id)}
-                            className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
-                            {item.isHighlight ? '⭐ ' : ''}{item.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {acts.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 mb-1.5">📍 Must-do activities {actCount > 0 && <span className="text-amber-600">({actCount} selected)</span>}</p>
-                      <div className="space-y-1.5">
-                        {acts.map(item => (
-                          <button key={item.id} type="button"
-                            onClick={() => setTopPickActivityGuided(dest.id, item.id)}
-                            className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
-                            {item.isHighlight ? '⭐ ' : ''}{item.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-            {dests.every(d => d.items.filter(i => i.type !== 'hotel').length === 0) && (
-              <p className="text-sm text-gray-400 italic">No restaurants or activities added yet.</p>
-            )}
             {formState?.error && (
               <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{formState.error}</p>
             )}

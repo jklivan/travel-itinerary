@@ -251,11 +251,12 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 
 // ── Item edit form ─────────────────────────────────────────────────────────────
 
-function ItemEditForm({ type, initial, onSave, onClose, city }: {
+function ItemEditForm({ type, initial, onSave, onClose, onRecommendationChange, city }: {
   type: ItemType
   initial: EditItem
   onSave: (updated: Partial<EditItem>) => void
   onClose: () => void
+  onRecommendationChange: (value: PlaceRecommendation) => void
   city?: string
 }) {
   const [name, setName]           = useState(initial.name)
@@ -263,7 +264,9 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
   const [rating, setRating]       = useState(initial.rating)
   const [notes, setNotes]         = useState(initial.notes)
   const [alternative, setAlternative] = useState(initial.alternative)
-  const [recommendation, setRecommendation] = useState<PlaceRecommendation>(getRecommendation(initial.tags, initial.isHighlight))
+  const recommendation = getRecommendation(initial.tags, initial.isHighlight)
+  const [originalRecommendation] = useState(recommendation)
+  function cancel() { onRecommendationChange(originalRecommendation); onClose() }
   const [tags, setTags]           = useState<string[]>(initial.tags)
   const [description, setDescription] = useState(initial.description)
   const [link, setLink]           = useState(initial.link)
@@ -291,7 +294,7 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
     <div className={`rounded-xl border ${cfg.color} p-4 space-y-3`}>
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-[#6b7067] uppercase tracking-wide">Edit {cfg.label}</p>
-        <button type="button" onClick={onClose} className="text-[#918d81] hover:text-[#6b7067]"><X size={16} /></button>
+        <button type="button" onClick={cancel} className="text-[#918d81] hover:text-[#6b7067]"><X size={16} /></button>
       </div>
       <PlacesAutocomplete value={name} onChange={setName} type={cfg.placeType}
         placeholder={cfg.placeholder} className={inputCls} city={city} />
@@ -321,7 +324,7 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
       </div>
       <PlacesAutocomplete value={alternative} onChange={setAlternative} type={cfg.placeType}
         placeholder="↔ Alternative (optional)" className={`${inputCls} text-[#7a7b70]`} city={city} />
-      <RecommendationPicker type={type} value={recommendation} onChange={setRecommendation} />
+      <RecommendationPicker type={type} value={recommendation} onChange={onRecommendationChange} />
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-[#507c76] hover:text-[#355650] font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
@@ -354,7 +357,7 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
         </div>
       )}
       <div className="flex gap-2">
-        <button type="button" onClick={onClose}
+        <button type="button" onClick={cancel}
           className="flex-1 py-2.5 rounded-xl border-2 border-[#e3dfd2] text-[#7a7b70] text-sm font-medium hover:border-[#d7cebc] transition-colors">
           Cancel
         </button>
@@ -559,12 +562,13 @@ function DraggedItem({ item }: { item: EditItem }) {
   )
 }
 
-function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, onPhotoChange, onPhotoBusyChange, city }: {
+function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, onRecommendationChange, onPhotoChange, onPhotoBusyChange, city }: {
   item: EditItem
   isEditing: boolean
   onEdit: () => void
   onUpdate: (updated: Partial<EditItem>) => void
   onRemove: () => void
+  onRecommendationChange: (value: PlaceRecommendation) => void
   onPhotoChange: (photo: string) => void
   onPhotoBusyChange: (busy: boolean) => void
   city?: string
@@ -576,7 +580,7 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, onPhotoChan
   if (isEditing) {
     return (
       <div ref={setNodeRef} style={style}>
-        <ItemEditForm type={item.type} initial={item} onSave={onUpdate} onClose={onEdit} city={city} />
+        <ItemEditForm type={item.type} initial={item} onSave={onUpdate} onClose={onEdit} onRecommendationChange={onRecommendationChange} city={city} />
         <ItemPhotoInput photo={item.photo} name={item.name} onChange={onPhotoChange} onBusyChange={onPhotoBusyChange} />
       </div>
     )
@@ -693,22 +697,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       const dragged = active.rect.current.translated
       const after = !!dragged && dragged.top + dragged.height / 2 > over.rect.top + over.rect.height / 2
       return { ...d, items: moveItemToDay(d.items, activeId, day, target?.id, after) }
-    })
-  }
-
-  function setTopPickFood(destId: string, itemId: string) {
-    updDest(destId, d => {
-      const item = d.items.find(i => i.id === itemId)
-      if (!item) return d
-      return { ...d, items: d.items.map(i => i.id === itemId ? { ...i, isHighlight: !i.isHighlight, tags: recommendationTags(i.tags, i.isHighlight ? 'none' : 'must') } : i) }
-    })
-  }
-
-  function setTopPickActivity(destId: string, itemId: string) {
-    updDest(destId, d => {
-      const item = d.items.find(i => i.id === itemId)
-      if (!item) return d
-      return { ...d, items: d.items.map(i => i.id === itemId ? { ...i, isHighlight: !i.isHighlight, tags: recommendationTags(i.tags, i.isHighlight ? 'none' : 'must') } : i) }
     })
   }
 
@@ -910,6 +898,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                                 isEditing={editingItemId === item.id}
                                 onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
                                 onUpdate={updated => updateItem(dest.id, item.id, updated)}
+                                onRecommendationChange={value => updDest(dest.id, d => ({ ...d, items: d.items.map(i => i.id === item.id ? { ...i, tags: recommendationTags(i.tags, value), isHighlight: value === 'must' } : i) }))}
                                 onRemove={() => removeItem(dest.id, item.id)}
                                 onPhotoChange={photo => updDest(dest.id, d => ({ ...d, items: d.items.map(i => i.id === item.id ? { ...i, photo } : i) }))}
                                 onPhotoBusyChange={busy => setItemUploads(count => count + (busy ? 1 : -1))}
@@ -984,56 +973,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         className="w-full py-3 rounded-xl border-2 border-dashed border-[#bbcfc5] text-[#507c76] text-sm font-semibold hover:border-[#507c76] hover:bg-[#edf1e9] transition-all flex items-center justify-center gap-2">
         <Plus size={15} /> Add destination
       </button>
-
-      {/* ── MUST DO ──────────────────────────────────────────────────────────── */}
-      {dests.some(d => d.items.filter(i => i.type !== 'hotel' && i.name.trim()).length > 0) && (
-        <div className="bg-[#fffdf6] rounded-xl shadow-sm border border-[#e3dfd2] p-5 space-y-5">
-          <div>
-            <h2 className="font-[family-name:var(--font-playfair)] text-xl text-[#2e4147]">Must Do</h2>
-            <p className="text-sm text-[#7a7b70] mt-0.5">Mark the places you recommend. You can also set Must stay or Avoid on each place.</p>
-          </div>
-          {dests.map(dest => {
-            const food = dest.items.filter(i => i.type === 'food_drink' && i.name.trim())
-            const acts = dest.items.filter(i => i.type === 'activity' && i.name.trim())
-            if (food.length === 0 && acts.length === 0) return null
-            const foodCount = food.filter(i => i.isHighlight).length
-            const actCount  = acts.filter(i => i.isHighlight).length
-            return (
-              <div key={dest.id} className="space-y-3">
-                {dests.length > 1 && (
-                  <p className="text-sm font-semibold text-[#2C1810]">{dest.name || 'Destination'}{dest.country ? `, ${dest.country}` : ''}</p>
-                )}
-                {food.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-[#7a7b70] mb-1.5">🍽️ Must-do restaurants {foodCount > 0 && <span className="text-[#507c76]">({foodCount} selected)</span>}</p>
-                    <div className="space-y-1.5">
-                      {food.map(item => (
-                        <button key={item.id} type="button" onClick={() => setTopPickFood(dest.id, item.id)}
-                          className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-[#e6ece5] border-[#9dbbb0] text-[#426862] font-medium' : 'border-[#e3dfd2] text-[#5C3D2E] hover:border-[#d7cebc]'}`}>
-                          {item.isHighlight ? '⭐ ' : ''}{item.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {acts.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-[#7a7b70] mb-1.5">📍 Must-do activities {actCount > 0 && <span className="text-[#507c76]">({actCount} selected)</span>}</p>
-                    <div className="space-y-1.5">
-                      {acts.map(item => (
-                        <button key={item.id} type="button" onClick={() => setTopPickActivity(dest.id, item.id)}
-                          className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-[#e6ece5] border-[#9dbbb0] text-[#426862] font-medium' : 'border-[#e3dfd2] text-[#5C3D2E] hover:border-[#d7cebc]'}`}>
-                          {item.isHighlight ? '⭐ ' : ''}{item.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
 
       {/* ── PHOTOS ───────────────────────────────────────────────────────────── */}
       <div className="bg-[#fffdf6] rounded-xl shadow-sm border border-[#e3dfd2] p-5 space-y-4">
