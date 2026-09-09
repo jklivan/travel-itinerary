@@ -7,6 +7,7 @@ import { notFound } from 'next/navigation'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
 import { Hotel, Utensils, Camera, MapPin, Star, Check, Ban, BedDouble } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
+import { eventPhotos, pickEventPhoto, tripPhotoGallery } from '@/lib/eventPhotos'
 import PhotoStrip from '@/components/PhotoStrip'
 import { tagMeta } from '@/lib/tags'
 import DeleteButton from '@/components/DeleteButton'
@@ -64,7 +65,7 @@ function FriendProof({
   )
 }
 
-type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number; dayIndex?: number | null; tags?: string[]; alternative?: string | null; photoUrl?: string | null; lat?: number | null; lng?: number | null; placeId?: string | null }
+type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number; dayIndex?: number | null; tags?: string[]; alternative?: string | null; photoUrl?: string | null; photoUrls?: string[]; lat?: number | null; lng?: number | null; placeId?: string | null }
 
 function groupItems(items: DestItemRow[]) {
   const stays = new Map<number, { hotel: DestItemRow | null; days: Map<number, DestItemRow[]> }>()
@@ -397,6 +398,7 @@ export default async function ItineraryPage({
   const renderPlaceCard = (item: DestItemRow, type: PlaceCategory, compact = false) => {
     const { eyebrow, Icon } = PLACE_CATEGORIES[type]
     const recommendation = getRecommendation(item.tags)
+    const tilePhoto = pickEventPhoto(eventPhotos(item.photoUrls, item.photoUrl))
     const nameKey = item.name.toLowerCase()
     const friends = (type === 'hotel' ? friendHotelDetails : type === 'food_drink' ? friendFoodDetails : friendActivityDetails).get(nameKey) ?? []
     const { avg = null, total = 0 } = placeRatings.get(item.id) ?? {}
@@ -411,8 +413,8 @@ export default async function ItineraryPage({
         {recommendation === 'must' && type === 'hotel' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><BedDouble size={24} aria-hidden="true" /><span>Must stay</span></span>}
         {recommendation === 'avoid' && <span className={`${styles.mustDoStamp} ${styles.textStamp} ${styles.avoidStamp}`}><Ban size={24} aria-hidden="true" /><span>Avoid</span></span>}
         <div className={styles.thumbnail}>
-          {item.photoUrl ? (
-            <Image src={item.photoUrl} alt="" fill sizes="88px" className="object-cover" />
+          {tilePhoto ? (
+            <Image src={tilePhoto} alt="" fill sizes="88px" className="object-cover" />
           ) : (
             <div className={styles.keepsake} aria-hidden="true">
               <span>{eyebrow}</span>
@@ -567,7 +569,7 @@ export default async function ItineraryPage({
 
         {/* Photo strip */}
         {(() => {
-          const userPhotos = it.photos.filter(p => !p.isStock)
+          const userPhotos = tripPhotoGallery(it.photos, it.destinations.flatMap(d => d.items))
           const stockPhoto = it.photos.find(p => p.isStock)
           if (userPhotos.length > 0) return (
             <div className="mb-7 rounded-2xl overflow-hidden">

@@ -106,6 +106,7 @@ model DestItem {
   tags          String[]    @default([])
   alternative   String?
   photoUrl      String?
+  photoUrls     String[]    @default([])
   placeId       String?
   lat           Float?
   lng           Float?

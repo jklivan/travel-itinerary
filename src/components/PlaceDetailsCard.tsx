@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import Image from 'next/image'
+import PhotoStrip from './PhotoStrip'
+import { eventPhotos } from '@/lib/eventPhotos'
 import { ArrowUpRight, MapPin, Navigation, X } from 'lucide-react'
 import styles from './PlaceDetailsCard.module.css'
 import type { PlaceRecommendation } from '@/lib/placeRecommendation'
@@ -13,6 +14,7 @@ type Place = {
   address?: string | null
   alternative?: string | null
   photoUrl?: string | null
+  photoUrls?: string[]
   link?: string | null
   lat?: number | null
   lng?: number | null
@@ -29,7 +31,7 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
   children: ReactNode
 }) {
   const [open, setOpen] = useState(false)
-  const [photoFailed, setPhotoFailed] = useState(false)
+  const photos = eventPhotos(place.photoUrls, place.photoUrl)
   const dialog = useRef<HTMLDialogElement>(null)
   const titleId = useId()
 
@@ -74,9 +76,7 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
               </div>
               <button type="button" autoFocus className={styles.close} aria-label="Close place details" onClick={() => dialog.current?.close()}><X size={22} /></button>
             </header>
-            {place.photoUrl && !photoFailed && <Image src={place.photoUrl} alt={place.name} width={900} height={600}
-              sizes="(max-width: 640px) 100vw, 640px" className={styles.photo} onError={() => setPhotoFailed(true)} />}
-            {place.photoUrl && photoFailed && <p className={styles.muted}>This photo could not be loaded.</p>}
+            {photos.length > 0 && <PhotoStrip photos={photos.map((url, index) => ({ id: String(index), url, caption: null }))} title={place.name} contain />}
             {place.description && <p className={styles.text}>{place.description}</p>}
             {place.notes && <section><h3 className={styles.sectionTitle}>Poster’s notes</h3><p className={styles.text}>{place.notes}</p></section>}
             {place.address && <section><h3 className={styles.sectionTitle}>Address</h3><p className={styles.address}><MapPin size={17} />{place.address}</p></section>}

@@ -4,6 +4,7 @@ import { createRequire } from 'node:module'
 import { test } from 'node:test'
 import vm from 'node:vm'
 import ts from 'typescript'
+import * as photos from '../src/lib/eventPhotos.ts'
 import * as recommendations from '../src/lib/placeRecommendation.ts'
 const require = createRequire(import.meta.url)
 
@@ -19,6 +20,7 @@ function editor(path) {
     } }
     if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx }
     if (name === '@/components/RecommendationPicker') return { default: picker }
+    if (name === '@/lib/eventPhotos') return photos
     if (name === '@/lib/placeRecommendation') return recommendations
     return name.startsWith('@/') ? {} : require(name)
   } }
@@ -38,7 +40,7 @@ for (const path of ['../src/app/itinerary/[id]/edit/EditForm.tsx', '../src/app/c
     const ui = editor(path)
     let item = { type: 'activity', name: 'Museum', mealType: '', rating: 5, notes: 'Original notes', tags: ['Cultural', '__avoid'], isHighlight: false, description: '', link: '', address: '', alternative: '', photo: '', placeId: '' }
     let saves = 0; let closed = false
-    const props = () => ({ type: item.type, initial: item, onClose: () => { closed = true }, onSave: () => saves++, onRecommendationChange: value => { item = { ...item, tags: recommendations.recommendationTags(item.tags, value), isHighlight: value === 'must' } } })
+    const props = () => ({ type: item.type, initial: item, onClose: () => { closed = true }, onSave: () => saves++, onPhotosChange() {}, onPhotoBusyChange() {}, onRecommendationChange: value => { item = { ...item, tags: recommendations.recommendationTags(item.tags, value), isHighlight: value === 'must' } } })
     let tree = ui.render(props())
     find(tree, node => node.type === ui.picker).props.onChange('must')
     assert.equal(recommendations.getRecommendation(item.tags, item.isHighlight), 'must')

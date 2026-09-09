@@ -1,5 +1,8 @@
 'use client'
 
+import EventPhotoInput from '@/components/EventPhotoInput'
+import { eventPhotos } from '@/lib/eventPhotos'
+
 import { useActionState, useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { upload } from '@vercel/blob/client'
@@ -47,6 +50,7 @@ type EditItem = {
   isHighlight: boolean
   alternative: string
   photo: string
+  photos: string[]
   // extra fields preserved from DB
   description: string
   link: string
@@ -73,7 +77,7 @@ type RawItem = {
   type: string; mealType?: string | null; name: string; description?: string | null
   notes: string | null; address?: string | null; rating: number | null
   priceLevel?: number | null; link: string | null; groupIndex?: number
-  dayIndex?: number | null; order?: number | null; photoUrl?: string | null
+  dayIndex?: number | null; order?: number | null; photoUrl?: string | null; photoUrls?: string[]
   familyFriendly?: boolean | null; familyFriendlySource?: string | null
   lat?: number | null; lng?: number | null; tags?: string[]; alternative?: string | null
 }
@@ -135,7 +139,7 @@ function destFromRaw(d: ItineraryData['destinations'][number]): EditDest {
         ? Math.min(...nonHotel.map(editDay))
         : 1
       items.push({
-        id: uid(), type: 'hotel', name: hotel.name, photo: hotel.photoUrl ?? '',
+        id: uid(), type: 'hotel', name: hotel.name, photo: hotel.photoUrl ?? '', photos: eventPhotos(hotel.photoUrls, hotel.photoUrl),
         mealType: '', rating: hotel.rating ?? 0, notes: hotel.notes ?? '',
         tags: hotel.tags ?? [], dayIndex: hotelDay, isHighlight: getRecommendation(hotel.tags) === 'must',
         alternative: hotel.alternative ?? '', description: hotel.description ?? '',
@@ -148,7 +152,7 @@ function destFromRaw(d: ItineraryData['destinations'][number]): EditDest {
     for (const item of nonHotel.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))) {
       items.push({
         id: uid(), type: item.type as 'food_drink' | 'activity',
-        name: item.name, mealType: item.mealType ?? '', photo: item.photoUrl ?? '',
+        name: item.name, mealType: item.mealType ?? '', photo: item.photoUrl ?? '', photos: eventPhotos(item.photoUrls, item.photoUrl),
         rating: item.rating ?? 0, notes: item.notes ?? '',
         tags: (item.tags ?? []).filter(t => t !== '__highlight'),
         dayIndex: editDay(item),
@@ -190,12 +194,12 @@ function buildDestinations(dests: EditDest[]) {
               priceLevel: i.priceLevel, familyFriendly: i.familyFriendly,
               familyFriendlySource: i.familyFriendlySource, lat: i.lat, lng: i.lng,
               order: dayItems.indexOf(i), tags: recommendationTags(i.tags, getRecommendation(i.tags, i.isHighlight)),
-              alternative: i.alternative, photo: i.photo,
+              alternative: i.alternative, photo: i.photos[0] ?? '', photos: i.photos,
             })),
             activities: dayItems.filter(i => i.type === 'activity').map(i => ({
               name: i.name, notes: i.notes, link: i.link, rating: i.rating,
               order: dayItems.indexOf(i), tags: recommendationTags(i.tags, getRecommendation(i.tags, i.isHighlight)),
-              alternative: i.alternative, photo: i.photo,
+              alternative: i.alternative, photo: i.photos[0] ?? '', photos: i.photos,
             })),
           }))
         : [{ food: [], activities: [] }]
@@ -226,7 +230,7 @@ function buildDestinations(dests: EditDest[]) {
       name: d.name, country: d.country, notes: d.notes,
       groups: hotels.map((hotel, idx) => ({
         hotelName: hotel.name, hotelNotes: hotel.notes, hotelAddress: hotel.address,
-        hotelLink: hotel.link, hotelRating: hotel.rating, hotelAlternative: hotel.alternative, hotelPhoto: hotel.photo,
+        hotelLink: hotel.link, hotelRating: hotel.rating, hotelAlternative: hotel.alternative, hotelPhoto: hotel.photos[0] ?? '', hotelPhotos: hotel.photos,
         hotelDescription: hotel.description, hotelPriceLevel: hotel.priceLevel,
         hotelLat: hotel.lat, hotelLng: hotel.lng, hotelTags: recommendationTags(hotel.tags, getRecommendation(hotel.tags, hotel.isHighlight)),
         days: buildDayGroups(itemsByHotel[idx]),
@@ -374,7 +378,7 @@ function ItemEditForm({ type, initial, onSave, onClose, onRecommendationChange, 
 
 function ItemForm({ type, onAdd, onClose, city }: {
   type: ItemType
-  onAdd: (item: Omit<EditItem, 'id' | 'dayIndex' | 'isHighlight' | 'photo' | 'alternative' | 'description' | 'link' | 'address' | 'priceLevel' | 'familyFriendly' | 'familyFriendlySource' | 'lat' | 'lng'>) => void
+  onAdd: (item: Omit<EditItem, 'id' | 'dayIndex' | 'isHighlight' | 'photo' | 'photos' | 'alternative' | 'description' | 'link' | 'address' | 'priceLevel' | 'familyFriendly' | 'familyFriendlySource' | 'lat' | 'lng'>) => void
   onClose: () => void
   city?: string
 }) {
@@ -461,60 +465,6 @@ function ItemForm({ type, onAdd, onClose, city }: {
   )
 }
 
-function ItemPhotoInput({ photo, name, onChange, onBusyChange }: {
-  photo: string
-  name: string
-  onChange: (photo: string) => void
-  onBusyChange: (busy: boolean) => void
-}) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function uploadPhoto(file: File) {
-    setError(null)
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Choose a photo smaller than 10 MB.')
-      return
-    }
-    setBusy(true)
-    onBusyChange(true)
-    try {
-      const blob = await upload(`event-${crypto.randomUUID()}-${file.name}`, file, {
-        access: 'private', handleUploadUrl: '/api/upload',
-      })
-      onChange(`/api/img?url=${encodeURIComponent(blob.url)}`)
-    } catch {
-      setError('Photo upload failed. Please try again.')
-    } finally {
-      setBusy(false)
-      onBusyChange(false)
-    }
-  }
-
-  return (
-    <div className="px-3 pb-2 pt-1">
-      <div className="flex items-center gap-3">
-        {photo && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={photo} alt={`Photo for ${name}`} className="h-12 w-12 rounded-lg object-cover" />
-        )}
-        <label className={`inline-flex items-center gap-1.5 text-xs font-medium text-[#507c76] ${busy ? 'opacity-50' : 'cursor-pointer hover:text-[#355650]'}`}>
-          <ImageIcon size={14} />{busy ? 'Uploading…' : photo ? 'Replace photo' : 'Add photo'}
-          <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif" className="sr-only" disabled={busy}
-            aria-label={`${photo ? 'Replace' : 'Add'} photo for ${name}`}
-            onChange={e => {
-              const file = e.target.files?.[0]
-              e.target.value = ''
-              if (file) void uploadPhoto(file)
-            }} />
-        </label>
-        {photo && <button type="button" disabled={busy} onClick={() => onChange('')} className="text-xs text-[#7a7b70] hover:text-red-600 disabled:opacity-50" aria-label={`Remove photo for ${name}`}>Remove photo</button>}
-      </div>
-      {error && <p role="alert" className="mt-1 text-xs text-red-600">{error}</p>}
-    </div>
-  )
-}
-
 function DayDropZone({ destId, day }: { destId: string; day: number }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `day-end-${destId}-${day}`,
@@ -569,7 +519,7 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, onRecommend
   onUpdate: (updated: Partial<EditItem>) => void
   onRemove: () => void
   onRecommendationChange: (value: PlaceRecommendation) => void
-  onPhotoChange: (photo: string) => void
+  onPhotoChange: (photos: string[]) => void
   onPhotoBusyChange: (busy: boolean) => void
   city?: string
 }) {
@@ -581,7 +531,7 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, onRecommend
     return (
       <div ref={setNodeRef} style={style}>
         <ItemEditForm type={item.type} initial={item} onSave={onUpdate} onClose={onEdit} onRecommendationChange={onRecommendationChange} city={city} />
-        <ItemPhotoInput photo={item.photo} name={item.name} onChange={onPhotoChange} onBusyChange={onPhotoBusyChange} />
+        <EventPhotoInput photos={item.photos} name={item.name} onChange={onPhotoChange} onBusyChange={onPhotoBusyChange} />
       </div>
     )
   }
@@ -597,7 +547,7 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, onRecommend
       </button>
       <button type="button" onClick={onRemove} className="text-[#c3bcad] hover:text-red-400 text-lg leading-none shrink-0">×</button>
       </div>
-      <ItemPhotoInput photo={item.photo} name={item.name} onChange={onPhotoChange} onBusyChange={onPhotoBusyChange} />
+      <EventPhotoInput photos={item.photos} name={item.name} onChange={onPhotoChange} onBusyChange={onPhotoBusyChange} />
     </div>
   )
 }
@@ -658,11 +608,11 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
     setDests(ds => ds.map(d => d.id !== destId ? d : fn(d)))
   }
 
-  function addItem(destId: string, item: Omit<EditItem, 'id' | 'dayIndex' | 'isHighlight' | 'photo' | 'alternative' | 'description' | 'link' | 'address' | 'priceLevel' | 'familyFriendly' | 'familyFriendlySource' | 'lat' | 'lng'>) {
+  function addItem(destId: string, item: Omit<EditItem, 'id' | 'dayIndex' | 'isHighlight' | 'photo' | 'photos' | 'alternative' | 'description' | 'link' | 'address' | 'priceLevel' | 'familyFriendly' | 'familyFriendlySource' | 'lat' | 'lng'>) {
     updDest(destId, d => ({
       ...d,
       items: [...d.items, {
-        ...item, id: uid(), dayIndex: d.curDayIndex, isHighlight: getRecommendation(item.tags) === 'must', photo: '',
+        ...item, id: uid(), dayIndex: d.curDayIndex, isHighlight: getRecommendation(item.tags) === 'must', photo: '', photos: [],
         alternative: '', description: '', link: '', address: '',
         priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null,
       }]
@@ -900,7 +850,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                                 onUpdate={updated => updateItem(dest.id, item.id, updated)}
                                 onRecommendationChange={value => updDest(dest.id, d => ({ ...d, items: d.items.map(i => i.id === item.id ? { ...i, tags: recommendationTags(i.tags, value), isHighlight: value === 'must' } : i) }))}
                                 onRemove={() => removeItem(dest.id, item.id)}
-                                onPhotoChange={photo => updDest(dest.id, d => ({ ...d, items: d.items.map(i => i.id === item.id ? { ...i, photo } : i) }))}
+                                onPhotoChange={photos => updDest(dest.id, d => ({ ...d, items: d.items.map(i => i.id === item.id ? { ...i, photos, photo: photos[0] ?? '' } : i) }))}
                                 onPhotoBusyChange={busy => setItemUploads(count => count + (busy ? 1 : -1))}
                                 city={dest.name || undefined}
                               />

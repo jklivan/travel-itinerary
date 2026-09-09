@@ -6,9 +6,10 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 type Photo = { id: string; url: string; caption: string | null }
 
-export default function PhotoStrip({ photos, title }: { photos: Photo[]; title: string }) {
+export default function PhotoStrip({ photos, title, contain = false }: { photos: Photo[]; title: string; contain?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
   const [current, setCurrent] = useState(0)
+  const [failed, setFailed] = useState<Set<string>>(new Set())
 
   const scrollTo = useCallback((index: number) => {
     const el = ref.current
@@ -31,9 +32,10 @@ export default function PhotoStrip({ photos, title }: { photos: Photo[]; title: 
     <div className="relative h-64 bg-gray-100">
       {/* Scrollable strip */}
       <div ref={ref} className="flex overflow-x-auto snap-x snap-mandatory h-64 scrollbar-hide">
-        {photos.map((photo) => (
+        {photos.map((photo, index) => (
           <div key={photo.id} className="relative flex-none w-full snap-center h-64">
-            <Image src={photo.url} alt={photo.caption ?? title} fill className="object-cover" priority />
+            {failed.has(photo.id) ? <p className="flex h-full items-center justify-center p-4 text-sm text-gray-500">This photo could not be loaded.</p> :
+              <Image src={photo.url} alt={photo.caption ?? title} fill sizes="(max-width: 768px) 100vw, 900px" className={contain ? 'object-contain' : 'object-cover'} loading={index === 0 ? 'eager' : 'lazy'} onError={() => setFailed(previous => new Set([...previous, photo.id]))} />}
             {photo.caption && (
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-4 py-3">
                 <p className="text-white text-xs font-medium drop-shadow">{photo.caption}</p>

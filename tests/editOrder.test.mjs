@@ -5,6 +5,7 @@ import { test } from 'node:test'
 import vm from 'node:vm'
 import ts from 'typescript'
 import { moveItemToDay, reorderItems } from '../src/lib/reorderItems.ts'
+import * as photos from '../src/lib/eventPhotos.ts'
 import * as recommendations from '../src/lib/placeRecommendation.ts'
 
 // Exercise the editor's real load/save conversion without mounting its UI.
@@ -13,7 +14,7 @@ const source = readFileSync(new URL('../src/app/itinerary/[id]/edit/EditForm.tsx
 const compiled = ts.transpileModule(source + '\nexport { destFromRaw, buildDestinations };', {
   compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2017 },
 }).outputText
-const context = { exports: {}, require: name => name === '@/lib/placeRecommendation' ? recommendations : name.startsWith('@/') ? {} : require(name) }
+const context = { exports: {}, require: name => name === '@/lib/eventPhotos' ? photos : name === '@/lib/placeRecommendation' ? recommendations : name.startsWith('@/') ? {} : require(name) }
 vm.runInNewContext(compiled, context)
 const { destFromRaw, buildDestinations } = context.exports
 
@@ -85,8 +86,11 @@ test('event photos load and serialize for hotels, restaurants, and activities', 
   assert.equal(saved.hotelPhoto, '/hotel.jpg')
   assert.equal(saved.days[0].food[0].photo, '/cafe.jpg')
   assert.equal(saved.days[0].activities[0].photo, '/tour.jpg')
-  const updated = { ...initial, items: initial.items.map(item => ({ ...item, photo: item.type === 'activity' ? '' : '/replacement.jpg' })) }
+  const updated = { ...initial, items: initial.items.map(item => ({ ...item, photo: item.type === 'activity' ? '' : '/replacement.jpg', photos: item.type === 'activity' ? [] : ['/replacement.jpg', '/second.jpg'] })) }
   saved = buildDestinations([updated])[0].groups[0]
+  assert.deepEqual(Array.from(saved.hotelPhotos), ['/replacement.jpg', '/second.jpg'])
+  assert.deepEqual(Array.from(saved.days[0].food[0].photos), ['/replacement.jpg', '/second.jpg'])
+  assert.deepEqual(Array.from(saved.days[0].activities[0].photos), [])
   assert.equal(saved.hotelPhoto, '/replacement.jpg')
   assert.equal(saved.days[0].food[0].photo, '/replacement.jpg')
   assert.equal(saved.days[0].activities[0].photo, '')
