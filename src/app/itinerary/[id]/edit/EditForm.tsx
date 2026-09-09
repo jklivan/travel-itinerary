@@ -610,6 +610,12 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   const boundAction = updateItinerary.bind(null, itinerary.id)
   const [state, action, pending] = useActionState(boundAction, undefined)
 
+  function discardChanges() {
+    if (pending) return
+    // A full navigation also clears the editor's cached, unsaved React state.
+    window.location.replace(`/itinerary/${itinerary.id}`)
+  }
+
   const initialDates = monthAndDaysFromDates(fmt(itinerary.startDate), fmt(itinerary.endDate))
 
   const [postType, setPostType]   = useState<'itinerary' | 'guide'>(itinerary.postType === 'guide' ? 'guide' : 'itinerary')
@@ -752,6 +758,13 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       <input type="hidden" name="tags"         value={JSON.stringify(tags)} />
       {budget > 0 && <input type="hidden" name="budget" value={budget} />}
       <input type="hidden" name="notes"        value={notes} />
+
+      <div className="flex justify-end">
+        <button type="button" onClick={discardChanges} disabled={pending}
+          className="min-h-11 px-3 text-sm font-medium text-gray-600 hover:text-gray-900 underline underline-offset-4 disabled:opacity-50">
+          Discard changes
+        </button>
+      </div>
 
       {state?.error && (
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{state.error}</p>
@@ -1054,7 +1067,11 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       </div>
 
       {/* ── SUBMIT ───────────────────────────────────────────────────────────── */}
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <button type="button" onClick={discardChanges} disabled={pending}
+          className="flex-1 text-gray-600 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:bg-gray-100 transition-colors disabled:opacity-60 text-sm">
+          Discard changes
+        </button>
         <button type="submit" name="isDraft" value="1" disabled={pending || uploading || itemUploads > 0}
           className="flex-1 bg-white text-gray-700 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-colors disabled:opacity-60 text-sm">
           {pending ? 'Saving…' : 'Save as Draft'}
