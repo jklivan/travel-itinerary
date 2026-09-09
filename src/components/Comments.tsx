@@ -185,7 +185,7 @@ export default function Comments({
   isLoggedIn: boolean
 }) {
   return (
-    <div className="mt-6 pt-6 border-t border-gray-100">
+    <div id="comments" className="mt-6 pt-6 border-t border-gray-100 scroll-mt-24">
       <h2 className="text-sm font-semibold text-gray-700 mb-4">
         Comments {initialComments.length > 0 && <span className="text-gray-400 font-normal">({initialComments.length})</span>}
       </h2>

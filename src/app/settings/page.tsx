@@ -1,5 +1,6 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
+import { NotificationPreferences } from '@/components/NativeNotifications'
 
 export default async function SettingsPage() {
   const session = await auth()
@@ -8,6 +9,7 @@ export default async function SettingsPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-6">Settings</h1>
+      <NotificationPreferences />
 
       <section className="bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] p-5">
         <div>

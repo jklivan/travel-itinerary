@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { auth, signOut } from '@/auth'
 import NavSearch from './NavSearch'
+import NotificationBell from './NotificationBell'
+import { unregisterPushDevice } from '@/actions/notifications'
 
 export default async function Navbar() {
   const session = await auth()
@@ -20,6 +22,7 @@ export default async function Navbar() {
         <div className="flex items-center gap-2 shrink-0">
           {session?.user ? (
             <>
+              <NotificationBell />
               <span className="text-sm text-white/80 hidden sm:block font-medium truncate max-w-[100px]">
                 {session.user.name}
               </span>
@@ -29,6 +32,7 @@ export default async function Navbar() {
               </Link>
               <form action={async () => {
                 'use server'
+                await unregisterPushDevice()
                 await signOut({ redirectTo: '/' })
               }}>
                 <button type="submit"

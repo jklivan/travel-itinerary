@@ -17,7 +17,7 @@ export default function BucketButton({
   size?: 'sm' | 'md'
 }) {
   const [bucketed, setBucketed] = useState(initialBucketed)
-  const [, startTransition] = useTransition()
+  const [pending, startTransition] = useTransition()
   const router = useRouter()
 
   function handleClick(e: React.MouseEvent) {
@@ -33,8 +33,8 @@ export default function BucketButton({
     setBucketed(next)
     startTransition(async () => {
       try {
-        if (next) await addToBucketList(itineraryId)
-        else await removeFromBucketList(itineraryId)
+        const result = next ? await addToBucketList(itineraryId) : await removeFromBucketList(itineraryId)
+        if (result?.error) setBucketed(!next)
       } catch {
         setBucketed(!next) // revert on error
       }
@@ -46,6 +46,7 @@ export default function BucketButton({
   if (size === 'md') {
     return (
       <button
+        disabled={pending}
         onClick={handleClick}
         title={label}
         aria-label={label}
@@ -63,6 +64,7 @@ export default function BucketButton({
 
   return (
     <button
+      disabled={pending}
       onClick={handleClick}
       title={label}
       aria-label={label}

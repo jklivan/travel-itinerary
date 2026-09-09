@@ -3,6 +3,9 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
+import { createTripNotification } from '@/lib/notifications'
+import { deliverNotification } from '@/lib/push'
 
 export async function addComment(itineraryId: string, content: string, parentId?: string): Promise<{ error?: string }> {
   const session = await auth()
@@ -12,7 +15,7 @@ export async function addComment(itineraryId: string, content: string, parentId?
   if (!trimmed) return { error: 'Comment cannot be empty.' }
   if (trimmed.length > 1000) return { error: 'Comment is too long.' }
 
-  const itinerary = await prisma.itinerary.findUnique({ where: { id: itineraryId }, select: { visibility: true } })
+  const itinerary = await prisma.itinerary.findUnique({ where: { id: itineraryId }, select: { visibility: true, userId: true } })
   if (!itinerary || itinerary.visibility === 'draft') return { error: 'Not found.' }
 
   if (parentId) {
@@ -20,8 +23,13 @@ export async function addComment(itineraryId: string, content: string, parentId?
     if (!parent || parent.itineraryId !== itineraryId || parent.parentId !== null) return { error: 'Invalid reply target.' }
   }
 
-  await prisma.comment.create({
-    data: { content: trimmed, userId: session.user.id, itineraryId, parentId: parentId ?? null },
+  const actorId = session.user.id
+  const notificationId = await prisma.$transaction(async tx => {
+    const comment = await tx.comment.create({ data: { content: trimmed, userId: actorId, itineraryId, parentId: parentId ?? null } })
+    return createTripNotification(tx, { recipientId: itinerary.userId, actorId, itineraryId, kind: 'comment', commentId: comment.id })
+  })
+  if (notificationId) after(async () => {
+    try { await deliverNotification(notificationId) } catch { console.error('Comment push delivery failed') }
   })
 
   revalidatePath(`/itinerary/${itineraryId}`)

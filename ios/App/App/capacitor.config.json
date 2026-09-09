@@ -1,10 +1,21 @@
 {
-	"appId": "com.joshuaklivan.travelitinerary",
+	"appId": "com.joshuaklivan.travelitineraryapp",
 	"appName": "Travel Itinerary",
 	"webDir": "mobile",
+	"plugins": {
+		"PushNotifications": {
+			"presentationOptions": [
+				"sound",
+				"banner",
+				"list"
+			]
+		}
+	},
 	"server": {
 		"url": "https://travel-itinerary-gules.vercel.app",
 		"cleartext": false
 	},
-	"packageClassList": []
+	"packageClassList": [
+		"PushNotificationsPlugin"
+	]
 }
