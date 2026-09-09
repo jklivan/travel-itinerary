@@ -1,6 +1,10 @@
 'use client'
 
+import RecommendationPicker from '@/components/RecommendationPicker'
+import { getRecommendation, recommendationTags, type PlaceRecommendation } from '@/lib/placeRecommendation'
+
 import { useRef, useState } from 'react'
+import Link from 'next/link'
 import { upload } from '@vercel/blob/client'
 import { createItineraryDirect } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
@@ -102,7 +106,7 @@ async function readFileForUpload(
 }
 
 type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null; tags: string[]; dayIndex?: number | null; order?: number; isHighlight?: boolean; alternative?: string }
-type ActivityItem = { name: string; notes: string; link: string; rating: number; dayIndex?: number | null; order?: number; isHighlight?: boolean; alternative?: string }
+type ActivityItem = { tags?: string[]; name: string; notes: string; link: string; rating: number; dayIndex?: number | null; order?: number; isHighlight?: boolean; alternative?: string }
 type DayGroup    = { dayIndex?: number; food: FoodItem[]; activities: ActivityItem[] }
 type StayGroup   = { hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; hotelAlternative?: string; days: DayGroup[] }
 type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
@@ -208,8 +212,9 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   )
 }
 
-function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, showRating, onSelectPlace }: {
+function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, showRating, onSelectPlace, onRecommendationChange }: {
   item: FoodItem; index: number
+  onRecommendationChange: (value: PlaceRecommendation) => void
   onUpdate: (field: keyof Omit<FoodItem, 'priceLevel' | 'familyFriendly' | 'tags' | 'isHighlight'>, val: string) => void
   onUpdateFF: (val: boolean | null) => void
   onToggleTag: (tag: string) => void
@@ -241,6 +246,7 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
       {showRating && (
         <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>
       )}
+      <RecommendationPicker type="food_drink" value={getRecommendation(item.tags, item.isHighlight)} onChange={onRecommendationChange} />
       <button type="button" onClick={() => setShowDetails(value => !value)} className="text-xs font-medium text-gray-500 hover:text-gray-800">
         {showDetails ? '− Hide details' : '+ Add details'}
       </button>
@@ -274,9 +280,10 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
   )
 }
 
-function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
+function ActivityRow({ item, index, onUpdate, onRemove, showRating, onRecommendationChange }: {
   item: ActivityItem; index: number
-  onUpdate: (field: keyof Omit<ActivityItem, 'isHighlight'>, val: string) => void
+  onRecommendationChange: (value: PlaceRecommendation) => void
+  onUpdate: (field: keyof Omit<ActivityItem, 'isHighlight' | 'tags'>, val: string) => void
   onRemove: () => void; showRating: boolean
 }) {
   const [showDetails, setShowDetails] = useState(false)
@@ -290,6 +297,7 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating }: {
       {showRating && (
         <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>
       )}
+      <RecommendationPicker type="activity" value={getRecommendation(item.tags, item.isHighlight)} onChange={onRecommendationChange} />
       <button type="button" onClick={() => setShowDetails(value => !value)} className="text-xs font-medium text-gray-500 hover:text-gray-800">
         {showDetails ? '− Hide details' : '+ Add details'}
       </button>
@@ -359,8 +367,8 @@ export default function CreatePage() {
         ...group,
         days: group.days.map(day => ({
           ...day,
-          food: day.food.map(f => ({ ...f, tags: f.isHighlight ? [...f.tags.filter(t => t !== '__highlight'), '__highlight'] : f.tags })),
-          activities: day.activities.map(a => ({ ...a, tags: a.isHighlight ? ['__highlight'] : [] })),
+          food: day.food.map(f => ({ ...f, tags: recommendationTags(f.tags, getRecommendation(f.tags, f.isHighlight)) })),
+          activities: day.activities.map(a => ({ ...a, tags: recommendationTags(a.tags, getRecommendation(a.tags, a.isHighlight)) })),
         })),
       })),
     }))
@@ -549,15 +557,13 @@ export default function CreatePage() {
       const allFood = dest.groups.flatMap(g => g.days.flatMap(d => d.food))
       const item = allFood.find(f => f.name.trim() === name)
       if (!item) return dest
-      const count = allFood.filter(f => f.isHighlight).length
-      if (!item.isHighlight && count >= 3) return dest
       return {
         ...dest,
         groups: dest.groups.map(g => ({
           ...g,
           days: g.days.map(d => ({
             ...d,
-            food: d.food.map(f => f.name.trim() === name ? { ...f, isHighlight: !f.isHighlight } : f)
+            food: d.food.map(f => f.name.trim() === name ? { ...f, isHighlight: !f.isHighlight, tags: recommendationTags(f.tags, f.isHighlight ? 'none' : 'must') } : f)
           }))
         }))
       }
@@ -569,15 +575,13 @@ export default function CreatePage() {
       const allActs = dest.groups.flatMap(g => g.days.flatMap(d => d.activities))
       const item = allActs.find(a => a.name.trim() === name)
       if (!item) return dest
-      const count = allActs.filter(a => a.isHighlight).length
-      if (!item.isHighlight && count >= 3) return dest
       return {
         ...dest,
         groups: dest.groups.map(g => ({
           ...g,
           days: g.days.map(d => ({
             ...d,
-            activities: d.activities.map(a => a.name.trim() === name ? { ...a, isHighlight: !a.isHighlight } : a)
+            activities: d.activities.map(a => a.name.trim() === name ? { ...a, isHighlight: !a.isHighlight, tags: recommendationTags(a.tags, a.isHighlight ? 'none' : 'must') } : a)
           }))
         }))
       }
@@ -585,7 +589,7 @@ export default function CreatePage() {
   }
   function addActivity(di: number, gi: number, dyi: number) { updDay(di, gi, dyi, d => ({ ...d, activities: [...d.activities, emptyActivity()] })) }
   function removeActivity(di: number, gi: number, dyi: number, ii: number) { updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.filter((_, j) => j !== ii) })) }
-  function updateActivity(di: number, gi: number, dyi: number, ii: number, field: keyof Omit<ActivityItem, 'isHighlight'>, val: string) {
+  function updateActivity(di: number, gi: number, dyi: number, ii: number, field: keyof Omit<ActivityItem, 'isHighlight' | 'tags'>, val: string) {
     updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.map((a, j) => j !== ii ? a : { ...a, [field]: field === 'rating' ? Number(val) : val }) }))
   }
 
@@ -671,7 +675,7 @@ export default function CreatePage() {
         {step === 'start' && (
           <div className="space-y-5">
             <div className="flex items-center justify-between mb-1">
-              <a href="/" className="text-sm text-blue-600 hover:underline">← Back</a>
+              <Link href="/" className="text-sm text-blue-600 hover:underline">← Back</Link>
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900 mb-1">New post</h1>
@@ -942,6 +946,7 @@ export default function CreatePage() {
                           onSelect={(_, __, placeId) => { if (placeId) fetchHotelPriceLevel(di, gi, placeId) }}
                           type="hotel" placeholder="Hotel name (optional)" className={inputClass} />
                         {group.hotelName && (<>
+                          <RecommendationPicker type="hotel" value={getRecommendation(group.hotelTags)} onChange={value => updGroup(di, gi, g => ({ ...g, hotelTags: recommendationTags(g.hotelTags, value) }))} />
                           <button type="button" onClick={() => toggleDetails(`${di}-${gi}-hotel`)} className="text-xs font-medium text-blue-700 hover:text-blue-900">
                             {expandedDetails.has(`${di}-${gi}-hotel`) ? '− Hide details' : '+ Add details'}
                           </button>
@@ -991,13 +996,13 @@ export default function CreatePage() {
                             <div className="space-y-2">
                               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🍜 Food & Drink</p>
                               {day.food.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
-                              <div className="space-y-3">{day.food.map((item, ii) => <FoodRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, dyi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, dyi, ii, v)} onToggleTag={tag => toggleFoodTag(di, gi, dyi, ii, tag)} onRemove={() => removeFood(di, gi, dyi, ii)} onSelectPlace={id => id ? fetchFoodPriceLevel(di, gi, dyi, ii, id) : setFoodPriceLevel(di, gi, dyi, ii, null)} />)}</div>
+                              <div className="space-y-3">{day.food.map((item, ii) => <FoodRow onRecommendationChange={value => updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j === ii ? { ...f, isHighlight: value === 'must', tags: recommendationTags(f.tags, value) } : f) }))} key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, dyi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, dyi, ii, v)} onToggleTag={tag => toggleFoodTag(di, gi, dyi, ii, tag)} onRemove={() => removeFood(di, gi, dyi, ii)} onSelectPlace={id => id ? fetchFoodPriceLevel(di, gi, dyi, ii, id) : setFoodPriceLevel(di, gi, dyi, ii, null)} />)}</div>
                               <button type="button" onClick={() => addFood(di, gi, dyi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add food / drink</button>
                             </div>
                             <div className="space-y-2">
                               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🎯 Activities</p>
                               {day.activities.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
-                              <div className="space-y-3">{day.activities.map((item, ii) => <ActivityRow key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, dyi, ii, f, v)} onRemove={() => removeActivity(di, gi, dyi, ii)} />)}</div>
+                              <div className="space-y-3">{day.activities.map((item, ii) => <ActivityRow onRecommendationChange={value => updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.map((a, j) => j === ii ? { ...a, isHighlight: value === 'must', tags: recommendationTags(a.tags, value) } : a) }))} key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, dyi, ii, f, v)} onRemove={() => removeActivity(di, gi, dyi, ii)} />)}</div>
                               <button type="button" onClick={() => addActivity(di, gi, dyi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add activity</button>
                             </div>
                           </div>
@@ -1064,7 +1069,7 @@ export default function CreatePage() {
           <div className="space-y-4">
             <div>
               <h2 className="font-semibold text-gray-900 text-lg">Must Do</h2>
-              <p className="text-sm text-gray-500 mt-0.5">Pick up to 3 restaurants and 3 activities per destination.</p>
+              <p className="text-sm text-gray-500 mt-0.5">Mark the places you recommend. You can also set Must stay or Avoid on each place.</p>
             </div>
             {destinations.map((dest, di) => {
               const allFood = dest.groups.flatMap(g => g.days.flatMap(d => d.food)).filter(f => f.name.trim())
@@ -1079,12 +1084,12 @@ export default function CreatePage() {
                   )}
                   {allFood.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-gray-500 mb-2">🍽️ Must-do restaurants {foodCount > 0 && <span className="text-amber-600">({foodCount}/3)</span>}</p>
+                      <p className="text-xs font-medium text-gray-500 mb-2">🍽️ Must-do restaurants {foodCount > 0 && <span className="text-amber-600">({foodCount} selected)</span>}</p>
                       <div className="space-y-1.5">
                         {allFood.map(f => (
                           <button key={f.name} type="button"
                             onClick={() => setTopPickFood(di, f.name)}
-                            className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${f.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : foodCount >= 3 ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700 hover:border-amber-200'}`}>
+                            className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${f.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : 'border-gray-200 text-gray-700 hover:border-amber-200'}`}>
                             {f.isHighlight ? '⭐ ' : ''}{f.name}
                           </button>
                         ))}
@@ -1093,12 +1098,12 @@ export default function CreatePage() {
                   )}
                   {allActs.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-gray-500 mb-2">📍 Must-do activities {actCount > 0 && <span className="text-amber-600">({actCount}/3)</span>}</p>
+                      <p className="text-xs font-medium text-gray-500 mb-2">📍 Must-do activities {actCount > 0 && <span className="text-amber-600">({actCount} selected)</span>}</p>
                       <div className="space-y-1.5">
                         {allActs.map(a => (
                           <button key={a.name} type="button"
                             onClick={() => setTopPickActivity(di, a.name)}
-                            className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${a.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : actCount >= 3 ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700 hover:border-amber-200'}`}>
+                            className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${a.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : 'border-gray-200 text-gray-700 hover:border-amber-200'}`}>
                             {a.isHighlight ? '⭐ ' : ''}{a.name}
                           </button>
                         ))}

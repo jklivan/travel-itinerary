@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
-import { Hotel, Utensils, Camera, MapPin, Star, Check } from 'lucide-react'
+import { Hotel, Utensils, Camera, MapPin, Star, Check, Ban, BedDouble } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import PhotoStrip from '@/components/PhotoStrip'
 import { tagMeta } from '@/lib/tags'
@@ -16,6 +16,7 @@ import ItineraryMap from '@/components/ItineraryMap'
 import type { ItemPin } from '@/components/ItineraryMapInner'
 import styles from './places.module.css'
 import PlaceDetailsCard from '@/components/PlaceDetailsCard'
+import { getRecommendation } from '@/lib/placeRecommendation'
 
 function FriendProof({
   friends,
@@ -386,15 +387,12 @@ export default async function ItineraryPage({
     destination.items.map(item => [item.id, [destination.name, destination.country].filter(Boolean).join(', ')] as const)
   ))
 
-  // Only the poster's explicit Must Do selections receive a stamp.
-  const mustDoIds = new Set(it.destinations.flatMap(destination =>
-    destination.items.filter(item => item.tags.includes('__highlight')).map(item => item.id)
-  ))
   const stamp = it.tripRating ? TRIP_STAMPS.find(s => s.value === it.tripRating) : null
 
   // Use the same paper cards throughout highlights, daily plans, and guides.
   const renderPlaceCard = (item: DestItemRow, type: PlaceCategory, compact = false) => {
     const { eyebrow, Icon } = PLACE_CATEGORIES[type]
+    const recommendation = getRecommendation(item.tags)
     const nameKey = item.name.toLowerCase()
     const friends = (type === 'hotel' ? friendHotelDetails : type === 'food_drink' ? friendFoodDetails : friendActivityDetails).get(nameKey) ?? []
     const { avg = null, total = 0 } = placeRatings.get(item.id) ?? {}
@@ -404,8 +402,10 @@ export default async function ItineraryPage({
     const price = item.priceLevel == null ? null : Math.max(0, Math.min(type === 'hotel' ? 5 : 4, item.priceLevel))
 
     return (
-      <PlaceDetailsCard key={item.id} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} className={`${styles.card} ${styles[type]} ${mustDoIds.has(item.id) ? styles.stamped : ''}`}>
-        {mustDoIds.has(item.id) && <Image src="/must-do-stamp.png" alt="Must do" width={60} height={54} unoptimized className={styles.mustDoStamp} />}
+      <PlaceDetailsCard key={item.id} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} className={`${styles.card} ${styles[type]} ${recommendation !== 'none' ? styles.stamped : ''}`}>
+        {recommendation === 'must' && type !== 'hotel' && <Image src="/must-do-stamp.png" alt="Must do" width={60} height={54} unoptimized className={styles.mustDoStamp} />}
+        {recommendation === 'must' && type === 'hotel' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><BedDouble size={24} aria-hidden="true" /><span>Must stay</span></span>}
+        {recommendation === 'avoid' && <span className={`${styles.mustDoStamp} ${styles.textStamp} ${styles.avoidStamp}`}><Ban size={24} aria-hidden="true" /><span>Avoid</span></span>}
         <div className={styles.thumbnail}>
           {item.photoUrl ? (
             <Image src={item.photoUrl} alt="" fill sizes="88px" className="object-cover" />
@@ -427,7 +427,7 @@ export default async function ItineraryPage({
             </div>
           )}
           {!compact && item.notes && <p className={styles.note}>{item.notes}</p>}
-          {item.tags?.includes('__highlight') && <p className={styles.recommendation}><Check size={12} /> Trip highlight</p>}
+          {recommendation === 'must' && <p className={styles.recommendation}><Check size={12} /> {type === 'hotel' ? 'Must stay' : 'Trip highlight'}</p>}
           <FriendProof friends={friends} avg={avg} total={total} verb={type === 'hotel' ? 'stayed here' : type === 'activity' ? 'also did this' : 'also went'} />
         </div>
       </PlaceDetailsCard>

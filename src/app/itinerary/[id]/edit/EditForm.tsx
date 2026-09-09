@@ -27,6 +27,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import RecommendationPicker from '@/components/RecommendationPicker'
+import { getRecommendation, recommendationTags, type PlaceRecommendation } from '@/lib/placeRecommendation'
 import { moveItemToDay, reorderItems } from '@/lib/reorderItems'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -141,7 +143,7 @@ function destFromRaw(d: ItineraryData['destinations'][number]): EditDest {
       items.push({
         id: uid(), type: 'hotel', name: hotel.name, photo: hotel.photoUrl ?? '',
         mealType: '', rating: hotel.rating ?? 0, notes: hotel.notes ?? '',
-        tags: hotel.tags ?? [], dayIndex: hotelDay, isHighlight: false,
+        tags: hotel.tags ?? [], dayIndex: hotelDay, isHighlight: getRecommendation(hotel.tags) === 'must',
         alternative: hotel.alternative ?? '', description: hotel.description ?? '',
         link: hotel.link ?? '', address: hotel.address ?? '',
         priceLevel: hotel.priceLevel ?? null, familyFriendly: null,
@@ -156,7 +158,7 @@ function destFromRaw(d: ItineraryData['destinations'][number]): EditDest {
         rating: item.rating ?? 0, notes: item.notes ?? '',
         tags: (item.tags ?? []).filter(t => t !== '__highlight'),
         dayIndex: editDay(item),
-        isHighlight: (item.tags ?? []).includes('__highlight'),
+        isHighlight: getRecommendation(item.tags) === 'must',
         alternative: item.alternative ?? '', description: item.description ?? '',
         link: item.link ?? '', address: '',
         priceLevel: item.priceLevel ?? null,
@@ -193,12 +195,12 @@ function buildDestinations(dests: EditDest[]) {
               notes: i.notes, link: i.link, rating: i.rating,
               priceLevel: i.priceLevel, familyFriendly: i.familyFriendly,
               familyFriendlySource: i.familyFriendlySource, lat: i.lat, lng: i.lng,
-              order: dayItems.indexOf(i), tags: [...i.tags, ...(i.isHighlight ? ['__highlight'] : [])],
+              order: dayItems.indexOf(i), tags: recommendationTags(i.tags, getRecommendation(i.tags, i.isHighlight)),
               alternative: i.alternative, photo: i.photo,
             })),
             activities: dayItems.filter(i => i.type === 'activity').map(i => ({
               name: i.name, notes: i.notes, link: i.link, rating: i.rating,
-              order: dayItems.indexOf(i), tags: [...i.tags, ...(i.isHighlight ? ['__highlight'] : [])],
+              order: dayItems.indexOf(i), tags: recommendationTags(i.tags, getRecommendation(i.tags, i.isHighlight)),
               alternative: i.alternative, photo: i.photo,
             })),
           }))
@@ -232,7 +234,7 @@ function buildDestinations(dests: EditDest[]) {
         hotelName: hotel.name, hotelNotes: hotel.notes, hotelAddress: hotel.address,
         hotelLink: hotel.link, hotelRating: hotel.rating, hotelAlternative: hotel.alternative, hotelPhoto: hotel.photo,
         hotelDescription: hotel.description, hotelPriceLevel: hotel.priceLevel,
-        hotelLat: hotel.lat, hotelLng: hotel.lng, hotelTags: hotel.tags,
+        hotelLat: hotel.lat, hotelLng: hotel.lng, hotelTags: recommendationTags(hotel.tags, getRecommendation(hotel.tags, hotel.isHighlight)),
         days: buildDayGroups(itemsByHotel[idx]),
       })),
     }
@@ -267,6 +269,7 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
   const [rating, setRating]       = useState(initial.rating)
   const [notes, setNotes]         = useState(initial.notes)
   const [alternative, setAlternative] = useState(initial.alternative)
+  const [recommendation, setRecommendation] = useState<PlaceRecommendation>(getRecommendation(initial.tags, initial.isHighlight))
   const [tags, setTags]           = useState<string[]>(initial.tags)
   const [description, setDescription] = useState(initial.description)
   const [link, setLink]           = useState(initial.link)
@@ -285,7 +288,7 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
 
   function submit() {
     if (!name.trim()) return
-    onSave({ name: name.trim(), mealType, rating, notes: notes.trim(), tags, alternative: alternative.trim(), description: description.trim(), link: link.trim(), address: address.trim() })
+    onSave({ name: name.trim(), mealType, rating, notes: notes.trim(), tags: recommendationTags(tags, recommendation), isHighlight: recommendation === 'must', alternative: alternative.trim(), description: description.trim(), link: link.trim(), address: address.trim() })
   }
 
   const moreCount = tags.length + (description ? 1 : 0) + (link ? 1 : 0) + (address ? 1 : 0)
@@ -319,11 +322,12 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
       </div>
       <div className="space-y-1">
         <p className="text-xs text-gray-500">Notes</p>
-        <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
+        <textarea aria-label="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)}
           placeholder={cfg.notesPh} className={inputCls} />
       </div>
       <PlacesAutocomplete value={alternative} onChange={setAlternative} type={cfg.placeType}
         placeholder="↔ Alternative (optional)" className={`${inputCls} text-gray-500`} city={city} />
+      <RecommendationPicker type={type} value={recommendation} onChange={setRecommendation} />
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
@@ -342,8 +346,11 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
               </button>
             ))}
           </div>
-          <input type="text" value={description} onChange={e => setDescription(e.target.value)}
-            placeholder="✨ Description (optional)" className={subInputCls} />
+          <label className="block space-y-1">
+            <span className="text-xs text-gray-500">About the {type === 'food_drink' ? 'restaurant' : type === 'hotel' ? 'hotel' : 'activity'}</span>
+            <textarea rows={3} value={description} onChange={e => setDescription(e.target.value)}
+              placeholder="Description (optional)" className={subInputCls} />
+          </label>
           {type === 'hotel' && (
             <input type="text" value={address} onChange={e => setAddress(e.target.value)}
               placeholder="📍 Address (for Airbnbs, apartments…)" className={subInputCls} />
@@ -378,6 +385,7 @@ function ItemForm({ type, onAdd, onClose, city }: {
   const [mealType, setMealType] = useState('')
   const [rating, setRating]     = useState(0)
   const [notes, setNotes]       = useState('')
+  const [recommendation, setRecommendation] = useState<PlaceRecommendation>('none')
   const [tags, setTags]         = useState<string[]>([])
   const [showMore, setShowMore] = useState(false)
 
@@ -391,8 +399,8 @@ function ItemForm({ type, onAdd, onClose, city }: {
 
   function submit() {
     if (!name.trim()) return
-    onAdd({ type, name: name.trim(), mealType, rating, notes: notes.trim(), tags })
-    setName(''); setMealType(''); setRating(0); setNotes(''); setTags([]); setShowMore(false)
+    onAdd({ type, name: name.trim(), mealType, rating, notes: notes.trim(), tags: recommendationTags(tags, recommendation) })
+    setName(''); setMealType(''); setRating(0); setNotes(''); setTags([]); setRecommendation('none'); setShowMore(false)
   }
 
   return (
@@ -427,6 +435,7 @@ function ItemForm({ type, onAdd, onClose, city }: {
         <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
           placeholder={cfg.notesPh} className={inputCls} />
       </div>
+      <RecommendationPicker type={type} value={recommendation} onChange={setRecommendation} />
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
@@ -538,7 +547,7 @@ function ItemSummary({ item }: { item: EditItem }) {
           <div className="flex items-center gap-2 flex-wrap">
             {item.mealType && <span className="text-xs text-gray-500">{item.mealType.split(',').map(t => `${MEAL_EMOJI[t]} ${t}`).join(' · ')}</span>}
             {item.rating > 0 && <span className="text-xs text-yellow-500">{'★'.repeat(item.rating)}</span>}
-            {item.isHighlight && <span className="text-amber-400 text-xs">⭐</span>}
+            {getRecommendation(item.tags, item.isHighlight) !== 'none' && <span className={`text-xs font-medium ${getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'text-red-700' : 'text-[#507c76]'}`}>{getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'Avoid' : item.type === 'hotel' ? 'Must stay' : 'Must do'}</span>}
             {item.notes && <span className="text-xs text-gray-400 truncate">{item.notes}</span>}
           </div>
         </div>
@@ -649,7 +658,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
     updDest(destId, d => ({
       ...d,
       items: [...d.items, {
-        ...item, id: uid(), dayIndex: d.curDayIndex, isHighlight: false, photo: '',
+        ...item, id: uid(), dayIndex: d.curDayIndex, isHighlight: getRecommendation(item.tags) === 'must', photo: '',
         alternative: '', description: '', link: '', address: '',
         priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null,
       }]
@@ -691,9 +700,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
     updDest(destId, d => {
       const item = d.items.find(i => i.id === itemId)
       if (!item) return d
-      const count = d.items.filter(i => i.type === 'food_drink' && i.isHighlight).length
-      if (!item.isHighlight && count >= 3) return d
-      return { ...d, items: d.items.map(i => i.id === itemId ? { ...i, isHighlight: !i.isHighlight } : i) }
+      return { ...d, items: d.items.map(i => i.id === itemId ? { ...i, isHighlight: !i.isHighlight, tags: recommendationTags(i.tags, i.isHighlight ? 'none' : 'must') } : i) }
     })
   }
 
@@ -701,9 +708,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
     updDest(destId, d => {
       const item = d.items.find(i => i.id === itemId)
       if (!item) return d
-      const count = d.items.filter(i => i.type === 'activity' && i.isHighlight).length
-      if (!item.isHighlight && count >= 3) return d
-      return { ...d, items: d.items.map(i => i.id === itemId ? { ...i, isHighlight: !i.isHighlight } : i) }
+      return { ...d, items: d.items.map(i => i.id === itemId ? { ...i, isHighlight: !i.isHighlight, tags: recommendationTags(i.tags, i.isHighlight ? 'none' : 'must') } : i) }
     })
   }
 
@@ -978,7 +983,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 space-y-5">
           <div>
             <h2 className="font-bold text-gray-900">Must Do</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Pick up to 3 restaurants and 3 activities per destination.</p>
+            <p className="text-sm text-gray-500 mt-0.5">Mark the places you recommend. You can also set Must stay or Avoid on each place.</p>
           </div>
           {dests.map(dest => {
             const food = dest.items.filter(i => i.type === 'food_drink' && i.name.trim())
@@ -993,11 +998,11 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 )}
                 {food.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-gray-500 mb-1.5">🍽️ Must-do restaurants {foodCount > 0 && <span className="text-amber-600">({foodCount}/3)</span>}</p>
+                    <p className="text-xs font-medium text-gray-500 mb-1.5">🍽️ Must-do restaurants {foodCount > 0 && <span className="text-amber-600">({foodCount} selected)</span>}</p>
                     <div className="space-y-1.5">
                       {food.map(item => (
                         <button key={item.id} type="button" onClick={() => setTopPickFood(dest.id, item.id)}
-                          className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : foodCount >= 3 ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
+                          className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
                           {item.isHighlight ? '⭐ ' : ''}{item.name}
                         </button>
                       ))}
@@ -1006,11 +1011,11 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 )}
                 {acts.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-gray-500 mb-1.5">📍 Must-do activities {actCount > 0 && <span className="text-amber-600">({actCount}/3)</span>}</p>
+                    <p className="text-xs font-medium text-gray-500 mb-1.5">📍 Must-do activities {actCount > 0 && <span className="text-amber-600">({actCount} selected)</span>}</p>
                     <div className="space-y-1.5">
                       {acts.map(item => (
                         <button key={item.id} type="button" onClick={() => setTopPickActivity(dest.id, item.id)}
-                          className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : actCount >= 3 ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
+                          className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
                           {item.isHighlight ? '⭐ ' : ''}{item.name}
                         </button>
                       ))}

@@ -5,6 +5,7 @@ import { test } from 'node:test'
 import vm from 'node:vm'
 import ts from 'typescript'
 import { moveItemToDay, reorderItems } from '../src/lib/reorderItems.ts'
+import * as recommendations from '../src/lib/placeRecommendation.ts'
 
 // Exercise the editor's real load/save conversion without mounting its UI.
 const require = createRequire(import.meta.url)
@@ -12,7 +13,7 @@ const source = readFileSync(new URL('../src/app/itinerary/[id]/edit/EditForm.tsx
 const compiled = ts.transpileModule(source + '\nexport { destFromRaw, buildDestinations };', {
   compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2017 },
 }).outputText
-const context = { exports: {}, require: name => name.startsWith('@/') ? {} : require(name) }
+const context = { exports: {}, require: name => name === '@/lib/placeRecommendation' ? recommendations : name.startsWith('@/') ? {} : require(name) }
 vm.runInNewContext(compiled, context)
 const { destFromRaw, buildDestinations } = context.exports
 
@@ -82,4 +83,20 @@ test('event photos load and serialize for hotels, restaurants, and activities', 
   assert.equal(saved.hotelPhoto, '/replacement.jpg')
   assert.equal(saved.days[0].food[0].photo, '/replacement.jpg')
   assert.equal(saved.days[0].activities[0].photo, '')
+})
+
+
+test('must-stay and avoid markers survive editing and keep other tags', () => {
+  for (const marker of ['__highlight', '__avoid']) {
+    const initial = destFromRaw({ ...raw, items: [
+      { type: 'hotel', name: 'Hotel', tags: ['Boutique', marker], groupIndex: 0 },
+      { type: 'food_drink', name: 'Cafe', tags: ['Local Favorite', marker], dayIndex: 1, groupIndex: 0 },
+      { type: 'activity', name: 'Tour', tags: ['Cultural', marker], dayIndex: 1, groupIndex: 0 },
+    ] })
+    const saved = buildDestinations([initial])[0].groups[0]
+    assert.deepEqual(Array.from(saved.hotelTags), ['Boutique', marker])
+    assert.deepEqual(Array.from(saved.days[0].food[0].tags), ['Local Favorite', marker])
+    assert.deepEqual(Array.from(saved.days[0].activities[0].tags), ['Cultural', marker])
+    assert.equal(initial.items[0].isHighlight, marker === '__highlight')
+  }
 })
