@@ -24,3 +24,15 @@ test('avoid wins over stale highlight flags and contradictory tags', () => {
   const tags = ['Cultural', '__highlight', '__avoid']
   assert.deepEqual(recommendationTags(tags, getRecommendation(tags)), ['Cultural', '__avoid'])
 })
+
+test('older Must-Do labels require an explicit user selection to become stamps', () => {
+  const legacy = ['Cultural', 'Must-Do']
+  assert.equal(getRecommendation(legacy), 'none')
+  assert.equal(getRecommendation(legacy, true), 'must')
+  assert.deepEqual(recommendationTags(legacy, 'must'), ['Cultural', '__highlight'])
+  const removed = recommendationTags(legacy, 'none')
+  assert.deepEqual(removed, ['Cultural'])
+  assert.equal(getRecommendation(removed), 'none')
+  assert.deepEqual(recommendationTags(legacy, 'avoid'), ['Cultural', '__avoid'])
+  assert.equal(getRecommendation([...legacy, '__avoid']), 'avoid')
+})

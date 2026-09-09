@@ -25,6 +25,13 @@ const raw = { name: 'London', country: 'UK', notes: '', items: [
 ] }
 const namesOnDay = (dest, day) => Array.from(dest.items.filter(item => item.dayIndex === day), item => item.name)
 
+test('legacy Must-Do labels are not selected automatically when editing or saving', () => {
+  const dest = destFromRaw({ ...raw, items: [{ type: 'activity', name: 'Museum', dayIndex: 1, tags: ['Cultural', 'Must-Do'] }] })
+  assert.equal(dest.items[0].isHighlight, false)
+  const saved = buildDestinations([dest])[0].groups[0].days[0].activities[0]
+  assert.deepEqual(Array.from(saved.tags), ['Cultural'])
+})
+
 function saveAndReopen(dest) {
   const saved = buildDestinations([dest])[0]
   const rows = saved.groups.flatMap((group, groupIndex) => group.days.flatMap(day => [
