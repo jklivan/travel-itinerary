@@ -17,6 +17,7 @@ import type { ItemPin } from '@/components/ItineraryMapInner'
 import styles from './places.module.css'
 import PlaceDetailsCard from '@/components/PlaceDetailsCard'
 import { getRecommendation } from '@/lib/placeRecommendation'
+import { mapDayNumber } from '@/lib/mapDays'
 
 function FriendProof({
   friends,
@@ -365,8 +366,9 @@ export default async function ItineraryPage({
   const displayTags = it.tags
 
   // Build map pins from geocoded items
-  const mapPins: ItemPin[] = it.destinations.flatMap(d =>
-    d.items
+  const mapPins: ItemPin[] = it.destinations.flatMap(d => {
+    const zeroBased = d.items.some(item => item.type !== 'hotel' && item.dayIndex === 0)
+    return d.items
       .filter(i => i.lat != null && i.lng != null)
       .map(i => ({
         id: i.id,
@@ -374,8 +376,9 @@ export default async function ItineraryPage({
         type: i.type as 'hotel' | 'food_drink' | 'activity',
         lat: i.lat!,
         lng: i.lng!,
+        day: isGuide || i.type === 'hotel' ? null : mapDayNumber(i.dayIndex, zeroBased),
       }))
-  )
+  })
 
   function fmtShort(d: Date) {
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })

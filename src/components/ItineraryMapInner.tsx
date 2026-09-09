@@ -3,6 +3,7 @@ import 'leaflet/dist/leaflet.css'
 import { useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
+import { mapDayColor } from '@/lib/mapDays'
 
 export type ItemPin = {
   id: string
@@ -10,30 +11,31 @@ export type ItemPin = {
   type: 'hotel' | 'food_drink' | 'activity'
   lat: number
   lng: number
+  day: number | null
 }
 
-const TYPE_STYLE: Record<string, { bg: string; emoji: string }> = {
-  hotel:      { bg: '#2563eb', emoji: '🏨' },
-  food_drink: { bg: '#ea580c', emoji: '🍴' },
-  activity:   { bg: '#16a34a', emoji: '📍' },
+const TYPE_STYLE: Record<string, { emoji: string }> = {
+  hotel:      { emoji: '🏨' },
+  food_drink: { emoji: '🍴' },
+  activity:   { emoji: '📍' },
 }
 
-function itemIcon(type: string) {
+function itemIcon(type: string, day: number | null) {
   const s = TYPE_STYLE[type] ?? TYPE_STYLE.activity
   return L.divIcon({
     className: '',
     html: `<div style="
-      width:26px;height:26px;
-      background:${s.bg};
+      width:36px;height:36px;
+      background:${mapDayColor(day)};
       border-radius:50%;
       border:2px solid white;
       box-shadow:0 2px 6px rgba(0,0,0,0.35);
       display:flex;align-items:center;justify-content:center;
-      font-size:12px;line-height:1;
-    ">${s.emoji}</div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
-    popupAnchor: [0, -16],
+      font-size:12px;line-height:1;gap:3px;color:white;font-weight:700;
+    ">${s.emoji}${day === null ? '' : `<span>${day}</span>`}</div>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -20],
   })
 }
 
@@ -63,9 +65,19 @@ export default function ItineraryMapInner({ pins }: { pins: ItemPin[] }) {
     pins.reduce((s, p) => s + p.lng, 0) / pins.length,
   ]
   const positions: [number, number][] = pins.map(p => [p.lat, p.lng])
+  const days = [...new Set(pins.flatMap(pin => pin.day === null ? [] : [pin.day]))].sort((a, b) => a - b)
+  const hasHotels = pins.some(pin => pin.type === 'hotel' && pin.day === null)
+  const hasUndatedPlaces = pins.some(pin => pin.type !== 'hotel' && pin.day === null)
 
   return (
-    <MapContainer
+    <div className="flex h-full flex-col">
+      <div aria-label="Map day legend" className="flex max-h-28 shrink-0 flex-wrap gap-x-4 gap-y-2 overflow-y-auto border-b border-[#d7cebc] bg-[#faf7ee] px-4 py-3 text-xs text-[#2e4147]">
+        {days.map(day => <span key={day} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ background: mapDayColor(day) }} />Day {day}</span>)}
+        {hasHotels && <span className="inline-flex items-center gap-1.5"><span aria-hidden="true">🏨</span>Hotels</span>}
+        {hasUndatedPlaces && <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ background: mapDayColor(null) }} />No day assigned</span>}
+      </div>
+      <div className="min-h-0 flex-1">
+      <MapContainer
       center={center}
       zoom={12}
       style={{ height: '100%', width: '100%' }}
@@ -77,16 +89,23 @@ export default function ItineraryMapInner({ pins }: { pins: ItemPin[] }) {
       />
       <FitBounds positions={positions} />
       {pins.map(pin => (
-        <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={itemIcon(pin.type)}>
+        <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={itemIcon(pin.type, pin.day)}
+          title={`${pin.name} · ${pin.day === null ? pin.type === 'hotel' ? 'Hotel' : 'No day assigned' : `Day ${pin.day}`}`}
+          alt={`${pin.name} · ${pin.day === null ? pin.type === 'hotel' ? 'Hotel' : 'No day assigned' : `Day ${pin.day}`}`}>
           <Popup maxWidth={200} minWidth={140}>
             <div style={{ fontFamily: 'inherit' }}>
               <p style={{ fontWeight: 700, fontSize: 13, color: '#111', margin: 0 }}>
                 {TYPE_STYLE[pin.type]?.emoji ?? '📍'} {pin.name}
+              </p>
+              <p style={{ margin: '6px 0 0', color: mapDayColor(pin.day), fontWeight: 600 }}>
+                {pin.day === null ? pin.type === 'hotel' ? 'Hotel' : 'No day assigned' : `Day ${pin.day}`}
               </p>
             </div>
           </Popup>
         </Marker>
       ))}
     </MapContainer>
+      </div>
+    </div>
   )
 }

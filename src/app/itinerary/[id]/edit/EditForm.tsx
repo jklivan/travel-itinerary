@@ -89,22 +89,16 @@ type ItineraryData = {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const inputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white'
-const subInputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white'
+const inputCls = 'w-full rounded-xl border border-[#e3dfd2] px-3 py-2.5 text-sm text-[#2e4147] focus:outline-none focus:ring-2 focus:ring-[#507c76] focus:border-transparent bg-[#fffdf6]'
+const subInputCls = 'w-full rounded-xl border border-[#e3dfd2] px-3 py-2.5 text-sm text-[#2e4147] focus:outline-none focus:ring-1 focus:ring-[#507c76] bg-[#fffdf6]'
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] as const
 const MEAL_EMOJI: Record<string, string> = {
   breakfast: '🍳', lunch: '☀️', dinner: '🌙', drinks: '🍹', coffee: '☕', dessert: '🍰', bakery: '🥐',
 }
-const MEAL_ACTIVE: Record<string, string> = {
-  breakfast: 'bg-yellow-500 text-white border-yellow-500',
-  lunch:     'bg-orange-500 text-white border-orange-500',
-  dinner:    'bg-purple-600 text-white border-purple-600',
-  drinks:    'bg-blue-500 text-white border-blue-500',
-  coffee:    'bg-amber-700 text-white border-amber-700',
-  dessert:   'bg-pink-500 text-white border-pink-500',
-  bakery:    'bg-orange-400 text-white border-orange-400',
-}
+const MEAL_ACTIVE: Record<string, string> = Object.fromEntries(
+  MEAL_TYPES.map(type => [type, 'bg-[#ad6b57] text-white border-[#ad6b57]'])
+)
 
 const FOOD_TAGS     = ['Worth the Hype', 'Great Food', 'Hidden Gem', 'Local Favorite', "Can't-Miss", 'Good for Groups', 'Family Friendly', 'Great Cocktails', 'Great Ambiance', 'Lively', 'Romantic', 'Casual', 'Outdoor Dining', 'Great Views']
 const HOTEL_TAGS    = ['Great Service', 'Worth the Splurge', 'Great Value', 'Hidden Gem', 'Boutique', 'Luxury', 'Romantic', 'Family-Friendly', 'Great Location', 'Great Views', 'Amazing Spa']
@@ -277,9 +271,9 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
   const [showMore, setShowMore]   = useState(initial.tags.length > 0 || !!initial.description || !!initial.link || !!initial.address)
 
   const cfg = {
-    hotel:     { color: 'bg-blue-50 border-blue-200',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
-    food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const, notesPh: 'e.g. Order the truffle pasta, great for groups…'           },
-    activity:  { color: 'bg-green-50 border-green-200',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const,   notesPh: 'e.g. Book tickets online, go early to beat the crowds…'   },
+    hotel:     { color: 'bg-[#edf1e9] border-[#bbcfc5]',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
+    food_drink:{ color: 'bg-[#f5ebe1] border-[#dec4b4]', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const, notesPh: 'e.g. Order the truffle pasta, great for groups…'           },
+    activity:  { color: 'bg-[#f3eddb] border-[#d9c99f]',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const,   notesPh: 'e.g. Book tickets online, go early to beat the crowds…'   },
   }[type]
 
   function toggleTag(tag: string) {
@@ -294,10 +288,10 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
   const moreCount = tags.length + (description ? 1 : 0) + (link ? 1 : 0) + (address ? 1 : 0)
 
   return (
-    <div className={`rounded-2xl border ${cfg.color} p-4 space-y-3`}>
+    <div className={`rounded-xl border ${cfg.color} p-4 space-y-3`}>
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Edit {cfg.label}</p>
-        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+        <p className="text-xs font-semibold text-[#6b7067] uppercase tracking-wide">Edit {cfg.label}</p>
+        <button type="button" onClick={onClose} className="text-[#918d81] hover:text-[#6b7067]"><X size={16} /></button>
       </div>
       <PlacesAutocomplete value={name} onChange={setName} type={cfg.placeType}
         placeholder={cfg.placeholder} className={inputCls} city={city} />
@@ -309,7 +303,7 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
             return (
               <button key={mt} type="button"
                 onClick={() => setMealType(isSel ? sel.filter(t => t !== mt).join(',') : [...sel, mt].join(','))}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSel ? MEAL_ACTIVE[mt] : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSel ? MEAL_ACTIVE[mt] : 'border-[#e3dfd2] text-[#7a7b70] hover:border-[#b8a98e]'}`}>
                 {MEAL_EMOJI[mt]} {mt}
               </button>
             )
@@ -317,37 +311,37 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
         </div>
       )}
       <div className="space-y-1">
-        <p className="text-xs text-gray-500">Rate it</p>
+        <p className="text-xs text-[#7a7b70]">Rate it</p>
         <StarRating value={rating} onChange={setRating} />
       </div>
       <div className="space-y-1">
-        <p className="text-xs text-gray-500">Notes</p>
+        <p className="text-xs text-[#7a7b70]">Notes</p>
         <textarea aria-label="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)}
           placeholder={cfg.notesPh} className={inputCls} />
       </div>
       <PlacesAutocomplete value={alternative} onChange={setAlternative} type={cfg.placeType}
-        placeholder="↔ Alternative (optional)" className={`${inputCls} text-gray-500`} city={city} />
+        placeholder="↔ Alternative (optional)" className={`${inputCls} text-[#7a7b70]`} city={city} />
       <RecommendationPicker type={type} value={recommendation} onChange={setRecommendation} />
       <button type="button" onClick={() => setShowMore(s => !s)}
-        className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
+        className="text-xs text-[#507c76] hover:text-[#355650] font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
         {moreCount > 0 && !showMore && (
-          <span className="ml-1 bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{moreCount}</span>
+          <span className="ml-1 bg-[#e6ece5] text-[#426862] rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{moreCount}</span>
         )}
       </button>
       {showMore && (
         <div className="space-y-2 pt-1">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Tags</p>
+          <p className="text-xs text-[#918d81] font-medium uppercase tracking-wide">Tags</p>
           <div className="flex flex-wrap gap-1.5">
             {ITEM_TAGS[type].map(tag => (
               <button key={tag} type="button" onClick={() => toggleTag(tag)}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-[#2C1810] text-white border-[#2C1810]' : 'border-[#e3dfd2] text-[#7a7b70] hover:border-[#b8a98e]'}`}>
                 {tag}
               </button>
             ))}
           </div>
           <label className="block space-y-1">
-            <span className="text-xs text-gray-500">About the {type === 'food_drink' ? 'restaurant' : type === 'hotel' ? 'hotel' : 'activity'}</span>
+            <span className="text-xs text-[#7a7b70]">About the {type === 'food_drink' ? 'restaurant' : type === 'hotel' ? 'hotel' : 'activity'}</span>
             <textarea rows={3} value={description} onChange={e => setDescription(e.target.value)}
               placeholder="Description (optional)" className={subInputCls} />
           </label>
@@ -361,11 +355,11 @@ function ItemEditForm({ type, initial, onSave, onClose, city }: {
       )}
       <div className="flex gap-2">
         <button type="button" onClick={onClose}
-          className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-gray-500 text-sm font-medium hover:border-gray-300 transition-colors">
+          className="flex-1 py-2.5 rounded-xl border-2 border-[#e3dfd2] text-[#7a7b70] text-sm font-medium hover:border-[#d7cebc] transition-colors">
           Cancel
         </button>
         <button type="button" onClick={submit} disabled={!name.trim()}
-          className="flex-1 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+          className="flex-1 py-2.5 rounded-xl bg-[#2C1810] text-white text-sm font-semibold hover:bg-[#5C3D2E] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
           <Check size={14} /> Save
         </button>
       </div>
@@ -390,9 +384,9 @@ function ItemForm({ type, onAdd, onClose, city }: {
   const [showMore, setShowMore] = useState(false)
 
   const cfg = {
-    hotel:     { color: 'bg-blue-50 border-blue-200',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
-    food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const, notesPh: 'e.g. Order the truffle pasta, great for groups…'           },
-    activity:  { color: 'bg-green-50 border-green-200',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const,   notesPh: 'e.g. Book tickets online, go early to beat the crowds…'   },
+    hotel:     { color: 'bg-[#edf1e9] border-[#bbcfc5]',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
+    food_drink:{ color: 'bg-[#f5ebe1] border-[#dec4b4]', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const, notesPh: 'e.g. Order the truffle pasta, great for groups…'           },
+    activity:  { color: 'bg-[#f3eddb] border-[#d9c99f]',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const,   notesPh: 'e.g. Book tickets online, go early to beat the crowds…'   },
   }[type]
 
   function toggleTag(tag: string) { setTags(t => t.includes(tag) ? t.filter(x => x !== tag) : [...t, tag]) }
@@ -404,10 +398,10 @@ function ItemForm({ type, onAdd, onClose, city }: {
   }
 
   return (
-    <div className={`rounded-2xl border ${cfg.color} p-4 space-y-3`}>
+    <div className={`rounded-xl border ${cfg.color} p-4 space-y-3`}>
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{cfg.label}</p>
-        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+        <p className="text-xs font-semibold text-[#6b7067] uppercase tracking-wide">{cfg.label}</p>
+        <button type="button" onClick={onClose} className="text-[#918d81] hover:text-[#6b7067]"><X size={16} /></button>
       </div>
       <PlacesAutocomplete value={name} onChange={setName} type={cfg.placeType}
         placeholder={cfg.placeholder} className={inputCls} city={city} />
@@ -419,7 +413,7 @@ function ItemForm({ type, onAdd, onClose, city }: {
             return (
               <button key={mt} type="button"
                 onClick={() => setMealType(isSel ? sel.filter(t => t !== mt).join(',') : [...sel, mt].join(','))}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSel ? MEAL_ACTIVE[mt] : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSel ? MEAL_ACTIVE[mt] : 'border-[#e3dfd2] text-[#7a7b70] hover:border-[#b8a98e]'}`}>
                 {MEAL_EMOJI[mt]} {mt}
               </button>
             )
@@ -427,29 +421,29 @@ function ItemForm({ type, onAdd, onClose, city }: {
         </div>
       )}
       <div className="space-y-1">
-        <p className="text-xs text-gray-500">Rate it</p>
+        <p className="text-xs text-[#7a7b70]">Rate it</p>
         <StarRating value={rating} onChange={setRating} />
       </div>
       <div className="space-y-1">
-        <p className="text-xs text-gray-500">Notes</p>
+        <p className="text-xs text-[#7a7b70]">Notes</p>
         <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
           placeholder={cfg.notesPh} className={inputCls} />
       </div>
       <RecommendationPicker type={type} value={recommendation} onChange={setRecommendation} />
       <button type="button" onClick={() => setShowMore(s => !s)}
-        className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
+        className="text-xs text-[#507c76] hover:text-[#355650] font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
         {tags.length > 0 && !showMore && (
-          <span className="ml-1 bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{tags.length}</span>
+          <span className="ml-1 bg-[#e6ece5] text-[#426862] rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{tags.length}</span>
         )}
       </button>
       {showMore && (
         <div className="space-y-2 pt-1">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Tags</p>
+          <p className="text-xs text-[#918d81] font-medium uppercase tracking-wide">Tags</p>
           <div className="flex flex-wrap gap-1.5">
             {ITEM_TAGS[type].map(tag => (
               <button key={tag} type="button" onClick={() => toggleTag(tag)}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-[#2C1810] text-white border-[#2C1810]' : 'border-[#e3dfd2] text-[#7a7b70] hover:border-[#b8a98e]'}`}>
                 {tag}
               </button>
             ))}
@@ -457,7 +451,7 @@ function ItemForm({ type, onAdd, onClose, city }: {
         </div>
       )}
       <button type="button" onClick={submit} disabled={!name.trim()}
-        className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+        className="w-full py-2.5 rounded-xl bg-[#2C1810] text-white text-sm font-semibold hover:bg-[#5C3D2E] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
         <Check size={14} /> Add
       </button>
     </div>
@@ -501,7 +495,7 @@ function ItemPhotoInput({ photo, name, onChange, onBusyChange }: {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={photo} alt={`Photo for ${name}`} className="h-12 w-12 rounded-lg object-cover" />
         )}
-        <label className={`inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 ${busy ? 'opacity-50' : 'cursor-pointer hover:text-blue-800'}`}>
+        <label className={`inline-flex items-center gap-1.5 text-xs font-medium text-[#507c76] ${busy ? 'opacity-50' : 'cursor-pointer hover:text-[#355650]'}`}>
           <ImageIcon size={14} />{busy ? 'Uploading…' : photo ? 'Replace photo' : 'Add photo'}
           <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif" className="sr-only" disabled={busy}
             aria-label={`${photo ? 'Replace' : 'Add'} photo for ${name}`}
@@ -511,7 +505,7 @@ function ItemPhotoInput({ photo, name, onChange, onBusyChange }: {
               if (file) void uploadPhoto(file)
             }} />
         </label>
-        {photo && <button type="button" disabled={busy} onClick={() => onChange('')} className="text-xs text-gray-500 hover:text-red-600 disabled:opacity-50" aria-label={`Remove photo for ${name}`}>Remove photo</button>}
+        {photo && <button type="button" disabled={busy} onClick={() => onChange('')} className="text-xs text-[#7a7b70] hover:text-red-600 disabled:opacity-50" aria-label={`Remove photo for ${name}`}>Remove photo</button>}
       </div>
       {error && <p role="alert" className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
@@ -524,7 +518,7 @@ function DayDropZone({ destId, day }: { destId: string; day: number }) {
     data: { day },
   })
   return (
-    <div ref={setNodeRef} className={`mt-2 rounded-lg border border-dashed px-3 py-3 text-xs text-center ${isOver ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-400'}`}>
+    <div ref={setNodeRef} className={`mt-2 rounded-lg border border-dashed px-3 py-3 text-xs text-center ${isOver ? 'border-[#507c76] bg-[#edf1e9] text-[#426862]' : 'border-[#e3dfd2] text-[#918d81]'}`}>
       Drop here to move to the end of this day
     </div>
   )
@@ -536,19 +530,19 @@ function ItemSummary({ item }: { item: EditItem }) {
   const icon = item.type === 'hotel'
     ? <Hotel size={13} className="text-blue-500 shrink-0" />
     : item.type === 'food_drink'
-    ? <Utensils size={13} className="text-orange-500 shrink-0" />
-    : <Camera size={13} className="text-green-500 shrink-0" />
+    ? <Utensils size={13} className="text-[#ad6b57] shrink-0" />
+    : <Camera size={13} className="text-[#a27e3b] shrink-0" />
 
   return (
     <>
         {icon}
         <div className="min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+          <p className="text-sm font-medium text-[#2e4147] truncate">{item.name}</p>
           <div className="flex items-center gap-2 flex-wrap">
-            {item.mealType && <span className="text-xs text-gray-500">{item.mealType.split(',').map(t => `${MEAL_EMOJI[t]} ${t}`).join(' · ')}</span>}
+            {item.mealType && <span className="text-xs text-[#7a7b70]">{item.mealType.split(',').map(t => `${MEAL_EMOJI[t]} ${t}`).join(' · ')}</span>}
             {item.rating > 0 && <span className="text-xs text-yellow-500">{'★'.repeat(item.rating)}</span>}
             {getRecommendation(item.tags, item.isHighlight) !== 'none' && <span className={`text-xs font-medium ${getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'text-red-700' : 'text-[#507c76]'}`}>{getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'Avoid' : item.type === 'hotel' ? 'Must stay' : 'Must do'}</span>}
-            {item.notes && <span className="text-xs text-gray-400 truncate">{item.notes}</span>}
+            {item.notes && <span className="text-xs text-[#918d81] truncate">{item.notes}</span>}
           </div>
         </div>
     </>
@@ -557,10 +551,10 @@ function ItemSummary({ item }: { item: EditItem }) {
 
 function DraggedItem({ item }: { item: EditItem }) {
   return (
-    <div aria-hidden="true" className="pointer-events-none flex items-center gap-2 rounded-xl border border-blue-200 bg-gray-50 px-3 py-2.5 shadow-xl cursor-grabbing">
-      <GripVertical size={14} className="shrink-0 text-gray-400" />
+    <div aria-hidden="true" className="pointer-events-none flex items-center gap-2 rounded-xl border border-[#bbcfc5] bg-[#faf7ee] px-3 py-2.5 shadow-xl cursor-grabbing">
+      <GripVertical size={14} className="shrink-0 text-[#918d81]" />
       <div className="flex min-w-0 flex-1 items-center gap-2 text-left"><ItemSummary item={item} /></div>
-      <span className="shrink-0 text-lg leading-none text-gray-300">×</span>
+      <span className="shrink-0 text-lg leading-none text-[#c3bcad]">×</span>
     </div>
   )
 }
@@ -589,15 +583,15 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, onPhotoChan
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="bg-gray-50 rounded-xl">
+    <div ref={setNodeRef} style={style} className="bg-[#faf7ee] rounded-xl">
       <div className="flex items-center justify-between px-3 py-2.5 gap-2">
-      <button type="button" {...attributes} {...listeners} className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0 touch-none">
+      <button type="button" {...attributes} {...listeners} className="text-[#c3bcad] hover:text-[#7a7b70] cursor-grab active:cursor-grabbing shrink-0 touch-none">
         <GripVertical size={14} />
       </button>
       <button type="button" onClick={onEdit} className="flex items-center gap-2 min-w-0 flex-1 text-left hover:opacity-75 transition-opacity">
         <ItemSummary item={item} />
       </button>
-      <button type="button" onClick={onRemove} className="text-gray-300 hover:text-red-400 text-lg leading-none shrink-0">×</button>
+      <button type="button" onClick={onRemove} className="text-[#c3bcad] hover:text-red-400 text-lg leading-none shrink-0">×</button>
       </div>
       <ItemPhotoInput photo={item.photo} name={item.name} onChange={onPhotoChange} onBusyChange={onPhotoBusyChange} />
     </div>
@@ -761,7 +755,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
 
       <div className="flex justify-end">
         <button type="button" onClick={discardChanges} disabled={pending}
-          className="min-h-11 px-3 text-sm font-medium text-gray-600 hover:text-gray-900 underline underline-offset-4 disabled:opacity-50">
+          className="min-h-11 px-3 text-sm font-medium text-[#6b7067] hover:text-[#2e4147] underline underline-offset-4 disabled:opacity-50">
           Discard changes
         </button>
       </div>
@@ -771,42 +765,42 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       )}
 
       {/* ── DETAILS ──────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-        <div className="bg-gradient-to-r from-gray-800 to-gray-700 px-5 py-4">
-          <h2 className="font-bold text-white">Details</h2>
+      <div className="bg-[#fffdf6] rounded-xl shadow-sm border border-[#e3dfd2] overflow-hidden">
+        <div className="bg-[#eee7d9] border-b border-[#d7cebc] px-5 py-4">
+          <h2 className="font-[family-name:var(--font-playfair)] text-xl text-[#2e4147]">Details</h2>
           {itinerary.visibility === 'draft' && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-medium mt-1 inline-block">Draft</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-[#eee0c2] text-[#80632f] font-medium mt-1 inline-block">Draft</span>
           )}
         </div>
         <div className="p-5 space-y-4">
-          <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium">
+          <div className="flex gap-1 bg-[#eee7d9] rounded-xl p-1 text-sm font-medium">
             <button type="button" onClick={() => setPostType('itinerary')}
-              className={`flex-1 py-1.5 rounded-lg transition-colors ${postType === 'itinerary' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600'}`}>
+              className={`flex-1 py-1.5 rounded-lg transition-colors ${postType === 'itinerary' ? 'bg-[#507c76] text-white shadow-sm' : 'text-[#6b7067]'}`}>
               ✈️ Itinerary
             </button>
             <button type="button" onClick={() => setPostType('guide')}
-              className={`flex-1 py-1.5 rounded-lg transition-colors ${postType === 'guide' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-600'}`}>
+              className={`flex-1 py-1.5 rounded-lg transition-colors ${postType === 'guide' ? 'bg-[#507c76] text-white shadow-sm' : 'text-[#6b7067]'}`}>
               📖 Guide
             </button>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Title</label>
+            <label className="block text-xs font-medium text-[#7a7b70] mb-1">Title</label>
             <input name="title" type="text" required value={title} onChange={e => setTitle(e.target.value)} className={inputCls} />
           </div>
           {postType === 'itinerary' && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Month and year</label>
+                <label className="block text-xs font-medium text-[#7a7b70] mb-1">Month and year</label>
                 <input type="month" value={tripMonth} onChange={e => setTripMonth(e.target.value)} className={inputCls} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Number of days</label>
+                <label className="block text-xs font-medium text-[#7a7b70] mb-1">Number of days</label>
                 <input type="number" min="1" step="1" inputMode="numeric" value={tripDays} onChange={e => setTripDays(e.target.value)} placeholder="e.g. 8" className={inputCls} />
               </div>
             </div>
           )}
           <div>
-            <p className="text-xs font-medium text-gray-500 mb-2">Trip type</p>
+            <p className="text-xs font-medium text-[#7a7b70] mb-2">Trip type</p>
             <div className="flex flex-wrap gap-2">
               {[
                 { value: 'family',   label: '👨‍👩‍👧 Family'  },
@@ -815,33 +809,33 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 { value: 'adult',    label: '🍷 Other'   },
               ].map(({ value, label }) => (
                 <button key={value} type="button" onClick={() => setTripAudience(value as typeof tripAudience)}
-                  className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${tripAudience === value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>
+                  className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${tripAudience === value ? 'bg-[#507c76] text-white border-[#507c76]' : 'border-[#d7cebc] text-[#6b7067] hover:border-[#b8a98e]'}`}>
                   {label}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-500 mb-2">Tags</p>
-            <TagPicker selected={tags} onChange={setTags} />
+            <p className="text-xs font-medium text-[#7a7b70] mb-2">Tags</p>
+            <TagPicker theme="paper" selected={tags} onChange={setTags} />
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-500 mb-2">Budget</p>
+            <p className="text-xs font-medium text-[#7a7b70] mb-2">Budget</p>
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5].map(n => (
                 <button key={n} type="button" onClick={() => setBudget(budget === n ? 0 : n)}
-                  className={`text-base px-1 transition-colors ${n <= budget ? 'text-green-600' : 'text-gray-300'}`}>$</button>
+                  className={`text-base px-1 transition-colors ${n <= budget ? 'text-[#a27e3b]' : 'text-[#c3bcad]'}`}>$</button>
               ))}
             </div>
           </div>
           {postType === 'itinerary' && (
             <div>
-              <p className="text-xs font-medium text-gray-500 mb-2">Overall trip rating <span className="text-gray-400 font-normal">(optional)</span></p>
-              <TripRatingPicker value={tripRating} onChange={setTripRating} />
+              <p className="text-xs font-medium text-[#7a7b70] mb-2">Overall trip rating <span className="text-[#918d81] font-normal">(optional)</span></p>
+              <TripRatingPicker theme="paper" value={tripRating} onChange={setTripRating} />
             </div>
           )}
           <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">General notes</p>
+            <p className="text-xs font-medium text-[#7a7b70] mb-1">General notes</p>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
               placeholder="Tips, packing list, visa info…" className={inputCls} />
           </div>
@@ -850,23 +844,23 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
 
       {/* ── DESTINATIONS ─────────────────────────────────────────────────── */}
       {dests.map(dest => (
-        <div key={dest.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+        <div key={dest.id} className="bg-[#fffdf6] rounded-xl shadow-sm border border-[#e3dfd2] overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-3 flex items-center gap-2">
-            <MapPin size={15} className="text-white/80" />
-            <span className="font-bold text-white text-sm flex-1">
+          <div className="bg-[#e6ece5] border-t-2 border-t-[#507c76] border-b border-b-[#d7cebc] px-5 py-3 flex items-center gap-2">
+            <MapPin size={15} className="text-[#507c76]" />
+            <span className="font-[family-name:var(--font-playfair)] text-[#2e4147] text-lg flex-1">
               {dest.name || 'Destination'}{dest.country ? `, ${dest.country}` : ''}
             </span>
             {dests.length > 1 && (
               <button type="button" onClick={() => setDests(ds => ds.filter(d => d.id !== dest.id))}
-                className="text-white/60 hover:text-white text-lg leading-none">×</button>
+                className="text-[#507c76] hover:text-red-700 text-lg leading-none">×</button>
             )}
           </div>
 
           <div className="p-5 space-y-4">
             {/* Dest name / country / notes */}
             <div className="space-y-2">
-              <div className="flex gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                 <PlacesAutocomplete
                   value={dest.name}
                   onChange={val => updDest(dest.id, d => ({ ...d, name: val }))}
@@ -875,7 +869,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 />
                 <input type="text" value={dest.country}
                   onChange={e => updDest(dest.id, d => ({ ...d, country: e.target.value }))}
-                  placeholder="Country" className={`${inputCls} w-32 shrink-0`} />
+                  placeholder="Country" className={inputCls} />
               </div>
               <textarea value={dest.notes} onChange={e => updDest(dest.id, d => ({ ...d, notes: e.target.value }))}
                 rows={2} placeholder="📝 Notes for this destination (optional)" className={inputCls} />
@@ -905,8 +899,8 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                     <div key={day ?? 'guide'}>
                       {day !== undefined && (
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full shrink-0">Day {day}</span>
-                          <div className="flex-1 h-px bg-blue-100" />
+                          <span className="text-xs font-bold text-[#426862] bg-[#e6ece5] px-2.5 py-1 rounded-full shrink-0">Day {day}</span>
+                          <div className="flex-1 h-px bg-[#e6ece5]" />
                         </div>
                       )}
                         <SortableContext items={items.map(item => item.id)} strategy={verticalListSortingStrategy}>
@@ -953,30 +947,30 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
               <div className="space-y-2">
                 {postType !== 'guide' && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">Day {dest.curDayIndex}</span>
-                    <span className="text-xs text-gray-400">Add places for this day</span>
+                    <span className="text-sm font-bold bg-[#e6ece5] text-[#426862] px-2.5 py-1 rounded-full">Day {dest.curDayIndex}</span>
+                    <span className="text-xs text-[#918d81]">Add places for this day</span>
                   </div>
                 )}
                 <div className="grid grid-cols-3 gap-2">
                   <button type="button" onClick={() => setActiveInput({ destId: dest.id, type: 'hotel' })}
-                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-blue-200 text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-all">
+                    className="flex flex-col items-center gap-1.5 py-4 rounded-xl border-2 border-dashed border-[#bbcfc5] text-[#507c76] hover:border-[#507c76] hover:bg-[#edf1e9] transition-all">
                     <Hotel size={20} />
                     <span className="text-xs font-semibold">+ Hotel</span>
                   </button>
                   <button type="button" onClick={() => setActiveInput({ destId: dest.id, type: 'food_drink' })}
-                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-orange-200 text-orange-600 hover:border-orange-400 hover:bg-orange-50 transition-all">
+                    className="flex flex-col items-center gap-1.5 py-4 rounded-xl border-2 border-dashed border-[#dec4b4] text-[#ad6b57] hover:border-[#ad6b57] hover:bg-[#f5ebe1] transition-all">
                     <Utensils size={20} />
                     <span className="text-xs font-semibold">+ Food</span>
                   </button>
                   <button type="button" onClick={() => setActiveInput({ destId: dest.id, type: 'activity' })}
-                    className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-green-200 text-green-600 hover:border-green-400 hover:bg-green-50 transition-all">
+                    className="flex flex-col items-center gap-1.5 py-4 rounded-xl border-2 border-dashed border-[#d9c99f] text-[#a27e3b] hover:border-[#a27e3b] hover:bg-[#f3eddb] transition-all">
                     <Camera size={20} />
                     <span className="text-xs font-semibold">+ Activity</span>
                   </button>
                 </div>
                 {postType !== 'guide' && (
                   <button type="button" onClick={() => updDest(dest.id, d => ({ ...d, curDayIndex: d.curDayIndex + 1 }))}
-                    className="w-full py-2.5 rounded-xl border-2 border-indigo-200 text-indigo-700 text-sm font-semibold hover:border-indigo-300 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2">
+                    className="w-full py-2.5 rounded-xl border-2 border-[#bbcfc5] text-[#507c76] text-sm font-semibold hover:border-[#507c76] hover:bg-[#edf1e9] transition-all flex items-center justify-center gap-2">
                     <ArrowRight size={14} /> Add Day {dest.curDayIndex + 1}
                   </button>
                 )}
@@ -987,16 +981,16 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       ))}
 
       <button type="button" onClick={() => setDests(ds => [...ds, { id: uid(), name: '', country: '', notes: '', items: [], curDayIndex: 1 }])}
-        className="w-full py-3 rounded-xl border-2 border-dashed border-blue-200 text-blue-600 text-sm font-semibold hover:border-blue-400 hover:bg-blue-50 transition-all flex items-center justify-center gap-2">
+        className="w-full py-3 rounded-xl border-2 border-dashed border-[#bbcfc5] text-[#507c76] text-sm font-semibold hover:border-[#507c76] hover:bg-[#edf1e9] transition-all flex items-center justify-center gap-2">
         <Plus size={15} /> Add destination
       </button>
 
       {/* ── MUST DO ──────────────────────────────────────────────────────────── */}
       {dests.some(d => d.items.filter(i => i.type !== 'hotel' && i.name.trim()).length > 0) && (
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 space-y-5">
+        <div className="bg-[#fffdf6] rounded-xl shadow-sm border border-[#e3dfd2] p-5 space-y-5">
           <div>
-            <h2 className="font-bold text-gray-900">Must Do</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Mark the places you recommend. You can also set Must stay or Avoid on each place.</p>
+            <h2 className="font-[family-name:var(--font-playfair)] text-xl text-[#2e4147]">Must Do</h2>
+            <p className="text-sm text-[#7a7b70] mt-0.5">Mark the places you recommend. You can also set Must stay or Avoid on each place.</p>
           </div>
           {dests.map(dest => {
             const food = dest.items.filter(i => i.type === 'food_drink' && i.name.trim())
@@ -1007,15 +1001,15 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
             return (
               <div key={dest.id} className="space-y-3">
                 {dests.length > 1 && (
-                  <p className="text-sm font-semibold text-gray-800">{dest.name || 'Destination'}{dest.country ? `, ${dest.country}` : ''}</p>
+                  <p className="text-sm font-semibold text-[#2C1810]">{dest.name || 'Destination'}{dest.country ? `, ${dest.country}` : ''}</p>
                 )}
                 {food.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-gray-500 mb-1.5">🍽️ Must-do restaurants {foodCount > 0 && <span className="text-amber-600">({foodCount} selected)</span>}</p>
+                    <p className="text-xs font-medium text-[#7a7b70] mb-1.5">🍽️ Must-do restaurants {foodCount > 0 && <span className="text-[#507c76]">({foodCount} selected)</span>}</p>
                     <div className="space-y-1.5">
                       {food.map(item => (
                         <button key={item.id} type="button" onClick={() => setTopPickFood(dest.id, item.id)}
-                          className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
+                          className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-[#e6ece5] border-[#9dbbb0] text-[#426862] font-medium' : 'border-[#e3dfd2] text-[#5C3D2E] hover:border-[#d7cebc]'}`}>
                           {item.isHighlight ? '⭐ ' : ''}{item.name}
                         </button>
                       ))}
@@ -1024,11 +1018,11 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 )}
                 {acts.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-gray-500 mb-1.5">📍 Must-do activities {actCount > 0 && <span className="text-amber-600">({actCount} selected)</span>}</p>
+                    <p className="text-xs font-medium text-[#7a7b70] mb-1.5">📍 Must-do activities {actCount > 0 && <span className="text-[#507c76]">({actCount} selected)</span>}</p>
                     <div className="space-y-1.5">
                       {acts.map(item => (
                         <button key={item.id} type="button" onClick={() => setTopPickActivity(dest.id, item.id)}
-                          className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
+                          className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${item.isHighlight ? 'bg-[#e6ece5] border-[#9dbbb0] text-[#426862] font-medium' : 'border-[#e3dfd2] text-[#5C3D2E] hover:border-[#d7cebc]'}`}>
                           {item.isHighlight ? '⭐ ' : ''}{item.name}
                         </button>
                       ))}
@@ -1042,12 +1036,12 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       )}
 
       {/* ── PHOTOS ───────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 space-y-4">
-        <h2 className="font-semibold text-gray-900">Photos</h2>
-        <label className={`flex flex-col items-center justify-center border-2 border-dashed border-purple-300 rounded-xl p-5 cursor-pointer hover:border-purple-400 transition-colors ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}>
-          <ImageIcon size={22} className="text-purple-400 mb-1" />
-          <span className="text-sm font-medium text-purple-700">{uploading ? 'Uploading…' : 'Click to upload photos'}</span>
-          <span className="text-xs text-purple-400 mt-0.5">JPG, PNG, WEBP</span>
+      <div className="bg-[#fffdf6] rounded-xl shadow-sm border border-[#e3dfd2] p-5 space-y-4">
+        <h2 className="font-[family-name:var(--font-playfair)] text-xl text-[#2e4147]">Photos</h2>
+        <label className={`flex flex-col items-center justify-center border-2 border-dashed border-[#d7cebc] rounded-xl p-5 cursor-pointer hover:border-[#507c76] transition-colors ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}>
+          <ImageIcon size={22} className="text-[#7a7b70] mb-1" />
+          <span className="text-sm font-medium text-[#507c76]">{uploading ? 'Uploading…' : 'Click to upload photos'}</span>
+          <span className="text-xs text-[#7a7b70] mt-0.5">JPG, PNG, WEBP</span>
           <input type="file" accept="image/*" multiple className="sr-only" disabled={uploading}
             onChange={e => { uploadPhotos(Array.from(e.target.files ?? [])); e.target.value = '' }} />
         </label>
@@ -1069,16 +1063,16 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       {/* ── SUBMIT ───────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3 sm:flex-row">
         <button type="button" onClick={discardChanges} disabled={pending}
-          className="flex-1 text-gray-600 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:bg-gray-100 transition-colors disabled:opacity-60 text-sm">
+          className="flex-1 text-[#6b7067] font-semibold py-3 rounded-xl border-2 border-[#d7cebc] hover:bg-[#eee7d9] transition-colors disabled:opacity-60 text-sm">
           Discard changes
         </button>
         <button type="submit" name="isDraft" value="1" disabled={pending || uploading || itemUploads > 0}
-          className="flex-1 bg-white text-gray-700 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-colors disabled:opacity-60 text-sm">
+          className="flex-1 bg-[#fffdf6] text-[#5C3D2E] font-semibold py-3 rounded-xl border-2 border-[#d7cebc] hover:border-[#b8a98e] transition-colors disabled:opacity-60 text-sm">
           {pending ? 'Saving…' : 'Save as Draft'}
         </button>
         <button type="submit" disabled={pending || uploading || itemUploads > 0 || !hasItems}
           title={!hasItems ? 'Add at least one item first' : undefined}
-          className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60 text-sm">
+          className="flex-1 bg-[#507c76] text-white font-semibold py-3 rounded-xl hover:bg-[#426862] transition-colors disabled:opacity-60 text-sm">
           {pending ? 'Saving…' : itinerary.visibility === 'draft' ? 'Publish' : 'Save changes'}
         </button>
       </div>
