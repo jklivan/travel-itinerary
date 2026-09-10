@@ -25,7 +25,7 @@ export default function BucketButton({
     e.stopPropagation()
 
     if (!isLoggedIn) {
-      router.push('/login')
+      router.push(`/login?saveTrip=${encodeURIComponent(itineraryId)}`)
       return
     }
 

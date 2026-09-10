@@ -9,13 +9,13 @@ export default async function Navbar() {
 
   return (
     <header className="bg-[#2C1810] text-white shadow-md sticky top-0 z-40">
-      <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      <div className="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
         <Link href="/" className="shrink-0">
           <h1 className="text-xl font-bold text-white leading-tight font-[family-name:var(--font-playfair)]">Wayfarer</h1>
           <p className="text-[#C4A882] text-xs leading-none hidden sm:block">Share your journey</p>
         </Link>
 
-        <div className="flex-1 max-w-xs">
+        <div className="order-last w-full md:order-none md:w-auto md:flex-1 md:max-w-xs">
           <NavSearch />
         </div>
 

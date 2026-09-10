@@ -61,9 +61,10 @@ function CommentInput({
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={placeholder}
+        aria-label={onCancel ? 'Your reply' : 'Your comment'}
         autoFocus={autoFocus}
-        rows={2}
-        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent"
+        rows={3}
+        className="w-full text-sm text-[#2e4147] bg-[#fffdf6] border-2 border-[#8caaa3] rounded-xl px-3 py-3 shadow-sm placeholder:text-[#6b7067] resize-y focus:outline-none focus:ring-2 focus:ring-[#507c76]/25 focus:border-[#507c76] transition-colors"
         onKeyDown={(e) => {
           if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit()
         }}

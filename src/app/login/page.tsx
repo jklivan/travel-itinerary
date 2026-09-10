@@ -5,22 +5,25 @@ import { login } from '@/actions/auth'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
+import { saveTripId } from '@/lib/saveTripReturn'
 
 function LoginForm() {
   const [state, action, pending] = useActionState(login, undefined)
   const searchParams = useSearchParams()
   const registered = searchParams.get('registered')
+  const tripId = saveTripId(searchParams.get('saveTrip'))
 
   return (
     <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-[#2C1810]">Welcome back</h1>
-          <p className="text-sm text-[#8B6F4E] mt-1">Sign in to post your itineraries</p>
+          <p className="text-sm text-[#8B6F4E] mt-1">{tripId ? 'Sign in to save this trip. We’ll bring you back so you can add it to your saved trips.' : 'Sign in to post and save itineraries'}</p>
         </div>
 
         <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8D5B7] p-6">
           <form action={action} className="space-y-4">
+            <input type="hidden" name="saveTrip" value={tripId} />
             {registered && (
               <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
                 Account created! Sign in to get started.
@@ -74,7 +77,7 @@ function LoginForm() {
 
         <p className="text-center text-sm text-[#8B6F4E] mt-6">
           Don&apos;t have an account?{' '}
-          <Link href="/register" className="text-[#5C3D2E] font-medium hover:underline">
+          <Link href={tripId ? `/register?saveTrip=${encodeURIComponent(tripId)}` : "/register"} className="text-[#5C3D2E] font-medium hover:underline">
             Create one
           </Link>
         </p>

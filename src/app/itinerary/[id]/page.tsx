@@ -500,8 +500,8 @@ export default async function ItineraryPage({
                   {stamp.label}
                 </span>
               )}
-              {session?.user && !isOwn && (
-                <BucketButton itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={true} size="md" />
+              {!isOwn && (
+                <BucketButton itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" />
               )}
               {isOwn && (
                 <div className="flex items-center gap-2">

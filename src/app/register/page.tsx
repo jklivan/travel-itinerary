@@ -1,10 +1,13 @@
 'use client'
 
-import { useActionState } from 'react'
+import { Suspense, useActionState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { saveTripId } from '@/lib/saveTripReturn'
 import { register } from '@/actions/auth'
 import Link from 'next/link'
 
-export default function RegisterPage() {
+function RegisterForm() {
+  const tripId = saveTripId(useSearchParams().get('saveTrip'))
   const [state, action, pending] = useActionState(register, undefined)
 
   return (
@@ -17,6 +20,7 @@ export default function RegisterPage() {
 
         <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8D5B7] p-6">
           <form action={action} className="space-y-4">
+            <input type="hidden" name="saveTrip" value={tripId} />
             {state?.message && (
               <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
                 {state.message}
@@ -89,11 +93,15 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-[#8B6F4E] mt-6">
           Already have an account?{' '}
-          <Link href="/login" className="text-[#5C3D2E] font-medium hover:underline">
+          <Link href={tripId ? `/login?saveTrip=${encodeURIComponent(tripId)}` : "/login"} className="text-[#5C3D2E] font-medium hover:underline">
             Sign in
           </Link>
         </p>
       </div>
     </div>
   )
+}
+
+export default function RegisterPage() {
+  return <Suspense><RegisterForm /></Suspense>
 }

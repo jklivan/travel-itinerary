@@ -66,18 +66,20 @@ function NavSearchInner() {
   }, [])
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center w-full">
+    <form role="search" onSubmit={handleSubmit} className="flex items-center w-full">
       <div ref={containerRef} className="relative w-full">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60 text-sm">🔍</span>
         <input
-          type="text"
+          type="search"
+          aria-label="Search destinations"
+          enterKeyHint="search"
           value={query}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onFocus={() => suggestions.length > 0 && setOpen(true)}
           placeholder="Search destinations…"
           autoComplete="off"
-          className="w-full pl-8 pr-3 py-1.5 text-sm text-white placeholder-white/60 rounded-lg bg-white/10 border border-white/20 focus:outline-none focus:ring-2 focus:ring-white/40 focus:bg-white/20 transition-all"
+          className="w-full min-h-12 pl-9 pr-3 py-3 text-base text-white placeholder-white/60 rounded-lg bg-white/10 border border-white/20 focus:outline-none focus:ring-2 focus:ring-white/40 focus:bg-white/20 transition-all"
         />
         {open && suggestions.length > 0 && (
           <ul className="absolute z-50 mt-1 w-full bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] shadow-lg overflow-hidden">
