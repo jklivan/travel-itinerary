@@ -30,3 +30,13 @@ No permission prompt is shown automatically. Registration is refreshed on signed
 - Never commit the `.p8` key or send a test alert to real users. Use test accounts/devices.
 
 References: https://capacitorjs.com/docs/apis/push-notifications and https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns .
+
+## Xcode Cloud dependency setup
+
+`ios/App/ci_scripts/ci_post_clone.sh` runs after checkout, before Swift package resolution. It installs Node 22 using Homebrew and restores the exact npm lockfile dependencies. This supplies `node_modules/@capacitor/push-notifications`, which the generated `CapApp-SPM/Package.swift` references as a local package. Keep the hook executable and beside `App.xcodeproj` in `ci_scripts`.
+
+The hook skips npm lifecycle scripts because this archive uses the committed native shell and loads the live Vercel site; it does not need Prisma generation, database credentials, or a web build. When changing native plugins, run `npm run ios:sync` locally and commit the resulting iOS changes and npm lockfile together.
+
+After pushing the hook, start an Xcode Cloud build from that commit. Confirm the **Post-Clone** step finishes before **Resolve Package Dependencies**. Retrying an older commit will still lack the hook.
+
+Apple reference: https://developer.apple.com/documentation/xcode/writing-custom-build-scripts .
