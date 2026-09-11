@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
+import { tripDetailsError } from '../src/lib/tripDates.ts'
 
 function source(path) { return ts.createSourceFile(path, readFileSync(new URL(path, import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX) }
 function find(root, predicate) { if (predicate(root)) return root; return ts.forEachChild(root, n => find(n, predicate)) }
@@ -42,7 +43,7 @@ test('standard save recovers from a rejected request and allows retry', async ()
   const src = source('../src/app/create/page.tsx')
   const fn = find(src, n => ts.isFunctionDeclaration(n) && n.name?.text === 'handleSubmit')
   let pending = false; let error
-  const context = { setPending: value => { pending = value }, setFormError: value => { error = value }, destinations: [], dateRangeFromMonthAndDays: () => ({}), tripMonth: '', tripDays: '', title: '', description: '', notes: '', computedHighlightNames: [], photos: [], tags: [], tripRating: null, postType: 'itinerary', tripAudience: 'family', createItineraryDirect: async () => { throw Error('offline') } }
+  const context = { setPending: value => { pending = value }, setFormError: value => { error = value }, destinations: [], dateRangeFromMonthAndDays: () => ({}), tripMonth: '2026-09', tripDays: '3', tripDetailsError, title: 'Trip', description: '', notes: '', computedHighlightNames: [], photos: [], tags: [], tripRating: null, postType: 'itinerary', tripAudience: 'family', createItineraryDirect: async () => { throw Error('offline') } }
   await run(fn.getText(src) + '\nhandleSubmit(false)', context)
   assert.equal(pending, false)
   assert.match(error, /try again/)
@@ -74,4 +75,20 @@ test('failed itinerary replacement rolls back old destinations and photos', asyn
   assert.equal(transactionUsed, true)
   assert.match(result.error, /unchanged/)
   assert.deepEqual(original, { destinations: ['original place'], photos: ['original photo'] })
+})
+
+test('editing saves selected months, allows clearing, and preserves months from older forms', async () => {
+  const src = source('../src/actions/itinerary.ts')
+  const fn = find(src, n => ts.isFunctionDeclaration(n) && n.name?.text === 'updateItinerary')
+  for (const selected of [['May', 'Sep'], [], null]) {
+    const data = new FormData()
+    if (selected !== null) data.set('bestMonths', JSON.stringify(selected))
+    let saved
+    await run(fn.getText(src).replace('export ', '') + '\nupdateItinerary("trip", undefined, data)', {
+      data, auth: async () => ({ user: { id: 'owner' } }),
+      parseFormData: () => ({ title: 'Trip', isDraft: true, destinations: [], photos: [], bestMonths: selected ?? [] }),
+      prisma: { itinerary: { findUnique: async () => ({ userId: 'owner', bestMonths: ['Jun'] }) }, $transaction: async callback => callback({ destination: { deleteMany: async () => {} }, photo: { deleteMany: async () => {} }, itinerary: { update: async ({ data }) => { saved = data.bestMonths; throw Error('Stop before enrichment') } } }) },
+    })
+    assert.deepEqual(saved, selected ?? ['Jun'])
+  }
 })

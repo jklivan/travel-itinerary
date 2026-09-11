@@ -1,5 +1,8 @@
 'use client'
 
+import { moveItemToDay, reorderItems } from '@/lib/reorderItems'
+import MoveToDay from '@/components/MoveToDay'
+
 import { preventImplicitSubmit } from '@/lib/preventImplicitSubmit'
 
 import EventPhotoInput from '@/components/EventPhotoInput'
@@ -13,9 +16,11 @@ import { MapPin, Hotel, Utensils, Camera, Star, ArrowRight, Plus, Check, X, File
 import TagPicker from '@/components/TagPicker'
 import Link from 'next/link'
 import { TripRatingPicker } from '@/components/TripRatingPicker'
-import { dateRangeFromMonthAndDays } from '@/lib/tripDates'
+import { tripDetailsError, dateRangeFromMonthAndDays } from '@/lib/tripDates'
 import {
   DndContext,
+  DragOverlay,
+  useDroppable,
   PointerSensor,
   TouchSensor,
   closestCenter,
@@ -27,7 +32,6 @@ import {
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
-  arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import RecommendationPicker from '@/components/RecommendationPicker'
@@ -67,6 +71,7 @@ type UploadedPhoto = { url: string; caption: string }
 type Phase = 'type' | 'dest' | 'building' | 'more' | 'review' | 'details'
 
 type SavedState = {
+  returnToReview?: boolean
   editingDestIndex?: number | null
   dests: GuidedDest[]
   curDest: { name: string; country: string }
@@ -218,7 +223,8 @@ function ItemEditForm({ type, initial, onDraftChange, onSave, onClose, onRecomme
           placeholder={cfg.notesPh} className={inputCls} />
       </div>
       <PlacesAutocomplete value={alternative} onChange={setAlternative} type={cfg.placeType}
-        placeholder="↔ Alternative (optional)" className={`${inputCls} text-gray-500`} city={city} />
+        placeholder="Suggest another place (optional)" className={`${inputCls} text-gray-500`} city={city} />
+      <p className="text-xs text-[#7a7b70]">Name a different place to suggest instead. To mark this place as a backup, use “Save as alternative.”</p>
       <RecommendationPicker type={type} value={recommendation} onChange={onRecommendationChange} />
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
@@ -257,7 +263,8 @@ function ItemEditForm({ type, initial, onDraftChange, onSave, onClose, onRecomme
 
 // ── Sortable item row (view or edit) ──────────────────────────────────────────
 
-function SortableItem({ item, isEditing, onEdit, onDraftChange, onUpdate, onRemove, onRecommendationChange, onPhotosChange, onPhotoBusyChange, city }: {
+function SortableItem({ item, dayControl, isEditing, onEdit, onDraftChange, onUpdate, onRemove, onRecommendationChange, onPhotosChange, onPhotoBusyChange, city }: {
+  dayControl?: React.ReactNode
   item: GuidedItem
   isEditing: boolean
   onDraftChange: (updated: Partial<GuidedItem>) => void
@@ -279,13 +286,14 @@ function SortableItem({ item, isEditing, onEdit, onDraftChange, onUpdate, onRemo
   if (isEditing) {
     return (
       <div ref={setNodeRef} style={style}>
+        {dayControl}
         <ItemEditForm type={item.type} initial={item} onDraftChange={onDraftChange} onSave={onUpdate} onClose={onEdit} onRecommendationChange={onRecommendationChange} onPhotosChange={onPhotosChange} onPhotoBusyChange={onPhotoBusyChange} city={city} />
       </div>
     )
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 gap-2">
+    <div ref={setNodeRef} style={style} className="flex flex-wrap items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 gap-2">
       <button type="button" {...attributes} {...listeners} className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0 touch-none">
         <GripVertical size={14} />
       </button>
@@ -304,8 +312,14 @@ function SortableItem({ item, isEditing, onEdit, onDraftChange, onUpdate, onRemo
         </div>
       </button>
       <button type="button" onClick={onRemove} className="text-gray-300 hover:text-red-400 text-lg leading-none shrink-0">×</button>
+      {dayControl && <div className="w-full">{dayControl}</div>}
     </div>
   )
+}
+
+function DayDropZone({ day }: { day: number }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `day-end-${day}`, data: { day } })
+  return <div ref={setNodeRef} className={`mt-2 rounded-lg border border-dashed p-3 text-center text-xs ${isOver ? 'bg-[#edf1e9] border-[#507c76]' : 'border-gray-200 text-gray-400'}`}>Drop here to move to the end of this day</div>
 }
 
 // ── Inline item form ──────────────────────────────────────────────────────────
@@ -501,6 +515,8 @@ export default function GuidedCreatePage() {
   const [photoUploadError, setPhotoUploadError] = useState<string | null>(null)
   const [failedPhotoFiles, setFailedPhotoFiles] = useState<File[]>([])
   const [activeInput, setActiveInput] = useState<ActiveInput>(null)
+  const [detailsError, setDetailsError] = useState<string | null>(null)
+  const [returnToReview, setReturnToReview] = useState(restored.returnToReview ?? false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [phase, setPhase] = useState<Phase>((restored.phase as string) === 'picks' ? 'review' : restored.phase ?? 'type')
 
@@ -526,10 +542,10 @@ export default function GuidedCreatePage() {
   // Save progress to sessionStorage on every relevant state change
   useEffect(() => {
     try {
-      const toSave: SavedState = { editingDestIndex, dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating, notes, bestMonths }
+      const toSave: SavedState = { returnToReview, editingDestIndex, dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating, notes, bestMonths }
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(toSave))
     } catch { /* quota exceeded or SSR */ }
-  }, [editingDestIndex, dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating, notes, bestMonths])
+  }, [returnToReview, editingDestIndex, dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating, notes, bestMonths])
 
   function startOver() {
     try { sessionStorage.removeItem(SESSION_KEY) } catch {}
@@ -553,19 +569,25 @@ export default function GuidedCreatePage() {
     setActiveInput(null)
   }
 
+  const [draggedItem, setDraggedItem] = useState<GuidedItem | null>(null)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
   )
 
   function handleDragEnd(event: DragEndEvent) {
+    setDraggedItem(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
     setCurItems(items => {
-      const oldIndex = items.findIndex(i => i.id === active.id)
-      const newIndex = items.findIndex(i => i.id === over.id)
-      if (oldIndex === -1 || newIndex === -1) return items
-      return arrayMove(items, oldIndex, newIndex)
+      const source = items.find(i => i.id === active.id)
+      const target = items.find(i => i.id === over.id)
+      const day = target?.dayIndex ?? over.data.current?.day
+      if (!source) return items
+      if (postType === 'guide') return reorderItems(items, String(active.id), String(over.id))
+      if (typeof day !== 'number') return items
+      if (target && source.dayIndex === day) return reorderItems(items, source.id, target.id, day)
+      return moveItemToDay(items, source.id, day, target?.id, true)
     })
   }
 
@@ -754,7 +776,12 @@ export default function GuidedCreatePage() {
       <h1 className="text-xl font-bold text-gray-900 mb-1">Step by step</h1>
       <p className="text-sm text-gray-500 mb-6">Build your trip one card at a time.</p>
 
-      <form onKeyDown={preventImplicitSubmit} id="gf" action={action} onSubmit={event => { if (itemUploads > 0 || hasUnnamedItems) { event.preventDefault(); return } }}>
+      <form onKeyDown={preventImplicitSubmit} id="gf" action={action} onSubmit={event => { if (itemUploads > 0 || hasUnnamedItems) { event.preventDefault(); return }
+        const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
+        if (submitter?.name !== 'isDraft') {
+          const error = tripDetailsError(title, postType, tripMonth, tripDays)
+          if (error) { event.preventDefault(); setDetailsError(error); setReturnToReview(true); setPhase('details') }
+        } }}>
         <input type="hidden" name="title" value={title} />
         <input type="hidden" name="postType" value={postType} />
         <input type="hidden" name="startDate" value={tripDateRange.startDate} />
@@ -899,7 +926,7 @@ export default function GuidedCreatePage() {
             <div className="p-5 space-y-4">
               {/* Added items — grouped by day for itineraries, flat list for guides */}
               {curItems.length > 0 && (
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={({ active }) => setDraggedItem(curItems.find(i => i.id === active.id) ?? null)} onDragCancel={() => setDraggedItem(null)} onDragEnd={handleDragEnd}>
                   <SortableContext items={curItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
                     <div className="space-y-3">
                       {postType === 'guide' ? (
@@ -925,6 +952,7 @@ export default function GuidedCreatePage() {
                             if (!byDay.has(item.dayIndex)) byDay.set(item.dayIndex, [])
                             byDay.get(item.dayIndex)!.push(item)
                           }
+                          if (draggedItem && !byDay.has(curDayIndex)) byDay.set(curDayIndex, [])
                           return [...byDay.entries()].sort(([a], [b]) => a - b).map(([day, items]) => (
                             <div key={day}>
                               <div className="flex items-center gap-2 mb-2">
@@ -933,7 +961,7 @@ export default function GuidedCreatePage() {
                               </div>
                               <div className="space-y-2">
                                 {items.map(item => (
-                                  <SortableItem key={item.id} item={item}
+                                  <SortableItem dayControl={postType === 'itinerary' ? <MoveToDay name={item.name} day={item.dayIndex} maxDay={Math.max(curDayIndex, ...curItems.map(i => i.dayIndex))} onMove={day => { setEditingItemId(null); setCurDayIndex(current => Math.max(current, day)); setCurItems(items => moveItemToDay(items, item.id, day)) }} /> : undefined} key={item.id} item={item}
                                     isEditing={editingItemId === item.id}
                                     onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
                                     onUpdate={updated => updateItem(item.id, updated)}
@@ -946,12 +974,14 @@ export default function GuidedCreatePage() {
                                   />
                                 ))}
                               </div>
+                              <DayDropZone day={day} />
                             </div>
                           ))
                         })()
                       )}
                     </div>
                   </SortableContext>
+                  <DragOverlay dropAnimation={null}>{draggedItem && <div className="rounded-xl border border-[#bbcfc5] bg-[#fffdf6] p-4 shadow-xl">{draggedItem.name}</div>}</DragOverlay>
                 </DndContext>
               )}
 
@@ -1125,6 +1155,7 @@ export default function GuidedCreatePage() {
         {/* ── REVIEW card ─────────────────────────────────────────────────── */}
         {phase === 'review' && (
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 space-y-5">
+            <button type="button" onClick={() => { setReturnToReview(true); setPhase('details') }} className="text-sm text-[#507c76] underline">Edit trip details</button>
             <div>
               <h2 className="font-bold text-gray-900">Ready to publish</h2>
               <p className="text-sm text-gray-500 mt-0.5">Your recommendations are set on each place. Go back to edit them before publishing.</p>
@@ -1164,6 +1195,7 @@ export default function GuidedCreatePage() {
         {/* ── DETAILS card ─────────────────────────────────────────────────── */}
         {phase === 'details' && (
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            {detailsError && <p role="alert" className="m-4 text-sm text-red-700">{detailsError}</p>}
             <div className="bg-gradient-to-r from-gray-800 to-gray-700 px-5 py-4">
               <h2 className="font-bold text-white">Trip details</h2>
               <p className="text-white/70 text-xs mt-0.5">Tell us about your {postType === 'guide' ? 'guide' : 'trip'}</p>
@@ -1246,7 +1278,11 @@ export default function GuidedCreatePage() {
                   className="px-5 py-3 rounded-xl border border-gray-300 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors">
                   ← Back
                 </button>
-                <button type="button" onClick={() => setPhase('dest')}
+                <button type="button" onClick={() => {
+                  const error = tripDetailsError(title, postType, tripMonth, tripDays)
+                  setDetailsError(error)
+                  if (!error) { setPhase(returnToReview ? 'review' : 'dest'); setReturnToReview(false) }
+                }}
                   className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
                   Next <ArrowRight size={15} />
                 </button>

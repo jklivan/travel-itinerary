@@ -368,7 +368,7 @@ export async function updateItinerary(
   const existing = await prisma.itinerary.findUnique({ where: { id } })
   if (!existing || existing.userId !== session.user.id) return { error: 'Not found.' }
 
-  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, tripRating, destinations, photos } =
+  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, tripRating, bestMonths, destinations, photos } =
     parseFormData(formData)
 
   if (!title) return { error: 'Title is required.' }
@@ -408,6 +408,7 @@ export async function updateItinerary(
           tags,
           budget,
           tripRating,
+          bestMonths: formData.has('bestMonths') ? bestMonths : existing.bestMonths,
           destinations: {
             create: destinations.map((d, i) => ({
               name: d.name,

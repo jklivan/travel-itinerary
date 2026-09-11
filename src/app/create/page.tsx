@@ -12,7 +12,7 @@ import { createItineraryDirect } from '@/actions/itinerary'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import TagPicker from '@/components/TagPicker'
 import { TripRatingPicker } from '@/components/TripRatingPicker'
-import { dateRangeFromMonthAndDays, monthAndDaysFromDates } from '@/lib/tripDates'
+import { tripDetailsError, dateRangeFromMonthAndDays, monthAndDaysFromDates } from '@/lib/tripDates'
 
 // Binary files (images, PDFs, XLSX) are uploaded to Vercel Blob to avoid the 4.5MB
 // function body limit. The public Blob URL is sent to the API route instead of base64.
@@ -275,7 +275,8 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
       <div className="grid gap-2">
         <textarea aria-label="Notes" rows={4} value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
-        <input type="text" value={item.alternative ?? ''} onChange={e => onUpdate('alternative', e.target.value)} className={subInputClass} placeholder="↔ Alternative (optional)" />
+        <input type="text" value={item.alternative ?? ''} onChange={e => onUpdate('alternative', e.target.value)} className={subInputClass} placeholder="Suggest another place (optional)" />
+          <p className="text-xs text-[#7a7b70]">Name a different place to suggest instead. To mark this place as a backup, use “Save as alternative.”</p>
       </div>
       </>}
     </div>
@@ -307,7 +308,8 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating, onRecommenda
       <div className="grid gap-2">
         <textarea aria-label="Notes" rows={4} value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
-        <input type="text" value={item.alternative ?? ''} onChange={e => onUpdate('alternative', e.target.value)} className={subInputClass} placeholder="↔ Alternative (optional)" />
+        <input type="text" value={item.alternative ?? ''} onChange={e => onUpdate('alternative', e.target.value)} className={subInputClass} placeholder="Suggest another place (optional)" />
+          <p className="text-xs text-[#7a7b70]">Name a different place to suggest instead. To mark this place as a backup, use “Save as alternative.”</p>
       </div>
       </>}
     </div>
@@ -359,11 +361,50 @@ export default function CreatePage() {
   const showRating = postType === 'itinerary'
   const stepIndex = step === 'review' ? -1 : STEPS.indexOf(step)
 
-  function goNext() { setStep(STEPS[stepIndex + 1]) }
+  const [returnToReview, setReturnToReview] = useState(false)
+  function movePlace(di: number, gi: number, dyi: number, ii: number, kind: 'food' | 'activities', target: string) {
+    const [targetGroup, targetDay] = target.split(':').map(Number)
+    if (targetGroup === gi && targetDay === dyi) return
+    setDestinations(previous => previous.map((dest, index) => {
+      if (index !== di || !dest.groups[targetGroup]?.days[targetDay]) return dest
+      const groups = dest.groups.map(group => ({ ...group, days: group.days.map(day => ({ ...day, food: [...day.food], activities: [...day.activities] })) }))
+      const source = groups[gi].days[dyi]
+      const destination = groups[targetGroup].days[targetDay]
+      if (kind === 'food') {
+        const [item] = source.food.splice(ii, 1)
+        if (item) destination.food.push({ ...item, dayIndex: destination.dayIndex ?? targetDay + 1, order: Math.max(-1, ...destination.food.map(i => i.order ?? 0), ...destination.activities.map(i => i.order ?? 0)) + 1 })
+      } else {
+        const [item] = source.activities.splice(ii, 1)
+        if (item) destination.activities.push({ ...item, dayIndex: destination.dayIndex ?? targetDay + 1, order: Math.max(-1, ...destination.food.map(i => i.order ?? 0), ...destination.activities.map(i => i.order ?? 0)) + 1 })
+      }
+      return { ...dest, groups }
+    }))
+  }
+  function moveControl(di: number, gi: number, dyi: number, ii: number, kind: 'food' | 'activities', name: string) {
+    if (postType === 'guide') return null
+    return <label className="flex items-center gap-2 px-3 py-2 text-xs text-[#507c76]">Move to day
+      <select aria-label={`Move ${name || 'place'} to day`} value={`${gi}:${dyi}`} onChange={event => movePlace(di, gi, dyi, ii, kind, event.target.value)} className="min-h-10 rounded-lg border border-[#bbcfc5] bg-[#fffdf6] px-2 text-sm">
+        {destinations[di].groups.flatMap((group, groupIndex) => group.days.map((day, dayIndex) => <option key={`${groupIndex}:${dayIndex}`} value={`${groupIndex}:${dayIndex}`}>{destinations[di].groups.length > 1 ? `Stay ${groupIndex + 1} · ` : ''}Day {day.dayIndex ?? dayIndex + 1}</option>))}
+      </select>
+    </label>
+  }
+  function goNext() {
+    if (step === 'basics') {
+      const error = tripDetailsError(title, postType, tripMonth, tripDays)
+      if (error) { setFormError(error); return }
+      if (returnToReview) { setFormError(undefined); setReturnToReview(false); setStep('details'); return }
+    }
+    setFormError(undefined)
+    setStep(STEPS[stepIndex + 1])
+  }
   function goBack() { setStep(STEPS[stepIndex - 1]) }
 
   // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubmit(isDraft: boolean) {
+    if (!isDraft) {
+      const error = tripDetailsError(title, postType, tripMonth, tripDays)
+      if (error) { setFormError(error); setReturnToReview(true); setStep('basics'); return }
+    }
     setPending(true)
     setFormError(undefined)
     const { startDate, endDate } = dateRangeFromMonthAndDays(tripMonth, tripDays)
@@ -971,13 +1012,13 @@ export default function CreatePage() {
                             <div className="space-y-2">
                               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🍜 Food & Drink</p>
                               {day.food.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
-                              <div className="space-y-3">{day.food.map((item, ii) => <FoodRow onRecommendationChange={value => updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j === ii ? { ...f, isHighlight: value === 'must', tags: recommendationTags(f.tags, value) } : f) }))} key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, dyi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, dyi, ii, v)} onToggleTag={tag => toggleFoodTag(di, gi, dyi, ii, tag)} onRemove={() => removeFood(di, gi, dyi, ii)} onSelectPlace={id => id ? fetchFoodPriceLevel(di, gi, dyi, ii, id) : setFoodPriceLevel(di, gi, dyi, ii, null)} />)}</div>
+                              <div className="space-y-3">{day.food.map((item, ii) => <div key={ii}><FoodRow onRecommendationChange={value => updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j === ii ? { ...f, isHighlight: value === 'must', tags: recommendationTags(f.tags, value) } : f) }))} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, dyi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, dyi, ii, v)} onToggleTag={tag => toggleFoodTag(di, gi, dyi, ii, tag)} onRemove={() => removeFood(di, gi, dyi, ii)} onSelectPlace={id => id ? fetchFoodPriceLevel(di, gi, dyi, ii, id) : setFoodPriceLevel(di, gi, dyi, ii, null)} />{moveControl(di, gi, dyi, ii, 'food', item.name)}</div>)}</div>
                               <button type="button" onClick={() => addFood(di, gi, dyi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add food / drink</button>
                             </div>
                             <div className="space-y-2">
                               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🎯 Activities</p>
                               {day.activities.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
-                              <div className="space-y-3">{day.activities.map((item, ii) => <ActivityRow onRecommendationChange={value => updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.map((a, j) => j === ii ? { ...a, isHighlight: value === 'must', tags: recommendationTags(a.tags, value) } : a) }))} key={ii} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, dyi, ii, f, v)} onRemove={() => removeActivity(di, gi, dyi, ii)} />)}</div>
+                              <div className="space-y-3">{day.activities.map((item, ii) => <div key={ii}><ActivityRow onRecommendationChange={value => updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.map((a, j) => j === ii ? { ...a, isHighlight: value === 'must', tags: recommendationTags(a.tags, value) } : a) }))} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, dyi, ii, f, v)} onRemove={() => removeActivity(di, gi, dyi, ii)} />{moveControl(di, gi, dyi, ii, 'activities', item.name)}</div>)}</div>
                               <button type="button" onClick={() => addActivity(di, gi, dyi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add activity</button>
                             </div>
                           </div>
@@ -1042,6 +1083,7 @@ export default function CreatePage() {
         {/* ── DETAILS ────────────────────────────────────────────────────── */}
         {step === 'details' && (
           <div className="space-y-4">
+            <button type="button" onClick={() => { setReturnToReview(true); setStep('basics') }} className="text-sm text-[#507c76] underline">Edit trip details</button>
             <h2 className="font-semibold text-gray-900 text-lg">Finishing touches</h2>
 
             <section className="bg-white rounded-2xl border border-gray-200 p-5">

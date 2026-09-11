@@ -22,3 +22,12 @@ export function monthAndDaysFromDates(startDate?: string, endDate?: string) {
   const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1)
   return { month, days: String(days) }
 }
+
+export function tripDetailsError(title: string, postType: string, month: string, days: string): string | null {
+  if (!title.trim()) return 'Add a trip title to continue.'
+  if (postType === 'guide') return null
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return 'Choose the month of your trip to continue.'
+  const count = Number(days)
+  if (!Number.isInteger(count) || count < 1) return 'Enter a positive whole number of days.'
+  return null
+}

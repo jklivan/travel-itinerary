@@ -1,5 +1,7 @@
 'use client'
 
+import MoveToDay from '@/components/MoveToDay'
+
 import { preventImplicitSubmit } from '@/lib/preventImplicitSubmit'
 
 import EventPhotoInput from '@/components/EventPhotoInput'
@@ -88,7 +90,7 @@ type ItineraryData = {
   id: string; postType: string; title: string; description: string | null
   startDate: Date; endDate: Date; audience: string; visibility: string
   notes: string | null; highlights: string | null; tags: string[]
-  budget: number | null; tripRating: number | null
+  budget: number | null; tripRating: number | null; bestMonths?: string[]
   destinations: { name: string; country: string | null; notes: string | null; items: RawItem[] }[]
   photos: { url: string; caption: string | null }[]
 }
@@ -342,7 +344,8 @@ function ItemEditForm({ type, initial, onDraftChange, onSave, onClose, onRecomme
           placeholder={cfg.notesPh} className={inputCls} />
       </div>
       <PlacesAutocomplete value={alternative} onChange={setAlternative} type={cfg.placeType}
-        placeholder="↔ Alternative (optional)" className={`${inputCls} text-[#7a7b70]`} city={city} />
+        placeholder="Suggest another place (optional)" className={`${inputCls} text-[#7a7b70]`} city={city} />
+      <p className="text-xs text-[#7a7b70]">Name a different place to suggest instead. To mark this place as a backup, use “Save as alternative.”</p>
       <RecommendationPicker type={type} value={recommendation} onChange={onRecommendationChange} />
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-[#507c76] hover:text-[#355650] font-medium flex items-center gap-1 transition-colors">
@@ -527,7 +530,8 @@ function DraggedItem({ item }: { item: EditItem }) {
   )
 }
 
-function SortableItem({ item, isEditing, onEdit, onDraftChange, onUpdate, onRemove, onRecommendationChange, onPhotoChange, onPhotoBusyChange, city }: {
+function SortableItem({ item, dayControl, isEditing, onEdit, onDraftChange, onUpdate, onRemove, onRecommendationChange, onPhotoChange, onPhotoBusyChange, city }: {
+  dayControl?: React.ReactNode
   item: EditItem
   isEditing: boolean
   onDraftChange: (updated: Partial<EditItem>) => void
@@ -546,6 +550,7 @@ function SortableItem({ item, isEditing, onEdit, onDraftChange, onUpdate, onRemo
   if (isEditing) {
     return (
       <div ref={setNodeRef} style={style}>
+        {dayControl}
         <ItemEditForm type={item.type} initial={item} onDraftChange={onDraftChange} onSave={onUpdate} onClose={onEdit} onRecommendationChange={onRecommendationChange} city={city} />
         <EventPhotoInput photos={item.photos} name={item.name} onChange={onPhotoChange} onBusyChange={onPhotoBusyChange} />
       </div>
@@ -554,6 +559,7 @@ function SortableItem({ item, isEditing, onEdit, onDraftChange, onUpdate, onRemo
 
   return (
     <div ref={setNodeRef} style={style} className="bg-[#faf7ee] rounded-xl">
+      {dayControl}
       <div className="flex items-center justify-between px-3 py-2.5 gap-2">
       <button type="button" {...attributes} {...listeners} className="text-[#c3bcad] hover:text-[#7a7b70] cursor-grab active:cursor-grabbing shrink-0 touch-none">
         <GripVertical size={14} />
@@ -592,6 +598,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   const [budget, setBudget]         = useState(itinerary.budget ?? 0)
   const [tags, setTags]             = useState<string[]>(itinerary.tags ?? [])
   const [tripRating, setTripRating] = useState<number | null>(itinerary.tripRating ?? null)
+  const [bestMonths, setBestMonths] = useState<string[]>(itinerary.bestMonths ?? [])
   const [notes, setNotes]           = useState(itinerary.notes ?? '')
 
   const [dests, setDests] = useState<EditDest[]>(
@@ -706,6 +713,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       <input type="hidden" name="tripRating"   value={tripRating ?? ''} />
       <input type="hidden" name="tags"         value={JSON.stringify(tags)} />
       {budget > 0 && <input type="hidden" name="budget" value={budget} />}
+      <input type="hidden" name="bestMonths" value={JSON.stringify(bestMonths)} />
       <input type="hidden" name="notes"        value={notes} />
 
       <div className="flex justify-end">
@@ -755,6 +763,19 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
               </div>
             </div>
           )}
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-[#2e4147]">When to go <span className="font-normal text-[#7a7b70]">(optional)</span></legend>
+            <p className="text-xs text-[#7a7b70]">Which months would you recommend visiting? Select all that apply.</p>
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+              {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map(month => (
+                <button key={month} type="button" aria-pressed={bestMonths.includes(month)}
+                  onClick={() => setBestMonths(months => months.includes(month) ? months.filter(value => value !== month) : [...months, month])}
+                  className={`min-h-10 rounded-lg border text-sm font-medium ${bestMonths.includes(month) ? 'bg-[#507c76] border-[#507c76] text-white' : 'bg-[#fffdf6] border-[#d7cebc] text-[#6b7067] hover:border-[#507c76]'}`}>
+                  {month}
+                </button>
+              ))}
+            </div>
+          </fieldset>
           <div>
             <p className="text-xs font-medium text-[#7a7b70] mb-2">Trip type</p>
             <div className="flex flex-wrap gap-2">
@@ -838,6 +859,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 if (!byDay.has(item.dayIndex)) byDay.set(item.dayIndex, [])
                 byDay.get(item.dayIndex)!.push(item)
               }
+              if (draggedItem?.destId === dest.id && !byDay.has(dest.curDayIndex)) byDay.set(dest.curDayIndex, [])
               const lists = postType === 'guide'
                 ? [{ day: undefined, items: dest.items }]
                 : [...byDay.entries()].sort(([a], [b]) => a - b).map(([day, items]) => ({ day, items }))
@@ -863,6 +885,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                           <div className="space-y-2">
                             {items.map(item => (
                               <SortableItem key={item.id} item={item}
+                                dayControl={postType === 'itinerary' ? <MoveToDay name={item.name} day={item.dayIndex} maxDay={Math.max(dest.curDayIndex, ...dest.items.map(i => i.dayIndex))} onMove={day => { setEditingItemId(null); updDest(dest.id, d => ({ ...d, curDayIndex: Math.max(d.curDayIndex, day), items: moveItemToDay(d.items, item.id, day) })) }} /> : undefined}
                                 isEditing={editingItemId === item.id}
                                 onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
                                 onUpdate={updated => updateItem(dest.id, item.id, updated)}
