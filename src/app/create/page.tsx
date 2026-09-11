@@ -1,5 +1,7 @@
 'use client'
 
+import { preventImplicitSubmit } from '@/lib/preventImplicitSubmit'
+
 import RecommendationPicker from '@/components/RecommendationPicker'
 import { getRecommendation, recommendationTags, type PlaceRecommendation } from '@/lib/placeRecommendation'
 
@@ -271,7 +273,7 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
         ))}
       </div>
       <div className="grid gap-2">
-        <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
+        <textarea aria-label="Notes" rows={4} value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
         <input type="text" value={item.alternative ?? ''} onChange={e => onUpdate('alternative', e.target.value)} className={subInputClass} placeholder="↔ Alternative (optional)" />
       </div>
@@ -303,7 +305,7 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating, onRecommenda
       </button>
       {showDetails && <>
       <div className="grid gap-2">
-        <input type="text" value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
+        <textarea aria-label="Notes" rows={4} value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
         <input type="text" value={item.alternative ?? ''} onChange={e => onUpdate('alternative', e.target.value)} className={subInputClass} placeholder="↔ Alternative (optional)" />
       </div>
@@ -633,7 +635,7 @@ export default function CreatePage() {
         </div>
       )}
 
-      <form onSubmit={e => e.preventDefault()}>
+      <form onKeyDown={preventImplicitSubmit} onSubmit={e => e.preventDefault()}>
         {formError && (
           <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{formError}</p>
         )}
@@ -944,7 +946,7 @@ export default function CreatePage() {
                               </button>
                             ))}
                           </div>
-                          <input type="text" value={group.hotelNotes} onChange={e => updateHotel(di, gi, 'hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
+                          <textarea aria-label="Hotel notes" rows={4} value={group.hotelNotes} onChange={e => updateHotel(di, gi, 'hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
                           <input type="url" value={group.hotelLink} onChange={e => updateHotel(di, gi, 'hotelLink', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
                           <input type="text" value={group.hotelAlternative ?? ''} onChange={e => updateHotel(di, gi, 'hotelAlternative', e.target.value)} className={subInputClass} placeholder="↔ Stay here instead (optional)" />
                           </>}

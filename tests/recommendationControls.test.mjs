@@ -53,3 +53,20 @@ for (const path of ['../src/app/itinerary/[id]/edit/EditForm.tsx', '../src/app/c
     assert.equal(closed, true)
   })
 }
+
+for (const path of ['../src/app/itinerary/[id]/edit/EditForm.tsx', '../src/app/create/guided/page.tsx']) {
+  test(`${path}: restaurant notes accept and save multiple lines`, () => {
+    const ui = editor(path)
+    let saved
+    const props = { type: 'food_drink', initial: { type: 'food_drink', name: 'Cafe', mealType: '', rating: 4, notes: '', tags: [], isHighlight: false, description: '', link: '', address: '', alternative: '', photos: [], photo: '', placeId: '' }, onClose() {}, onSave(value) { saved = value }, onPhotosChange() {}, onPhotoBusyChange() {}, onRecommendationChange() {} }
+    let tree = ui.render(props)
+    const notes = find(tree, node => node.type === 'textarea' && node.props['aria-label'] === 'Notes')
+    assert.ok(notes, 'Notes must use a multiline textarea')
+    notes.props.onChange({ target: { value: 'Great pasta\nBook ahead' } })
+    tree = ui.render(props)
+    const save = find(tree, node => node.type === 'button' && JSON.stringify(node.props.children).includes(' Save'))
+    assert.ok(save)
+    save.props.onClick()
+    assert.equal(saved.notes, 'Great pasta\nBook ahead')
+  })
+}

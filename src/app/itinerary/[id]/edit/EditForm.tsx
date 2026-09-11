@@ -1,5 +1,7 @@
 'use client'
 
+import { preventImplicitSubmit } from '@/lib/preventImplicitSubmit'
+
 import EventPhotoInput from '@/components/EventPhotoInput'
 import { eventPhotos } from '@/lib/eventPhotos'
 
@@ -433,7 +435,7 @@ function ItemForm({ type, onAdd, onClose, city }: {
       </div>
       <div className="space-y-1">
         <p className="text-xs text-[#7a7b70]">Notes</p>
-        <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
+        <textarea aria-label="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)}
           placeholder={cfg.notesPh} className={inputCls} />
       </div>
       <RecommendationPicker type={type} value={recommendation} onChange={setRecommendation} />
@@ -677,7 +679,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <form action={action} onSubmit={e => { if (itemUploads > 0) e.preventDefault() }} className="space-y-4 pb-36">
+    <form onKeyDown={preventImplicitSubmit} action={action} onSubmit={e => { if (itemUploads > 0) e.preventDefault() }} className="space-y-4 pb-36">
       <input type="hidden" name="startDate"    value={tripDateRange.startDate} />
       <input type="hidden" name="endDate"      value={tripDateRange.endDate} />
       <input type="hidden" name="destinations" value={JSON.stringify(buildDestinations(dests))} />

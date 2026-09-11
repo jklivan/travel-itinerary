@@ -1,5 +1,7 @@
 'use client'
 
+import { preventImplicitSubmit } from '@/lib/preventImplicitSubmit'
+
 import EventPhotoInput from '@/components/EventPhotoInput'
 import { eventPhotos } from '@/lib/eventPhotos'
 
@@ -198,7 +200,7 @@ function ItemEditForm({ type, initial, onSave, onClose, onRecommendationChange, 
       </div>
       <div className="space-y-1">
         <p className="text-xs text-gray-500">Notes</p>
-        <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
+        <textarea aria-label="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)}
           placeholder={cfg.notesPh} className={inputCls} />
       </div>
       <PlacesAutocomplete value={alternative} onChange={setAlternative} type={cfg.placeType}
@@ -361,7 +363,7 @@ function ItemForm({ type, onAdd, onClose, onPhotoBusyChange, city }: {
       </div>
       <div className="space-y-1">
         <p className="text-xs text-gray-500">Notes</p>
-        <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
+        <textarea aria-label="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)}
           placeholder={cfg.notesPh} className={inputCls} />
       </div>
 
@@ -710,7 +712,7 @@ export default function GuidedCreatePage() {
       <h1 className="text-xl font-bold text-gray-900 mb-1">Step by step</h1>
       <p className="text-sm text-gray-500 mb-6">Build your trip one card at a time.</p>
 
-      <form id="gf" action={action} onSubmit={event => { if (itemUploads > 0) { event.preventDefault(); return } try { sessionStorage.removeItem(SESSION_KEY) } catch {} }}>
+      <form onKeyDown={preventImplicitSubmit} id="gf" action={action} onSubmit={event => { if (itemUploads > 0) { event.preventDefault(); return } try { sessionStorage.removeItem(SESSION_KEY) } catch {} }}>
         <input type="hidden" name="title" value={title} />
         <input type="hidden" name="postType" value={postType} />
         <input type="hidden" name="startDate" value={tripDateRange.startDate} />
