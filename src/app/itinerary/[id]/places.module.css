@@ -204,6 +204,7 @@
 }
 
 .meta {
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 6px;
   color: #64706d;

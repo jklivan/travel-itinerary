@@ -1,3 +1,4 @@
+import RatingStars from '@/components/RatingStars'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
 import { auth } from '@/auth'
@@ -5,7 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
-import { Hotel, Utensils, Camera, MapPin, Star, Check, Ban, BedDouble } from 'lucide-react'
+import { Hotel, Utensils, Camera, MapPin, Check, Ban, BedDouble } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import { eventPhotos, pickEventPhoto, tripPhotoGallery } from '@/lib/eventPhotos'
 import PhotoStrip from '@/components/PhotoStrip'
@@ -41,7 +42,7 @@ function FriendProof({
     <div key={`${friend.itineraryId}-${index}`} className={styles.friendRow}>
       <span className={styles.friendName}>{friend.friendName.split(' ')[0]}</span>
       {friend.rating != null && friend.rating > 0 ? (
-        <span className={styles.rating} aria-label={`${friend.rating} out of 5 stars`}><Star size={11} aria-hidden="true" />{friend.rating.toFixed(1)}</span>
+        <RatingStars value={friend.rating} />
       ) : <span>{verb}</span>}
       <Link href={`/itinerary/${friend.itineraryId}`} className={styles.friendLink}>their trip</Link>
     </div>
@@ -53,13 +54,13 @@ function FriendProof({
         <details className={styles.friendDetails}>
           <summary>
             <span>{friends.length} friends {verb}</span>
-            {friendAverage !== null && <span className={styles.rating} aria-label={`Friends average ${friendAverage.toFixed(1)} out of 5 from ${ratedFriends.length} ratings`}><Star size={11} aria-hidden="true" />{friendAverage.toFixed(1)} friends’ avg</span>}
+            {friendAverage !== null && <span className={styles.rating}><RatingStars value={friendAverage} label={`Friends average ${friendAverage.toFixed(1)} out of 5 from ${ratedFriends.length} ratings`} /> friends’ avg</span>}
           </summary>
           <div className={styles.friendList}>{friends.map(renderFriend)}</div>
         </details>
       ) : null}
       {avg !== null && total > 0 && (
-        <p className={styles.communityRating}><span className={styles.rating}><Star size={11} aria-hidden="true" />{avg.toFixed(1)}</span> Community · {total} {total === 1 ? 'rating' : 'ratings'}</p>
+        <p className={styles.communityRating}><RatingStars value={avg} label={`Community average ${avg.toFixed(1)} out of 5 from ${total} ratings`} /> Community · {total} {total === 1 ? 'rating' : 'ratings'}</p>
       )}
     </div>
   )
@@ -429,7 +430,7 @@ export default async function ItineraryPage({
           <h4 className={styles.placeName}>{item.name}</h4>
           {(!!item.rating || (!compact && price !== null && price > 0)) && (
             <div className={styles.meta}>
-              {!!item.rating && <span className={styles.rating} aria-label={`Trip author rated ${item.rating} out of 5 stars`}><Star size={12} aria-hidden="true" />{item.rating.toFixed(1)} <span className={styles.ratingLabel}>Author</span></span>}
+              {!!item.rating && <span className={styles.rating}><RatingStars value={item.rating} label={`Trip author rated ${item.rating} out of 5 stars`} /> <span className={styles.ratingLabel}>Author</span></span>}
               {!compact && price !== null && price > 0 && <span className={styles.price}>{'$'.repeat(price)}</span>}
             </div>
           )}
