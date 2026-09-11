@@ -317,3 +317,7 @@
     transition: none;
   }
 }
+
+.alternativeCard .mustDoStamp { width: 68px; }
+.alternativeCard .eyebrow,
+.alternativeCard .placeName { padding-right: 63px; }

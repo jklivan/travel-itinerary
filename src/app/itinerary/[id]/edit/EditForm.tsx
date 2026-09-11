@@ -496,7 +496,7 @@ function ItemSummary({ item }: { item: EditItem }) {
           <div className="flex items-center gap-2 flex-wrap">
             {item.mealType && <span className="text-xs text-[#7a7b70]">{item.mealType.split(',').map(t => `${MEAL_EMOJI[t]} ${t}`).join(' · ')}</span>}
             {item.rating > 0 && <span className="text-xs text-yellow-500">{'★'.repeat(item.rating)}</span>}
-            {getRecommendation(item.tags, item.isHighlight) !== 'none' && <span className={`text-xs font-medium ${getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'text-red-700' : 'text-[#507c76]'}`}>{getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'Avoid' : item.type === 'hotel' ? 'Must stay' : 'Must do'}</span>}
+            {getRecommendation(item.tags, item.isHighlight) !== 'none' && <span className={`text-xs font-medium ${getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'text-red-700' : 'text-[#507c76]'}`}>{getRecommendation(item.tags, item.isHighlight) === 'option' ? 'Alternative' : getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'Avoid' : item.type === 'hotel' ? 'Must stay' : 'Must do'}</span>}
             {item.notes && <span className="text-xs text-[#918d81] truncate">{item.notes}</span>}
           </div>
         </div>

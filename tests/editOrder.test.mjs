@@ -111,3 +111,18 @@ test('must-stay and avoid markers survive editing and keep other tags', () => {
     assert.equal(initial.items[0].isHighlight, marker === '__highlight')
   }
 })
+
+test('hotel and restaurant options survive editor load/save without losing notes or photos', () => {
+  const dest = destFromRaw({ name: 'London', country: 'UK', notes: '', items: [
+    { type: 'hotel', name: 'Backup Hotel', groupIndex: 0, tags: ['__option'], notes: 'Check availability', photoUrls: ['/hotel.svg'] },
+    { type: 'food_drink', name: 'Backup Cafe', groupIndex: 0, dayIndex: 1, order: 0, tags: ['__option'], notes: 'Try if time', photoUrls: ['/cafe.svg'] },
+  ] })
+  assert.ok(dest.items.every(item => recommendations.getRecommendation(item.tags, item.isHighlight) === 'option'))
+  const group = buildDestinations([dest])[0].groups[0]
+  assert.ok(group.hotelTags.includes('__option'))
+  assert.equal(group.hotelNotes, 'Check availability')
+  const food = group.days.flatMap(day => day.food)[0]
+  assert.ok(food.tags.includes('__option'))
+  assert.equal(food.notes, 'Try if time')
+  assert.deepEqual(Array.from(food.photos), ['/cafe.svg'])
+})

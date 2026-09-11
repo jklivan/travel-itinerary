@@ -1050,7 +1050,7 @@ export default function CreatePage() {
                 <ul className="space-y-1.5 mt-2">
                   {recommendationSummary.map((item, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm text-amber-900">
-                      <span>{item.recommendation === 'avoid' ? 'Avoid' : item.type === 'hotel' ? 'Must stay' : 'Must do'}:</span><span>{item.name}</span>
+                      <span>{item.recommendation === 'option' ? 'Alternative' : item.recommendation === 'avoid' ? 'Avoid' : item.type === 'hotel' ? 'Must stay' : 'Must do'}:</span><span>{item.name}</span>
                     </li>
                   ))}
                 </ul>

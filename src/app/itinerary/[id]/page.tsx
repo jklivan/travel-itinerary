@@ -408,10 +408,11 @@ export default async function ItineraryPage({
     const price = item.priceLevel == null ? null : Math.max(0, Math.min(type === 'hotel' ? 5 : 4, item.priceLevel))
 
     return (
-      <PlaceDetailsCard key={item.id} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} className={`${styles.card} ${styles[type]} ${recommendation !== 'none' ? styles.stamped : ''}`}>
+      <PlaceDetailsCard key={item.id} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} className={`${styles.card} ${styles[type]} ${recommendation !== 'none' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
         {recommendation === 'must' && type !== 'hotel' && <Image src="/must-do-stamp.png" alt="Must do" width={60} height={54} unoptimized className={styles.mustDoStamp} />}
         {recommendation === 'must' && type === 'hotel' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><BedDouble size={24} aria-hidden="true" /><span>Must stay</span></span>}
         {recommendation === 'avoid' && <span className={`${styles.mustDoStamp} ${styles.textStamp} ${styles.avoidStamp}`}><Ban size={24} aria-hidden="true" /><span>Avoid</span></span>}
+        {recommendation === 'option' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><span>Alternative</span></span>}
         <div className={styles.thumbnail}>
           {tilePhoto ? (
             <Image src={tilePhoto} alt="" fill sizes="88px" className="object-cover" />
@@ -433,6 +434,7 @@ export default async function ItineraryPage({
             </div>
           )}
           {!compact && item.notes && <p className={styles.note}>{item.notes}</p>}
+          {recommendation === 'option' && <p className={styles.recommendation}>Saved as an alternative</p>}
           {recommendation === 'must' && <p className={styles.recommendation}><Check size={12} /> {type === 'hotel' ? 'Must stay' : 'Trip highlight'}</p>}
           <FriendProof friends={friends} avg={avg} total={total} verb={type === 'hotel' ? 'stayed here' : type === 'activity' ? 'also did this' : 'also went'} />
         </div>

@@ -71,7 +71,7 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
             <header className={styles.header}>
               <div>
                 <p className={styles.category}>{category} · {destination}</p>
-                {recommendation !== 'none' && <p className={`mt-2 text-sm font-semibold ${recommendation === 'avoid' ? 'text-red-700' : 'text-[#507c76]'}`}>{recommendation === 'avoid' ? 'Avoid' : isHotel ? 'Must stay' : 'Must do'} · Poster’s recommendation</p>}
+                {recommendation !== 'none' && <p className={`mt-2 text-sm font-semibold ${recommendation === 'avoid' ? 'text-red-700' : 'text-[#507c76]'}`}>{recommendation === 'option' ? 'Alternative' : recommendation === 'avoid' ? 'Avoid' : isHotel ? 'Must stay' : 'Must do'} · {recommendation === 'option' ? 'Saved as an alternative' : 'Poster’s recommendation'}</p>}
                 <h2 id={titleId} className={styles.title}>{place.name}</h2>
               </div>
               <button type="button" autoFocus className={styles.close} aria-label="Close place details" onClick={() => dialog.current?.close()}><X size={22} /></button>

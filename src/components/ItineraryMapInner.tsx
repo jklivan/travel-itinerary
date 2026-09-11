@@ -100,7 +100,7 @@ export default function ItineraryMapInner({ pins }: { pins: ItemPin[] }) {
                 {TYPE_STYLE[pin.type]?.emoji ?? '📍'} {pin.name}
               </p>
               {pin.recommendation !== 'none' && <p style={{ margin: '6px 0 0', color: pin.recommendation === 'avoid' ? '#a44138' : '#507c76', fontWeight: 700 }}>
-                {pin.recommendation === 'avoid' ? 'Avoid' : pin.type === 'hotel' ? 'Must stay' : 'Must do'} · Poster’s recommendation
+                {pin.recommendation === 'option' ? 'Alternative' : pin.recommendation === 'avoid' ? 'Avoid' : pin.type === 'hotel' ? 'Must stay' : 'Must do'} · {pin.recommendation === 'option' ? 'Saved as an alternative' : 'Poster’s recommendation'}
               </p>}
               <p style={{ margin: '6px 0 0', color: mapDayColor(pin.day), fontWeight: 600 }}>
                 {pin.day === null ? pin.type === 'hotel' ? 'Hotel' : 'No day assigned' : `Day ${pin.day}`}

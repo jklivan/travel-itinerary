@@ -36,3 +36,12 @@ test('older Must-Do labels require an explicit user selection to become stamps',
   assert.deepEqual(recommendationTags(legacy, 'avoid'), ['Cultural', '__avoid'])
   assert.equal(getRecommendation([...legacy, '__avoid']), 'avoid')
 })
+
+test('options replace stamps, survive reload, and can become selected places again', () => {
+  const tags = recommendationTags(['Lively', '__highlight'], 'option')
+  assert.deepEqual(tags, ['Lively', '__option'])
+  assert.equal(getRecommendation(tags, true), 'option')
+  assert.equal(getRecommendation(JSON.parse(JSON.stringify(tags))), 'option')
+  assert.deepEqual(recommendationTags(tags, 'none'), ['Lively'])
+  assert.deepEqual(recommendationTags(tags, 'must'), ['Lively', '__highlight'])
+})
