@@ -1,3 +1,4 @@
+import PlacePhoto from '@/components/PlacePhoto'
 import RatingStars from '@/components/RatingStars'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
@@ -414,17 +415,17 @@ export default async function ItineraryPage({
         {recommendation === 'must' && type === 'hotel' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><BedDouble size={24} aria-hidden="true" /><span>Must stay</span></span>}
         {recommendation === 'avoid' && <span className={`${styles.mustDoStamp} ${styles.textStamp} ${styles.avoidStamp}`}><Ban size={24} aria-hidden="true" /><span>Avoid</span></span>}
         {recommendation === 'option' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><span>Alternative</span></span>}
-        <div className={styles.thumbnail}>
-          {tilePhoto ? (
-            <Image src={tilePhoto} alt="" fill sizes="88px" className="object-cover" />
-          ) : (
+        {tilePhoto ? (
+          <div className={styles.thumbnail}><Image src={tilePhoto} alt="" fill sizes="88px" className="object-cover" /></div>
+        ) : (
+          <PlacePhoto key={item.id} itemId={item.id} name={item.name} thumbnailClass={styles.thumbnail} fallback={
             <div className={styles.keepsake} aria-hidden="true">
               <span>{eyebrow}</span>
               <Icon size={25} strokeWidth={1} />
               <span>{item.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span>
             </div>
-          )}
-        </div>
+          } />
+        )}
         <div className={styles.cardBody}>
           <p className={styles.eyebrow}>{label}</p>
           <h4 className={styles.placeName}>{item.name}</h4>
