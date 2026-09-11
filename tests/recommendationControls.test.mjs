@@ -70,3 +70,23 @@ for (const path of ['../src/app/itinerary/[id]/edit/EditForm.tsx', '../src/app/c
     assert.equal(saved.notes, 'Great pasta\nBook ahead')
   })
 }
+
+for (const path of ['../src/app/itinerary/[id]/edit/EditForm.tsx', '../src/app/create/guided/page.tsx']) {
+  test(`${path}: open event edits reach trip draft immediately and Cancel restores original`, () => {
+    const ui = editor(path)
+    let item = { type: 'food_drink', name: 'Cafe', mealType: '', rating: 4, notes: 'Original', tags: [], isHighlight: false, description: '', link: '', address: '', alternative: '', photos: [], photo: '', placeId: '' }
+    let innerSaves = 0
+    const props = () => ({ type: item.type, initial: item, onDraftChange(update) { item = { ...item, ...update } }, onSave() { innerSaves++ }, onClose() {}, onPhotosChange() {}, onPhotoBusyChange() {}, onRecommendationChange(value) { item = { ...item, tags: recommendations.recommendationTags(item.tags, value), isHighlight: value === 'must' } } })
+    let tree = ui.render(props())
+    find(tree, n => n.type === 'textarea' && n.props['aria-label'] === 'Notes').props.onChange({ target: { value: 'First line\nSecond line' } })
+    tree = ui.render(props())
+    find(tree, n => n.type === ui.picker).props.onChange('option')
+    assert.equal(item.notes, 'First line\nSecond line')
+    assert.equal(recommendations.getRecommendation(item.tags), 'option')
+    assert.equal(innerSaves, 0)
+    tree = ui.render(props())
+    find(tree, n => n.type === 'button' && n.props.children === 'Cancel').props.onClick()
+    assert.equal(item.notes, 'Original')
+    assert.equal(recommendations.getRecommendation(item.tags), 'none')
+  })
+}

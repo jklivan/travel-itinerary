@@ -378,16 +378,22 @@ export default function CreatePage() {
         })),
       })),
     }))
-    const result = await createItineraryDirect({
-      title, description, startDate, endDate, notes,
-      highlights: computedHighlightNames.join('\n'),
-      destinations: submittableDests, photos, tags, tripRating,
-      postType, audience: tripAudience,
-      visibility: 'public',
-      isDraft,
-    })
-    setPending(false)
-    if (result?.error) setFormError(result.error)
+    try {
+      const result = await createItineraryDirect({
+        title, description, startDate, endDate, notes,
+        highlights: computedHighlightNames.join('\n'),
+        destinations: submittableDests, photos, tags, tripRating,
+        postType, audience: tripAudience,
+        visibility: 'public',
+        isDraft,
+      })
+      if (result?.error) setFormError(result.error)
+      else if (result?.itineraryId) window.location.assign(`/itinerary/${result.itineraryId}`)
+    } catch {
+      setFormError("Could not save your trip. Your entries are still here. Check your connection and try again.")
+    } finally {
+      setPending(false)
+    }
   }
 
   // ── Import ────────────────────────────────────────────────────────────────

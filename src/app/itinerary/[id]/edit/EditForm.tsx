@@ -257,26 +257,39 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 
 // ── Item edit form ─────────────────────────────────────────────────────────────
 
-function ItemEditForm({ type, initial, onSave, onClose, onRecommendationChange, city }: {
+function ItemEditForm({ type, initial, onDraftChange, onSave, onClose, onRecommendationChange, city }: {
   type: ItemType
   initial: EditItem
+  onDraftChange?: (updated: Partial<EditItem>) => void
   onSave: (updated: Partial<EditItem>) => void
   onClose: () => void
   onRecommendationChange: (value: PlaceRecommendation) => void
   city?: string
 }) {
-  const [name, setName]           = useState(initial.name)
-  const [mealType, setMealType]   = useState(initial.mealType)
-  const [rating, setRating]       = useState(initial.rating)
-  const [notes, setNotes]         = useState(initial.notes)
-  const [alternative, setAlternative] = useState(initial.alternative)
+  const [original] = useState(initial)
+  function useDraftField<K extends keyof EditItem>(key: K, value: EditItem[K]) {
+    const [field, setField] = useState(value)
+    function update(next: EditItem[K] | ((previous: EditItem[K]) => EditItem[K])) {
+      const resolved = typeof next === 'function' ? (next as (previous: EditItem[K]) => EditItem[K])(field) : next
+      setField(resolved)
+      const patch = { [key]: resolved } as Partial<EditItem>
+      if (key === 'tags') patch.tags = recommendationTags(resolved as string[], getRecommendation(initial.tags, initial.isHighlight))
+      onDraftChange?.(patch)
+    }
+    return [field, update] as const
+  }
+  const [name, setName]           = useDraftField('name', initial.name)
+  const [mealType, setMealType]   = useDraftField('mealType', initial.mealType)
+  const [rating, setRating]       = useDraftField('rating', initial.rating)
+  const [notes, setNotes]         = useDraftField('notes', initial.notes)
+  const [alternative, setAlternative] = useDraftField('alternative', initial.alternative)
   const recommendation = getRecommendation(initial.tags, initial.isHighlight)
   const [originalRecommendation] = useState(recommendation)
-  function cancel() { onRecommendationChange(originalRecommendation); onClose() }
-  const [tags, setTags]           = useState<string[]>(initial.tags)
-  const [description, setDescription] = useState(initial.description)
-  const [link, setLink]           = useState(initial.link)
-  const [address, setAddress]     = useState(initial.address)
+  function cancel() { onDraftChange?.(original); onRecommendationChange(originalRecommendation); onClose() }
+  const [tags, setTags]           = useDraftField('tags', initial.tags)
+  const [description, setDescription] = useDraftField('description', initial.description)
+  const [link, setLink]           = useDraftField('link', initial.link)
+  const [address, setAddress]     = useDraftField('address', initial.address)
   const [showMore, setShowMore]   = useState(initial.tags.length > 0 || !!initial.description || !!initial.link || !!initial.address)
 
   const cfg = {
@@ -514,9 +527,10 @@ function DraggedItem({ item }: { item: EditItem }) {
   )
 }
 
-function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, onRecommendationChange, onPhotoChange, onPhotoBusyChange, city }: {
+function SortableItem({ item, isEditing, onEdit, onDraftChange, onUpdate, onRemove, onRecommendationChange, onPhotoChange, onPhotoBusyChange, city }: {
   item: EditItem
   isEditing: boolean
+  onDraftChange: (updated: Partial<EditItem>) => void
   onEdit: () => void
   onUpdate: (updated: Partial<EditItem>) => void
   onRemove: () => void
@@ -532,7 +546,7 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, onRecommend
   if (isEditing) {
     return (
       <div ref={setNodeRef} style={style}>
-        <ItemEditForm type={item.type} initial={item} onSave={onUpdate} onClose={onEdit} onRecommendationChange={onRecommendationChange} city={city} />
+        <ItemEditForm type={item.type} initial={item} onDraftChange={onDraftChange} onSave={onUpdate} onClose={onEdit} onRecommendationChange={onRecommendationChange} city={city} />
         <EventPhotoInput photos={item.photos} name={item.name} onChange={onPhotoChange} onBusyChange={onPhotoBusyChange} />
       </div>
     )
@@ -674,12 +688,13 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
     .map(i => i.name.trim())
     .join('\n')
 
+  const hasUnnamedItems = dests.some(d => d.items.some(i => !i.name.trim()))
   const hasItems = dests.some(d => d.items.some(i => i.name.trim()))
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <form onKeyDown={preventImplicitSubmit} action={action} onSubmit={e => { if (itemUploads > 0) e.preventDefault() }} className="space-y-4 pb-36">
+    <form onKeyDown={preventImplicitSubmit} action={action} onSubmit={e => { if (itemUploads > 0 || hasUnnamedItems) e.preventDefault() }} className="space-y-4 pb-36">
       <input type="hidden" name="startDate"    value={tripDateRange.startDate} />
       <input type="hidden" name="endDate"      value={tripDateRange.endDate} />
       <input type="hidden" name="destinations" value={JSON.stringify(buildDestinations(dests))} />
@@ -700,6 +715,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         </button>
       </div>
 
+      {hasUnnamedItems && <p role="alert" className="text-sm text-red-700">Give each place a name or remove it before saving.</p>}
       {state?.error && (
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{state.error}</p>
       )}
@@ -850,6 +866,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                                 isEditing={editingItemId === item.id}
                                 onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
                                 onUpdate={updated => updateItem(dest.id, item.id, updated)}
+                                onDraftChange={updated => updDest(dest.id, d => ({ ...d, items: d.items.map(i => i.id === item.id ? { ...i, ...updated } : i) }))}
                                 onRecommendationChange={value => updDest(dest.id, d => ({ ...d, items: d.items.map(i => i.id === item.id ? { ...i, tags: recommendationTags(i.tags, value), isHighlight: value === 'must' } : i) }))}
                                 onRemove={() => removeItem(dest.id, item.id)}
                                 onPhotoChange={photos => updDest(dest.id, d => ({ ...d, items: d.items.map(i => i.id === item.id ? { ...i, photos, photo: photos[0] ?? '' } : i) }))}
@@ -957,11 +974,11 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
           className="flex-1 text-[#6b7067] font-semibold py-3 rounded-xl border-2 border-[#d7cebc] hover:bg-[#eee7d9] transition-colors disabled:opacity-60 text-sm">
           Discard changes
         </button>
-        <button type="submit" name="isDraft" value="1" disabled={pending || uploading || itemUploads > 0}
+        <button type="submit" name="isDraft" value="1" disabled={pending || uploading || itemUploads > 0 || hasUnnamedItems}
           className="flex-1 bg-[#fffdf6] text-[#5C3D2E] font-semibold py-3 rounded-xl border-2 border-[#d7cebc] hover:border-[#b8a98e] transition-colors disabled:opacity-60 text-sm">
           {pending ? 'Saving…' : 'Save as Draft'}
         </button>
-        <button type="submit" disabled={pending || uploading || itemUploads > 0 || !hasItems}
+        <button type="submit" disabled={pending || uploading || itemUploads > 0 || hasUnnamedItems || !hasItems}
           title={!hasItems ? 'Add at least one item first' : undefined}
           className="flex-1 bg-[#507c76] text-white font-semibold py-3 rounded-xl hover:bg-[#426862] transition-colors disabled:opacity-60 text-sm">
           {pending ? 'Saving…' : itinerary.visibility === 'draft' ? 'Publish' : 'Save changes'}

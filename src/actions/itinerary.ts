@@ -11,7 +11,7 @@ import { geocode, geocodePlaceByName } from '@/lib/geocode'
 import { inferPlaceAttributes } from '@/lib/inferPriceLevels'
 import { generateDescriptions } from '@/lib/generateDescriptions'
 
-export type ItineraryState = { error?: string } | undefined
+export type ItineraryState = { error?: string; itineraryId?: string } | undefined
 
 type FoodInput = { name: string; mealType?: string; description?: string; notes: string; rating: number; link: string; priceLevel?: number | null; familyFriendly?: boolean | null; familyFriendlySource?: string | null; lat?: number | null; lng?: number | null; tags?: string[]; dayIndex?: number | null; order?: number; alternative?: string; photo?: string; photos?: string[]; placeId?: string }
 type ActivityInput = { name: string; notes: string; rating: number; link: string; dayIndex?: number | null; order?: number; tags?: string[]; alternative?: string; photo?: string; photos?: string[]; placeId?: string }
@@ -283,7 +283,7 @@ export async function createItinerary(
   ]), 20000)
 
   revalidatePath('/')
-  redirect(`/itinerary/${itinerary.id}`)
+  return { itineraryId: itinerary.id }
 }
 
 export async function createItineraryDirect(input: {
@@ -354,7 +354,7 @@ export async function createItineraryDirect(input: {
   ]), 20000)
 
   revalidatePath('/')
-  redirect(`/itinerary/${itinerary.id}`)
+  return { itineraryId: itinerary.id }
 }
 
 export async function updateItinerary(
@@ -387,40 +387,46 @@ export async function updateItinerary(
     if (totalItems === 0) return { error: 'Add at least one hotel, restaurant, or activity before publishing.' }
   }
 
-  // Delete existing destinations (cascades to items) and photos, then recreate
-  await prisma.destination.deleteMany({ where: { itineraryId: id } })
-  await prisma.photo.deleteMany({ where: { itineraryId: id } })
-  revalidatePath(`/itinerary/${id}`)
+  // Roll back the entire replacement if any write fails.
+  try {
+    await prisma.$transaction(async tx => {
+      await tx.destination.deleteMany({ where: { itineraryId: id } })
+      await tx.photo.deleteMany({ where: { itineraryId: id } })
 
-  await prisma.itinerary.update({
-    where: { id },
-    data: {
-      postType,
-      title,
-      description,
-      startDate,
-      endDate,
-      audience,
-      visibility,
-      notes,
-      highlights,
-      tags,
-      budget,
-      tripRating,
-      destinations: {
-        create: destinations.map((d, i) => ({
-          name: d.name,
-          country: d.country || null,
-          notes: d.notes?.trim() || null,
-          order: i,
-          items: { create: flattenGroups(d.groups ?? []) },
-        })),
-      },
-      photos: {
-        create: photos.map((p) => ({ url: p.url, caption: p.caption || null, isStock: false })),
-      },
-    },
-  })
+      await tx.itinerary.update({
+        where: { id },
+        data: {
+          postType,
+          title,
+          description,
+          startDate,
+          endDate,
+          audience,
+          visibility,
+          notes,
+          highlights,
+          tags,
+          budget,
+          tripRating,
+          destinations: {
+            create: destinations.map((d, i) => ({
+              name: d.name,
+              country: d.country || null,
+              notes: d.notes?.trim() || null,
+              order: i,
+              items: { create: flattenGroups(d.groups ?? []) },
+            })),
+          },
+          photos: {
+            create: photos.map((p) => ({ url: p.url, caption: p.caption || null, isStock: false })),
+          },
+        },
+      })
+
+    })
+  } catch {
+    return { error: "Your changes could not be saved. Your existing trip is unchanged. Please try again." }
+  }
 
   // Fetch stock photo, geocode destinations, infer missing price levels, and generate descriptions after save
   await withTimeout(Promise.all([

@@ -67,6 +67,7 @@ type UploadedPhoto = { url: string; caption: string }
 type Phase = 'type' | 'dest' | 'building' | 'more' | 'review' | 'details'
 
 type SavedState = {
+  editingDestIndex?: number | null
   dests: GuidedDest[]
   curDest: { name: string; country: string }
   curItems: GuidedItem[]
@@ -130,9 +131,10 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 
 // ── Item edit form (pre-filled) ────────────────────────────────────────────
 
-function ItemEditForm({ type, initial, onSave, onClose, onRecommendationChange, onPhotosChange, onPhotoBusyChange, city }: {
+function ItemEditForm({ type, initial, onDraftChange, onSave, onClose, onRecommendationChange, onPhotosChange, onPhotoBusyChange, city }: {
   type: ItemType
   initial: GuidedItem
+  onDraftChange?: (updated: Partial<GuidedItem>) => void
   onSave: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative' | 'photo' | 'photos' | 'placeId' | 'isHighlight'>) => void
   onClose: () => void
   onRecommendationChange: (value: PlaceRecommendation) => void
@@ -140,19 +142,31 @@ function ItemEditForm({ type, initial, onSave, onClose, onRecommendationChange, 
   onPhotoBusyChange: (busy: boolean) => void
   city?: string
 }) {
-  const [name, setName] = useState(initial.name)
-  const [mealType, setMealType] = useState(initial.mealType)
-  const [rating, setRating] = useState(initial.rating)
-  const [notes, setNotes] = useState(initial.notes)
-  const [alternative, setAlternative] = useState(initial.alternative || '')
+  const [original] = useState(initial)
+  function useDraftField<K extends keyof GuidedItem>(key: K, value: GuidedItem[K]) {
+    const [field, setField] = useState(value)
+    function update(next: GuidedItem[K] | ((previous: GuidedItem[K]) => GuidedItem[K])) {
+      const resolved = typeof next === 'function' ? (next as (previous: GuidedItem[K]) => GuidedItem[K])(field) : next
+      setField(resolved)
+      const patch = { [key]: resolved } as Partial<GuidedItem>
+      if (key === 'tags') patch.tags = recommendationTags(resolved as string[], getRecommendation(initial.tags, initial.isHighlight))
+      onDraftChange?.(patch)
+    }
+    return [field, update] as const
+  }
+  const [name, setName] = useDraftField('name', initial.name)
+  const [mealType, setMealType] = useDraftField('mealType', initial.mealType)
+  const [rating, setRating] = useDraftField('rating', initial.rating)
+  const [notes, setNotes] = useDraftField('notes', initial.notes)
+  const [alternative, setAlternative] = useDraftField('alternative', initial.alternative || '')
   const recommendation = getRecommendation(initial.tags, initial.isHighlight)
   const [originalRecommendation] = useState(recommendation)
-  function cancel() { onRecommendationChange(originalRecommendation); onPhotosChange(originalPhotos); onClose() }
-  const [tags, setTags] = useState<string[]>(initial.tags)
+  function cancel() { onDraftChange?.(original); onRecommendationChange(originalRecommendation); onPhotosChange(originalPhotos); onClose() }
+  const [tags, setTags] = useDraftField('tags', initial.tags)
   const photos = eventPhotos(initial.photos, initial.photo)
   const photo = photos[0] ?? ''
   const [originalPhotos] = useState(photos)
-  const [placeId, setPlaceId] = useState(initial.placeId || '')
+  const [placeId, setPlaceId] = useDraftField('placeId', initial.placeId || '')
   const [photoUploading, setPhotoUploading] = useState(false)
   const [showMore, setShowMore] = useState(initial.tags.length > 0)
 
@@ -243,9 +257,10 @@ function ItemEditForm({ type, initial, onSave, onClose, onRecommendationChange, 
 
 // ── Sortable item row (view or edit) ──────────────────────────────────────────
 
-function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, onRecommendationChange, onPhotosChange, onPhotoBusyChange, city }: {
+function SortableItem({ item, isEditing, onEdit, onDraftChange, onUpdate, onRemove, onRecommendationChange, onPhotosChange, onPhotoBusyChange, city }: {
   item: GuidedItem
   isEditing: boolean
+  onDraftChange: (updated: Partial<GuidedItem>) => void
   onEdit: () => void
   onUpdate: (updated: Pick<GuidedItem, 'name' | 'mealType' | 'rating' | 'notes' | 'tags' | 'alternative' | 'photo' | 'photos' | 'placeId' | 'isHighlight'>) => void
   onRemove: () => void
@@ -264,7 +279,7 @@ function SortableItem({ item, isEditing, onEdit, onUpdate, onRemove, onRecommend
   if (isEditing) {
     return (
       <div ref={setNodeRef} style={style}>
-        <ItemEditForm type={item.type} initial={item} onSave={onUpdate} onClose={onEdit} onRecommendationChange={onRecommendationChange} onPhotosChange={onPhotosChange} onPhotoBusyChange={onPhotoBusyChange} city={city} />
+        <ItemEditForm type={item.type} initial={item} onDraftChange={onDraftChange} onSave={onUpdate} onClose={onEdit} onRecommendationChange={onRecommendationChange} onPhotosChange={onPhotosChange} onPhotoBusyChange={onPhotoBusyChange} city={city} />
       </div>
     )
   }
@@ -451,7 +466,18 @@ function DestSummary({ dest, onRemove, onEdit }: { dest: GuidedDest; onRemove: (
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function GuidedCreatePage() {
-  const [formState, action, pending] = useActionState(createItinerary, undefined)
+  const [formState, action, pending] = useActionState(async (state: Awaited<ReturnType<typeof createItinerary>>, data: FormData) => {
+    try {
+      const result = await createItinerary(state, data)
+      if (result?.itineraryId) {
+        try { sessionStorage.removeItem(SESSION_KEY) } catch {}
+        window.location.assign(`/itinerary/${result.itineraryId}`)
+      }
+      return result
+    } catch {
+      return { error: 'Could not save your trip. Your draft is still here. Check your connection and try again.' }
+    }
+  }, undefined)
 
   // Restore in-progress trip from sessionStorage (survives page refresh / server errors)
   const [restored] = useState<Partial<SavedState>>(() => {
@@ -463,6 +489,7 @@ export default function GuidedCreatePage() {
   })
 
   const normaliseItem = (i: GuidedItem) => ({ ...i, photo: i.photo ?? '', photos: eventPhotos(i.photos, i.photo), placeId: i.placeId ?? '' })
+  const [editingDestIndex, setEditingDestIndex] = useState<number | null>(restored.editingDestIndex ?? null)
   const [dests, setDests] = useState<GuidedDest[]>((restored.dests ?? []).map(d => ({ ...d, items: d.items.map(normaliseItem) })))
   const [curDest, setCurDest] = useState(restored.curDest ?? { name: '', country: '' })
   const [curItems, setCurItems] = useState<GuidedItem[]>((restored.curItems ?? []).map(normaliseItem))
@@ -499,14 +526,15 @@ export default function GuidedCreatePage() {
   // Save progress to sessionStorage on every relevant state change
   useEffect(() => {
     try {
-      const toSave: SavedState = { dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating, notes, bestMonths }
+      const toSave: SavedState = { editingDestIndex, dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating, notes, bestMonths }
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(toSave))
     } catch { /* quota exceeded or SSR */ }
-  }, [dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating, bestMonths])
+  }, [editingDestIndex, dests, curDest, curItems, curDayIndex, curNotes, photos, phase, title, tags, postType, tripMonth, tripDays, tripAudience, budget, tripRating, notes, bestMonths])
 
   function startOver() {
     try { sessionStorage.removeItem(SESSION_KEY) } catch {}
     setDests([])
+    setEditingDestIndex(null)
     setCurDest({ name: '', country: '' })
     setCurItems([])
     setCurDayIndex(1)
@@ -551,8 +579,17 @@ export default function GuidedCreatePage() {
     setEditingItemId(null)
   }
 
+  function destinationsWithCurrent() {
+    const all = [...dests]
+    if (curDest.name.trim()) {
+      all.splice(editingDestIndex ?? all.length, 0, { id: uid(), name: curDest.name, country: curDest.country, notes: curNotes, items: curItems })
+    }
+    return all
+  }
+
   function finishDest() {
-    setDests(d => [...d, { id: uid(), name: curDest.name, country: curDest.country, notes: curNotes, items: curItems }])
+    setDests(destinationsWithCurrent())
+    setEditingDestIndex(null)
     setCurDest({ name: '', country: '' })
     setCurItems([])
     setCurDayIndex(1)
@@ -563,8 +600,9 @@ export default function GuidedCreatePage() {
 
   function addCity() {
     if (curDest.name.trim()) {
-      setDests(d => [...d, { id: uid(), name: curDest.name, country: curDest.country, notes: curNotes, items: curItems }])
+      setDests(destinationsWithCurrent())
     }
+    setEditingDestIndex(null)
     setCurDest({ name: '', country: '' })
     setCurItems([])
     setCurDayIndex(1)
@@ -574,13 +612,17 @@ export default function GuidedCreatePage() {
   }
 
   function editDest(destId: string) {
-    const dest = dests.find(d => d.id === destId)
+    const all = destinationsWithCurrent()
+    const index = all.findIndex(d => d.id === destId)
+    const dest = all[index]
     if (!dest) return
+    setEditingDestIndex(index)
+    setEditingItemId(null)
     setCurDest({ name: dest.name, country: dest.country })
     setCurItems(dest.items)
     setCurNotes(dest.notes)
     setCurDayIndex(dest.items.reduce((max, i) => Math.max(max, i.dayIndex), 1))
-    setDests(ds => ds.filter(d => d.id !== destId))
+    setDests(all.filter(d => d.id !== destId))
     setPhase('building')
     setActiveInput(null)
   }
@@ -628,7 +670,7 @@ export default function GuidedCreatePage() {
     // Include current in-progress destination so draft saves capture it
     const all: GuidedDest[] = [...dests]
     if (curDest.name.trim()) {
-      all.push({ id: 'current', name: curDest.name, country: curDest.country, notes: curNotes, items: curItems })
+      all.splice(editingDestIndex ?? all.length, 0, { id: 'current', name: curDest.name, country: curDest.country, notes: curNotes, items: curItems })
     }
     return all.map(d => {
       // Hotels sorted by the day they were added — each one "starts" a new stay group
@@ -696,7 +738,7 @@ export default function GuidedCreatePage() {
     })
   }
 
-  const resolvedTitle = title.trim()
+  const hasUnnamedItems = [...dests.flatMap(d => d.items), ...curItems].some(item => !item.name.trim())
   const tripDateRange = dateRangeFromMonthAndDays(tripMonth, tripDays)
 
   return (
@@ -712,7 +754,7 @@ export default function GuidedCreatePage() {
       <h1 className="text-xl font-bold text-gray-900 mb-1">Step by step</h1>
       <p className="text-sm text-gray-500 mb-6">Build your trip one card at a time.</p>
 
-      <form onKeyDown={preventImplicitSubmit} id="gf" action={action} onSubmit={event => { if (itemUploads > 0) { event.preventDefault(); return } try { sessionStorage.removeItem(SESSION_KEY) } catch {} }}>
+      <form onKeyDown={preventImplicitSubmit} id="gf" action={action} onSubmit={event => { if (itemUploads > 0 || hasUnnamedItems) { event.preventDefault(); return } }}>
         <input type="hidden" name="title" value={title} />
         <input type="hidden" name="postType" value={postType} />
         <input type="hidden" name="startDate" value={tripDateRange.startDate} />
@@ -867,6 +909,7 @@ export default function GuidedCreatePage() {
                               isEditing={editingItemId === item.id}
                               onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
                               onUpdate={updated => updateItem(item.id, updated)}
+                              onDraftChange={updated => setCurItems(items => items.map(i => i.id === item.id ? { ...i, ...updated } : i))}
                               onPhotosChange={photos => setCurItems(items => items.map(i => i.id === item.id ? { ...i, photos, photo: photos[0] ?? '' } : i))}
                               onPhotoBusyChange={busy => setItemUploads(count => count + (busy ? 1 : -1))}
                               onRecommendationChange={value => setCurItems(items => items.map(i => i.id === item.id ? { ...i, tags: recommendationTags(i.tags, value), isHighlight: value === 'must' } : i))}
@@ -894,6 +937,7 @@ export default function GuidedCreatePage() {
                                     isEditing={editingItemId === item.id}
                                     onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
                                     onUpdate={updated => updateItem(item.id, updated)}
+                              onDraftChange={updated => setCurItems(items => items.map(i => i.id === item.id ? { ...i, ...updated } : i))}
                               onPhotosChange={photos => setCurItems(items => items.map(i => i.id === item.id ? { ...i, photos, photo: photos[0] ?? '' } : i))}
                               onPhotoBusyChange={busy => setItemUploads(count => count + (busy ? 1 : -1))}
                               onRecommendationChange={value => setCurItems(items => items.map(i => i.id === item.id ? { ...i, tags: recommendationTags(i.tags, value), isHighlight: value === 'must' } : i))}
@@ -1042,7 +1086,7 @@ export default function GuidedCreatePage() {
                     className="w-full py-3 rounded-xl bg-gray-900 text-white font-semibold hover:bg-gray-700 transition-colors text-sm flex items-center justify-center gap-2">
                     Done with {curDest.name} <ArrowRight size={15} />
                   </button>
-                  <button form="gf" type="submit" name="isDraft" value="1" disabled={pending || itemUploads > 0}
+                  <button form="gf" type="submit" name="isDraft" value="1" disabled={pending || itemUploads > 0 || hasUnnamedItems}
                     className="w-full py-2.5 rounded-xl border-2 border-gray-200 text-gray-500 text-sm font-medium hover:border-gray-300 transition-colors disabled:opacity-60">
                     {pending ? 'Saving…' : 'Save as Draft'}
                   </button>
@@ -1071,7 +1115,7 @@ export default function GuidedCreatePage() {
                 Finish <ArrowRight size={15} />
               </button>
             </div>
-            <button form="gf" type="submit" name="isDraft" value="1" disabled={pending || itemUploads > 0}
+            <button form="gf" type="submit" name="isDraft" value="1" disabled={pending || itemUploads > 0 || hasUnnamedItems}
               className="w-full py-2.5 rounded-xl border-2 border-gray-200 text-gray-500 text-sm font-medium hover:border-gray-300 transition-colors disabled:opacity-60">
               {pending ? 'Saving…' : 'Save as Draft'}
             </button>
@@ -1085,6 +1129,7 @@ export default function GuidedCreatePage() {
               <h2 className="font-bold text-gray-900">Ready to publish</h2>
               <p className="text-sm text-gray-500 mt-0.5">Your recommendations are set on each place. Go back to edit them before publishing.</p>
             </div>
+            {hasUnnamedItems && <p role="alert" className="text-sm text-red-700">Give each place a name or remove it before saving.</p>}
             {formState?.error && (
               <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{formState.error}</p>
             )}
@@ -1093,14 +1138,14 @@ export default function GuidedCreatePage() {
                 className="px-5 py-3 rounded-xl border border-gray-300 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors">
                 ← Back
               </button>
-              <button form="gf" type="submit" name="isDraft" value="1" disabled={pending || itemUploads > 0}
+              <button form="gf" type="submit" name="isDraft" value="1" disabled={pending || itemUploads > 0 || hasUnnamedItems}
                 className="flex-1 bg-white text-gray-700 font-semibold py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-colors disabled:opacity-60 text-sm">
                 {pending ? 'Saving…' : 'Save as Draft'}
               </button>
               {(() => {
                 const hasItems = dests.some(d => d.items.length > 0) || curItems.length > 0
                 return (
-                  <button form="gf" type="submit" disabled={pending || itemUploads > 0 || !hasItems}
+                  <button form="gf" type="submit" disabled={pending || itemUploads > 0 || hasUnnamedItems || !hasItems}
                     title={!hasItems ? 'Add at least one hotel, restaurant, or activity first' : undefined}
                     className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60 text-sm">
                     {pending ? 'Publishing…' : 'Publish'}
@@ -1110,9 +1155,7 @@ export default function GuidedCreatePage() {
             </div>
             {pending && (
               <p className="text-center text-xs text-gray-400">
-                Taking too long?{' '}
-                <button type="button" onClick={() => { window.location.reload() }} className="underline hover:text-gray-600">Cancel</button>
-                {' '}— your trip is saved and will be here when you come back.
+                Saving your trip… Your recovery draft is kept until saving succeeds.
               </p>
             )}
           </div>
