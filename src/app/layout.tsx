@@ -14,7 +14,7 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'TravelShare — Share Your Itineraries',
+  title: 'Xen — Share Your Itineraries',
   description: 'Discover and share travel itineraries with the world.',
 }
 

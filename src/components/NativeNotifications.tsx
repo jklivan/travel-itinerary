@@ -93,7 +93,7 @@ export default function NativeNotifications({ children }: { children: React.Reac
       }
       const permission = await PushNotifications.requestPermissions()
       if (permission.receive !== 'granted') {
-        setMessage('To allow alerts, turn on notifications for Wayfarer in iPhone Settings.')
+        setMessage('To allow alerts, turn on notifications for Xen in iPhone Settings.')
         setBusy(false)
         return
       }

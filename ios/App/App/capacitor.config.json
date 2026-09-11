@@ -1,6 +1,6 @@
 {
 	"appId": "com.joshuaklivan.travelitineraryapp",
-	"appName": "Travel Itinerary",
+	"appName": "Xen",
 	"webDir": "mobile",
 	"plugins": {
 		"PushNotifications": {
