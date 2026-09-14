@@ -21,7 +21,7 @@ import type { ItemPin } from '@/components/ItineraryMapInner'
 import styles from './places.module.css'
 import PlaceDetailsCard from '@/components/PlaceDetailsCard'
 import PlaceQuickEdit from '@/components/PlaceQuickEdit'
-import { getRecommendation } from '@/lib/placeRecommendation'
+import { getRecommendation, partitionPlaces } from '@/lib/placeRecommendation'
 import { mapDayNumber } from '@/lib/mapDays'
 
 function FriendProof({
@@ -135,8 +135,10 @@ export default async function ItineraryPage({
   if (!it) notFound()
 
   const isOwn = session?.user?.id === it.user.id
+  const mainDestinations = it.destinations.map(dest => ({ ...dest, items: partitionPlaces(dest.items).main })).filter(dest => dest.items.length > 0)
+  const alternativeDestinations = it.destinations.map(dest => ({ ...dest, items: partitionPlaces(dest.items).alternatives })).filter(dest => dest.items.length > 0)
   const isGuide = it.postType === 'guide'
-  const hasDailyPlan = !isGuide && it.destinations.some(dest => dest.items.some(item => item.type !== 'hotel' && item.dayIndex != null))
+  const hasDailyPlan = !isGuide && mainDestinations.some(dest => dest.items.some(item => item.type !== 'hotel' && item.dayIndex != null))
   const showDayByDay = view === 'day-by-day' && hasDailyPlan
   const showMap = view === 'map'
 
@@ -382,7 +384,7 @@ export default async function ItineraryPage({
         type: i.type as 'hotel' | 'food_drink' | 'activity',
         lat: i.lat!,
         lng: i.lng!,
-        day: isGuide || i.type === 'hotel' ? null : mapDayNumber(i.dayIndex, zeroBased),
+        day: isGuide || i.type === 'hotel' || getRecommendation(i.tags) === 'option' ? null : mapDayNumber(i.dayIndex, zeroBased),
         recommendation: getRecommendation(i.tags),
       }))
   })
@@ -626,12 +628,12 @@ export default async function ItineraryPage({
         {!showMap && (
           <>
             {/* ── Day by Day (itineraries) ── */}
-            {showDayByDay && it.destinations.length > 0 && (
+            {showDayByDay && mainDestinations.length > 0 && (
               <div className="mb-10">
                 <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-1">Day by Day</h2>
                 <div className="h-px bg-[#C4A882] mb-5" />
                 <div className="space-y-10">
-                  {it.destinations.map((dest) => {
+                  {mainDestinations.map((dest) => {
                     const groups = groupItems(dest.items as DestItemRow[])
                     const multiStay = groups.length > 1
                     const dayOffset = dest.items.some(item => item.type !== 'hotel' && item.dayIndex === 0) ? 1 : 0
@@ -640,7 +642,7 @@ export default async function ItineraryPage({
                     const dSaved = savedDestMap.get(dest.name.toLowerCase()) ?? 0
                     return (
                       <div key={dest.id}>
-                        {it.destinations.length > 1 && (
+                        {mainDestinations.length > 1 && (
                           <p className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-2 flex items-center gap-1">
                             <MapPin size={11} /> {dest.name}{dest.country ? `, ${dest.country}` : ''}
                           </p>
@@ -706,19 +708,19 @@ export default async function ItineraryPage({
             )}
 
             {/* All places grouped by category, for both itineraries and guides. */}
-            {!showDayByDay && it.destinations.length > 0 && (
+            {!showDayByDay && mainDestinations.length > 0 && (
               <div className="mb-10">
                 <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-1">Places from the trip</h2>
                 <div className="h-px bg-[#C4A882] mb-5" />
                 <div className="space-y-10">
-                  {it.destinations.map((dest) => {
+                  {mainDestinations.map((dest) => {
                     const dItems = dest.items as DestItemRow[]
                     const dHotels = dItems.filter(i => i.type === 'hotel')
                     const dFood = dItems.filter(i => i.type === 'food_drink')
                     const dActs = dItems.filter(i => i.type === 'activity')
                     return (
                       <div key={dest.id}>
-                        {it.destinations.length > 1 && (
+                        {mainDestinations.length > 1 && (
                           <p className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-3 flex items-center gap-1">
                             <MapPin size={11} /> {dest.name}{dest.country ? `, ${dest.country}` : ''}
                           </p>
@@ -749,6 +751,23 @@ export default async function ItineraryPage({
                   })}
                 </div>
               </div>
+            )}
+
+            {alternativeDestinations.length > 0 && (
+              <section aria-labelledby="alternatives-heading" className="mb-10">
+                <h2 id="alternatives-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-1">Alternatives</h2>
+                <p className="text-sm text-[#8B6F4E] mb-5">Other places to consider.</p>
+                <div className="space-y-6">
+                  {alternativeDestinations.map(dest => (
+                    <div key={dest.id}>
+                      {it.destinations.length > 1 && <p className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-3">{dest.name}{dest.country ? `, ${dest.country}` : ''}</p>}
+                      <div className={styles.placeGrid}>
+                        {dest.items.map(item => renderPlaceCard(item, item.type === 'hotel' ? 'hotel' : item.type === 'food_drink' ? 'food_drink' : 'activity'))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
             )}
 
             <Comments

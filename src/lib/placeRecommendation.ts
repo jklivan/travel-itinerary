@@ -12,3 +12,14 @@ export function recommendationTags(tags: readonly string[] = [], recommendation:
   if (recommendation === 'none') return otherTags
   return [...otherTags, recommendation === 'option' ? '__option' : recommendation === 'must' ? '__highlight' : '__avoid']
 }
+
+// Preserve saved order while keeping backup options out of the actual trip plan.
+export function partitionPlaces<T extends { tags?: readonly string[] }>(items: readonly T[]): { main: T[]; alternatives: T[] } {
+  const main: T[] = []
+  const alternatives: T[] = []
+  for (const item of items) {
+    if (getRecommendation(item.tags) === 'option') alternatives.push(item)
+    else main.push(item)
+  }
+  return { main, alternatives }
+}

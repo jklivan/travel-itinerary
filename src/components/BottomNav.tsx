@@ -1,12 +1,14 @@
 'use client'
 
 import Link from 'next/link'
+import useBottomToolbar from './useBottomToolbar'
 import { usePathname } from 'next/navigation'
 import { Home, Compass, Plus, Users, User, X, FileText, LayoutList } from 'lucide-react'
 import { Suspense, useState, useEffect, useRef } from 'react'
 
 function BottomNavInner({ userId, pendingCount }: { userId: string | null; pendingCount: number }) {
   const pathname = usePathname()
+  const toolbarRef = useBottomToolbar()
   const [showCreate, setShowCreate] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
 
@@ -30,7 +32,7 @@ function BottomNavInner({ userId, pendingCount }: { userId: string | null; pendi
   }, [showCreate])
 
   return (
-    <div className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#FAF7F2] border-t border-[#E8D5B7] shadow-lg z-50">
+    <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#FAF7F2] border-t border-[#E8D5B7] shadow-lg z-50">
       {/* Create popup */}
       {showCreate && (
         <div ref={popupRef} className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-64 bg-[#FAF7F2] rounded-2xl shadow-xl border border-[#E8D5B7] overflow-hidden">
