@@ -27,6 +27,7 @@ export default function ExploreSearchBar() {
         className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
       />
       <input
+        key={current}
         ref={inputRef}
         type="text"
         defaultValue={current}
