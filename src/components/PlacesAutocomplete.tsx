@@ -22,51 +22,75 @@ export default function PlacesAutocomplete({
   const [activeIdx, setActiveIdx] = useState(-1)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const requestRef = useRef<AbortController | null>(null)
+  const [resultKey, setResultKey] = useState('')
+  const currentKey = JSON.stringify([value, type, city])
+
+  const cancelSuggestions = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    requestRef.current?.abort()
+  }, [])
+
+  useEffect(() => cancelSuggestions, [cancelSuggestions, type, city])
+
+  const closeSuggestions = useCallback(() => {
+    cancelSuggestions()
+    setSuggestions([])
+    setOpen(false)
+    setActiveIdx(-1)
+  }, [cancelSuggestions])
 
   const fetchSuggestions = useCallback(async (q: string) => {
     if (q.length < 2) { setSuggestions([]); setOpen(false); return }
     const params = new URLSearchParams({ q, type })
     if (city) params.set('city', city)
-    const res = await fetch(`/api/places?${params}`)
-    if (!res.ok) return
-    const data: Suggestion[] = await res.json()
-    setSuggestions(data)
-    setOpen(data.length > 0)
-    setActiveIdx(-1)
+    const controller = new AbortController()
+    requestRef.current = controller
+    try {
+      const res = await fetch(`/api/places?${params}`, { signal: controller.signal })
+      if (!res.ok) return
+      const data: Suggestion[] = await res.json()
+      if (controller.signal.aborted) return
+      setResultKey(JSON.stringify([q, type, city]))
+      setSuggestions(data)
+      setOpen(data.length > 0)
+      setActiveIdx(-1)
+    } catch {
+      // Free-text entry remains available if suggestions fail or are cancelled.
+    }
   }, [type, city])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value
     onChange(val)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
+    closeSuggestions()
     debounceRef.current = setTimeout(() => fetchSuggestions(val), 300)
   }
 
   function pick(s: Suggestion) {
     onChange(s.main)
     onSelect?.(s.main, s.secondary, s.placeId)
-    setSuggestions([])
-    setOpen(false)
+    closeSuggestions()
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (!open) return
+    if (!open || resultKey !== currentKey) return
     if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx(i => Math.min(i + 1, suggestions.length - 1)) }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx(i => Math.max(i - 1, -1)) }
-    else if (e.key === 'Enter') { e.preventDefault(); if (activeIdx >= 0) pick(suggestions[activeIdx]); else setOpen(false) }
-    else if (e.key === 'Escape') { setOpen(false) }
+    else if (e.key === 'Enter') { e.preventDefault(); if (activeIdx >= 0) pick(suggestions[activeIdx]); else closeSuggestions() }
+    else if (e.key === 'Escape') { closeSuggestions() }
   }
 
   // Close on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
+        closeSuggestions()
       }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [])
+  }, [closeSuggestions])
 
   return (
     <div ref={containerRef} className="relative">
@@ -76,15 +100,15 @@ export default function PlacesAutocomplete({
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onFocus={() => suggestions.length > 0 && setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onBlur={closeSuggestions}
         placeholder={placeholder}
         className={className}
         autoComplete="off"
       />
-      {open && suggestions.length > 0 && (
+      {open && resultKey === currentKey && suggestions.length > 0 && (
         <ul className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
           <li
-            onMouseDown={() => { setSuggestions([]); setOpen(false) }}
+            onPointerDown={event => { event.preventDefault(); closeSuggestions() }}
             className="px-3 py-2.5 cursor-pointer text-sm bg-gray-50 border-b border-gray-100 text-gray-500 hover:bg-gray-100 flex items-center gap-1.5"
           >
             <span className="text-blue-500 shrink-0">↵</span>
@@ -93,7 +117,7 @@ export default function PlacesAutocomplete({
           {suggestions.map((s, i) => (
             <li
               key={i}
-              onMouseDown={() => pick(s)}
+              onPointerDown={event => { event.preventDefault(); pick(s) }}
               className={`px-3 py-2.5 cursor-pointer text-sm transition-colors ${i === activeIdx ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
             >
               <span className="font-medium text-gray-900">{s.main}</span>

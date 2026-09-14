@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { PlacePhoto as Photo } from '@/lib/placePhoto'
 
-export default function PlacePhoto({ itemId, name, thumbnailClass, fallback }: { itemId: string; name: string; thumbnailClass: string; fallback: ReactNode }) {
+export default function PlacePhoto({ itemId, name, thumbnailClass, fallback, fullWidth = false }: { itemId: string; name: string; thumbnailClass: string; fallback: ReactNode; fullWidth?: boolean }) {
   const element = useRef<HTMLDivElement>(null)
   const [photo, setPhoto] = useState<Photo | null>(null)
   const [failed, setFailed] = useState(false)
@@ -24,8 +24,8 @@ export default function PlacePhoto({ itemId, name, thumbnailClass, fallback }: {
     if (element.current) observer.observe(element.current)
     return () => { observer.disconnect(); controller.abort() }
   }, [itemId])
-  return <div ref={element} className="shrink-0" style={photo && !failed ? { width: 88 } : undefined}>
-    <div className={thumbnailClass} style={photo && !failed ? { width: '100%' } : undefined}>
+  return <div ref={element} className="shrink-0" style={photo && !failed ? { width: fullWidth ? '100%' : 88 } : fullWidth ? { minHeight: 1 } : undefined}>
+    <div className={thumbnailClass} style={photo && !failed ? { width: '100%' } : fullWidth ? { display: 'none' } : undefined}>
       {photo && !failed ? <>
         {/* Provider photos must not pass through the image optimizer/cache. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}

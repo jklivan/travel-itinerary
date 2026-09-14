@@ -5,7 +5,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
 // submission so it is more than a website wrapper.
 const config: CapacitorConfig = {
   appId: 'com.joshuaklivan.travelitineraryapp',
-  appName: 'Xen',
+  appName: 'MilesAway',
   webDir: 'mobile',
   plugins: { PushNotifications: { presentationOptions: ['sound', 'banner', 'list'] } },
   server: {

@@ -1,3 +1,7 @@
+.tile { padding-bottom: 34px; }
+.detailsHint { position: absolute; bottom: 9px; right: 10px; color: #507c76; font-size: 12px; font-weight: 600; }
+.providerPhoto { height: 240px; width: 100%; overflow: hidden; border-radius: 8px; }
+
 .openTile {
   position: absolute;
   inset: 0;

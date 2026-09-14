@@ -1,4 +1,3 @@
-import PlacePhoto from '@/components/PlacePhoto'
 import RatingStars from '@/components/RatingStars'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
@@ -418,13 +417,13 @@ export default async function ItineraryPage({
         {tilePhoto ? (
           <div className={styles.thumbnail}><Image src={tilePhoto} alt="" fill sizes="88px" className="object-cover" /></div>
         ) : (
-          <PlacePhoto key={item.id} itemId={item.id} name={item.name} thumbnailClass={styles.thumbnail} fallback={
+          <div className={styles.thumbnail}>
             <div className={styles.keepsake} aria-hidden="true">
               <span>{eyebrow}</span>
               <Icon size={25} strokeWidth={1} />
               <span>{item.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span>
             </div>
-          } />
+          </div>
         )}
         <div className={styles.cardBody}>
           <p className={styles.eyebrow}>{label}</p>

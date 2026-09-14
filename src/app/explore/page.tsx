@@ -11,6 +11,7 @@ import { tagMeta } from '@/lib/tags'
 import { MapPin, Globe, ChevronRight } from 'lucide-react'
 import ExploreMap from '@/components/ExploreMap'
 import TagBrowser from '@/components/TagBrowser'
+import { Suspense } from 'react'
 
 // ── Trip type meta (kept for ?type= URLs) ─────────────────────────────────────
 const TRIP_TYPE_META: Record<string, { label: string; emoji: string; desc: string }> = {
@@ -217,13 +218,22 @@ const REGION_GRADIENT: Record<string, string> = {
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────────
+type ExploreParams = { country?: string; city?: string; type?: string; q?: string; view?: string; tag?: string; tags?: string; region?: string }
+
 export default async function ExplorePage({
   searchParams,
 }: {
-  searchParams: Promise<{ country?: string; city?: string; type?: string; q?: string; view?: string; tag?: string; tags?: string; region?: string }>
+  searchParams: Promise<ExploreParams>
 
 }) {
-  const { country, city, type, q, view, tag, tags: tagsParam, region } = await searchParams
+  const params = await searchParams
+  return <Suspense key={JSON.stringify(params)} fallback={<div role="status" className="max-w-5xl mx-auto px-4 py-6">{params.q ? `Searching for “${params.q}”…` : 'Loading destinations…'}</div>}>
+    <ExploreResults params={params} />
+  </Suspense>
+}
+
+async function ExploreResults({ params }: { params: ExploreParams }) {
+  const { country, city, type, q, view, tag, tags: tagsParam, region } = params
   const session = await auth()
   const userId = session?.user?.id ?? null
 

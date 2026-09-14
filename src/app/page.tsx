@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import ItineraryCard from '@/components/ItineraryCard'
 import HorizontalScrollFeed from '@/components/HorizontalScrollFeed'
 import Link from 'next/link'
+import { Suspense } from 'react'
 
 export default async function FeedPage({
   searchParams,
@@ -10,8 +11,14 @@ export default async function FeedPage({
   searchParams: Promise<{ search?: string }>
 }) {
   const { search } = await searchParams
-  const session = await auth()
   const searchQuery = search?.trim() || ''
+  return <Suspense key={searchQuery} fallback={<div role="status" className="max-w-5xl mx-auto px-4 py-6">{searchQuery ? `Searching for “${searchQuery}”…` : 'Loading trips…'}</div>}>
+    <FeedResults searchQuery={searchQuery} />
+  </Suspense>
+}
+
+async function FeedResults({ searchQuery }: { searchQuery: string }) {
+  const session = await auth()
   const userId = session?.user?.id ?? null
 
   const friendIds = userId

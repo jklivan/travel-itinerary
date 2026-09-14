@@ -1,6 +1,6 @@
 {
 	"appId": "com.joshuaklivan.travelitineraryapp",
-	"appName": "Xen",
+	"appName": "MilesAway",
 	"webDir": "mobile",
 	"plugins": {
 		"PushNotifications": {

@@ -11,10 +11,11 @@ const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfa
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
 }
 
 export const metadata: Metadata = {
-  title: 'Xen — Share Your Itineraries',
+  title: 'MilesAway — Share Your Itineraries',
   description: 'Discover and share travel itineraries with the world.',
 }
 
@@ -24,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-[#F0E8D9] font-[family-name:var(--font-geist-sans)]">
         <Providers>
           <Navbar />
-          <main className="pb-24">{children}</main>
+          <main className="app-main">{children}</main>
           <BottomNavWrapper />
         </Providers>
       </body>

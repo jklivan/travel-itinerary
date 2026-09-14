@@ -2,12 +2,14 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import PhotoStrip from './PhotoStrip'
+import PlacePhoto from './PlacePhoto'
 import { eventPhotos } from '@/lib/eventPhotos'
 import { ArrowUpRight, MapPin, Navigation, X } from 'lucide-react'
 import styles from './PlaceDetailsCard.module.css'
 import type { PlaceRecommendation } from '@/lib/placeRecommendation'
 
 type Place = {
+  id?: string
   name: string
   description?: string | null
   notes?: string | null
@@ -53,9 +55,11 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
 
   return (
     <>
-      <article className={className}>
+      <article className={`${className} ${styles.tile}`}>
         <button type="button" className={styles.openTile} onClick={() => setOpen(true)}
-          aria-label={`View details for ${place.name}`} aria-haspopup="dialog" />
+          aria-label={`View details for ${place.name}`} aria-haspopup="dialog">
+          <span className={styles.detailsHint}>View notes &amp; details →</span>
+        </button>
         {children}
       </article>
       <dialog ref={dialog} className={styles.dialog} aria-labelledby={titleId}
@@ -76,9 +80,11 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
               </div>
               <button type="button" autoFocus className={styles.close} aria-label="Close place details" onClick={() => dialog.current?.close()}><X size={22} /></button>
             </header>
-            {photos.length > 0 && <PhotoStrip photos={photos.map((url, index) => ({ id: String(index), url, caption: null }))} title={place.name} contain />}
-            {place.description && <p className={styles.text}>{place.description}</p>}
             {place.notes && <section><h3 className={styles.sectionTitle}>Poster’s notes</h3><p className={styles.text}>{place.notes}</p></section>}
+            {!place.notes && <p className={styles.muted}>The trip author hasn’t added notes for this place.</p>}
+            {place.description && <p className={styles.text}>{place.description}</p>}
+            {photos.length > 0 ? <PhotoStrip photos={photos.map((url, index) => ({ id: String(index), url, caption: null }))} title={place.name} contain />
+              : place.id && <PlacePhoto itemId={place.id} name={place.name} thumbnailClass={styles.providerPhoto} fallback={null} fullWidth />}
             {place.address && <section><h3 className={styles.sectionTitle}>Address</h3><p className={styles.address}><MapPin size={17} />{place.address}</p></section>}
             {place.alternative && <section><h3 className={styles.sectionTitle}>Suggested alternative</h3><p className={styles.text}>{place.alternative}</p></section>}
             <div className={styles.actions}>
