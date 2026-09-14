@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
 import { Hotel, Utensils, Camera, MapPin, Check, Ban, BedDouble } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
+import SavedFolderPicker from '@/components/SavedFolderPicker'
 import { eventPhotos, pickEventPhoto, tripPhotoGallery } from '@/lib/eventPhotos'
 import PhotoStrip from '@/components/PhotoStrip'
 import { tagMeta } from '@/lib/tags'
@@ -365,6 +366,7 @@ export default async function ItineraryPage({
   // friends who saved this itinerary
   const itineraryFriendBucketers = itineraryBucketersRows.map(r => r.friend_name)
 
+  const audienceLabel = ({ family: '👨‍👩‍👧 Family', friends: '🥳 Friends', romantic: '💕 Couples', adult: 'Adults' } as Record<string, string>)[it.audience]
   const displayTags = it.tags
 
   // Build map pins from geocoded items
@@ -475,6 +477,25 @@ export default async function ItineraryPage({
             {it.title}
           </h1>
 
+          <div aria-label="Trip tags" className="flex flex-wrap gap-2 items-center mb-4">
+            {!isGuide && audienceLabel && (
+              <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-800">
+                {audienceLabel}
+              </span>
+            )}
+            {displayTags.map(tag => {
+              const meta = tagMeta(tag)
+              return meta ? (
+                <span key={tag} className="inline-flex items-center gap-1 text-xs bg-[#E8D5B7] text-[#5C3D2E] px-2.5 py-1 rounded-full font-medium">
+                  {meta.emoji} {meta.label}
+                </span>
+              ) : null
+            })}
+            {it.bestMonths && it.bestMonths.length > 0 && it.bestMonths.map(m => (
+              <span key={m} className="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 font-medium">{m}</span>
+            ))}
+          </div>
+
           {/* Italic description */}
           {it.description && (
             <p className="font-[family-name:var(--font-playfair)] italic text-[#5C3D2E] text-lg mb-3">
@@ -504,7 +525,10 @@ export default async function ItineraryPage({
                 </span>
               )}
               {!isOwn && (
-                <BucketButton itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" />
+                <>
+                  <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" />
+                  {session?.user && <SavedFolderPicker itineraryId={it.id} />}
+                </>
               )}
               {isOwn && (
                 <div className="flex items-center gap-2">
@@ -543,22 +567,8 @@ export default async function ItineraryPage({
             </section>
           )}
 
-          {/* Tags + social meta */}
+          {/* Friends who saved this trip */}
           <div className="flex flex-wrap gap-2 items-center">
-            {!isGuide && it.audience === 'family' && (
-              <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-800">Family Friendly</span>
-            )}
-            {displayTags.map(tag => {
-              const meta = tagMeta(tag)
-              return meta ? (
-                <span key={tag} className="inline-flex items-center gap-1 text-xs bg-[#E8D5B7] text-[#5C3D2E] px-2.5 py-1 rounded-full font-medium">
-                  {meta.emoji} {meta.label}
-                </span>
-              ) : null
-            })}
-            {it.bestMonths && it.bestMonths.length > 0 && it.bestMonths.map(m => (
-              <span key={m} className="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 font-medium">{m}</span>
-            ))}
             {itineraryFriendBucketers.length > 0 && (
               <span className="text-xs text-[#8B6F4E]">
                 🔖 <span className="font-medium text-[#5C3D2E]">
@@ -590,15 +600,15 @@ export default async function ItineraryPage({
         <nav aria-label="Itinerary view" className="flex flex-wrap gap-1 bg-[#E8D5B7] rounded-xl p-1 text-sm font-medium mb-6 w-fit">
           <Link href={`/itinerary/${it.id}`} aria-current={!showMap && !showDayByDay ? 'page' : undefined}
             className={`px-4 py-2 rounded-lg transition-colors ${!showMap && !showDayByDay ? 'bg-[#FAF7F2] shadow-sm text-[#2C1810]' : 'text-[#8B6F4E] hover:text-[#5C3D2E]'}`}>
-            All places
+            Trip Summary
           </Link>
           {hasDailyPlan && <Link href={`/itinerary/${it.id}?view=day-by-day`} aria-current={showDayByDay ? 'page' : undefined}
             className={`px-4 py-2 rounded-lg transition-colors ${showDayByDay ? 'bg-[#FAF7F2] shadow-sm text-[#2C1810]' : 'text-[#8B6F4E] hover:text-[#5C3D2E]'}`}>
-            Day by day view
+            Itinerary View
           </Link>}
           {mapPins.length > 0 && <Link href={`/itinerary/${it.id}?view=map`} aria-current={showMap ? 'page' : undefined}
             className={`px-4 py-2 rounded-lg transition-colors ${showMap ? 'bg-[#FAF7F2] shadow-sm text-[#2C1810]' : 'text-[#8B6F4E] hover:text-[#5C3D2E]'}`}>
-            Map
+            Map View
           </Link>}
         </nav>
 

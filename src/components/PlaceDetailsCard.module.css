@@ -45,8 +45,8 @@
 .address svg { flex-shrink: 0; }
 .muted { font-size: 14px; color: #7a7b70; }
 .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; border-top: 1px solid #e3dfd2; padding-top: 18px; }
-.directions, .website { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 14px; }
-.directions { padding: 10px 18px; color: #fffdf6; background: #507c76; border-radius: 8px; }
+.mapLink, .website { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 14px; }
+.mapLink { padding: 10px 18px; color: #fffdf6; background: #507c76; border-radius: 8px; }
 .website { padding: 10px; color: #507c76; text-decoration: underline; text-underline-offset: 3px; }
 .content a:focus-visible, .close:focus-visible { outline: 2px solid #507c76; outline-offset: 3px; }
 

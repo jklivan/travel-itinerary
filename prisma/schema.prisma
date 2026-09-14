@@ -17,6 +17,7 @@ model User {
   following      Follow[]         @relation("UserFollowing")
   followers      Follow[]         @relation("UserFollowers")
   bucketList     BucketListItem[]
+  savedFolders   SavedFolder[]
   comments       Comment[]
   notifications Notification[] @relation("NotificationRecipient")
   sentNotifications Notification[] @relation("NotificationActor")
@@ -68,8 +69,22 @@ model BucketListItem {
   createdAt   DateTime  @default(now())
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  folderId    String?
+  folder      SavedFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   @@unique([userId, itineraryId])
+  @@index([folderId])
+}
+
+model SavedFolder {
+  id        String @id @default(cuid())
+  userId    String
+  name      String @db.VarChar(80)
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     BucketListItem[]
+
+  @@unique([userId, name])
 }
 
 model Destination {

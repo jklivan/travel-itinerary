@@ -33,10 +33,7 @@ export default function PlacePhoto({ itemId, name, thumbnailClass, fallback, ful
       </> : fallback}
     </div>
     {photo && !failed && <div className="relative z-[2] mt-1 space-y-1 bg-[#fffdf6] p-1 text-xs leading-tight text-[#5e5e5e] [overflow-wrap:anywhere]">
-      <a href={photo.mapsUrl} target="_blank" rel="noopener noreferrer" translate="no" className="block whitespace-nowrap font-normal not-italic tracking-normal">Google Maps</a>
-      {photo.authors.map((author, index) => author.uri
-        ? <a key={index} href={author.uri} target="_blank" rel="noopener noreferrer" className="block underline">{author.displayName}</a>
-        : <span key={index} className="block">{author.displayName}</span>)}
+      <a href={photo.mapsUrl} target="_blank" rel="noopener noreferrer" aria-label={`View ${name} on Google Maps`} className="block font-normal not-italic tracking-normal">View place on <span translate="no">Google Maps</span></a>
     </div>}
   </div>
 }

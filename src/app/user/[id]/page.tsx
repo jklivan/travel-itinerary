@@ -3,6 +3,8 @@ import { auth } from '@/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ItineraryCard from '@/components/ItineraryCard'
+import SavedFolders from '@/components/SavedFolders'
+import SavedFolderPicker from '@/components/SavedFolderPicker'
 import HorizontalScrollFeed from '@/components/HorizontalScrollFeed'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
 import { MapPin, Users } from 'lucide-react'
@@ -26,10 +28,10 @@ export default async function UserProfilePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; folder?: string }>
 }) {
   const { id } = await params
-  const { tab } = await searchParams
+  const { tab, folder } = await searchParams
   const session = await auth()
 
   const user = await prisma.user.findUnique({
@@ -43,7 +45,7 @@ export default async function UserProfilePage({
   const showBucket = tab === 'bucket'
   const showDrafts = tab === 'drafts' && isOwn
 
-  const [itineraries, drafts, bucketItems, followRecord, followerCount, followingCount, viewerBucketIds] = await Promise.all([
+  const [itineraries, drafts, bucketItems, followRecord, followerCount, followingCount, viewerBucketIds, folders] = await Promise.all([
     prisma.itinerary.findMany({
       where: { userId: id, visibility: { not: 'draft' } },
       orderBy: { createdAt: 'desc' },
@@ -66,7 +68,7 @@ export default async function UserProfilePage({
       : Promise.resolve([]),
     isOwn
       ? prisma.bucketListItem.findMany({
-          where: { userId: id },
+          where: { userId: id, itinerary: { visibility: { not: 'draft' } } },
           orderBy: { createdAt: 'desc' },
           include: {
             itinerary: {
@@ -90,7 +92,13 @@ export default async function UserProfilePage({
     viewerId && !isOwn
       ? prisma.bucketListItem.findMany({ where: { userId: viewerId }, select: { itineraryId: true } })
       : Promise.resolve([]),
+    isOwn
+      ? prisma.savedFolder.findMany({ where: { userId: id }, orderBy: { name: 'asc' }, select: { id: true, name: true } })
+      : Promise.resolve([]),
   ])
+
+  const selectedFolder = folder && (folder === 'unfiled' || folders.some(f => f.id === folder)) ? folder : ''
+  const visibleBucketItems = bucketItems.filter(item => !selectedFolder || (selectedFolder === 'unfiled' ? !item.folderId : item.folderId === selectedFolder))
 
   const followStatus = followRecord?.status ?? 'none'
   const avatarColor = hashPick(user.name, AVATAR_COLORS)
@@ -257,35 +265,38 @@ export default async function UserProfilePage({
       ) : (
         <>
           <h2 className="font-semibold text-[#2C1810] text-sm mb-3 flex items-center gap-2">
-            <span>❤️</span> Saved
+            <span>❤️</span> {folders.find(f => f.id === selectedFolder)?.name ?? (selectedFolder === 'unfiled' ? 'Unfiled' : 'Saved')}
           </h2>
-          {bucketItems.length === 0 ? (
+          {isOwn && <SavedFolders key={selectedFolder} userId={id} folders={folders.map(f => ({ ...f, count: bucketItems.filter(item => item.folderId === f.id).length }))} selected={selectedFolder} total={bucketItems.length} unfiled={bucketItems.filter(item => !item.folderId).length} />}
+          {visibleBucketItems.length === 0 ? (
             <div className="bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] p-8 text-center">
               <p className="text-4xl mb-3">❤️</p>
-              <p className="text-[#8B6F4E] text-sm">Nothing saved yet.</p>
+              <p className="text-[#8B6F4E] text-sm">{selectedFolder ? 'No trips in this folder yet.' : 'Nothing saved yet.'}</p>
               <p className="text-[#8B6F4E] text-xs mt-1">
-                Tap the ❤️ on any itinerary to save it.
+                {selectedFolder ? 'Use Save to folder on an itinerary, or organize trips from All saved.' : 'Tap the ❤️ on any itinerary to save it.'}
               </p>
             </div>
           ) : (
             <HorizontalScrollFeed>
-              {bucketItems.map((item) => (
-                <ItineraryCard
-                  key={item.id}
-                  id={item.itinerary.id}
-                  title={item.itinerary.title}
-                  startDate={item.itinerary.startDate}
-                  endDate={item.itinerary.endDate}
-                  audience={item.itinerary.audience}
-                  budget={item.itinerary.budget}
-                  authorName={item.itinerary.user.name}
-                  destinations={item.itinerary.destinations}
-                  coverPhoto={item.itinerary.photos[0]?.url ?? null}
-                  currentUserId={viewerId}
-                  isOwn={item.itinerary.user.id === viewerId}
-                  isBucketed={ownBucketSet.has(item.itinerary.id)}
-                  saveCount={item.itinerary._count.bucketedBy}
-                />
+              {visibleBucketItems.map((item) => (
+                <div key={item.id} className="w-[clamp(200px,44vw,320px)]">
+                  <ItineraryCard
+                    id={item.itinerary.id}
+                    title={item.itinerary.title}
+                    startDate={item.itinerary.startDate}
+                    endDate={item.itinerary.endDate}
+                    audience={item.itinerary.audience}
+                    budget={item.itinerary.budget}
+                    authorName={item.itinerary.user.name}
+                    destinations={item.itinerary.destinations}
+                    coverPhoto={item.itinerary.photos[0]?.url ?? null}
+                    currentUserId={viewerId}
+                    isOwn={item.itinerary.user.id === viewerId}
+                    isBucketed={ownBucketSet.has(item.itinerary.id)}
+                    saveCount={item.itinerary._count.bucketedBy}
+                  />
+                  <div className="mt-3"><SavedFolderPicker itineraryId={item.itinerary.id} label={folders.find(f => f.id === item.folderId)?.name ?? 'Save to folder'} /></div>
+                </div>
               ))}
             </HorizontalScrollFeed>
           )}

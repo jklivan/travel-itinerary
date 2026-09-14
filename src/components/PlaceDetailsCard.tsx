@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import PhotoStrip from './PhotoStrip'
 import PlacePhoto from './PlacePhoto'
 import { eventPhotos } from '@/lib/eventPhotos'
-import { ArrowUpRight, MapPin, Navigation, X } from 'lucide-react'
+import { ArrowUpRight, MapPin, X } from 'lucide-react'
 import styles from './PlaceDetailsCard.module.css'
 import type { PlaceRecommendation } from '@/lib/placeRecommendation'
 
@@ -45,12 +45,12 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
     return () => { document.body.style.overflow = previousOverflow }
   }, [open])
 
-  const directions = new URL('https://www.google.com/maps/dir/')
-  directions.searchParams.set('api', '1')
-  directions.searchParams.set('destination', place.lat != null && place.lng != null
+  const mapUrl = new URL('https://www.google.com/maps/search/')
+  mapUrl.searchParams.set('api', '1')
+  mapUrl.searchParams.set('query', place.lat != null && place.lng != null
     ? `${place.lat},${place.lng}`
     : [place.name, place.address, destination].filter(Boolean).join(', '))
-  if (place.placeId) directions.searchParams.set('destination_place_id', place.placeId)
+  if (place.placeId) mapUrl.searchParams.set('query_place_id', place.placeId)
   const website = place.link && /^https?:\/\//i.test(place.link) ? place.link : null
 
   return (
@@ -88,7 +88,7 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
             {place.address && <section><h3 className={styles.sectionTitle}>Address</h3><p className={styles.address}><MapPin size={17} />{place.address}</p></section>}
             {place.alternative && <section><h3 className={styles.sectionTitle}>Suggested alternative</h3><p className={styles.text}>{place.alternative}</p></section>}
             <div className={styles.actions}>
-              <a href={directions.toString()} target="_blank" rel="noopener noreferrer" className={styles.directions}><Navigation size={17} />Directions<span className="sr-only"> (opens Google Maps in a new tab)</span></a>
+              <a href={mapUrl.toString()} target="_blank" rel="noopener noreferrer" className={styles.mapLink}><MapPin size={17} />View on map<span className="sr-only"> (opens Google Maps in a new tab)</span></a>
               {website && <a href={website} target="_blank" rel="noopener noreferrer" className={styles.website}>Official website<ArrowUpRight size={16} /><span className="sr-only"> (opens in a new tab)</span></a>}
             </div>
           </div>
