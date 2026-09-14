@@ -245,6 +245,7 @@ export default async function UserProfilePage({
                 <ItineraryCard
                   key={it.id}
                   id={it.id}
+                  postType={it.postType}
                   title={it.title}
                   startDate={it.startDate}
                   endDate={it.endDate}
@@ -282,6 +283,7 @@ export default async function UserProfilePage({
                 <div key={item.id} className="w-[clamp(200px,44vw,320px)]">
                   <ItineraryCard
                     id={item.itinerary.id}
+                    postType={item.itinerary.postType}
                     title={item.itinerary.title}
                     startDate={item.itinerary.startDate}
                     endDate={item.itinerary.endDate}

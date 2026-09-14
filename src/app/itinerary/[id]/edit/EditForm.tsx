@@ -1,5 +1,7 @@
 'use client'
 
+import { tripReturnPath } from '@/lib/tripNavigation'
+
 import TripEntryLayout from '@/components/TripEntryLayout'
 import type { TripMapPlace } from '@/lib/tripMapPlaces'
 
@@ -586,7 +588,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   function discardChanges() {
     if (pending) return
     // A full navigation also clears the editor's cached, unsaved React state.
-    window.location.replace(`/itinerary/${itinerary.id}`)
+    window.location.replace(tripReturnPath(itinerary.id, `/itinerary/${itinerary.id}`))
   }
 
   const initialDates = monthAndDaysFromDates(fmt(itinerary.startDate), fmt(itinerary.endDate))
@@ -728,7 +730,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       <div className="flex justify-end">
         <button type="button" onClick={discardChanges} disabled={pending}
           className="min-h-11 px-3 text-sm font-medium text-[#6b7067] hover:text-[#2e4147] underline underline-offset-4 disabled:opacity-50">
-          Discard changes
+          ← Back without saving
         </button>
       </div>
 

@@ -12,7 +12,7 @@ type Destination = { name: string; country: string | null; items: DestItem[] }
 
 type Props = {
   id: string
-  postType?: string
+  postType: string
   title: string
   startDate: Date
   endDate: Date
@@ -59,7 +59,7 @@ function tripDays(start: Date, end: Date) {
 }
 
 export default function ItineraryCard({
-  id, postType = 'itinerary', title, startDate, endDate, audience, budget, authorName, destinations, coverPhoto,
+  id, postType, title, startDate, endDate, audience, budget, authorName, destinations, coverPhoto,
   currentUserId, isOwn, isBucketed = false, saveCount = 0,
 }: Props) {
   const isGuide = postType === 'guide'

@@ -1,3 +1,4 @@
+import TripBackButton from '@/components/TripBackButton'
 import RatingStars from '@/components/RatingStars'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
@@ -19,6 +20,7 @@ import ItineraryMap from '@/components/ItineraryMap'
 import type { ItemPin } from '@/components/ItineraryMapInner'
 import styles from './places.module.css'
 import PlaceDetailsCard from '@/components/PlaceDetailsCard'
+import PlaceQuickEdit from '@/components/PlaceQuickEdit'
 import { getRecommendation } from '@/lib/placeRecommendation'
 import { mapDayNumber } from '@/lib/mapDays'
 
@@ -411,7 +413,8 @@ export default async function ItineraryPage({
     const price = item.priceLevel == null ? null : Math.max(0, Math.min(type === 'hotel' ? 5 : 4, item.priceLevel))
 
     return (
-      <PlaceDetailsCard key={item.id} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} className={`${styles.card} ${styles[type]} ${recommendation !== 'none' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
+      <div key={item.id}>
+      <PlaceDetailsCard place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} className={`${styles.card} ${styles[type]} ${recommendation !== 'none' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
         {recommendation === 'must' && type !== 'hotel' && <Image src="/must-do-stamp.png" alt="Must do" width={60} height={54} unoptimized className={styles.mustDoStamp} />}
         {recommendation === 'must' && type === 'hotel' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><BedDouble size={24} aria-hidden="true" /><span>Must stay</span></span>}
         {recommendation === 'avoid' && <span className={`${styles.mustDoStamp} ${styles.textStamp} ${styles.avoidStamp}`}><Ban size={24} aria-hidden="true" /><span>Avoid</span></span>}
@@ -442,6 +445,8 @@ export default async function ItineraryPage({
           <FriendProof friends={friends} avg={avg} total={total} verb={type === 'hotel' ? 'stayed here' : type === 'activity' ? 'also did this' : 'also went'} />
         </div>
       </PlaceDetailsCard>
+      {isOwn && <PlaceQuickEdit itemId={item.id} name={item.name} rating={item.rating ?? null} photos={eventPhotos(item.photoUrls, item.photoUrl)} />}
+      </div>
     )
   }
 
@@ -452,7 +457,7 @@ export default async function ItineraryPage({
   return (
     <div className="min-h-screen bg-[#F0E8D9]">
       <div className="max-w-4xl mx-auto px-4 py-6">
-        <Link href="/" className="text-sm text-[#8B6F4E] hover:underline mb-6 inline-block">← Back to feed</Link>
+        <TripBackButton itineraryId={it.id} fallback={isOwn ? `/user/${it.user.id}` : "/"} />
 
         {it.visibility === 'draft' && (
           <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 font-medium">

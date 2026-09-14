@@ -1,0 +1,9 @@
+'use client'
+
+import { useRouter } from 'next/navigation'
+import { tripReturnPath } from '@/lib/tripNavigation'
+
+export default function TripBackButton({ itineraryId, fallback }: { itineraryId: string; fallback: string }) {
+  const router = useRouter()
+  return <button type="button" onClick={() => router.push(tripReturnPath(itineraryId, fallback))} className="text-sm text-[#8B6F4E] hover:underline mb-6 inline-block min-h-11">← Back</button>
+}
