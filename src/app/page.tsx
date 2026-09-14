@@ -116,6 +116,7 @@ async function FeedResults({ searchQuery }: { searchQuery: string }) {
               endDate={it.endDate}
               audience={it.audience}
               budget={it.budget}
+              tripRating={it.tripRating}
               authorName={it.user.name}
               destinations={it.destinations}
               coverPhoto={it.photos[0]?.url ?? null}
@@ -146,6 +147,7 @@ async function FeedResults({ searchQuery }: { searchQuery: string }) {
                   endDate={it.endDate}
                   audience={it.audience}
                   budget={it.budget}
+                  tripRating={it.tripRating}
                   authorName={it.user.name}
                   destinations={it.destinations}
                   coverPhoto={it.photos[0]?.url ?? null}

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { MapPin } from 'lucide-react'
+import { MapPin, Star } from 'lucide-react'
 import BucketButton from './BucketButton'
 import { Amatic_SC, Kalam } from 'next/font/google'
 
@@ -18,6 +18,7 @@ type Props = {
   endDate: Date
   audience: string
   budget?: number | null
+  tripRating?: number | null
   authorName: string
   destinations: Destination[]
   coverPhoto: string | null
@@ -59,7 +60,7 @@ function tripDays(start: Date, end: Date) {
 }
 
 export default function ItineraryCard({
-  id, postType, title, startDate, endDate, audience, budget, authorName, destinations, coverPhoto,
+  id, postType, title, startDate, endDate, audience, budget, tripRating, authorName, destinations, coverPhoto,
   currentUserId, isOwn, isBucketed = false, saveCount = 0,
 }: Props) {
   const isGuide = postType === 'guide'
@@ -145,6 +146,17 @@ export default function ItineraryCard({
           <h2 className={`${amatic.className} text-[28px] text-[#2C1810] leading-tight line-clamp-2 mb-2`}>
             {title}
           </h2>
+
+          {tripRating != null && tripRating >= 1 && tripRating <= 5 && (
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mb-2 text-xs" aria-label={`Author rating: ${tripRating} out of 5`}>
+              <span className="flex gap-0.5" aria-hidden="true">
+                {[1, 2, 3, 4, 5].map(value => (
+                  <Star key={value} size={12} className={value <= tripRating ? 'fill-[#B99045] text-[#B99045]' : 'text-[#D8CEBB]'} />
+                ))}
+              </span>
+              <span className="text-[#8B6F4E]">{tripRating}/5 · Author</span>
+            </div>
+          )}
 
           <div className="text-xs text-[#8B6F4E] space-y-0.5">
             {location && (
