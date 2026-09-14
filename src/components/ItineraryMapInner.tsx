@@ -1,6 +1,6 @@
 'use client'
 import 'leaflet/dist/leaflet.css'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { mapDayColor } from '@/lib/mapDays'
@@ -43,13 +43,23 @@ function itemIcon(type: string, day: number | null) {
 
 function FitBounds({ positions }: { positions: [number, number][] }) {
   const map = useMap()
+  const positionsKey = JSON.stringify(positions)
+  const stablePositions = useMemo<[number, number][]>(() => JSON.parse(positionsKey), [positionsKey])
   useEffect(() => {
-    if (positions.length === 1) {
-      map.setView(positions[0], 14)
-    } else if (positions.length > 1) {
-      map.fitBounds(positions, { padding: [48, 48] })
+    function fit() {
+      map.stop()
+      map.invalidateSize()
+      if (stablePositions.length === 1) {
+        map.setView(stablePositions[0], 14, { animate: false })
+      } else if (stablePositions.length > 1) {
+        map.fitBounds(stablePositions, { padding: [48, 48], maxZoom: 16, animate: false })
+      }
     }
-  }, [map]) // eslint-disable-line react-hooks/exhaustive-deps
+    fit()
+    const observer = new ResizeObserver(fit)
+    observer.observe(map.getContainer())
+    return () => observer.disconnect()
+  }, [map, stablePositions])
   return null
 }
 

@@ -22,7 +22,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
   if (!it || it.userId !== session.user.id) notFound()
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
+    <div className="max-w-6xl mx-auto px-4 py-10">
       <h1 className="font-[family-name:var(--font-playfair)] text-3xl md:text-4xl text-[#2e4147] mb-6">
         {it.postType === 'guide' ? 'Edit Guide' : 'Edit Itinerary'}
       </h1>

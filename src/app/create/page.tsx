@@ -1,5 +1,8 @@
 'use client'
 
+import TripEntryLayout from '@/components/TripEntryLayout'
+import type { TripMapPlace } from '@/lib/tripMapPlaces'
+
 import { preventImplicitSubmit } from '@/lib/preventImplicitSubmit'
 
 import RecommendationPicker from '@/components/RecommendationPicker'
@@ -655,9 +658,21 @@ export default function CreatePage() {
     activities: destinations.flatMap(d => d.groups).flatMap(g => g.days).flatMap(d => d.activities).filter(a => a.name.trim()).length,
   }
 
+  const mapPlaces: TripMapPlace[] = destinations.flatMap((dest, di) => dest.groups.flatMap((group, gi) => {
+    const city = [dest.name, dest.country].filter(Boolean).join(', ')
+    return [
+      { id: `${di}:${gi}:hotel`, name: group.hotelName, city, type: 'hotel' as const, day: null },
+      ...group.days.flatMap((day, dyi) => [
+        ...day.food.map((item, ii) => ({ id: `${di}:${gi}:${dyi}:food:${ii}`, name: item.name, city, type: 'food_drink' as const, day: postType === 'guide' ? null : day.dayIndex ?? dyi + 1 })),
+        ...day.activities.map((item, ii) => ({ id: `${di}:${gi}:${dyi}:activity:${ii}`, name: item.name, city, type: 'activity' as const, day: postType === 'guide' ? null : day.dayIndex ?? dyi + 1 })),
+      ]),
+    ]
+  }))
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      <TripEntryLayout places={mapPlaces}>
 
       {/* Progress bar (hidden on start step) */}
       {step !== 'start' && step !== 'review' && (
@@ -1156,6 +1171,7 @@ export default function CreatePage() {
           </button>
         )}
       </form>
+      </TripEntryLayout>
     </div>
   )
 }

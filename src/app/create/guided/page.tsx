@@ -1,5 +1,8 @@
 'use client'
 
+import TripEntryLayout from '@/components/TripEntryLayout'
+import type { TripMapPlace } from '@/lib/tripMapPlaces'
+
 import { moveItemToDay, reorderItems } from '@/lib/reorderItems'
 import MoveToDay from '@/components/MoveToDay'
 
@@ -760,11 +763,21 @@ export default function GuidedCreatePage() {
     })
   }
 
+  const mapPlaces: TripMapPlace[] = [
+    ...dests,
+    ...(curDest.name.trim() ? [{ ...curDest, items: curItems }] : []),
+  ].flatMap(dest => dest.items.map(item => ({
+    id: item.id, name: item.name, city: [dest.name, dest.country].filter(Boolean).join(', '),
+    type: item.type, placeId: item.placeId,
+    day: postType === 'guide' || item.type === 'hotel' ? null : item.dayIndex,
+  })))
+
   const hasUnnamedItems = [...dests.flatMap(d => d.items), ...curItems].some(item => !item.name.trim())
   const tripDateRange = dateRangeFromMonthAndDays(tripMonth, tripDays)
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-6 pb-36">
+    <div className="max-w-6xl mx-auto px-4 py-6 pb-36">
+      <TripEntryLayout places={mapPlaces}>
       <div className="flex items-center justify-between mb-5">
         <Link href="/" className="text-sm text-blue-600 hover:underline">← Back</Link>
         {(dests.length > 0 || curItems.length > 0 || curDest.name.trim()) && (
@@ -1293,6 +1306,7 @@ export default function GuidedCreatePage() {
 
         </>)}
       </div>
+      </TripEntryLayout>
     </div>
   )
 }

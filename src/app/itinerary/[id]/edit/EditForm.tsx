@@ -1,5 +1,8 @@
 'use client'
 
+import TripEntryLayout from '@/components/TripEntryLayout'
+import type { TripMapPlace } from '@/lib/tripMapPlaces'
+
 import MoveToDay from '@/components/MoveToDay'
 
 import { preventImplicitSubmit } from '@/lib/preventImplicitSubmit'
@@ -695,12 +698,18 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
     .map(i => i.name.trim())
     .join('\n')
 
+  const mapPlaces: TripMapPlace[] = dests.flatMap(dest => dest.items.map(item => ({
+    id: item.id, name: item.name, city: [dest.name, dest.country].filter(Boolean).join(', '),
+    type: item.type, day: postType === 'guide' || item.type === 'hotel' ? null : item.dayIndex,
+  })))
+
   const hasUnnamedItems = dests.some(d => d.items.some(i => !i.name.trim()))
   const hasItems = dests.some(d => d.items.some(i => i.name.trim()))
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
+    <TripEntryLayout places={mapPlaces}>
     <form onKeyDown={preventImplicitSubmit} action={action} onSubmit={e => { if (itemUploads > 0 || hasUnnamedItems) e.preventDefault() }} className="space-y-4 pb-36">
       <input type="hidden" name="startDate"    value={tripDateRange.startDate} />
       <input type="hidden" name="endDate"      value={tripDateRange.endDate} />
@@ -1011,5 +1020,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         <DeleteButton id={itinerary.id} />
       </div>
     </form>
+    </TripEntryLayout>
   )
 }
