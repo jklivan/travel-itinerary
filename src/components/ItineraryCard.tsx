@@ -2,9 +2,9 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { MapPin } from 'lucide-react'
 import BucketButton from './BucketButton'
-import { Patrick_Hand, Kalam } from 'next/font/google'
+import { Amatic_SC, Kalam } from 'next/font/google'
 
-const patrickHand = Patrick_Hand({ subsets: ['latin'], weight: '400' })
+const amatic = Amatic_SC({ subsets: ['latin'], weight: '700' })
 const kalam = Kalam({ subsets: ['latin'], weight: '400' })
 
 type DestItem = { type: string; name: string }
@@ -142,7 +142,7 @@ export default function ItineraryCard({
 
         {/* Caption */}
         <div>
-          <h2 className={`${patrickHand.className} text-xl text-[#2C1810] leading-tight line-clamp-2 mb-2`}>
+          <h2 className={`${amatic.className} text-[28px] text-[#2C1810] leading-tight line-clamp-2 mb-2`}>
             {title}
           </h2>
 
