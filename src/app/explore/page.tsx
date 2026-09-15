@@ -19,7 +19,6 @@ const TRIP_TYPE_META: Record<string, { label: string; emoji: string; desc: strin
   adult:  { label: 'Adults', emoji: '🍷',   desc: 'Curated for adults' },
   friends:{ label: 'Friends', emoji: '🥳',  desc: 'Trips with friends' },
   romantic:{ label: 'Romantic', emoji: '💋', desc: 'Romantic getaways' },
-  guide:  { label: 'Guides', emoji: '📖',   desc: 'Expert recommendations' },
 }
 
 // ── Region classifier ──────────────────────────────────────────────────────────
@@ -101,6 +100,7 @@ function ItineraryList({
           endDate={it.endDate}
           audience={it.audience}
           budget={it.budget}
+          tripRating={it.tripRating}
           authorName={it.user.name}
           destinations={it.destinations}
           coverPhoto={it.photos[0]?.url ?? null}
@@ -120,7 +120,6 @@ function SearchFiltersDisplay({ parsed }: { parsed: ParsedQuery }) {
   if (parsed.audience === 'adult') chips.push('🍷 Adults')
   if (parsed.audience === 'friends') chips.push('🥳 Friends')
   if (parsed.audience === 'romantic') chips.push('💋 Romantic')
-  if (parsed.postType === 'guide') chips.push('📖 Guides')
   if (parsed.maxBudget) chips.push('$'.repeat(parsed.maxBudget) + ' or less')
   for (const tag of parsed.tags) {
     const m = tagMeta(tag)
@@ -476,8 +475,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
       type === 'family' ? { audience: 'family' } :
       type === 'adult'  ? { audience: 'adult' }  :
       type === 'friends' ? { audience: 'friends' } :
-      type === 'romantic' ? { audience: 'romantic' } :
-      type === 'guide'  ? { postType: 'guide' }  : {}
+      type === 'romantic' ? { audience: 'romantic' } : {}
     const { itineraries, bucketSet } = await fetchItineraries(where, userId)
     const meta = TRIP_TYPE_META[type]
     return (

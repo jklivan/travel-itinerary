@@ -484,7 +484,6 @@ export default async function ItineraryPage({
                 {d.name}{d.country ? `, ${d.country}` : ''}
               </span>
             ))}
-            {isGuide && <span className="text-xs uppercase tracking-widest text-green-700 font-semibold">· Guide</span>}
           </div>
 
           {/* Serif title */}
@@ -493,7 +492,7 @@ export default async function ItineraryPage({
           </h1>
 
           <div aria-label="Trip tags" className="flex flex-wrap gap-2 items-center mb-4">
-            {!isGuide && audienceLabel && (
+            {audienceLabel && (
               <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-800">
                 {audienceLabel}
               </span>

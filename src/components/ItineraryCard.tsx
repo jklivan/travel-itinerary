@@ -18,14 +18,14 @@ type Props = {
   endDate: Date
   audience: string
   budget?: number | null
-  tripRating?: number | null
+  tripRating: number | null
   authorName: string
   destinations: Destination[]
   coverPhoto: string | null
   currentUserId?: string | null
   isOwn?: boolean
   isBucketed?: boolean
-  saveCount?: number
+  saveCount: number
 }
 
 const COVER_COLORS = [
@@ -61,7 +61,7 @@ function tripDays(start: Date, end: Date) {
 
 export default function ItineraryCard({
   id, postType, title, startDate, endDate, audience, budget, tripRating, authorName, destinations, coverPhoto,
-  currentUserId, isOwn, isBucketed = false, saveCount = 0,
+  currentUserId, isOwn, isBucketed = false, saveCount,
 }: Props) {
   const isGuide = postType === 'guide'
   const coverColor = hashPick(title, COVER_COLORS)
@@ -119,16 +119,13 @@ export default function ItineraryCard({
 
           {/* Badge */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
-            {isGuide && (
-              <span className="text-[10px] px-2 py-1 rounded font-semibold bg-black/60 text-white">📖 Guide</span>
-            )}
-            {!isGuide && audience === 'family' && (
+            {audience === 'family' && (
               <span className="text-[10px] px-2 py-1 rounded font-semibold bg-black/60 text-white">👨‍👩‍👧 Family</span>
             )}
-            {!isGuide && audience === 'friends' && (
+            {audience === 'friends' && (
               <span className="text-[10px] px-2 py-1 rounded font-semibold bg-black/60 text-white">🥳 Friends</span>
             )}
-            {!isGuide && audience === 'romantic' && (
+            {audience === 'romantic' && (
               <span className="text-[10px] px-2 py-1 rounded font-semibold bg-black/60 text-white">💋 Romantic</span>
             )}
           </div>
@@ -183,11 +180,9 @@ export default function ItineraryCard({
               {authorName}
             </span>
             <div className="flex items-center gap-1.5 shrink-0">
-              {saveCount > 0 && (
-                <span className="text-[10px] text-[#8B6F4E] flex items-center gap-0.5">
-                  🤍 {saveCount}
-                </span>
-              )}
+              <span aria-label={`${saveCount} ${saveCount === 1 ? 'favorite' : 'favorites'}`} className="text-[10px] text-[#8B6F4E] flex items-center gap-0.5">
+                <span aria-hidden="true">🤍</span> {saveCount}
+              </span>
               {budget && budget > 0 && (
                 <span className="text-[10px] font-medium tracking-tight">
                   {[1,2,3,4,5].map((n) => (

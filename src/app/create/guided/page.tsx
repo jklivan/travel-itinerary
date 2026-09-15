@@ -521,7 +521,7 @@ export default function GuidedCreatePage() {
   const [detailsError, setDetailsError] = useState<string | null>(null)
   const [returnToReview, setReturnToReview] = useState(restored.returnToReview ?? false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
-  const [phase, setPhase] = useState<Phase>((restored.phase as string) === 'picks' ? 'review' : restored.phase ?? 'type')
+  const [phase, setPhase] = useState<Phase>((restored.phase as string) === 'picks' ? 'review' : (!restored.phase || restored.phase === 'type' ? 'details' : restored.phase))
 
   const [title, setTitle] = useState(restored.title ?? '')
   const [tags, setTags] = useState<string[]>(restored.tags ?? [])
@@ -559,7 +559,7 @@ export default function GuidedCreatePage() {
     setCurDayIndex(1)
     setCurNotes('')
     setPhotos([])
-    setPhase('type')
+    setPhase('details')
     setTitle('')
     setTags([])
     setPostType('itinerary')
@@ -861,36 +861,6 @@ export default function GuidedCreatePage() {
         {dests.map(d => (
           <DestSummary key={d.id} dest={d} onRemove={() => setDests(ds => ds.filter(x => x.id !== d.id))} onEdit={() => editDest(d.id)} />
         ))}
-
-        {/* ── TYPE card ───────────────────────────────────────────────────── */}
-        {phase === 'type' && (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-gray-800 to-gray-700 px-5 py-4">
-              <h2 className="font-bold text-white">What are you creating?</h2>
-              <p className="text-white/70 text-xs mt-0.5">Choose a format to get started</p>
-            </div>
-            <div className="p-5 space-y-3">
-              <button type="button"
-                onClick={() => { setPostType('itinerary'); setPhase('details') }}
-                className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 transition-all text-left">
-                <span className="text-3xl">✈️</span>
-                <div>
-                  <p className="font-semibold text-gray-900 text-sm">Itinerary</p>
-                  <p className="text-xs text-gray-500 mt-0.5">A day-by-day trip with dates, hotels, and activities</p>
-                </div>
-              </button>
-              <button type="button"
-                onClick={() => { setPostType('guide'); setPhase('details') }}
-                className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-green-200 hover:border-green-400 hover:bg-green-50 transition-all text-left">
-                <span className="text-3xl">📖</span>
-                <div>
-                  <p className="font-semibold text-gray-900 text-sm">Guide</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Your go-to recommendations for a place — no dates needed</p>
-                </div>
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* ── DEST card ───────────────────────────────────────────────────── */}
         {phase === 'dest' && (
@@ -1211,7 +1181,7 @@ export default function GuidedCreatePage() {
             {detailsError && <p role="alert" className="m-4 text-sm text-red-700">{detailsError}</p>}
             <div className="bg-gradient-to-r from-gray-800 to-gray-700 px-5 py-4">
               <h2 className="font-bold text-white">Trip details</h2>
-              <p className="text-white/70 text-xs mt-0.5">Tell us about your {postType === 'guide' ? 'guide' : 'trip'}</p>
+              <p className="text-white/70 text-xs mt-0.5">Tell us about your trip</p>
             </div>
             <div className="p-5 space-y-4">
               <div>
@@ -1287,10 +1257,6 @@ export default function GuidedCreatePage() {
                   placeholder="Tips, packing list, visa info…" className={inputCls} />
               </div>
               <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => setPhase('type')}
-                  className="px-5 py-3 rounded-xl border border-gray-300 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors">
-                  ← Back
-                </button>
                 <button type="button" onClick={() => {
                   const error = tripDetailsError(title, postType, tripMonth, tripDays)
                   setDetailsError(error)

@@ -219,6 +219,7 @@ export default async function UserProfilePage({
                   endDate={it.endDate}
                   audience={it.audience}
                   budget={it.budget}
+                  tripRating={it.tripRating}
                   authorName={user.name}
                   destinations={it.destinations}
                   coverPhoto={it.photos[0]?.url ?? null}
@@ -251,6 +252,7 @@ export default async function UserProfilePage({
                   endDate={it.endDate}
                   audience={it.audience}
                   budget={it.budget}
+                  tripRating={it.tripRating}
                   authorName={user.name}
                   destinations={it.destinations}
                   coverPhoto={it.photos[0]?.url ?? null}
@@ -289,6 +291,7 @@ export default async function UserProfilePage({
                     endDate={item.itinerary.endDate}
                     audience={item.itinerary.audience}
                     budget={item.itinerary.budget}
+                    tripRating={item.itinerary.tripRating}
                     authorName={item.itinerary.user.name}
                     destinations={item.itinerary.destinations}
                     coverPhoto={item.itinerary.photos[0]?.url ?? null}

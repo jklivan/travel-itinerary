@@ -593,7 +593,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
 
   const initialDates = monthAndDaysFromDates(fmt(itinerary.startDate), fmt(itinerary.endDate))
 
-  const [postType, setPostType]   = useState<'itinerary' | 'guide'>(itinerary.postType === 'guide' ? 'guide' : 'itinerary')
+  const [postType]   = useState<'itinerary' | 'guide'>(itinerary.postType === 'guide' ? 'guide' : 'itinerary')
   const [title, setTitle]         = useState(itinerary.title)
   const [tripMonth, setTripMonth] = useState(initialDates.month)
   const [tripDays, setTripDays]   = useState(initialDates.days)
@@ -748,16 +748,6 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
           )}
         </div>
         <div className="p-5 space-y-4">
-          <div className="flex gap-1 bg-[#eee7d9] rounded-xl p-1 text-sm font-medium">
-            <button type="button" onClick={() => setPostType('itinerary')}
-              className={`flex-1 py-1.5 rounded-lg transition-colors ${postType === 'itinerary' ? 'bg-[#507c76] text-white shadow-sm' : 'text-[#6b7067]'}`}>
-              ✈️ Itinerary
-            </button>
-            <button type="button" onClick={() => setPostType('guide')}
-              className={`flex-1 py-1.5 rounded-lg transition-colors ${postType === 'guide' ? 'bg-[#507c76] text-white shadow-sm' : 'text-[#6b7067]'}`}>
-              📖 Guide
-            </button>
-          </div>
           <div>
             <label className="block text-xs font-medium text-[#7a7b70] mb-1">Title</label>
             <input name="title" type="text" required value={title} onChange={e => setTitle(e.target.value)} className={inputCls} />

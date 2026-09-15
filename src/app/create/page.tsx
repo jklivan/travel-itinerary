@@ -332,7 +332,7 @@ export default function CreatePage() {
   const [description, setDescription] = useState('')
   const [tripMonth, setTripMonth] = useState('')
   const [tripDays, setTripDays] = useState('')
-  const [postType, setPostType] = useState<'itinerary' | 'guide'>('itinerary')
+  const [postType] = useState<'itinerary' | 'guide'>('itinerary')
   const [tripAudience, setTripAudience] = useState<'family' | 'friends' | 'romantic' | 'adult'>('family')
   const [notes, setNotes] = useState('')
   const [tags, setTags] = useState<string[]>([])
@@ -710,7 +710,7 @@ export default function CreatePage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900 mb-1">New post</h1>
-              <p className="text-sm text-gray-500">Share a trip or travel guide.</p>
+              <p className="text-sm text-gray-500">Share your trip.</p>
             </div>
 
             {/* Import card */}
@@ -881,18 +881,7 @@ export default function CreatePage() {
         {/* ── BASICS ─────────────────────────────────────────────────────── */}
         {step === 'basics' && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
-            <h2 className="font-semibold text-gray-900 text-lg">What are you posting?</h2>
-
-            <div className="flex gap-1 bg-gray-100 rounded-xl p-1 text-sm font-medium">
-              <button type="button" onClick={() => setPostType('itinerary')}
-                className={`flex-1 py-2 rounded-lg transition-colors ${postType === 'itinerary' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
-                ✈️ Itinerary
-              </button>
-              <button type="button" onClick={() => setPostType('guide')}
-                className={`flex-1 py-2 rounded-lg transition-colors ${postType === 'guide' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
-                📖 Guide
-              </button>
-            </div>
+            <h2 className="font-semibold text-gray-900 text-lg">Trip details</h2>
 
             <div>
               <label htmlFor="title" className={labelClass}>Title *</label>
