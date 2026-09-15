@@ -10,7 +10,8 @@ import { parseSearchQuery, type ParsedQuery } from '@/lib/parseSearchQuery'
 import { tagMeta } from '@/lib/tags'
 import { MapPin, Globe, ChevronRight, Users } from 'lucide-react'
 import ExploreMap from '@/components/ExploreMap'
-import TagBrowser from '@/components/TagBrowser'
+import ExploreTripFilters from '@/components/ExploreTripFilters'
+import { parseExploreFilters, exploreFilterWhere } from '@/lib/exploreFilters'
 import { Suspense } from 'react'
 
 // ── Trip type meta (kept for ?type= URLs) ─────────────────────────────────────
@@ -206,18 +207,18 @@ function buildRegionMap(rows: DestRow[]): Map<string, DestCard[]> {
 }
 
 const REGION_GRADIENT: Record<string, string> = {
-  'United States':        'from-blue-500 to-indigo-700',
-  'Europe':               'from-emerald-500 to-teal-700',
-  'Asia':                 'from-red-400 to-rose-700',
-  'Latin America':        'from-orange-400 to-amber-600',
-  'Caribbean & Bahamas':  'from-cyan-400 to-blue-600',
-  'Middle East & Africa': 'from-yellow-500 to-orange-700',
-  'Pacific & Oceania':    'from-teal-400 to-cyan-700',
-  'Other':                'from-gray-400 to-gray-600',
+  'United States':        'from-[#7d9990] to-[#365f59]',
+  'Europe':               'from-[#9aaa8c] to-[#536c57]',
+  'Asia':                 'from-[#c0937d] to-[#825a49]',
+  'Latin America':        'from-[#c4a882] to-[#876648]',
+  'Caribbean & Bahamas':  'from-[#94b7b0] to-[#507c76]',
+  'Middle East & Africa': 'from-[#c6b38e] to-[#907450]',
+  'Pacific & Oceania':    'from-[#96aaa0] to-[#4e7368]',
+  'Other':                'from-[#b3a591] to-[#7c6f60]',
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────────
-type ExploreParams = { country?: string; city?: string; type?: string; q?: string; view?: string; tag?: string; tags?: string; region?: string }
+type ExploreParams = { country?: string; city?: string; type?: string; q?: string; view?: string; tag?: string; tags?: string; types?: string; region?: string }
 
 export default async function ExplorePage({
   searchParams,
@@ -233,12 +234,12 @@ export default async function ExplorePage({
         <p className="text-sm text-[#8B6F4E] mb-6">How would you like to find your next trip?</p>
         <div className="space-y-4">
           {[
-            { href: '/explore?view=tags', title: 'Search by trip type', description: 'Find family trips, romantic getaways, and more.', Icon: Users },
-            { href: '/explore?view=destinations', title: 'Search by destination', description: 'Browse places around the world.', Icon: Globe },
+            { href: '/explore?view=tags', title: 'SEARCH BY TRIP TYPE', description: 'Family adventures, couples getaways, and trips with friends.', Icon: Users },
+            { href: '/explore?view=destinations', title: 'SEARCH BY DESTINATION', description: 'Browse places around the world.', Icon: Globe },
           ].map(({ href, title, description, Icon }) => (
             <Link key={href} href={href} className="flex items-center gap-4 rounded-2xl border border-[#C4A882] bg-[#FAF7F2] p-5 hover:bg-[#E8D5B7] transition-colors">
               <Icon size={28} className="shrink-0 text-[#507c76]" />
-              <div className="flex-1"><h2 className="text-lg font-semibold text-[#2C1810]">{title}</h2><p className="text-sm text-[#8B6F4E] mt-1">{description}</p></div>
+              <div className="flex-1"><h2 className="font-[family-name:var(--font-playfair)] text-lg tracking-wide text-[#2C1810]">{title}</h2><p className="text-sm text-[#8B6F4E] mt-1">{description}</p></div>
               <ChevronRight size={20} className="shrink-0 text-[#8B6F4E]" />
             </Link>
           ))}
@@ -315,7 +316,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
           ← Browse by Type
         </Link>
         <div className="mb-5">
-          <h2 className="text-xl font-bold text-[#2C1810]">
+          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">
             {meta ? `${meta.emoji} ${meta.label}` : tag}
           </h2>
           <p className="text-sm text-[#8B6F4E]">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
@@ -349,7 +350,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
           ← {country === 'United States' ? 'Destinations' : country}
         </Link>
         <div className="mb-5">
-          <h2 className="text-xl font-bold text-[#2C1810] flex items-center gap-2">
+          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] flex items-center gap-2">
             <MapPin size={18} className="text-[#5C3D2E]" />
             {city}, {country}
           </h2>
@@ -433,7 +434,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
           `
     )
     const cities = destinations.map(d => ({ name: d.name, count: Number(d.count), photoUrl: d.photo_url }))
-    const gradient = REGION_GRADIENT[getRegionLabel(country)] ?? 'from-gray-400 to-gray-600'
+    const gradient = REGION_GRADIENT[getRegionLabel(country)] ?? 'from-[#b3a591] to-[#7c6f60]'
     const cityHref = (name: string) =>
       `/explore?country=${encodeURIComponent(country)}&city=${encodeURIComponent(name)}`
 
@@ -441,7 +442,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
       <div className="max-w-2xl mx-auto px-4 py-6 pb-10">
         <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
         <div className="mb-5">
-          <h2 className="text-xl font-bold text-[#2C1810]">{country}</h2>
+          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">{country}</h2>
           <p className="text-sm text-[#8B6F4E]">{cities.length} destination{cities.length !== 1 ? 's' : ''}</p>
         </div>
         {cities.length === 0 ? (
@@ -458,7 +459,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-4">
-                <p className="text-white font-bold text-xl leading-tight">{cities[0].name}</p>
+                <p className="font-[family-name:var(--font-playfair)] text-white text-2xl leading-tight">{cities[0].name}</p>
                 <p className="text-white/70 text-sm mt-0.5">{cities[0].count} trip{cities[0].count !== 1 ? 's' : ''}</p>
               </div>
             </Link>
@@ -476,7 +477,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-2.5">
-                      <p className="text-white font-semibold text-sm leading-tight">{c.name}</p>
+                      <p className="font-[family-name:var(--font-playfair)] text-white text-base leading-tight">{c.name}</p>
                       <p className="text-white/70 text-xs mt-0.5">{c.count} trip{c.count !== 1 ? 's' : ''}</p>
                     </div>
                   </Link>
@@ -502,7 +503,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
       <div className="max-w-2xl mx-auto px-4 py-6">
         <Link href="/explore?view=tags" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Trip types</Link>
         <div className="mb-5">
-          <h2 className="text-xl font-bold text-[#2C1810]">{meta.emoji} {meta.label}</h2>
+          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">{meta.emoji} {meta.label}</h2>
           <p className="text-sm text-[#8B6F4E]">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
@@ -512,30 +513,19 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
   // ── view=tags ──────────────────────────────────────────────────────────────
   if (view === 'tags') {
-    const selectedTags = tagsParam ? tagsParam.split(',').filter(Boolean) : []
-    const { itineraries, bucketSet } = selectedTags.length > 0
-      ? await fetchItineraries({ tags: { hasSome: selectedTags } }, userId)
-      : { itineraries: [], bucketSet: new Set<string>() }
+    const filters = parseExploreFilters(params.types, tagsParam)
+    const { itineraries, bucketSet } = await fetchItineraries(exploreFilterWhere(filters), userId)
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
         <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
-        <h2 className="text-xl font-bold text-[#2C1810] mb-3">Search by trip type</h2>
-        <div className="flex flex-wrap gap-2 mb-5">
-          {Object.entries(TRIP_TYPE_META).map(([value, meta]) => (
-            <Link key={value} href={`/explore?type=${value}`} className="rounded-full border border-[#C4A882] bg-[#FAF7F2] px-3 py-2 text-sm text-[#5C3D2E] hover:bg-[#E8D5B7]">{meta.emoji} {meta.label}</Link>
-          ))}
+        <h1 className="font-[family-name:var(--font-playfair)] text-2xl sm:text-3xl tracking-wide text-[#2C1810] mb-5">SEARCH BY TRIP TYPE</h1>
+        <ExploreTripFilters key={`${filters.types.join(',')}|${filters.tags.join(',')}`} types={filters.types} tags={filters.tags} />
+        <div className="mt-7">
+          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-2">Trips to inspire you</h2>
+          <p role="status" className="text-sm text-[#8B6F4E] mb-4">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
+          <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
         </div>
-        <p className="text-sm text-[#8B6F4E] mb-4">Pick one or more vibes</p>
-        <TagBrowser selected={selectedTags} />
-        {selectedTags.length > 0 && (
-          <div className="mt-6">
-            <p className="text-sm text-[#8B6F4E] mb-4">
-              {itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}
-            </p>
-            <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
-          </div>
-        )}
       </div>
     )
   }
@@ -547,7 +537,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
         <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
         <div className="text-center py-24">
           <p className="text-5xl mb-4">🔥</p>
-          <h2 className="text-xl font-bold text-[#2C1810] mb-2">Hot Spots</h2>
+          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-2">Hot Spots</h2>
           <p className="text-sm text-[#8B6F4E]">Coming soon</p>
         </div>
       </div>
@@ -561,7 +551,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
         <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
         <div className="text-center py-24">
           <p className="text-5xl mb-4">👥</p>
-          <h2 className="text-xl font-bold text-[#2C1810] mb-2">Friends&apos; Trips</h2>
+          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-2">Friends&apos; Trips</h2>
           <Link href="/friends" className="text-sm text-[#5C3D2E] hover:underline">See your friends</Link>
         </div>
       </div>
@@ -613,7 +603,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-6 pb-10">
         <Link href="/explore?view=destinations" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Destinations</Link>
-        <h1 className="text-xl font-bold text-[#2C1810] mb-5">{region}</h1>
+        <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-5">{region}</h1>
         {cards.length === 0 ? (
           <p className="text-sm text-[#8B6F4E] italic">No destinations yet.</p>
         ) : (
@@ -628,11 +618,11 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={c.photoUrl} alt={c.displayName} className="w-full h-full object-cover" />
                   ) : (
-                    <div className={`w-full h-full bg-gradient-to-br ${REGION_GRADIENT[region] ?? 'from-gray-400 to-gray-600'}`} />
+                    <div className={`w-full h-full bg-gradient-to-br ${REGION_GRADIENT[region] ?? 'from-[#b3a591] to-[#7c6f60]'}`} />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-2.5">
-                    <p className="text-white font-semibold text-sm leading-tight">{c.displayName}</p>
+                    <p className="font-[family-name:var(--font-playfair)] text-white text-base leading-tight">{c.displayName}</p>
                     <p className="text-white/70 text-xs mt-0.5">{c.tripCount} trip{c.tripCount !== 1 ? 's' : ''}</p>
                   </div>
                 </Link>
@@ -657,7 +647,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     <div className="max-w-2xl mx-auto px-4 py-6 pb-10">
       <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
       <div className="mb-5">
-        <h1 className="text-2xl font-bold text-[#2C1810]">Destinations</h1>
+        <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-[#2C1810]">Destinations</h1>
       </div>
 
       <ExploreSearchBar />
@@ -672,7 +662,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
           {destRegions.map(region => (
             <div key={region.label}>
               <div className="flex items-center justify-between mb-3">
-                <Link href={`/explore?region=${encodeURIComponent(region.label)}`} className="text-lg font-bold text-[#2C1810] hover:text-[#5C3D2E] transition-colors">
+                <Link href={`/explore?region=${encodeURIComponent(region.label)}`} className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] hover:text-[#5C3D2E] transition-colors">
                   {region.label}
                 </Link>
                 <Link href={`/explore?region=${encodeURIComponent(region.label)}`} className="text-sm text-[#5C3D2E] hover:underline">
@@ -694,11 +684,11 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={c.photoUrl} alt={c.displayName} className="w-full h-full object-cover" />
                       ) : (
-                        <div className={`w-full h-full bg-gradient-to-br ${REGION_GRADIENT[region.label] ?? 'from-gray-400 to-gray-600'}`} />
+                        <div className={`w-full h-full bg-gradient-to-br ${REGION_GRADIENT[region.label] ?? 'from-[#b3a591] to-[#7c6f60]'}`} />
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
                       <div className="absolute bottom-0 left-0 right-0 p-2.5">
-                        <p className="text-white font-semibold text-sm leading-tight">{c.displayName}</p>
+                        <p className="font-[family-name:var(--font-playfair)] text-white text-base leading-tight">{c.displayName}</p>
                         <p className="text-white/70 text-xs mt-0.5">{c.tripCount} trip{c.tripCount !== 1 ? 's' : ''}</p>
                       </div>
                     </Link>
