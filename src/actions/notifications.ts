@@ -10,9 +10,12 @@ import { notificationPath } from '@/lib/notificationText'
 
 export async function notificationStatus() {
   const session = await auth()
-  if (!session?.user?.id) return { unread: 0, pushReady: false }
-  const unread = await prisma.notification.count({ where: { recipientId: session.user.id, readAt: null, itinerary: { visibility: { not: 'draft' } } } })
-  return { unread, pushReady: pushConfigured() }
+  if (!session?.user?.id) return { unread: 0, unreadMessages: 0, pushReady: false }
+  const [unread, unreadMessages] = await Promise.all([
+    prisma.notification.count({ where: { recipientId: session.user.id, readAt: null, OR: [{ kind: 'message', messageId: { not: null } }, { itinerary: { visibility: { not: 'draft' } } }] } }),
+    prisma.notification.count({ where: { recipientId: session.user.id, readAt: null, kind: 'message', messageId: { not: null } } }),
+  ])
+  return { unread, unreadMessages, pushReady: pushConfigured() }
 }
 
 export async function registerPushDevice(token: string) {
@@ -43,6 +46,7 @@ export async function markAllNotificationsRead() {
   if (!session?.user?.id) return
   await prisma.notification.updateMany({ where: { recipientId: session.user.id, readAt: null }, data: { readAt: new Date() } })
   revalidatePath('/notifications')
+  revalidatePath('/messages')
 }
 
 export async function openNotification(form: FormData) {
@@ -50,8 +54,10 @@ export async function openNotification(form: FormData) {
   if (!session?.user?.id) redirect('/login')
   const id = form.get('id')
   if (typeof id !== 'string') return
-  const notification = await prisma.notification.findFirst({ where: { id, recipientId: session.user.id, itinerary: { visibility: { not: 'draft' } } } })
+  const notification = await prisma.notification.findFirst({ where: { id, recipientId: session.user.id, OR: [{ kind: 'message', messageId: { not: null } }, { itinerary: { visibility: { not: 'draft' } } }] } })
   if (!notification) return
   await prisma.notification.updateMany({ where: { id, recipientId: session.user.id }, data: { readAt: new Date() } })
-  redirect(notificationPath(notification.itineraryId, notification.kind))
+  revalidatePath('/notifications')
+  revalidatePath('/messages')
+  redirect(notificationPath(notification.itineraryId, notification.kind, notification.actorId))
 }

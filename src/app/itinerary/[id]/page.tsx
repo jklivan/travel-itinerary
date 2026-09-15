@@ -413,7 +413,7 @@ export default async function ItineraryPage({
 
     return (
       <div key={item.id} id={`place-${item.id}`} className="scroll-mt-24">
-      <PlaceDetailsCard messageHref={!isOwn ? `/friends/messages/${it.user.id}?place=${encodeURIComponent(item.id)}` : undefined} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} className={`${styles.card} ${styles[type]} ${recommendation !== 'none' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
+      <PlaceDetailsCard messageHref={!isOwn ? `/messages/${it.user.id}?place=${encodeURIComponent(item.id)}` : undefined} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} className={`${styles.card} ${styles[type]} ${recommendation !== 'none' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
         {recommendation === 'must' && type !== 'hotel' && <Image src="/must-do-stamp.png" alt="Must do" width={60} height={54} unoptimized className={styles.mustDoStamp} />}
         {recommendation === 'must' && type === 'hotel' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><BedDouble size={24} aria-hidden="true" /><span>Must stay</span></span>}
         {recommendation === 'avoid' && <span className={`${styles.mustDoStamp} ${styles.textStamp} ${styles.avoidStamp}`}><Ban size={24} aria-hidden="true" /><span>Avoid</span></span>}
@@ -784,7 +784,7 @@ export default async function ItineraryPage({
 
             {!isOwn && <div className="mt-6 border-t border-[#C4A882] pt-6">
               <h2 className="font-semibold mb-2">Have a question about this trip?</h2>
-              <Link href={`/friends/messages/${it.user.id}`} className="inline-block rounded-full bg-[#507c76] px-4 py-2 text-sm text-white">Message {it.user.name} privately</Link>
+              <Link href={`/messages/${it.user.id}`} className="inline-block rounded-full bg-[#507c76] px-4 py-2 text-sm text-white">Message {it.user.name} privately</Link>
             </div>}
           </>
         )}

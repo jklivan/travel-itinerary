@@ -6,11 +6,40 @@ import ts from 'typescript'
 
 function harness(userId = 'alice') {
   const rows = []
+  const notifications = []
+  const scheduled = []
+  const readQueries = []
+  let failNotification = false
   const people = new Map(['alice', 'bob', 'eve'].map(id => [id, { id, name: id }]))
   const queries = []
   const place = { id: 'cafe', name: 'Cafe', notes: 'Try the breakfast', destination: { itinerary: { id: 'trip', title: 'Paris' } } }
   const match = (row, where) => (!where.id || row.id === where.id) && where.OR.some(pair => Object.entries(pair).every(([k, v]) => row[k] === v))
   const prisma = {
+    notification: {
+      createManyAndReturn: async ({ data, skipDuplicates }) => {
+        if (failNotification) throw new Error('notification failed')
+        assert.equal(skipDuplicates, true)
+        return data.flatMap(input => {
+          if (notifications.some(n => n.dedupeKey === input.dedupeKey)) return []
+          const row = { id: `n${notifications.length}`, readAt: null, ...input }
+          notifications.push(row)
+          return [row]
+        })
+      },
+      updateMany: async query => {
+        readQueries.push(query)
+        let count = 0
+        for (const n of notifications) {
+          const w = query.where
+          const message = rows.find(m => m.id === n.messageId)
+          if (n.recipientId === w.recipientId && n.actorId === w.actorId && n.kind === w.kind && n.readAt === null && w.messageId.in.includes(n.messageId) && message?.senderId === w.message.senderId && message?.recipientId === w.message.recipientId) {
+            n.readAt = query.data.readAt
+            count++
+          }
+        }
+        return { count }
+      },
+    },
     user: { findUnique: async ({ where }) => people.get(where.id) },
     destItem: { findFirst: async ({ where }) => { queries.push(where); return where.id === 'cafe' ? place : null } },
     directMessage: {
@@ -32,12 +61,17 @@ function harness(userId = 'alice') {
       },
     },
   }
-  const dependencies = { '@/auth': { auth: async () => userId ? { user: { id: userId } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} } }
+  prisma.$transaction = async fn => {
+    const rowCount = rows.length
+    const notificationCount = notifications.length
+    try { return await fn(prisma) } catch (error) { rows.splice(rowCount); notifications.splice(notificationCount); throw error }
+  }
+  const dependencies = { '@/auth': { auth: async () => userId ? { user: { id: userId } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} }, 'next/server': { after: fn => scheduled.push(fn) }, '@/lib/push': { deliverNotification() {} } }
   const exports = {}
   const compiled = ts.transpileModule(readFileSync(new URL('../src/actions/messages.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
   vm.runInNewContext(compiled, { exports, require: name => dependencies[name] })
   const input = { recipientId: 'bob', content: 'Hello', clientId: '12345678-1234-1234-1234-123456789012' }
-  return { ...exports, rows, queries, input }
+  return { ...exports, rows, queries, input, notifications, scheduled, readQueries, failNotification: () => { failNotification = true } }
 }
 
 test('all message endpoints require sign-in', async () => {
@@ -99,4 +133,60 @@ test('older messages page without dropping or duplicating messages', async () =>
   assert.equal(older.messages.length,5)
   assert.equal(older.hasOlder,false)
   assert.equal(older.messages[0].content,'0')
+})
+
+
+test('a message creates one recipient alert and schedules one push, even on retry', async () => {
+  const h = harness()
+  await h.sendDirectMessage(h.input)
+  await h.sendDirectMessage(h.input)
+  assert.equal(h.notifications.length, 1)
+  assert.equal(h.scheduled.length, 1)
+  const n = h.notifications[0]
+  assert.equal(n.kind, 'message')
+  assert.equal(n.recipientId, 'bob')
+  assert.equal(n.actorId, 'alice')
+  assert.equal(n.messageId, h.rows[0].id)
+  assert.equal(n.readAt, null)
+  assert.equal(n.itineraryId, undefined)
+})
+
+test('a failed alert rolls back the message and never schedules a push', async () => {
+  const h = harness()
+  h.failNotification()
+  await assert.rejects(h.sendDirectMessage(h.input), /notification failed/)
+  assert.equal(h.rows.length, 0)
+  assert.equal(h.notifications.length, 0)
+  assert.equal(h.scheduled.length, 0)
+})
+
+test('a retry with a changed recipient cannot redirect an existing message alert', async () => {
+  const h = harness()
+  await h.sendDirectMessage(h.input)
+  await h.sendDirectMessage({ ...h.input, recipientId: 'eve' })
+  assert.equal(h.notifications.length, 1)
+  assert.equal(h.notifications[0].recipientId, 'bob')
+})
+
+test('reading a conversation clears only displayed messages from that sender to the session user', async () => {
+  const h = harness()
+  for (const [id, senderId, recipientId] of [['shown','bob','alice'], ['new','bob','alice'], ['other','eve','alice'], ['foreign','bob','eve']]) {
+    h.rows.push({ id, senderId, recipientId })
+    h.notifications.push({ id: `n-${id}`, messageId: id, recipientId, actorId: senderId, kind: 'message', readAt: null })
+  }
+  await h.markMessagesRead('bob', ['shown', 'other', 'foreign'])
+  assert.ok(h.notifications[0].readAt)
+  for (const n of h.notifications.slice(1)) assert.equal(n.readAt, null)
+  assert.equal(h.readQueries[0].where.recipientId, 'alice')
+})
+
+test('anonymous and malformed read requests cannot clear message alerts', async () => {
+  const anonymous = harness(null)
+  await anonymous.markMessagesRead('bob', ['message'])
+  assert.equal(anonymous.readQueries.length, 0)
+  const h = harness()
+  await h.markMessagesRead('bob', new Array(101).fill('message'))
+  await h.markMessagesRead('bob', [123])
+  await h.markMessagesRead('bob', [])
+  assert.equal(h.readQueries.length, 0)
 })

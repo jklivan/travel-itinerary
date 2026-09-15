@@ -3,6 +3,8 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
+import { deliverNotification } from '@/lib/push'
 
 export async function getConversation(recipientId: string, before?: string) {
   const session = await auth()
@@ -44,6 +46,7 @@ export async function getMessageInbox() {
 export async function sendDirectMessage(input: { recipientId: string; content: string; clientId: string; placeId?: string }) {
   const session = await auth()
   if (!session?.user?.id) return { error: 'Sign in to send a message.' }
+  const senderId = session.user.id
   if (!input || typeof input.content !== 'string' || !input.content.trim() || input.content.trim().length > 4000) return { error: 'Write a message of up to 4,000 characters.' }
   if (typeof input.clientId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(input.clientId)) return { error: 'Please try sending again.' }
   if (typeof input.recipientId !== 'string' || input.recipientId === session.user.id) return { error: 'Choose another traveler to message.' }
@@ -58,13 +61,42 @@ export async function sendDirectMessage(input: { recipientId: string; content: s
     if (!place) return { error: 'This place is no longer available. Remove the attachment to send your message.' }
     attachment = { placeId: place.id, placeName: place.name, placeNotes: place.notes, itineraryId: place.destination.itinerary.id, itineraryTitle: place.destination.itinerary.title }
   }
-  // Retry a timed-out send without delivering the same message twice.
-  await prisma.directMessage.upsert({
-    where: { senderId_clientId: { senderId: session.user.id, clientId: input.clientId } },
-    update: {},
-    create: { senderId: session.user.id, recipientId: input.recipientId, content: input.content.trim(), clientId: input.clientId, ...attachment },
+  // Save the message and alert atomically; retries must not duplicate either.
+  const notificationId = await prisma.$transaction(async tx => {
+    const message = await tx.directMessage.upsert({
+      where: { senderId_clientId: { senderId, clientId: input.clientId } },
+      update: {},
+      create: { senderId, recipientId: input.recipientId, content: input.content.trim(), clientId: input.clientId, ...attachment },
+    })
+    const notifications = await tx.notification.createManyAndReturn({
+      data: [{ recipientId: message.recipientId, actorId: message.senderId, kind: 'message', messageId: message.id, dedupeKey: `message:${message.id}` }],
+      skipDuplicates: true,
+      select: { id: true },
+    })
+    return notifications[0]?.id
   })
-  revalidatePath('/friends/messages')
-  revalidatePath(`/friends/messages/${input.recipientId}`)
+  if (notificationId) after(() => deliverNotification(notificationId))
+  revalidatePath('/messages')
+  revalidatePath(`/messages/${input.recipientId}`)
+  revalidatePath('/notifications')
   return { success: true }
+}
+
+export async function markMessagesRead(senderId: string, messageIds: string[]) {
+  const session = await auth()
+  if (!session?.user?.id) return
+  if (typeof senderId !== 'string' || !Array.isArray(messageIds) || messageIds.length > 100 || messageIds.some(id => typeof id !== 'string')) return
+  if (!messageIds.length) return
+  const result = await prisma.notification.updateMany({
+    where: {
+      recipientId: session.user.id, actorId: senderId, kind: 'message', readAt: null,
+      messageId: { in: messageIds },
+      message: { senderId, recipientId: session.user.id },
+    },
+    data: { readAt: new Date() },
+  })
+  if (result.count) {
+    revalidatePath('/notifications')
+    revalidatePath('/messages')
+  }
 }

@@ -3,11 +3,13 @@
 import Link from 'next/link'
 import useBottomToolbar from './useBottomToolbar'
 import { usePathname } from 'next/navigation'
-import { Home, Compass, Plus, Users, User, X, FileText, LayoutList } from 'lucide-react'
+import { Home, Compass, Plus, Users, User, X, FileText, LayoutList, MessageCircle } from 'lucide-react'
+import useNotificationCounts from './useNotificationCounts'
 import { Suspense, useState, useEffect, useRef } from 'react'
 
 function BottomNavInner({ userId, pendingCount }: { userId: string | null; pendingCount: number }) {
   const pathname = usePathname()
+  const { unreadMessages } = useNotificationCounts()
   const toolbarRef = useBottomToolbar()
   const [showCreate, setShowCreate] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
@@ -15,10 +17,11 @@ function BottomNavInner({ userId, pendingCount }: { userId: string | null; pendi
   const isFeed = pathname === '/'
   const isExplore = pathname.startsWith('/explore')
   const isFriends = pathname.startsWith('/friends')
+  const isMessages = pathname === '/messages' || pathname.startsWith('/messages/')
   const isProfile = pathname.startsWith('/user/')
 
   function cls(active: boolean) {
-    return `flex flex-col items-center gap-0.5 px-4 py-2 transition-colors ${active ? 'text-[#2C1810]' : 'text-[#8B6F4E] hover:text-[#5C3D2E]'}`
+    return `flex min-w-0 flex-col items-center gap-0.5 px-1 py-2 transition-colors ${active ? 'text-[#2C1810]' : 'text-[#8B6F4E] hover:text-[#5C3D2E]'}`
   }
 
   useEffect(() => {
@@ -71,7 +74,7 @@ function BottomNavInner({ userId, pendingCount }: { userId: string | null; pendi
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto flex justify-around items-center py-2">
+      <div className="max-w-2xl mx-auto grid grid-cols-6 items-center py-2">
         <Link href="/" className={cls(isFeed)}>
           <Home className="w-6 h-6" />
           <span className="text-xs font-medium">Feed</span>
@@ -83,8 +86,9 @@ function BottomNavInner({ userId, pendingCount }: { userId: string | null; pendi
         </Link>
 
         <button
+          aria-label="Create a trip"
           onClick={() => setShowCreate(v => !v)}
-          className={`flex flex-col items-center gap-0.5 px-4 py-2 -mt-5 rounded-full shadow-lg transition-all ${
+          className={`justify-self-center flex flex-col items-center gap-0.5 px-3 py-2 -mt-5 rounded-full shadow-lg transition-all ${
             showCreate
               ? 'bg-[#5C3D2E] text-white'
               : 'bg-[#2C1810] text-white hover:shadow-xl'
@@ -101,6 +105,12 @@ function BottomNavInner({ userId, pendingCount }: { userId: string | null; pendi
             </span>
           )}
           <span className="text-xs font-medium">Friends</span>
+        </Link>
+
+        <Link href="/messages" aria-current={isMessages ? 'page' : undefined} aria-label={`Messages${unreadMessages ? `, ${unreadMessages} unread` : ''}`} className={`relative ${cls(isMessages)}`}>
+          <MessageCircle className="w-6 h-6" />
+          {unreadMessages > 0 && <span className="absolute top-1 right-1 min-w-4 rounded-full bg-[#507c76] px-1 text-center text-[10px] font-bold text-white">{unreadMessages > 99 ? '99+' : unreadMessages}</span>}
+          <span className="text-[10px] min-[375px]:text-xs font-medium">Messages</span>
         </Link>
 
         <Link href={userId ? `/user/${userId}` : '/login'} className={cls(isProfile)}>

@@ -158,16 +158,18 @@ model Notification {
   id String @id @default(cuid())
   recipientId String
   actorId String
-  itineraryId String
+  itineraryId String?
   kind String
   dedupeKey String @unique
   commentId String? @unique
+  messageId String? @unique
   readAt DateTime?
   createdAt DateTime @default(now())
   recipient User @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
   actor User @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
-  itinerary Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  itinerary Itinerary? @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
   comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  message DirectMessage? @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
   @@index([recipientId, readAt, createdAt])
 }
@@ -196,6 +198,7 @@ model DirectMessage {
   createdAt DateTime @default(now())
   sender User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
   recipient User @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  notification Notification?
 
   @@unique([senderId, clientId])
   @@index([senderId, recipientId, createdAt])

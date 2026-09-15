@@ -190,3 +190,75 @@ test('APNs sends a signed production alert with the expected trip link and no co
   assert.equal(JSON.parse(Buffer.from(claims, 'base64url')).iss, 'team')
   assert.ok(crypto.verify('sha256', Buffer.from(`${head}.${claims}`), { key: publicKey, dsaEncoding: 'ieee-p1363' }, Buffer.from(signature, 'base64url')))
 })
+
+
+test('message alerts open the sender conversation without needing a trip', async () => {
+  let read
+  const actions = notificationActions({ notification: {
+    findFirst: async ({ where }) => {
+      assert.equal(where.recipientId, 'owner')
+      assert.ok(where.OR.some(filter => filter.kind === 'message'))
+      return { id: 'n-message', recipientId: 'owner', actorId: 'sender', kind: 'message', itineraryId: null }
+    },
+    updateMany: async query => { read = query; return { count: 1 } },
+  } })
+  await assert.rejects(actions.openNotification(new Map([['id', 'n-message']])), /redirect:\/messages\/sender/)
+  assert.equal(read.where.recipientId, 'owner')
+  assert.equal(text.notificationText('message', 'Friend', ''), 'Friend sent you a private message.')
+  assert.equal(text.notificationPath(null, 'message', 'sender/id'), '/messages/sender%2Fid')
+})
+
+test('bell counts include message alerts while retaining the draft-trip visibility filter', async () => {
+  const queries = []
+  const actions = notificationActions({ notification: {
+    count: async query => { queries.push(query); return query.where.kind === 'message' ? 2 : 5 },
+  } })
+  const result = await actions.notificationStatus()
+  assert.equal(result.unread, 5)
+  assert.equal(result.unreadMessages, 2)
+  for (const query of queries) {
+    assert.equal(query.where.recipientId, 'owner')
+    assert.equal(query.where.readAt, null)
+  }
+  assert.equal(queries[0].where.OR[0].kind, 'message')
+  assert.equal(queries[0].where.OR[1].itinerary.visibility.not, 'draft')
+})
+
+test('APNs message alerts link directly to the sender and omit private message text', async () => {
+  const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
+  const env = { APNS_PRIVATE_KEY: privateKey.export({ type: 'pkcs8', format: 'pem' }), APNS_KEY_ID: 'key', APNS_TEAM_ID: 'team', APNS_BUNDLE_ID: 'com.example.app' }
+  let host, headers, payload
+  const http2 = { connect: url => {
+    host = url
+    const client = new EventEmitter()
+    client.close = () => {}
+    client.destroy = () => {}
+    client.request = value => {
+      headers = value
+      const request = new EventEmitter()
+      request.setEncoding = () => {}
+      request.end = body => { payload = JSON.parse(body); request.emit('response', { ':status': 200 }); request.emit('end') }
+      return request
+    }
+    return client
+  } }
+  const { deliverNotification } = load('../src/lib/push.ts', {
+    'node:crypto': crypto, 'node:http2': http2, '@/lib/notificationText': text,
+    '@/lib/prisma': { prisma: {
+      notification: { findUnique: async () => ({ recipientId: 'owner', actorId: 'friend', kind: 'message', itineraryId: null, actor: { name: 'Friend' }, itinerary: null, message: { content: 'Private secret' } }) },
+      pushDevice: { findMany: async () => [{ id: 'device', token: 'a'.repeat(64) }] },
+    } },
+  }, { process: { env }, Buffer, setTimeout, clearTimeout })
+  await deliverNotification('n1')
+  assert.equal(host, 'https://api.push.apple.com')
+  assert.equal(headers['apns-topic'], 'com.example.app')
+  assert.equal(headers['apns-push-type'], 'alert')
+  assert.equal(payload.notificationId, 'n1')
+  assert.equal(payload.url, '/messages/friend')
+  assert.equal(payload.aps.alert.body, 'Friend sent you a private message.')
+  assert.equal(payload.aps['thread-id'], 'message:friend')
+  assert.equal(JSON.stringify(payload).includes('Private secret'), false)
+  const [head, claims, signature] = headers.authorization.slice(7).split('.')
+  assert.equal(JSON.parse(Buffer.from(claims, 'base64url')).iss, 'team')
+  assert.ok(crypto.verify('sha256', Buffer.from(`${head}.${claims}`), { key: publicKey, dsaEncoding: 'ieee-p1363' }, Buffer.from(signature, 'base64url')))
+})

@@ -22,7 +22,7 @@ export default function MessageComposer({ recipientId, attachment }: { recipient
         const result = await sendDirectMessage({ recipientId, content, clientId: clientId.current!, placeId: attached ? attachment?.id : undefined })
         if (result.error) { setError(result.error); return }
         setContent(''); setAttached(false); clientId.current = null
-        router.replace(`/friends/messages/${recipientId}`, { scroll: false })
+        router.replace(`/messages/${recipientId}`, { scroll: false })
         router.refresh()
       } catch { setError('Could not send. Your message is still here—please try again.') }
     })

@@ -23,13 +23,13 @@ export async function deliverNotification(id: string) {
   const notification = await prisma.notification.findUnique({
     where: { id }, include: { actor: { select: { name: true } }, itinerary: { select: { title: true, visibility: true } } },
   })
-  if (!notification || notification.itinerary.visibility === 'draft') return
+  if (!notification || notification.readAt || (notification.kind !== 'message' && (!notification.itinerary || notification.itinerary.visibility === 'draft'))) return
   const devices = await prisma.pushDevice.findMany({ where: { userId: notification.recipientId } })
   if (!devices.length) return
   const authorization = `bearer ${providerToken()}`
   const payload = JSON.stringify({
-    aps: { alert: { title: 'MilesAway', body: notificationText(notification.kind, notification.actor.name.slice(0, 80), notification.itinerary.title.slice(0, 200)) }, sound: 'default', 'thread-id': notification.itineraryId },
-    url: notificationPath(notification.itineraryId, notification.kind), notificationId: id,
+    aps: { alert: { title: 'MilesAway', body: notificationText(notification.kind, notification.actor.name.slice(0, 80), notification.itinerary?.title.slice(0, 200) ?? '') }, sound: 'default', 'thread-id': notification.kind === 'message' ? `message:${notification.actorId}` : notification.itineraryId },
+    url: notificationPath(notification.itineraryId, notification.kind, notification.actorId), notificationId: id,
   })
   // TestFlight and App Store builds use production APNs. Sandbox is for local development builds only.
   const host = process.env.APNS_ENVIRONMENT === 'sandbox' ? 'https://api.sandbox.push.apple.com' : 'https://api.push.apple.com'

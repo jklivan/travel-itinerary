@@ -2,6 +2,10 @@
 
 Comments (including replies) and heart/saves create activity for the trip owner. Self-actions are excluded. One save notification is created per person/trip, even after an unsave/resave. Deleting a comment or trip cascades to its activity. The inbox is available at `/notifications`; alerts link to the trip, with comments scrolled into view.
 
+Private messages also create recipient-only activity and push alerts. The bell and Messages tab show unread counts; tapping an alert opens `/messages/[senderId]` directly. Viewing a conversation clears alerts only for the incoming messages rendered there. Push previews include the sender's name, not the private message text. Old `/friends/messages` links redirect to the new Messages routes, preserving place attachments and pagination.
+
+Deploy migration `0036_message_notifications` with the web update using the existing build command. It adds message alerts to the notification model and includes existing messages as read activity history, without sending retrospective push alerts. No additional native build is needed for this change on iPhones that already have the push notification plugin installed.
+
 ## Apple build status
 
 The local Xcode archive from August 10, 2026 records a successful upload to Apple at 16:44 UTC, version 1.0, build 1. App Store Connect app ID: `6800008568`. Bundle ID: `com.joshuaklivan.travelitineraryapp`. Team: `P53B7VTVQ6`. This confirms upload, not the current TestFlight processing or tester distribution status. Check https://appstoreconnect.apple.com/apps/6800008568/testflight .

@@ -200,7 +200,7 @@ export default async function UserProfilePage({
         </div>
       )}
 
-      {!isOwn && <Link href={`/friends/messages/${id}`} className="mb-5 inline-block rounded-full bg-[#507c76] px-4 py-2 text-sm text-white">Send private message</Link>}
+      {!isOwn && <Link href={`/messages/${id}`} className="mb-5 inline-block rounded-full bg-[#507c76] px-4 py-2 text-sm text-white">Send private message</Link>}
 
       {showDrafts ? (
         <>
