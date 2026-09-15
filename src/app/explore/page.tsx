@@ -8,7 +8,7 @@ import HorizontalScrollFeed from '@/components/HorizontalScrollFeed'
 import ExploreSearchBar from '@/components/ExploreSearchBar'
 import { parseSearchQuery, type ParsedQuery } from '@/lib/parseSearchQuery'
 import { tagMeta } from '@/lib/tags'
-import { MapPin, Globe, ChevronRight } from 'lucide-react'
+import { MapPin, Globe, ChevronRight, Users } from 'lucide-react'
 import ExploreMap from '@/components/ExploreMap'
 import TagBrowser from '@/components/TagBrowser'
 import { Suspense } from 'react'
@@ -226,6 +226,26 @@ export default async function ExplorePage({
 
 }) {
   const params = await searchParams
+  if (!Object.values(params).some(Boolean)) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-[#2C1810] mb-2">Explore</h1>
+        <p className="text-sm text-[#8B6F4E] mb-6">How would you like to find your next trip?</p>
+        <div className="space-y-4">
+          {[
+            { href: '/explore?view=tags', title: 'Search by trip type', description: 'Find family trips, romantic getaways, and more.', Icon: Users },
+            { href: '/explore?view=destinations', title: 'Search by destination', description: 'Browse places around the world.', Icon: Globe },
+          ].map(({ href, title, description, Icon }) => (
+            <Link key={href} href={href} className="flex items-center gap-4 rounded-2xl border border-[#C4A882] bg-[#FAF7F2] p-5 hover:bg-[#E8D5B7] transition-colors">
+              <Icon size={28} className="shrink-0 text-[#507c76]" />
+              <div className="flex-1"><h2 className="text-lg font-semibold text-[#2C1810]">{title}</h2><p className="text-sm text-[#8B6F4E] mt-1">{description}</p></div>
+              <ChevronRight size={20} className="shrink-0 text-[#8B6F4E]" />
+            </Link>
+          ))}
+        </div>
+      </div>
+    )
+  }
   return <Suspense key={JSON.stringify(params)} fallback={<div role="status" className="max-w-5xl mx-auto px-4 py-6">{params.q ? `Searching for “${params.q}”…` : 'Loading destinations…'}</div>}>
     <ExploreResults params={params} />
   </Suspense>
@@ -325,7 +345,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     )
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link href={country === 'United States' ? '/explore' : `/explore?country=${encodeURIComponent(country)}`} className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">
+        <Link href={country === 'United States' ? '/explore?view=destinations' : `/explore?country=${encodeURIComponent(country)}`} className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">
           ← {country === 'United States' ? 'Destinations' : country}
         </Link>
         <div className="mb-5">
@@ -480,7 +500,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     const meta = TRIP_TYPE_META[type]
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
+        <Link href="/explore?view=tags" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Trip types</Link>
         <div className="mb-5">
           <h2 className="text-xl font-bold text-[#2C1810]">{meta.emoji} {meta.label}</h2>
           <p className="text-sm text-[#8B6F4E]">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
@@ -500,7 +520,12 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
         <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
-        <h2 className="text-xl font-bold text-[#2C1810] mb-1">Browse by Type</h2>
+        <h2 className="text-xl font-bold text-[#2C1810] mb-3">Search by trip type</h2>
+        <div className="flex flex-wrap gap-2 mb-5">
+          {Object.entries(TRIP_TYPE_META).map(([value, meta]) => (
+            <Link key={value} href={`/explore?type=${value}`} className="rounded-full border border-[#C4A882] bg-[#FAF7F2] px-3 py-2 text-sm text-[#5C3D2E] hover:bg-[#E8D5B7]">{meta.emoji} {meta.label}</Link>
+          ))}
+        </div>
         <p className="text-sm text-[#8B6F4E] mb-4">Pick one or more vibes</p>
         <TagBrowser selected={selectedTags} />
         {selectedTags.length > 0 && (
@@ -587,7 +612,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-6 pb-10">
-        <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Destinations</Link>
+        <Link href="/explore?view=destinations" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Destinations</Link>
         <h1 className="text-xl font-bold text-[#2C1810] mb-5">{region}</h1>
         {cards.length === 0 ? (
           <p className="text-sm text-[#8B6F4E] italic">No destinations yet.</p>
@@ -630,6 +655,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-10">
+      <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
       <div className="mb-5">
         <h1 className="text-2xl font-bold text-[#2C1810]">Destinations</h1>
       </div>
