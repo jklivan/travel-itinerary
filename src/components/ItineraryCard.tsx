@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { MapPin, Star } from 'lucide-react'
+import { MapPin } from 'lucide-react'
+import { TRIP_STAMPS } from '@/lib/tripStamps'
 import BucketButton from './BucketButton'
 import { Amatic_SC, Kalam } from 'next/font/google'
 
@@ -64,6 +65,7 @@ export default function ItineraryCard({
   currentUserId, isOwn, isBucketed = false, saveCount,
 }: Props) {
   const isGuide = postType === 'guide'
+  const stamp = TRIP_STAMPS.find(stamp => stamp.value === tripRating)
   const coverColor = hashPick(title, COVER_COLORS)
   const avatarColor = hashPick(authorName, AVATAR_COLORS)
   const initials = getInitials(authorName)
@@ -118,7 +120,7 @@ export default function ItineraryCard({
           )}
 
           {/* Badge */}
-          <div className="absolute top-2 left-2 flex flex-col gap-1">
+          <div className="absolute top-2 left-2 max-w-[45%] flex flex-col gap-1">
             {audience === 'family' && (
               <span className="text-[10px] px-2 py-1 rounded font-semibold bg-black/60 text-white">👨‍👩‍👧 Family</span>
             )}
@@ -130,9 +132,18 @@ export default function ItineraryCard({
             )}
           </div>
 
+          {stamp && (
+            <span
+              aria-label={`Author verdict: ${stamp.label}`}
+              className={`absolute top-2 right-2 max-w-[45%] rounded px-2 py-1 text-center text-[10px] font-bold text-white shadow-sm ${stamp.bg}`}
+            >
+              {stamp.label}
+            </span>
+          )}
+
           {/* Bucket button */}
           {showBucket && (
-            <div className="absolute top-2 right-2">
+            <div className="absolute bottom-2 right-2">
               <BucketButton itineraryId={id} initialBucketed={isBucketed} isLoggedIn={!!currentUserId} />
             </div>
           )}
@@ -143,17 +154,6 @@ export default function ItineraryCard({
           <h2 className={`${amatic.className} text-[28px] text-[#2C1810] leading-tight line-clamp-2 mb-2`}>
             {title}
           </h2>
-
-          {tripRating != null && tripRating >= 1 && tripRating <= 5 && (
-            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mb-2 text-xs" aria-label={`Author rating: ${tripRating} out of 5`}>
-              <span className="flex gap-0.5" aria-hidden="true">
-                {[1, 2, 3, 4, 5].map(value => (
-                  <Star key={value} size={12} className={value <= tripRating ? 'fill-[#B99045] text-[#B99045]' : 'text-[#D8CEBB]'} />
-                ))}
-              </span>
-              <span className="text-[#8B6F4E]">{tripRating}/5 · Author</span>
-            </div>
-          )}
 
           <div className="text-xs text-[#8B6F4E] space-y-0.5">
             {location && (
