@@ -22,6 +22,8 @@ model User {
   notifications Notification[] @relation("NotificationRecipient")
   sentNotifications Notification[] @relation("NotificationActor")
   pushDevices PushDevice[]
+  sentMessages DirectMessage[] @relation("MessageSender")
+  receivedMessages DirectMessage[] @relation("MessageRecipient")
   createdAt      DateTime         @default(now())
 }
 
@@ -178,4 +180,24 @@ model PushDevice {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model DirectMessage {
+  id String @id @default(cuid())
+  senderId String
+  recipientId String
+  content String @db.VarChar(4000)
+  clientId String
+  itineraryId String?
+  itineraryTitle String?
+  placeId String?
+  placeName String?
+  placeNotes String?
+  createdAt DateTime @default(now())
+  sender User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, clientId])
+  @@index([senderId, recipientId, createdAt])
+  @@index([recipientId, createdAt])
 }

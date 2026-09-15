@@ -1,0 +1,19 @@
+import Link from 'next/link'
+import { MapPin } from 'lucide-react'
+
+export default function MessageAttachment({ name, trip, notes, href }: { name: string; trip?: string | null; notes?: string | null; href?: string }) {
+  return (
+    <div className="rounded-sm border border-[#d7dcd0] border-t-2 border-t-[#507c76] bg-[#fffdf6] p-3 shadow-sm">
+      <div className="flex items-start gap-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#e6ece5] text-[#507c76]"><MapPin size={19} strokeWidth={1.5} /></span>
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-[#507c76]">Place from the trip</p>
+          <p className="font-[family-name:var(--font-playfair)] text-lg leading-snug text-[#2e4147] break-words">{name}</p>
+          {trip && <p className="mt-1 text-xs text-[#8B6F4E] break-words">{trip}</p>}
+        </div>
+      </div>
+      {notes && <blockquote className="mt-3 border-l-2 border-[#C4A882] pl-3 text-sm leading-relaxed text-[#6b7067] whitespace-pre-wrap break-words">{notes}</blockquote>}
+      {href && <Link className="mt-3 inline-block text-sm font-semibold text-[#507c76] hover:underline" href={href}>View place in trip →</Link>}
+    </div>
+  )
+}

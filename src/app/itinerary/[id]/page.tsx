@@ -14,7 +14,6 @@ import { eventPhotos, pickEventPhoto, tripPhotoGallery } from '@/lib/eventPhotos
 import PhotoStrip from '@/components/PhotoStrip'
 import { tagMeta } from '@/lib/tags'
 import DeleteButton from '@/components/DeleteButton'
-import Comments from '@/components/Comments'
 import { TRIP_STAMPS } from '@/lib/tripStamps'
 import ItineraryMap from '@/components/ItineraryMap'
 import type { ItemPin } from '@/components/ItineraryMapInner'
@@ -153,7 +152,7 @@ export default async function ItineraryPage({
   if (it.visibility === 'draft' && !isOwn) notFound()
 
 
-  const [followRecord, bucketItem, comments] = await Promise.all([
+  const [followRecord, bucketItem] = await Promise.all([
     session?.user?.id && !isOwn
       ? prisma.follow.findUnique({
           where: { followerId_followingId: { followerId: session.user.id, followingId: it.user.id } },
@@ -164,17 +163,7 @@ export default async function ItineraryPage({
           where: { userId_itineraryId: { userId: session.user.id, itineraryId: id } },
         })
       : Promise.resolve(null),
-    prisma.comment.findMany({
-      where: { itineraryId: id, parentId: null },
-      orderBy: { createdAt: 'asc' },
-      include: {
-        user: { select: { id: true, name: true } },
-        replies: {
-          orderBy: { createdAt: 'asc' },
-          include: { user: { select: { id: true, name: true } } },
-        },
-      },
-    }),
+
   ])
   const followStatus = followRecord?.status ?? 'none'
   const isBucketed = !!bucketItem
@@ -423,8 +412,8 @@ export default async function ItineraryPage({
     const price = item.priceLevel == null ? null : Math.max(0, Math.min(type === 'hotel' ? 5 : 4, item.priceLevel))
 
     return (
-      <div key={item.id}>
-      <PlaceDetailsCard place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} className={`${styles.card} ${styles[type]} ${recommendation !== 'none' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
+      <div key={item.id} id={`place-${item.id}`} className="scroll-mt-24">
+      <PlaceDetailsCard messageHref={!isOwn ? `/friends/messages/${it.user.id}?place=${encodeURIComponent(item.id)}` : undefined} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} className={`${styles.card} ${styles[type]} ${recommendation !== 'none' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
         {recommendation === 'must' && type !== 'hotel' && <Image src="/must-do-stamp.png" alt="Must do" width={60} height={54} unoptimized className={styles.mustDoStamp} />}
         {recommendation === 'must' && type === 'hotel' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><BedDouble size={24} aria-hidden="true" /><span>Must stay</span></span>}
         {recommendation === 'avoid' && <span className={`${styles.mustDoStamp} ${styles.textStamp} ${styles.avoidStamp}`}><Ban size={24} aria-hidden="true" /><span>Avoid</span></span>}
@@ -793,12 +782,10 @@ export default async function ItineraryPage({
               </section>
             )}
 
-            <Comments
-              itineraryId={it.id}
-              initialComments={comments}
-              currentUserId={session?.user?.id}
-              isLoggedIn={!!session?.user}
-            />
+            {!isOwn && <div className="mt-6 border-t border-[#C4A882] pt-6">
+              <h2 className="font-semibold mb-2">Have a question about this trip?</h2>
+              <Link href={`/friends/messages/${it.user.id}`} className="inline-block rounded-full bg-[#507c76] px-4 py-2 text-sm text-white">Message {it.user.name} privately</Link>
+            </div>}
           </>
         )}
       </div>
