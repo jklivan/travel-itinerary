@@ -8,7 +8,12 @@ export default function useBottomToolbar() {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const bar = ref.current
-    if (!bar || Capacitor.getPlatform() !== 'ios') return
+    // Safari and other iOS browsers share the same viewport behavior as WKWebView.
+    // iPad Safari can identify itself as a Mac when requesting desktop sites.
+    const isIOS = Capacitor.getPlatform() === 'ios'
+      || /iPhone|iPad|iPod/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    if (!bar || !isIOS) return
     const viewport = window.visualViewport
     let frame = 0
     let settleTimer: ReturnType<typeof setTimeout> | undefined

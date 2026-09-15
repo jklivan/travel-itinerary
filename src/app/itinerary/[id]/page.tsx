@@ -99,6 +99,14 @@ const PLACE_CATEGORIES = {
 
 type PlaceCategory = keyof typeof PLACE_CATEGORIES
 
+const MEAL_GROUPS = [
+  { value: 'breakfast', label: 'Breakfast' },
+  { value: 'lunch', label: 'Lunch' },
+  { value: 'dinner', label: 'Dinner' },
+  { value: 'dessert', label: 'Dessert' },
+  { value: 'other', label: 'Other' },
+] as const
+
 function CategoryHeading({ type, count }: { type: PlaceCategory; count: number }) {
   const { label, Icon } = PLACE_CATEGORIES[type]
   return (
@@ -736,7 +744,23 @@ export default async function ItineraryPage({
                           {dFood.length > 0 && (
                             <div>
                               <CategoryHeading type="food_drink" count={dFood.length} />
-                              <div className="space-y-2">{dFood.map(item => renderFoodCard(item))}</div>
+                              <div className="space-y-5">
+                                {MEAL_GROUPS.map(group => {
+                                  const meals = dFood.filter(item => {
+                                    const mealType = item.mealType?.trim().toLowerCase()
+                                    return group.value === 'other'
+                                      ? !MEAL_GROUPS.some(candidate => candidate.value !== 'other' && candidate.value === mealType)
+                                      : mealType === group.value
+                                  })
+                                  if (meals.length === 0) return null
+                                  return (
+                                    <section key={group.value} aria-label={group.label}>
+                                      <h4 className="text-xs font-semibold uppercase tracking-wider text-[#ad6b57] mb-2">{group.label}</h4>
+                                      <div className="space-y-2">{meals.map(item => renderFoodCard(item))}</div>
+                                    </section>
+                                  )
+                                })}
+                              </div>
                             </div>
                           )}
                           {dActs.length > 0 && (
