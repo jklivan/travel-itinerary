@@ -446,6 +446,7 @@ export default function CreatePage() {
     let lastError: unknown
     // Retrying is safe: extraction only reads the document and does not write data.
     for (let attempt = 0; attempt < 2; attempt++) {
+      if (externalSignal?.aborted) throw new Error('Import cancelled.')
       const controller = new AbortController()
       const cancelReading = () => controller.abort()
       externalSignal?.addEventListener('abort', cancelReading, { once: true })
@@ -457,7 +458,12 @@ export default function CreatePage() {
           body: JSON.stringify(payload),
           signal: controller.signal,
         })
-        if (res.ok) return res.json()
+        // Keep the timeout and Cancel listener active until the body is read.
+        if (res.ok) {
+          const data = await res.json()
+          if (externalSignal?.aborted) throw new Error('Import cancelled.')
+          return data
+        }
         const body = await res.json().catch(() => ({}))
         throw new Error(body.error ?? 'Extraction failed.')
       } catch (err) {
@@ -488,7 +494,7 @@ export default function CreatePage() {
   }
 
   async function handlePasteExtract() {
-    if (!pasteText.trim()) return
+    if (!pasteText.trim() || importAbortRef.current) return
     setExtracting(true)
     setExtractError(null)
     const controller = new AbortController()
@@ -527,7 +533,7 @@ export default function CreatePage() {
   }
 
   async function handleExtractAll() {
-    if (pendingFiles.length === 0) return
+    if (pendingFiles.length === 0 || importAbortRef.current) return
     setExtracting(true)
     setExtractError(null)
     setExtractProgress(pendingFiles.length > 1 ? { current: 0, total: pendingFiles.length } : null)
@@ -536,6 +542,7 @@ export default function CreatePage() {
     importAbortRef.current = controller
     try {
       for (let i = 0; i < pendingFiles.length; i++) {
+        if (controller.signal.aborted) throw new Error('Import cancelled.')
         if (pendingFiles.length > 1) setExtractProgress({ current: i + 1, total: pendingFiles.length })
         setImportStage('uploading')
         const payload = await readFileForUpload(pendingFiles[i], controller.signal)
@@ -772,7 +779,7 @@ export default function CreatePage() {
 
               {pasteMode && (
                 <div className="space-y-2">
-                  <textarea value={pasteText} onChange={e => setPasteText(e.target.value)}
+                  <textarea value={pasteText} disabled={extracting} onChange={e => setPasteText(e.target.value)}
                     placeholder="Paste your itinerary — email confirmation, notes, booking details…"
                     rows={6}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
@@ -781,7 +788,10 @@ export default function CreatePage() {
                       className="flex-1 bg-blue-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
                       {extracting ? 'Extracting…' : 'Extract itinerary'}
                     </button>
-                    <button type="button" onClick={() => { setPasteMode(false); setPasteText(''); setExtractError(null) }}
+                    <button type="button" onClick={() => {
+                      if (extracting) cancelImport()
+                      else { setPasteMode(false); setExtractError(null) }
+                    }}
                       className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg transition-colors">
                       Cancel
                     </button>
@@ -800,7 +810,7 @@ export default function CreatePage() {
                       'Organizing your trip…'}
                   </p>
                   <p className="text-xs text-blue-600">
-                    {extractProgress ? `File ${extractProgress.current} of ${extractProgress.total}` : 'Large PDFs can take a few minutes.'}
+                    {pasteMode ? 'Reading your notes. You can cancel without losing your text.' : extractProgress ? `File ${extractProgress.current} of ${extractProgress.total}` : 'Large PDFs can take a few minutes.'}
                   </p>
                   <div className="flex items-center gap-1.5 text-[11px] text-blue-700">
                     <span className={importStage === 'uploading' ? 'font-semibold' : ''}>1 Upload</span><span>→</span>
@@ -813,7 +823,7 @@ export default function CreatePage() {
               )}
             </div>
 
-            <button type="button" onClick={() => setStep('basics')}
+            <button type="button" disabled={extracting} onClick={() => setStep('basics')}
               className="w-full py-3.5 rounded-2xl border-2 border-dashed border-gray-300 text-sm font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
               Start from scratch →
             </button>
