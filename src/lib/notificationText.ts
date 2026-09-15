@@ -1,4 +1,5 @@
 export function notificationText(kind: string, actor: string, trip: string) {
+  if (kind === 'published') return `${actor} posted a new trip: “${trip}”.`
   return `${actor} ${kind === 'comment' ? 'commented on' : 'saved'} your trip “${trip}”.`
 }
 

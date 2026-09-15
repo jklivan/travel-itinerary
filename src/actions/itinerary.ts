@@ -1,5 +1,6 @@
 'use server'
 
+import { scheduleTripPublishedNotifications } from '@/lib/tripPublishedNotifications'
 import { eventPhotos } from '@/lib/eventPhotos'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
@@ -282,6 +283,7 @@ export async function createItinerary(
     generateMissingDescriptions(itinerary.id).catch(() => null),
   ]), 20000)
 
+  if (visibility === 'public') scheduleTripPublishedNotifications(itinerary.id)
   revalidatePath('/')
   return { itineraryId: itinerary.id }
 }
@@ -353,6 +355,7 @@ export async function createItineraryDirect(input: {
     generateMissingDescriptions(itinerary.id).catch(() => null),
   ]), 20000)
 
+  if (visibility === 'public') scheduleTripPublishedNotifications(itinerary.id)
   revalidatePath('/')
   return { itineraryId: itinerary.id }
 }
@@ -428,6 +431,8 @@ export async function updateItinerary(
   } catch {
     return { error: "Your changes could not be saved. Your existing trip is unchanged. Please try again." }
   }
+
+  if (existing.visibility === 'draft' && visibility === 'public') scheduleTripPublishedNotifications(id)
 
   // Fetch stock photo, geocode destinations, infer missing price levels, and generate descriptions after save
   await withTimeout(Promise.all([
