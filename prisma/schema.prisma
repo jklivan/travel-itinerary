@@ -24,7 +24,20 @@ model User {
   pushDevices PushDevice[]
   sentMessages DirectMessage[] @relation("MessageSender")
   receivedMessages DirectMessage[] @relation("MessageRecipient")
+  savedImportNotes SavedImportNotes[]
   createdAt      DateTime         @default(now())
+}
+
+model SavedImportNotes {
+  id String @id @default(cuid())
+  userId String
+  text String @db.Text
+  digest String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, digest])
+  @@index([userId, createdAt])
 }
 
 model Follow {

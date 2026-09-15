@@ -12,6 +12,8 @@ import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { upload } from '@vercel/blob/client'
 import { createItineraryDirect } from '@/actions/itinerary'
+import { saveImportNotes } from '@/actions/importNotes'
+import SavedImportNotes from '@/components/SavedImportNotes'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import TagPicker from '@/components/TagPicker'
 import { TripRatingPicker } from '@/components/TripRatingPicker'
@@ -356,9 +358,10 @@ export default function CreatePage() {
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [pasteMode, setPasteMode] = useState(false)
   const [pasteText, setPasteText] = useState('')
+  const [savedNotesVersion, setSavedNotesVersion] = useState(0)
   const [importSources, setImportSources] = useState<string[]>([])
   const [expandedDetails, setExpandedDetails] = useState<Set<string>>(new Set())
-  const [importStage, setImportStage] = useState<'uploading' | 'reading' | 'organizing' | null>(null)
+  const [importStage, setImportStage] = useState<'saving' | 'uploading' | 'reading' | 'organizing' | null>(null)
   const importAbortRef = useRef<AbortController | null>(null)
 
   const showRating = postType === 'itinerary'
@@ -499,8 +502,15 @@ export default function CreatePage() {
     setExtractError(null)
     const controller = new AbortController()
     importAbortRef.current = controller
-    setImportStage('organizing')
+    setImportStage('saving')
     try {
+      let saved: Awaited<ReturnType<typeof saveImportNotes>>
+      try { saved = await saveImportNotes(pasteText) }
+      catch { throw new Error('Could not save your notes. They are still in the text box. Check your connection and try again.') }
+      if (saved.error) throw new Error(saved.error)
+      setSavedNotesVersion(value => value + 1)
+      if (controller.signal.aborted) throw new Error('Import cancelled. Your notes are saved for later.')
+      setImportStage('organizing')
       const data = await fetchExtraction({ text: pasteText }, 'your pasted text', controller.signal)
       applyExtractionResults([data], ['Pasted text'])
       setPasteMode(false)
@@ -786,7 +796,7 @@ export default function CreatePage() {
                   <div className="flex gap-2">
                     <button type="button" onClick={handlePasteExtract} disabled={extracting || !pasteText.trim()}
                       className="flex-1 bg-blue-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
-                      {extracting ? 'Extracting…' : 'Extract itinerary'}
+                      {extracting ? importStage === 'saving' ? 'Saving notes…' : 'Extracting…' : 'Save & extract itinerary'}
                     </button>
                     <button type="button" onClick={() => {
                       if (extracting) cancelImport()
@@ -805,23 +815,28 @@ export default function CreatePage() {
               {extracting && (
                 <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5 space-y-2">
                   <p className="text-xs font-medium text-blue-800">
-                    {importStage === 'uploading' ? 'Uploading securely…' :
+                    {importStage === 'saving' ? 'Saving your notes to your account…' : importStage === 'uploading' ? 'Uploading securely…' :
                       importStage === 'reading' ? 'Reading your file…' :
                       'Organizing your trip…'}
                   </p>
                   <p className="text-xs text-blue-600">
-                    {pasteMode ? 'Reading your notes. You can cancel without losing your text.' : extractProgress ? `File ${extractProgress.current} of ${extractProgress.total}` : 'Large PDFs can take a few minutes.'}
+                    {pasteMode ? importStage === 'saving' ? 'Processing starts after your notes are saved.' : 'Your notes are saved. If interrupted, return here and choose Recover saved notes.' : extractProgress ? `File ${extractProgress.current} of ${extractProgress.total}` : 'Large PDFs can take a few minutes.'}
                   </p>
-                  <div className="flex items-center gap-1.5 text-[11px] text-blue-700">
+                  {!pasteMode && <div className="flex items-center gap-1.5 text-[11px] text-blue-700">
                     <span className={importStage === 'uploading' ? 'font-semibold' : ''}>1 Upload</span><span>→</span>
                     <span className={importStage === 'reading' || importStage === 'organizing' ? 'font-semibold' : ''}>2 Read</span><span>→</span>
                     <span className={importStage === 'organizing' ? 'font-semibold' : ''}>3 Organize</span><span>→</span>
                     <span>4 Review</span>
-                  </div>
+                  </div>}
                   <button type="button" onClick={cancelImport} className="text-xs font-medium text-blue-700 underline hover:text-blue-900">Cancel import</button>
                 </div>
               )}
             </div>
+
+            <SavedImportNotes refreshKey={savedNotesVersion} disabled={extracting} onRestore={text => {
+              if (importAbortRef.current) return
+              setPasteText(text); setPasteMode(true); setPendingFiles([]); setExtractError(null)
+            }} />
 
             <button type="button" disabled={extracting} onClick={() => setStep('basics')}
               className="w-full py-3.5 rounded-2xl border-2 border-dashed border-gray-300 text-sm font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
