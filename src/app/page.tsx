@@ -45,8 +45,8 @@ async function FeedResults({ searchQuery }: { searchQuery: string }) {
         } : {}),
       },
       orderBy: [
-        { bucketedBy: { _count: 'desc' } },
         { createdAt: 'desc' },
+        { id: 'desc' },
       ],
       include: {
         user: { select: { name: true, id: true } },

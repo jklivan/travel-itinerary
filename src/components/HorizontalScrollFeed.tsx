@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useState, Children } from 'react'
+import { useRef, useEffect, useState, Children, isValidElement } from 'react'
 
 export default function HorizontalScrollFeed({ children }: { children: React.ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -41,16 +41,19 @@ export default function HorizontalScrollFeed({ children }: { children: React.Rea
     >
       {items.map((child, i) => (
         <div
-          key={i}
-          onMouseEnter={() => setHoveredIndex(i)}
-          onMouseLeave={() => setHoveredIndex(null)}
-          className={`snap-center shrink-0 transition-all duration-300 ease-out ${
+          key={isValidElement(child) ? child.key : i}
+          onPointerEnter={event => { if (event.pointerType === 'mouse') setHoveredIndex(i) }}
+          onPointerLeave={event => { if (event.pointerType === 'mouse') setHoveredIndex(null) }}
+          className="snap-center shrink-0"
+        >
+          <div className={`transition-transform duration-300 ease-out ${
             i === displayIndex
               ? 'scale-105 opacity-100 rotate-0'
               : `scale-90 opacity-55 ${i % 2 === 0 ? 'rotate-2' : '-rotate-2'}`
           }`}
-        >
-          {child}
+          >
+            {child}
+          </div>
         </div>
       ))}
     </div>

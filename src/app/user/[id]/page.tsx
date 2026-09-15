@@ -48,7 +48,7 @@ export default async function UserProfilePage({
   const [itineraries, drafts, bucketItems, followRecord, followerCount, followingCount, viewerBucketIds, folders] = await Promise.all([
     prisma.itinerary.findMany({
       where: { userId: id, visibility: { not: 'draft' } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       include: {
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
         photos: { take: 1, orderBy: { isStock: 'asc' } },
@@ -58,7 +58,7 @@ export default async function UserProfilePage({
     isOwn
       ? prisma.itinerary.findMany({
           where: { userId: id, visibility: 'draft' },
-          orderBy: { createdAt: 'desc' },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
           include: {
             destinations: { orderBy: { order: 'asc' }, include: { items: true } },
             photos: { take: 1, orderBy: { isStock: 'asc' } },
@@ -69,7 +69,7 @@ export default async function UserProfilePage({
     isOwn
       ? prisma.bucketListItem.findMany({
           where: { userId: id, itinerary: { visibility: { not: 'draft' } } },
-          orderBy: { createdAt: 'desc' },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
           include: {
             itinerary: {
               include: {
@@ -97,8 +97,8 @@ export default async function UserProfilePage({
       : Promise.resolve([]),
   ])
 
-  const selectedFolder = folder && (folder === 'unfiled' || folders.some(f => f.id === folder)) ? folder : ''
-  const visibleBucketItems = bucketItems.filter(item => !selectedFolder || (selectedFolder === 'unfiled' ? !item.folderId : item.folderId === selectedFolder))
+  const selectedFolder = folder && folders.some(f => f.id === folder) ? folder : ''
+  const visibleBucketItems = bucketItems.filter(item => !selectedFolder || item.folderId === selectedFolder)
 
   const followStatus = followRecord?.status ?? 'none'
   const avatarColor = hashPick(user.name, AVATAR_COLORS)
@@ -268,9 +268,9 @@ export default async function UserProfilePage({
       ) : (
         <>
           <h2 className="font-semibold text-[#2C1810] text-sm mb-3 flex items-center gap-2">
-            <span>❤️</span> {folders.find(f => f.id === selectedFolder)?.name ?? (selectedFolder === 'unfiled' ? 'Unfiled' : 'Saved')}
+            <span>❤️</span> {folders.find(f => f.id === selectedFolder)?.name ?? 'Saved'}
           </h2>
-          {isOwn && <SavedFolders key={selectedFolder} userId={id} folders={folders.map(f => ({ ...f, count: bucketItems.filter(item => item.folderId === f.id).length }))} selected={selectedFolder} total={bucketItems.length} unfiled={bucketItems.filter(item => !item.folderId).length} />}
+          {isOwn && <SavedFolders key={selectedFolder} userId={id} folders={folders.map(f => ({ ...f, count: bucketItems.filter(item => item.folderId === f.id).length }))} selected={selectedFolder} total={bucketItems.length} />}
           {visibleBucketItems.length === 0 ? (
             <div className="bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] p-8 text-center">
               <p className="text-4xl mb-3">❤️</p>

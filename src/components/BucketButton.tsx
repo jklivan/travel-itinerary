@@ -68,9 +68,9 @@ export default function BucketButton({
       onClick={handleClick}
       title={label}
       aria-label={label}
-      className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-all ${
+      className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-colors ${
         bucketed
-          ? 'bg-red-500 text-white scale-110'
+          ? 'bg-red-500 text-white'
           : 'bg-white/90 text-gray-400 hover:bg-red-50 hover:text-red-400'
       }`}
     >

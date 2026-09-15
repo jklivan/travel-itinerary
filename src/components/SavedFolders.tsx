@@ -8,8 +8,8 @@ import { deleteSavedFolder, saveFolder } from '@/actions/savedFolders'
 
 type FolderSummary = { id: string; name: string; count: number }
 
-export default function SavedFolders({ userId, folders, selected, total, unfiled }: {
-  userId: string; folders: FolderSummary[]; selected: string; total: number; unfiled: number
+export default function SavedFolders({ userId, folders, selected, total }: {
+  userId: string; folders: FolderSummary[]; selected: string; total: number
 }) {
   const router = useRouter()
   const [editing, setEditing] = useState<string | null>(null)
@@ -19,7 +19,7 @@ export default function SavedFolders({ userId, folders, selected, total, unfiled
   const [pending, startTransition] = useTransition()
   const active = folders.find(folder => folder.id === selected)
   const base = `/user/${userId}?tab=bucket`
-  const options = [{ id: '', name: 'All saved', count: total }, { id: 'unfiled', name: 'Unfiled', count: unfiled }, ...folders]
+  const options = [{ id: '', name: 'All saved', count: total }, ...folders]
 
   return (
     <div className="mb-6 rounded-xl border border-[#E8D5B7] bg-[#FAF7F2] p-4">
@@ -58,7 +58,7 @@ export default function SavedFolders({ userId, folders, selected, total, unfiled
         </div>
       </form>}
       {deleting && active && <div className="mt-4 text-sm text-[#5C3D2E]">
-        <p>Delete “{active.name}”? Its trips will stay saved in Unfiled.</p>
+        <p>Delete “{active.name}”? Its trips will stay in All saved.</p>
         <div className="mt-2 flex gap-3">
           <button type="button" disabled={pending} className="rounded-lg bg-red-700 px-3 py-2 text-white disabled:opacity-50" onClick={() => {
             setError('')

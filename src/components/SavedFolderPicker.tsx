@@ -64,7 +64,7 @@ export default function SavedFolderPicker({ itineraryId, label = 'Save to folder
         }}>
           <label className="block text-sm">Folder
             <select value={folderId} onChange={event => setFolderId(event.target.value)} disabled={!loaded || pending} className="mt-2 w-full rounded-lg border border-[#C4A882] bg-white p-3">
-              <option value="">Unfiled</option>
+              <option value="">All saved only</option>
               {folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
               <option value="new">+ Create new folder</option>
             </select>
