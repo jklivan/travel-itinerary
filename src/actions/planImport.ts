@@ -1,5 +1,7 @@
 'use server'
 
+import { after } from 'next/server'
+import { enrichPlaceIds } from '@/lib/enrichPlaceIds'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
@@ -27,6 +29,7 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
         await tx.destItem.create({ data: { id: `${requestId}:${index}`, destinationId: destination.id, name: place.name.trim(), type: place.type, notes: place.notes || null, rating: place.rating, mealType: place.type === 'food_drink' ? place.mealType || null : null, dayIndex: place.day, order: (last._max.order ?? -1) + 1, groupIndex: place.type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0 } })
       }
     }, { timeout: 60000 })
+    after(() => enrichPlaceIds(places.map((_, index) => `${requestId}:${index}`)).catch(() => undefined))
     for (const path of ['/', '/plan', `/plan/${planId}`, `/itinerary/${planId}`]) revalidatePath(path)
     return { success: true }
   } catch { return { error: 'Could not add these places. Your review is still here; please try again.' } }

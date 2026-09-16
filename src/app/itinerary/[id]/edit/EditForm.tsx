@@ -572,7 +572,7 @@ function SortableItem({ item, dayControl, isEditing, onEdit, onDraftChange, onUp
       <button type="button" onClick={onEdit} className="flex items-center gap-2 min-w-0 flex-1 text-left hover:opacity-75 transition-opacity">
         <ItemSummary item={item} />
       </button>
-      <button type="button" onClick={onRemove} className="text-[#c3bcad] hover:text-red-400 text-lg leading-none shrink-0">×</button>
+      <button type="button" onClick={onRemove} aria-label={`Delete ${item.name || 'this place'}`} className="min-h-11 shrink-0 px-2 text-xs text-red-700 hover:underline">Delete place</button>
       </div>
       <EventPhotoInput photos={item.photos} name={item.name} onChange={onPhotoChange} onBusyChange={onPhotoBusyChange} />
     </div>
@@ -1008,10 +1008,10 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
           {pending ? 'Saving…' : itinerary.visibility === 'draft' ? 'Publish' : 'Save changes'}
         </button>
       </div>
-      <div className="flex justify-center">
-        <DeleteButton id={itinerary.id} />
-      </div>
     </form>
+    <div className="mt-8 border-t border-[#d7cebc] pt-5">
+      <DeleteButton id={itinerary.id} />
+    </div>
     </TripEntryLayout>
   )
 }

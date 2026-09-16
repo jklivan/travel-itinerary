@@ -2,7 +2,6 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { tripPhotoGallery } from '@/lib/eventPhotos'
 import StoryFeed from '@/components/StoryFeed'
-import PlanningShortcut from '@/components/PlanningShortcut'
 import ItineraryCard from '@/components/ItineraryCard'
 import Link from 'next/link'
 import { Suspense } from 'react'
@@ -61,7 +60,6 @@ async function FeedResults({ searchQuery }: { searchQuery: string }) {
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
       <Suspense fallback={null}><StoryFeed userId={userId} following={false} /></Suspense>
-      {userId && <Suspense fallback={null}><PlanningShortcut userId={userId} /></Suspense>}
       <h1 className="mb-6 border-b border-[#C4A882]/50 px-4 py-3 text-center text-base font-semibold text-[#2C1810]">For You</h1>
       {searchQuery && <div className="mb-5">
         <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">&quot;{searchQuery}&quot;</h1>

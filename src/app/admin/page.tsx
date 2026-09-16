@@ -1,3 +1,4 @@
+import PlaceIdBackfill from '@/components/PlaceIdBackfill'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
@@ -84,6 +85,8 @@ export default async function AdminPage() {
         <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
         <p className="text-sm text-gray-500 mt-0.5">Site overview</p>
       </div>
+
+      <PlaceIdBackfill />
 
       {/* ── Top stats ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

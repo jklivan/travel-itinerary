@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
 import Planner from './Planner'
 
+export const maxDuration = 300
+
 export default async function PlanPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ import?: string }> }) {
   const { id } = await params
   const importing = (await searchParams).import === '1'

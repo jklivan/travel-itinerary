@@ -43,7 +43,7 @@ export default async function UserProfilePage({
   const isOwn = session?.user?.id === user.id
   const viewerId = session?.user?.id ?? null
   const showBucket = tab === 'bucket'
-  const showDrafts = tab === 'drafts' && isOwn
+  const showDrafts = (tab === 'in-progress' || tab === 'drafts') && isOwn
 
   const [itineraries, drafts, bucketItems, followRecord, followerCount, followingCount, viewerBucketIds, folders, pendingCount] = await Promise.all([
     prisma.itinerary.findMany({
@@ -166,7 +166,7 @@ export default async function UserProfilePage({
 
       {/* Tabs */}
       {isOwn && (
-        <div className="flex gap-1 bg-[#FAF7F2] rounded-xl p-1 text-sm font-medium border border-[#E8D5B7] mb-5 w-fit">
+        <div className="flex flex-wrap gap-1 bg-[#FAF7F2] rounded-xl p-1 text-sm font-medium border border-[#E8D5B7] mb-5 w-fit">
           <Link
             href={`/user/${id}`}
             className={`px-4 py-1.5 rounded-lg transition-colors ${
@@ -191,12 +191,12 @@ export default async function UserProfilePage({
             )}
           </Link>
           <Link
-            href={`/user/${id}?tab=drafts`}
+            href={`/user/${id}?tab=in-progress`}
             className={`px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
               showDrafts ? 'bg-amber-500 text-white shadow-sm' : 'text-[#8B6F4E] hover:text-[#2C1810]'
             }`}
           >
-            Drafts
+            In progress
             {drafts.length > 0 && (
               <span className={`text-xs rounded-full px-1.5 py-0.5 font-bold ${
                 showDrafts ? 'bg-amber-400 text-white' : 'bg-[#E8D5B7] text-[#5C3D2E]'
@@ -212,36 +212,12 @@ export default async function UserProfilePage({
 
       {showDrafts ? (
         <>
-          <h2 className="font-semibold text-[#2C1810] text-sm mb-3">Drafts</h2>
-          {drafts.length === 0 ? (
-            <div className="bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] p-8 text-center">
-              <p className="text-[#8B6F4E] italic text-sm">No drafts yet.</p>
-            </div>
-          ) : (
-            <HorizontalScrollFeed>
-              {drafts.map((it) => (
-                <ItineraryCard
-                  key={it.id}
-                  id={it.id}
-                  postType={it.postType}
-                  title={it.title}
-                  bestMonths={it.bestMonths}
-              datesFlexible={it.datesFlexible}
-                  startDate={it.startDate}
-                  endDate={it.endDate}
-                  audience={it.audience}
-                  budget={it.budget}
-                  tripRating={it.tripRating}
-                  authorName={user.name}
-                  destinations={it.destinations}
-                  coverPhoto={it.photos[0]?.url ?? null}
-                  currentUserId={viewerId}
-                  isOwn={true}
-                  saveCount={it._count.bucketedBy}
-                />
-              ))}
-            </HorizontalScrollFeed>
-          )}
+          <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="font-semibold text-[#2C1810]">In progress</h2><p className="mt-1 text-sm text-[#8B6F4E]">All your unpublished trips, ready to pick up anytime.</p></div></div>
+          {drafts.length === 0 ? <div className="rounded-xl border border-[#E8D5B7] bg-[#FAF7F2] p-8 text-center"><p className="text-sm text-[#8B6F4E]">No trips in progress yet.</p><Link href="/plan" className="mt-4 inline-flex min-h-11 items-center rounded-full bg-[#2C1810] px-5 text-sm font-semibold text-white">Start planning</Link></div> : <div className="space-y-3">
+            {drafts.map(trip => <Link key={trip.id} href={trip.isPlan ? `/plan/${trip.id}` : `/itinerary/${trip.id}/edit`} className="flex items-center gap-3 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4 transition-colors hover:bg-[#edf1e9]">
+              <span className="min-w-0 flex-1"><span className="text-xs font-semibold uppercase tracking-wide text-[#507c76]">Only you · Not posted</span><span className="mt-1 block break-words font-[family-name:var(--font-playfair)] text-xl text-[#2e4147]">{trip.title || 'Untitled trip'}</span><span className="mt-1 block text-sm text-[#73786d]">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places · Open to keep planning</span></span><ChevronRight size={20} className="shrink-0 text-[#507c76]" />
+            </Link>)}
+          </div>}
         </>
       ) : !showBucket ? (
         <>

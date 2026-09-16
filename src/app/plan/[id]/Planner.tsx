@@ -143,12 +143,12 @@ function PlaceRow({ place }: { place: Place & { destination: string } }) {
       <div className="flex gap-3"><button className={buttonClass}>{busy ? 'Saving…' : 'Save changes'}</button><button type="button" onClick={() => setEditing(false)} className="px-3 text-sm">Cancel</button></div>
     </fieldset>{error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}</form>}
     {saved && <p role="status" className="flex items-center gap-1 text-xs text-[#507c76]"><Check size={14} />Saved</p>}
-    {!editing && <div className="mb-2">{!removing ? <button className="min-h-11 text-xs text-[#73786d] underline" onClick={() => setRemoving(true)}>Remove place</button> : <div className="text-sm"><p>Remove this place and its notes from your trip?</p><button disabled={busy} className="min-h-11 pr-4 text-red-700" onClick={async () => {
+    {!editing && <div className="mb-2">{!removing ? <button type="button" aria-label={`Delete ${place.name}`} className="min-h-11 text-xs text-red-700" onClick={() => setRemoving(true)}>Delete place</button> : <div className="text-sm"><p>Delete this place and its notes? The rest of your trip will stay.</p><button type="button" disabled={busy} className="min-h-11 pr-4 text-red-700" onClick={async () => {
       if (saving.current) return
       saving.current = true; setBusy(true); setError('')
       try { const result = await removePlanPlace(place.id); if (result.error) setError(result.error); else router.refresh() }
       catch { setError('Could not remove. Please try again.') } finally { saving.current = false; setBusy(false) }
-    }}>{busy ? 'Removing…' : 'Remove'}</button><button disabled={busy} className="min-h-11" onClick={() => setRemoving(false)}>Keep place</button></div>}{error && <p role="alert" className="text-sm text-red-700">{error}</p>}</div>}
+    }}>{busy ? 'Deleting…' : 'Delete this place'}</button><button type="button" disabled={busy} className="min-h-11" onClick={() => setRemoving(false)}>Keep place</button></div>}{error && <p role="alert" className="text-sm text-red-700">{error}</p>}</div>}
     <PlaceQuickEdit itemId={place.id} name={place.name} rating={place.rating} photos={place.photos} />
   </article>
 }

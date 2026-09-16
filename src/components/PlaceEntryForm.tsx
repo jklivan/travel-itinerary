@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ReactNode } from 'react'
 import { Star, X, Check } from 'lucide-react'
+import PlacePeople from './PlacePeople'
 import PlacesAutocomplete from './PlacesAutocomplete'
 import EventPhotoInput from './EventPhotoInput'
 import RecommendationPicker from './RecommendationPicker'
@@ -64,7 +65,8 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
   const [photos, setPhotos] = useState<string[]>([])
   const photo = photos[0] ?? ''
   const [placeId, setPlaceId] = useState('')
-  const placeContext = useRef('')
+  const [placeContext, setPlaceContext] = useState('')
+  const [placeLocation, setPlaceLocation] = useState('')
   const [photoUploading, setPhotoUploading] = useState(false)
   const [showMore, setShowMore] = useState(false)
 
@@ -82,7 +84,7 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
     if (!name.trim() || saving.current || photoUploading) return
     saving.current = true; setBusy(true); setError('')
     try {
-      const result = await onAdd({ type, name: name.trim(), mealType, rating, notes: notes.trim(), tags: recommendationTags(tags, recommendation), photo, photos, placeId: placeContext.current === JSON.stringify([city, type]) ? placeId : '' })
+      const result = await onAdd({ type, name: name.trim(), mealType, rating, notes: notes.trim(), tags: recommendationTags(tags, recommendation), photo, photos, placeId: placeContext === JSON.stringify([city, type]) ? placeId : '' })
       if (result === false) return
       setName(''); setMealType(''); setRating(0); setNotes(''); setTags([]); setRecommendation('none'); setPhotos([]); setPlaceId(''); setShowMore(false)
     } catch { setError('Could not save. Your details are still here; please try again.') }
@@ -98,8 +100,9 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
         </button>
       </div>
       <PlacesAutocomplete value={name} onChange={v => { setName(v); setPlaceId('') }}
-        onSelect={(_m, _s, pid) => { setPlaceId(pid ?? ''); placeContext.current = JSON.stringify([city, type]) }}
+        onSelect={(_m, _s, pid) => { setPlaceId(pid ?? ''); setPlaceLocation(_s); setPlaceContext(JSON.stringify([city, type])) }}
         aria-label="Place name" maxLength={240} type={cfg.placeType} placeholder={cfg.placeholder} className={inputCls} city={city} />
+      {placeId && placeContext === JSON.stringify([city, type]) && <PlacePeople key={placeId} placeId={placeId} name={name} location={[city, placeLocation].filter(Boolean).join(', ')} />}
       {type === 'food_drink' && (
         <div className="flex flex-wrap gap-1.5">
           {MEAL_TYPES.map(mt => {

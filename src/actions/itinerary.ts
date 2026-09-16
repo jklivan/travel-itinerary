@@ -1,6 +1,7 @@
 'use server'
 
 import { scheduleTripPublishedNotifications } from '@/lib/tripPublishedNotifications'
+import { resolvePlaceIdentity } from '@/lib/placeIdentity'
 import { eventPhotos } from '@/lib/eventPhotos'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
@@ -171,22 +172,21 @@ async function geocodeItineraryDests(itineraryId: string): Promise<void> {
 // "The Edition, Rome, Italy" — so imported itineraries appear as map pins immediately.
 async function geocodeItineraryItems(itineraryId: string): Promise<void> {
   const items = await prisma.destItem.findMany({
-    where: {
-      destination: { itineraryId },
-      lat: null,
-      name: { not: '' },
-    },
-    select: {
-      id: true,
-      name: true,
-      destination: { select: { name: true, country: true } },
-    },
+    where: { destination: { itineraryId }, OR: [{ lat: null }, { placeId: null }, { placeId: '' }], name: { not: '' } },
+    select: { id: true, name: true, placeId: true, lat: true, lng: true, destination: { select: { name: true, country: true, lat: true, lng: true } } },
   })
   for (const item of items) {
-    const query = [item.name, item.destination.name, item.destination.country].filter(Boolean).join(', ')
-    const coords = await geocodePlaceByName(query)
-    if (coords) {
-      await prisma.destItem.update({ where: { id: item.id }, data: coords })
+    if (!item.placeId) {
+      const result = await resolvePlaceIdentity(item).catch(() => null)
+      if (result?.match) {
+        await prisma.destItem.updateMany({ where: { id: item.id, name: item.name, OR: [{ placeId: null }, { placeId: '' }] }, data: { placeId: result.match.id!, ...(item.lat === null ? { lat: result.match.location!.latitude, lng: result.match.location!.longitude } : {}) } })
+        continue
+      }
+    }
+    if (item.lat === null) {
+      const query = [item.name, item.destination.name, item.destination.country].filter(Boolean).join(', ')
+      const coords = await geocodePlaceByName(query)
+      if (coords) await prisma.destItem.updateMany({ where: { id: item.id, name: item.name, lat: null }, data: coords })
     }
   }
 }
@@ -453,7 +453,7 @@ export async function updateItinerary(
   redirect(`/itinerary/${id}`)
 }
 
-export async function deleteItinerary(id: string): Promise<{ error?: string }> {
+export async function deleteItinerary(id: string): Promise<{ error?: string; success?: boolean }> {
   const session = await auth()
   if (!session?.user?.id) return { error: 'You must be logged in.' }
 
@@ -464,5 +464,5 @@ export async function deleteItinerary(id: string): Promise<{ error?: string }> {
   revalidatePath('/')
   revalidatePath('/plan')
   revalidatePath(`/user/${session.user.id}`)
-  redirect('/')
+  return { success: true }
 }

@@ -24,7 +24,7 @@ function harness(user = 'owner', fail = false) {
     },
   }
   const prisma = { $transaction: async callback => { const previous = structuredClone(items); try { return await callback(tx) } catch (error) { items = previous; throw error } } }
-  const action = load('../src/actions/planImport.ts', { '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} } }).importIntoPlan
+  const action = load('../src/actions/planImport.ts', { 'next/server': { after() {} }, '@/lib/enrichPlaceIds': { enrichPlaceIds: async () => {} }, '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} } }).importIntoPlan
   return { action, items: () => items }
 }
 test('import keeps explicit days and leaves undated places unscheduled', () => {
