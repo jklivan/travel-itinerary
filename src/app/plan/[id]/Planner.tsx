@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, MapPin, LockKeyhole, CalendarDays, Check } from 'lucide-react'
+import { Plus, MapPin, LockKeyhole, CalendarDays, Check, Hotel, Utensils, Camera } from 'lucide-react'
 import { addPlanPlace, editPlanPlace, savePlanDetails, sharePlan, removePlanPlace } from '@/actions/planning'
 import DeleteButton from '@/components/DeleteButton'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
@@ -87,7 +87,16 @@ function AddPlace({ trip, onClose }: { trip: Trip; onClose: () => void }) {
   }}><h2 className="mb-3 text-lg font-semibold">Add a place</h2><fieldset disabled={busy} className="space-y-3">
     <label className="block text-sm">Destination<PlacesAutocomplete name="destination" required maxLength={160} value={destination} onChange={changeDestination} onSelect={(main, secondary) => changeDestination([main, secondary].filter(Boolean).join(', '))} type="destination" placeholder="City or area" className={inputClass} /></label>
     {trip.destinations.length > 1 && <div className="flex flex-wrap gap-2">{trip.destinations.filter(d => d.name !== 'Destination to decide').map(d => <button type="button" key={d.id} onClick={() => changeDestination(d.name)} className="min-h-11 rounded-lg border border-[#d7cebc] px-3 text-xs">{d.name}</button>)}</div>}
-    <label className="block text-sm">Category<select name="type" value={category} onChange={e => { setCategory(e.target.value); setPlaceId('') }} className={inputClass}><option value="hotel">Hotel</option><option value="food_drink">Restaurant or drinks</option><option value="activity">Thing to do</option></select></label>
+    <fieldset><legend className="mb-2 text-sm">Category</legend><div className="flex flex-wrap gap-2">
+      {[
+        { value: 'hotel', label: 'Hotel / Airbnb', Icon: Hotel, color: 'peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:text-blue-700' },
+        { value: 'food_drink', label: 'Food / Drink', Icon: Utensils, color: 'peer-checked:border-orange-500 peer-checked:bg-orange-50 peer-checked:text-orange-700' },
+        { value: 'activity', label: 'Activity', Icon: Camera, color: 'peer-checked:border-green-600 peer-checked:bg-green-50 peer-checked:text-green-700' },
+      ].map(({ value, label, Icon, color }) => <label key={value} className="cursor-pointer">
+        <input type="radio" name="type" value={value} checked={category === value} onChange={() => { setCategory(value); setPlaceId('') }} className="peer sr-only" />
+        <span className={`flex min-h-11 items-center gap-2 rounded-full border border-[#d7cebc] bg-white px-3 py-2 text-sm font-medium text-[#73786d] transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#507c76] peer-disabled:opacity-50 ${color}`}><Icon size={16} />{label}</span>
+      </label>)}
+    </div></fieldset>
     <label className="block text-sm">Place name<PlacesAutocomplete required name="name" maxLength={240} value={name} onChange={value => { setName(value); setPlaceId('') }} onSelect={(_main, _secondary, id) => setPlaceId(id ?? '')} type={category === 'food_drink' ? 'restaurant' : category === 'hotel' ? 'hotel' : 'activity'} city={city || undefined} placeholder="Hotel, restaurant, museum…" className={inputClass} /></label>
     <input type="hidden" name="placeId" value={placeId} />
     {city && <p className="text-xs text-[#73786d]">Suggestions near {city}</p>}

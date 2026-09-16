@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
@@ -37,7 +36,6 @@ export default async function FriendsPage() {
           Follow travelers to see their itineraries in your feed.
         </p>
       </div>
-      <Link href="/messages" className="mb-6 block rounded-xl border border-[#C4A882] bg-[#FAF7F2] p-4 font-semibold text-[#507c76]">Private messages →</Link>
       <FriendsUI
         following={acceptedFollows.map((f) => f.following)}
         pendingOutgoing={pendingOutgoingFollows.map((f) => f.following)}
