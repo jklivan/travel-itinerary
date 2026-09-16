@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, type InputHTMLAttributes } from 'react'
 
 type Suggestion = { label: string; main: string; secondary: string; placeId: string | null }
 
-type Props = {
+type Props = Pick<InputHTMLAttributes<HTMLInputElement>, 'name' | 'id' | 'required' | 'maxLength' | 'autoFocus'> & {
   value: string
   onChange: (val: string) => void
   onSelect?: (main: string, secondary: string, placeId?: string | null) => void
@@ -15,7 +15,7 @@ type Props = {
 }
 
 export default function PlacesAutocomplete({
-  value, onChange, onSelect, type = 'destination', placeholder, className, city,
+  value, onChange, onSelect, type = 'destination', placeholder, className, city, ...inputProps
 }: Props) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [open, setOpen] = useState(false)
@@ -24,6 +24,7 @@ export default function PlacesAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null)
   const requestRef = useRef<AbortController | null>(null)
   const [resultKey, setResultKey] = useState('')
+  const [error, setError] = useState('')
   const currentKey = JSON.stringify([value, type, city])
 
   const cancelSuggestions = useCallback(() => {
@@ -36,6 +37,7 @@ export default function PlacesAutocomplete({
   const closeSuggestions = useCallback(() => {
     cancelSuggestions()
     setSuggestions([])
+    setError('')
     setOpen(false)
     setActiveIdx(-1)
   }, [cancelSuggestions])
@@ -48,7 +50,13 @@ export default function PlacesAutocomplete({
     requestRef.current = controller
     try {
       const res = await fetch(`/api/places?${params}`, { signal: controller.signal })
-      if (!res.ok) return
+      if (!res.ok) {
+        if (!controller.signal.aborted) {
+          setResultKey(JSON.stringify([q, type, city]))
+          setError(city ? 'Could not load suggestions for this destination. Check the location or enter the place manually.' : 'Could not load suggestions. You can still enter a place manually.')
+        }
+        return
+      }
       const data: Suggestion[] = await res.json()
       if (controller.signal.aborted) return
       setResultKey(JSON.stringify([q, type, city]))
@@ -95,6 +103,7 @@ export default function PlacesAutocomplete({
   return (
     <div ref={containerRef} className="relative">
       <input
+        {...inputProps}
         type="text"
         value={value}
         onChange={handleChange}
@@ -105,6 +114,7 @@ export default function PlacesAutocomplete({
         className={className}
         autoComplete="off"
       />
+      {error && resultKey === currentKey && <p role="status" className="mt-1 text-xs text-amber-800">{error}</p>}
       {open && resultKey === currentKey && suggestions.length > 0 && (
         <ul className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
           <li

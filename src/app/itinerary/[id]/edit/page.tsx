@@ -20,6 +20,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
   })
 
   if (!it || it.userId !== session.user.id) notFound()
+  if (it.isPlan) redirect(`/plan/${id}`)
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10">

@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { auth, signOut } from '@/auth'
-import NavSearch from './NavSearch'
 import NotificationBell from './NotificationBell'
 import { unregisterPushDevice } from '@/actions/notifications'
+import { LogOut, User } from 'lucide-react'
 
 export default async function Navbar() {
   const session = await auth()
@@ -14,10 +14,6 @@ export default async function Navbar() {
           <h1 className="text-xl font-bold text-white leading-tight font-[family-name:var(--font-playfair)]">MilesAway</h1>
           <p className="text-[#C4A882] text-xs leading-none hidden sm:block">Share your journey</p>
         </Link>
-
-        <div className="order-last w-full md:order-none md:w-auto md:flex-1 md:max-w-xs">
-          <NavSearch />
-        </div>
 
         <div className="flex items-center gap-2 shrink-0">
           {session?.user ? (
@@ -35,11 +31,16 @@ export default async function Navbar() {
                 await unregisterPushDevice()
                 await signOut({ redirectTo: '/' })
               }}>
-                <button type="submit"
-                  className="text-xs text-white/70 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors">
-                  Sign out
+                <button type="submit" aria-label="Sign out"
+                  className="flex size-11 items-center justify-center text-xs text-white/70 hover:text-white bg-white/10 hover:bg-white/20 sm:w-auto sm:px-3 rounded-lg transition-colors">
+                  <LogOut size={18} className="sm:hidden" />
+                  <span className="hidden sm:inline">Sign out</span>
                 </button>
               </form>
+              <Link href={session.user.id ? `/user/${session.user.id}` : '/login'} aria-label="Profile"
+                className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
+                <User size={22} />
+              </Link>
             </>
           ) : (
             <>

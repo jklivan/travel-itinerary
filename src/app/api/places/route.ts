@@ -2,52 +2,50 @@ import { NextRequest } from 'next/server'
 
 const API_KEY = process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_PLACES_API
 
-// Geocode a city using the Places API only (no Geocoding API needed).
-// Two-step: Autocomplete the city name → Place Details for lat/lng.
-// Results are cached in-process so subsequent keystrokes don't repeat the calls.
-const geocodeCache = new Map<string, { lat: number; lng: number } | null>()
-
-async function geocodeCity(city: string): Promise<{ lat: number; lng: number } | null> {
-  const key = city.toLowerCase().trim()
-  if (geocodeCache.has(key)) return geocodeCache.get(key)!
+type Point = { latitude: number; longitude: number }
+type SearchArea = { includedRegionCodes: string[] } | { locationRestriction: { circle: { center: Point; radius: number } } | { rectangle: { low: Point; high: Point } } }
+// Cache successful resolutions only. A temporary Google failure must not disable
+// destination filtering for the lifetime of the server.
+const areaCache = new Map<string, { area: SearchArea; expires: number }>()
+function validPoint(point: Point | undefined): point is Point {
+  return !!point && Number.isFinite(point.latitude) && Math.abs(point.latitude) <= 90
+    && Number.isFinite(point.longitude) && Math.abs(point.longitude) <= 180
+}
+async function resolveDestination(destination: string): Promise<SearchArea | null> {
+  const key = destination.toLowerCase().trim()
+  const cached = areaCache.get(key)
+  if (cached && cached.expires > Date.now()) return cached.area
   try {
-    // Step 1: find the city's placeId via Autocomplete
-    const acRes = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+    const response = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': API_KEY!,
-        'X-Goog-FieldMask': 'suggestions.placePrediction.placeId',
-      },
-      body: JSON.stringify({
-        input: city,
-        languageCode: 'en',
-        includedPrimaryTypes: ['locality', 'administrative_area_level_2', 'administrative_area_level_3'],
-      }),
+      headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': API_KEY!, 'X-Goog-FieldMask': 'suggestions.placePrediction.placeId' },
+      body: JSON.stringify({ input: destination, languageCode: 'en', includedPrimaryTypes: ['(regions)'] }),
     })
-    if (!acRes.ok) { geocodeCache.set(key, null); return null }
-    const acData = await acRes.json()
-    const placeId: string | undefined = acData.suggestions?.[0]?.placePrediction?.placeId
-    if (!placeId) { geocodeCache.set(key, null); return null }
-
-    // Step 2: fetch location from Place Details
-    const detRes = await fetch(`https://places.googleapis.com/v1/places/${placeId}`, {
-      headers: {
-        'X-Goog-Api-Key': API_KEY!,
-        'X-Goog-FieldMask': 'location',
-      },
+    if (!response.ok) return null
+    const placeId = (await response.json()).suggestions?.[0]?.placePrediction?.placeId
+    if (!placeId) return null
+    const detailsResponse = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
+      headers: { 'X-Goog-Api-Key': API_KEY!, 'X-Goog-FieldMask': 'location,viewport,types,addressComponents' },
     })
-    if (!detRes.ok) { geocodeCache.set(key, null); return null }
-    const det = await detRes.json()
-    const coords = det.location
-      ? { lat: det.location.latitude as number, lng: det.location.longitude as number }
-      : null
-    geocodeCache.set(key, coords)
-    return coords
-  } catch {
-    geocodeCache.set(key, null)
-    return null
-  }
+    if (!detailsResponse.ok) return null
+    const details = await detailsResponse.json()
+    const types: string[] = details.types ?? []
+    let area: SearchArea
+    if (types.includes('country')) {
+      const country = details.addressComponents?.find((component: { types?: string[] }) => component.types?.includes('country'))?.shortText
+      if (typeof country !== 'string' || !/^[a-z]{2}$/i.test(country)) return null
+      // A country is not a 50 km circle around its center. Restrict to the whole
+      // country, including cities at its edges (e.g. Geneva in Switzerland).
+      area = { includedRegionCodes: [country.toLowerCase()] }
+    } else if (types.some(type => type.startsWith('administrative_area_level_')) && validPoint(details.viewport?.low) && validPoint(details.viewport?.high)) {
+      area = { locationRestriction: { rectangle: details.viewport } }
+    } else if (validPoint(details.location)) {
+      area = { locationRestriction: { circle: { center: details.location, radius: 50000 } } }
+    } else return null
+    if (areaCache.size >= 256) areaCache.delete(areaCache.keys().next().value!)
+    areaCache.set(key, { area, expires: Date.now() + 3600000 })
+    return area
+  } catch { return null }
 }
 
 export async function GET(req: NextRequest) {
@@ -62,13 +60,11 @@ export async function GET(req: NextRequest) {
 
   if (!q || q.length < 2) return Response.json([])
 
-  // Bias results toward the destination city. locationBias (soft preference)
-  // rather than locationRestriction so results still appear even if geocoding
-  // returns slightly off coordinates or the place sits just outside the radius.
-  const cityCoords = city ? await geocodeCity(city) : null
-  const locationBias = cityCoords
-    ? { circle: { center: { latitude: cityCoords.lat, longitude: cityCoords.lng }, radius: 50000 } }
-    : undefined
+  // Never drop an explicit destination and silently search worldwide.
+  const area = city && type !== 'destination' ? await resolveDestination(city) : null
+  if (city && type !== 'destination' && !area) {
+    return Response.json({ error: 'Could not locate this destination. Try a city or country, or enter the place manually.' }, { status: 503 })
+  }
 
   type RawSuggestion = {
     placePrediction?: {
@@ -111,7 +107,7 @@ export async function GET(req: NextRequest) {
 
   let rawResults: RawSuggestion[]
 
-  const base = { input: q, languageCode: 'en', ...(locationBias ? { locationBias } : {}) }
+  const base = { input: q, languageCode: 'en', ...area }
 
   if (type === 'hotel') {
     // Run both queries in parallel: named lodging + free-text addresses

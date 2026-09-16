@@ -370,6 +370,7 @@ export async function updateItinerary(
 
   const existing = await prisma.itinerary.findUnique({ where: { id } })
   if (!existing || existing.userId !== session.user.id) return { error: 'Not found.' }
+  if (existing.isPlan) return { error: 'Open this trip in Your trips to edit your plan.' }
 
   const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, tripRating, bestMonths, destinations, photos } =
     parseFormData(formData)
@@ -461,6 +462,7 @@ export async function deleteItinerary(id: string): Promise<{ error?: string }> {
 
   await prisma.itinerary.delete({ where: { id } })
   revalidatePath('/')
+  revalidatePath('/plan')
   revalidatePath(`/user/${session.user.id}`)
   redirect('/')
 }

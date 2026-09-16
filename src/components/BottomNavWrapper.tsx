@@ -10,5 +10,5 @@ export default async function BottomNavWrapper() {
     ? await prisma.follow.count({ where: { followingId: userId, status: 'pending' } })
     : 0
 
-  return <BottomNav userId={userId} pendingCount={pendingCount} />
+  return <BottomNav pendingCount={pendingCount} />
 }

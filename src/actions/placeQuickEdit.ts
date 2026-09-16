@@ -32,6 +32,7 @@ export async function updatePlace(itemId: string, edit: Edit) {
       data: edit.kind === 'rating' ? { rating: edit.rating || null } : { photoUrls: photos, photoUrl: photos[0] ?? null },
     })
     if (result.count !== 1) return { error: 'This place changed while saving. Reload and try again.' }
+    revalidatePath(`/plan/${item.destination.itineraryId}`)
     revalidatePath(`/itinerary/${item.destination.itineraryId}`)
     revalidatePath(`/user/${session.user.id}`)
     revalidatePath('/')

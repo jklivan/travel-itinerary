@@ -5,7 +5,7 @@ import { Prisma } from '@/generated/prisma/client'
 import { auth } from '@/auth'
 import Image from 'next/image'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
 import { Hotel, Utensils, Camera, MapPin, Check, Ban, BedDouble } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
@@ -145,11 +145,12 @@ export default async function ItineraryPage({
   const mainDestinations = it.destinations.map(dest => ({ ...dest, items: partitionPlaces(dest.items).main })).filter(dest => dest.items.length > 0)
   const alternativeDestinations = it.destinations.map(dest => ({ ...dest, items: partitionPlaces(dest.items).alternatives })).filter(dest => dest.items.length > 0)
   const isGuide = it.postType === 'guide'
-  const hasDailyPlan = !isGuide && mainDestinations.some(dest => dest.items.some(item => item.type !== 'hotel' && item.dayIndex != null))
+  const hasDailyPlan = !isGuide && mainDestinations.some(dest => dest.items.some(item => (it.isPlan || item.type !== 'hotel') && item.dayIndex != null))
   const showDayByDay = view === 'day-by-day' && hasDailyPlan
   const showMap = view === 'map'
 
   if (it.visibility === 'draft' && !isOwn) notFound()
+  if (it.visibility === 'draft' && isOwn && it.isPlan) redirect(`/plan/${it.id}`)
 
 
   const [followRecord, bucketItem] = await Promise.all([
@@ -515,7 +516,7 @@ export default async function ItineraryPage({
                 </div>
                 <span className="text-sm font-medium text-[#2C1810]">{it.user.name}</span>
               </Link>
-              {!isGuide && (
+              {!isGuide && !it.datesFlexible && (
                 <span className="text-xs text-[#8B6F4E]">
                   {fmtShort(it.startDate)} – {fmtShort(it.endDate)} · {days} days
                 </span>
@@ -539,6 +540,7 @@ export default async function ItineraryPage({
                     className="text-xs font-medium px-3 py-1.5 rounded-full border border-[#C4A882] text-[#5C3D2E] hover:bg-[#E8D5B7] transition-colors">
                     Edit
                   </Link>
+                  <Link href={`/plan/${it.id}`} className="rounded-full bg-[#507c76] px-3 py-2 text-xs font-semibold text-white">Add a place</Link>
                   <DeleteButton id={it.id} />
                 </div>
               )}
@@ -623,8 +625,14 @@ export default async function ItineraryPage({
 
         {!showMap && (
           <>
+            {showDayByDay && it.isPlan && <div className="space-y-6 mb-10">
+              {[...new Set(mainDestinations.flatMap(d => d.items.flatMap(i => i.dayIndex === null ? [] : [i.dayIndex])))].sort((a, b) => a - b).concat([-1]).map(day => {
+                const items = mainDestinations.flatMap(d => d.items).filter(i => day === -1 ? i.dayIndex === null : i.dayIndex === day)
+                return items.length > 0 && <section key={day}><h2 className="mb-3 text-xl font-semibold">{day === -1 ? 'Unscheduled' : `Day ${day}`}</h2><div className={styles.placeGrid}>{items.map(item => renderPlaceCard(item, item.type === 'hotel' ? 'hotel' : item.type === 'food_drink' ? 'food_drink' : 'activity'))}</div></section>
+              })}
+            </div>}
             {/* ── Day by Day (itineraries) ── */}
-            {showDayByDay && mainDestinations.length > 0 && (
+            {showDayByDay && !it.isPlan && mainDestinations.length > 0 && (
               <div className="mb-10">
                 <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-1">Day by Day</h2>
                 <div className="h-px bg-[#C4A882] mb-5" />

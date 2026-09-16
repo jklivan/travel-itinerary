@@ -1,0 +1,2 @@
+ALTER TABLE "Itinerary" ADD COLUMN "isPlan" BOOLEAN NOT NULL DEFAULT false, ADD COLUMN "datesFlexible" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "DestItem" ADD COLUMN "planningStatus" TEXT NOT NULL DEFAULT 'considering';

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { MapPin } from 'lucide-react'
 import { TRIP_STAMPS } from '@/lib/tripStamps'
+import PhotoStrip from './PhotoStrip'
 import BucketButton from './BucketButton'
 import { Amatic_SC, Kalam } from 'next/font/google'
 
@@ -23,10 +24,13 @@ type Props = {
   authorName: string
   destinations: Destination[]
   coverPhoto: string | null
+  photos?: { id: string; url: string; caption: string | null }[]
   currentUserId?: string | null
   isOwn?: boolean
   isBucketed?: boolean
   saveCount: number
+  datesFlexible?: boolean
+  fullWidth?: boolean
 }
 
 const COVER_COLORS = [
@@ -61,8 +65,8 @@ function tripDays(start: Date, end: Date) {
 }
 
 export default function ItineraryCard({
-  id, postType, title, startDate, endDate, audience, budget, tripRating, authorName, destinations, coverPhoto,
-  currentUserId, isOwn, isBucketed = false, saveCount,
+  id, postType, title, startDate, endDate, audience, budget, tripRating, authorName, destinations, coverPhoto, photos = [],
+  currentUserId, isOwn, isBucketed = false, saveCount, fullWidth = false, datesFlexible = false,
 }: Props) {
   const isGuide = postType === 'guide'
   const stamp = TRIP_STAMPS.find(stamp => stamp.value === tripRating)
@@ -93,11 +97,11 @@ export default function ItineraryCard({
   const showBucket = !isOwn
 
   return (
-    <Link href={`/itinerary/${id}`} className="block w-[clamp(200px,44vw,320px)] relative pt-5">
+    <article className={`block ${fullWidth ? 'w-full' : 'w-[clamp(200px,44vw,320px)]'} relative pt-5`}>
 
       {/* Tape */}
       <div
-        className="absolute top-1 left-1/2 z-10 w-12 h-7 rounded-[2px]"
+        className="pointer-events-none absolute top-1 left-1/2 z-10 w-12 h-7 rounded-[2px]"
         style={{
           backgroundColor: tapeColor,
           transform: `translateX(-50%) rotate(${tapeRotation})`,
@@ -107,20 +111,20 @@ export default function ItineraryCard({
 
       {/* Polaroid card */}
       <div
-        className="bg-white rounded-[3px] px-4 pt-5 pb-7"
+        className={`bg-white rounded-[3px] ${fullWidth ? 'px-2.5 pt-3 pb-4' : 'px-4 pt-5 pb-7'}`}
         style={{ boxShadow: '2px 5px 20px rgba(0,0,0,0.16)' }}
       >
         {/* Photo */}
         <div
-          className="relative w-full aspect-[4/3] overflow-hidden mb-4"
+          className={`relative w-full overflow-hidden ${fullWidth ? 'aspect-[6/5] mb-2.5' : 'aspect-[4/3] mb-4'}`}
           style={{ backgroundColor: coverColor }}
         >
-          {coverPhoto && (
-            <Image src={coverPhoto} alt={title} fill className="object-cover" />
-          )}
+          {fullWidth && photos.length > 0 ? <PhotoStrip photos={photos} title={title} fillContainer counterPosition="left" /> : <Link href={`/itinerary/${id}`} aria-label={`Open ${title}`} className="absolute inset-0">
+            {coverPhoto && <Image src={coverPhoto} alt={title} fill sizes={fullWidth ? '(max-width: 575px) calc(100vw - 60px), 516px' : '(max-width: 727px) 44vw, 320px'} className="object-cover" />}
+          </Link>}
 
           {/* Badge */}
-          <div className="absolute top-2 left-2 max-w-[45%] flex flex-col gap-1">
+          <div className="pointer-events-none absolute top-2 left-2 max-w-[45%] flex flex-col gap-1">
             {audience === 'family' && (
               <span className="text-[10px] px-2 py-1 rounded font-semibold bg-black/60 text-white">👨‍👩‍👧 Family</span>
             )}
@@ -135,7 +139,7 @@ export default function ItineraryCard({
           {stamp && (
             <span
               aria-label={`Author verdict: ${stamp.label}`}
-              className={`absolute top-2 right-2 max-w-[45%] rounded px-2 py-1 text-center text-[10px] font-bold text-white shadow-sm ${stamp.bg}`}
+              className={`pointer-events-none absolute top-2 right-2 max-w-[45%] rounded px-2 py-1 text-center text-[10px] font-bold text-white shadow-sm ${stamp.bg}`}
             >
               {stamp.label}
             </span>
@@ -150,7 +154,7 @@ export default function ItineraryCard({
         </div>
 
         {/* Caption */}
-        <div>
+        <Link href={`/itinerary/${id}`} className={fullWidth ? 'block px-1' : 'block'}>
           <h2 className={`${amatic.className} text-[28px] text-[#2C1810] leading-tight line-clamp-2 mb-2`}>
             {title}
           </h2>
@@ -162,14 +166,14 @@ export default function ItineraryCard({
                 {location}
               </span>
             )}
-            {!isGuide && (
+            {!isGuide && !datesFlexible && (
               <span className="block">
                 {days}-day trip
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#E8D5B7]">
+          <div className={`flex items-center gap-2 border-t border-[#E8D5B7] ${fullWidth ? 'mt-2 pt-2' : 'mt-3 pt-3'}`}>
             <div
               className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
               style={{ backgroundColor: avatarColor }}
@@ -192,8 +196,8 @@ export default function ItineraryCard({
               )}
             </div>
           </div>
-        </div>
+        </Link>
       </div>
-    </Link>
+    </article>
   )
 }

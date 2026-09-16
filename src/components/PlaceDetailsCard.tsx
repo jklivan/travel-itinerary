@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
+import SavePlaceToPlan from './SavePlaceToPlan'
 import PhotoStrip from './PhotoStrip'
 import PlacePhoto from './PlacePhoto'
 import { eventPhotos } from '@/lib/eventPhotos'
@@ -89,6 +90,7 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
               : place.id && <PlacePhoto itemId={place.id} name={place.name} thumbnailClass={styles.providerPhoto} fallback={null} fullWidth />}
             {place.address && <section><h3 className={styles.sectionTitle}>Address</h3><p className={styles.address}><MapPin size={17} />{place.address}</p></section>}
             {place.alternative && <section><h3 className={styles.sectionTitle}>Suggested alternative</h3><p className={styles.text}>{place.alternative}</p></section>}
+            {messageHref && place.id && <SavePlaceToPlan itemId={place.id} />}
             {messageHref && <Link href={messageHref} onClick={() => dialog.current?.close()} className="inline-block rounded-full bg-[#507c76] px-4 py-2 text-sm text-white">Message about this place</Link>}
             <div className={styles.actions}>
               <a href={mapUrl.toString()} target="_blank" rel="noopener noreferrer" className={styles.mapLink}><MapPin size={17} />View on map<span className="sr-only"> (opens Google Maps in a new tab)</span></a>
