@@ -3,14 +3,15 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
-import { startPlan } from '@/actions/planning'
+import { startPlan, copyPlaceToPlan } from '@/actions/planning'
 
 export const inputClass = 'mt-1 w-full min-w-0 rounded-xl border border-[#d7cebc] bg-white px-3 py-3 text-base text-[#2e4147]'
 export const buttonClass = 'min-h-11 rounded-xl bg-[#2C1810] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50'
 
-export default function NewPlanForm() {
+export default function NewPlanForm({ savePlace }: { savePlace?: string }) {
   const router = useRouter()
   const clientId = useRef('')
+  const placeCopyId = useRef('')
   const busy = useRef(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -25,10 +26,18 @@ export default function NewPlanForm() {
     try {
       const result = await startPlan(data)
       if (result.error) setError(result.error)
-      else if (result.id) { router.push(`/plan/${result.id}`); router.refresh() }
+      else if (result.id) {
+        if (savePlace) {
+          if (!placeCopyId.current) placeCopyId.current = crypto.randomUUID()
+          const copied = await copyPlaceToPlan(savePlace, result.id, placeCopyId.current)
+          if (copied.error) { setError(`Your plan was saved, but the place couldn’t be added. ${copied.error}`); return }
+        }
+        router.push(`/plan/${result.id}`); router.refresh()
+      }
     } catch { setError('Could not save. Your details are still here; please try again.') }
     finally { busy.current = false; setSaving(false) }
   }} className="space-y-4 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-5">
+    {savePlace && <p className="text-sm text-[#507c76]">We’ll add the place you selected to this new plan.</p>}
     <fieldset disabled={saving} className="space-y-4">
       <label className="block text-sm font-medium">Where are you thinking?<PlacesAutocomplete name="destination" value={destination} onChange={setDestination} onSelect={(main, secondary) => setDestination([main, secondary].filter(Boolean).join(', '))} type="destination" maxLength={160} placeholder="e.g. Italy, Japan, a weekend away…" className={inputClass} /></label>
       <label className="block text-sm font-medium">Trip name <span className="font-normal">(optional)</span><input name="title" maxLength={160} placeholder="Summer in Italy" className={inputClass} /></label>

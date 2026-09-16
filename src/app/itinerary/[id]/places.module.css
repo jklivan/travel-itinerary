@@ -72,7 +72,7 @@
 .mustDoStamp {
   position: absolute;
   top: 5px;
-  right: 5px;
+  right: var(--place-save-space, 5px);
   width: 48px;
   height: auto;
   mix-blend-mode: multiply;
@@ -99,7 +99,7 @@
 
 .stamped .eyebrow,
 .stamped .placeName {
-  padding-right: 43px;
+  padding-right: calc(43px + var(--place-stamp-gap, 0px));
 }
 
 .stamped .linkArrow {
@@ -321,4 +321,4 @@
 
 .alternativeCard .mustDoStamp { width: 68px; }
 .alternativeCard .eyebrow,
-.alternativeCard .placeName { padding-right: 63px; }
+.alternativeCard .placeName { padding-right: calc(63px + var(--place-stamp-gap, 0px)); }

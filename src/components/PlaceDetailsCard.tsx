@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode, type CSSProperties } from 'react'
 import Link from 'next/link'
 import SavePlaceToPlan from './SavePlaceToPlan'
 import PhotoStrip from './PhotoStrip'
 import PlacePhoto from './PlacePhoto'
 import { eventPhotos } from '@/lib/eventPhotos'
-import { ArrowUpRight, MapPin, X } from 'lucide-react'
+import { ArrowUpRight, MapPin, X, Plus, Check } from 'lucide-react'
 import styles from './PlaceDetailsCard.module.css'
 import type { PlaceRecommendation } from '@/lib/placeRecommendation'
 
@@ -36,6 +36,9 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
   children: ReactNode
 }) {
   const [open, setOpen] = useState(false)
+  const [saveOpen, setSaveOpen] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const canSave = !!messageHref && !!place.id
   const photos = eventPhotos(place.photoUrls, place.photoUrl)
   const dialog = useRef<HTMLDialogElement>(null)
   const titleId = useId()
@@ -58,12 +61,13 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
 
   return (
     <>
-      <article className={`${className} ${styles.tile}`}>
+      <article className={`${className} ${styles.tile} ${canSave ? styles.saveable : ''}`} style={canSave ? { '--place-save-space': '58px', '--place-stamp-gap': '12px' } as CSSProperties : undefined}>
         <button type="button" className={styles.openTile} onClick={() => setOpen(true)}
           aria-label={`View details for ${place.name}`} aria-haspopup="dialog">
           <span className={styles.detailsHint}>View notes &amp; details →</span>
         </button>
         {children}
+        {canSave && <button type="button" className={styles.savePlace} aria-label={`Save ${place.name} to a trip`} title="Save to a trip" aria-haspopup="dialog" onClick={() => setSaveOpen(true)}>{saved ? <Check size={19} /> : <Plus size={20} />}</button>}
       </article>
       <dialog ref={dialog} className={styles.dialog} aria-labelledby={titleId}
         onClose={() => setOpen(false)}
@@ -90,7 +94,7 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
               : place.id && <PlacePhoto itemId={place.id} name={place.name} thumbnailClass={styles.providerPhoto} fallback={null} fullWidth />}
             {place.address && <section><h3 className={styles.sectionTitle}>Address</h3><p className={styles.address}><MapPin size={17} />{place.address}</p></section>}
             {place.alternative && <section><h3 className={styles.sectionTitle}>Suggested alternative</h3><p className={styles.text}>{place.alternative}</p></section>}
-            {messageHref && place.id && <SavePlaceToPlan itemId={place.id} />}
+            {canSave && <button type="button" className={styles.saveInline} aria-haspopup="dialog" onClick={() => setSaveOpen(true)}><span>{saved ? <Check size={19} /> : <Plus size={20} />}</span>Save to a trip</button>}
             {messageHref && <Link href={messageHref} onClick={() => dialog.current?.close()} className="inline-block rounded-full bg-[#507c76] px-4 py-2 text-sm text-white">Message about this place</Link>}
             <div className={styles.actions}>
               <a href={mapUrl.toString()} target="_blank" rel="noopener noreferrer" className={styles.mapLink}><MapPin size={17} />View on map<span className="sr-only"> (opens Google Maps in a new tab)</span></a>
@@ -99,6 +103,7 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
           </div>
         )}
       </dialog>
+      {canSave && place.id && <SavePlaceToPlan itemId={place.id} placeName={place.name} open={saveOpen} onClose={() => setSaveOpen(false)} onSaved={() => setSaved(true)} />}
     </>
   )
 }
