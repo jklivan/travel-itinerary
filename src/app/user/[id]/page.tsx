@@ -217,7 +217,8 @@ export default async function UserProfilePage({
                   id={it.id}
                   postType={it.postType}
                   title={it.title}
-                  datesFlexible={it.datesFlexible}
+                  bestMonths={it.bestMonths}
+              datesFlexible={it.datesFlexible}
                   startDate={it.startDate}
                   endDate={it.endDate}
                   audience={it.audience}
@@ -251,7 +252,8 @@ export default async function UserProfilePage({
                   id={it.id}
                   postType={it.postType}
                   title={it.title}
-                  datesFlexible={it.datesFlexible}
+                  bestMonths={it.bestMonths}
+              datesFlexible={it.datesFlexible}
                   startDate={it.startDate}
                   endDate={it.endDate}
                   audience={it.audience}
@@ -291,6 +293,7 @@ export default async function UserProfilePage({
                     id={item.itinerary.id}
                     postType={item.itinerary.postType}
                     title={item.itinerary.title}
+                    bestMonths={item.itinerary.bestMonths}
                     datesFlexible={item.itinerary.datesFlexible}
                     startDate={item.itinerary.startDate}
                     endDate={item.itinerary.endDate}

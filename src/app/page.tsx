@@ -107,6 +107,7 @@ async function FeedResults({ searchQuery, activeFeed }: { searchQuery: string; a
               id={it.id}
               postType={it.postType}
               title={it.title}
+              bestMonths={it.bestMonths}
               datesFlexible={it.datesFlexible}
               startDate={it.startDate}
               endDate={it.endDate}

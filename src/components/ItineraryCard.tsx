@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { MapPin } from 'lucide-react'
+import { tripSeason } from '@/lib/tripSeason'
 import { TRIP_STAMPS } from '@/lib/tripStamps'
 import PhotoStrip from './PhotoStrip'
 import BucketButton from './BucketButton'
@@ -10,7 +11,7 @@ const amatic = Amatic_SC({ subsets: ['latin'], weight: '700' })
 const kalam = Kalam({ subsets: ['latin'], weight: '400' })
 
 type DestItem = { type: string; name: string }
-type Destination = { name: string; country: string | null; items: DestItem[] }
+type Destination = { lat?: number | null; name: string; country: string | null; items: DestItem[] }
 
 type Props = {
   id: string
@@ -29,6 +30,7 @@ type Props = {
   isOwn?: boolean
   isBucketed?: boolean
   saveCount: number
+  bestMonths?: string[]
   datesFlexible?: boolean
   fullWidth?: boolean
 }
@@ -66,7 +68,7 @@ function tripDays(start: Date, end: Date) {
 
 export default function ItineraryCard({
   id, postType, title, startDate, endDate, audience, budget, tripRating, authorName, destinations, coverPhoto, photos = [],
-  currentUserId, isOwn, isBucketed = false, saveCount, fullWidth = false, datesFlexible = false,
+  currentUserId, isOwn, isBucketed = false, saveCount, fullWidth = false, datesFlexible = false, bestMonths = [],
 }: Props) {
   const isGuide = postType === 'guide'
   const stamp = TRIP_STAMPS.find(stamp => stamp.value === tripRating)
@@ -76,6 +78,7 @@ export default function ItineraryCard({
   const tapeColor = hashPick(id, TAPE_COLORS)
   const tapeRotation = hashPick(title, TAPE_ROTATIONS)
   const days = tripDays(startDate, endDate)
+  const season = tripSeason({ startDate, endDate, datesFlexible, postType, bestMonths, latitude: destinations.find(destination => destination.lat != null)?.lat })
 
   function locationLabel(dests: Destination[]): string | null {
     if (dests.length === 0) return null
@@ -196,6 +199,7 @@ export default function ItineraryCard({
               )}
             </div>
           </div>
+          {season && <p className={`${kalam.className} mt-1.5 text-right text-sm text-[#8B6F4E]`} aria-label={`${isGuide || datesFlexible ? 'Recommended season' : 'Trip season'}: ${season}`}>{season}</p>}
         </Link>
       </div>
     </article>

@@ -97,7 +97,8 @@ function ItineraryList({
           id={it.id}
           postType={it.postType}
           title={it.title}
-          datesFlexible={it.datesFlexible}
+          bestMonths={it.bestMonths}
+              datesFlexible={it.datesFlexible}
           startDate={it.startDate}
           endDate={it.endDate}
           audience={it.audience}
