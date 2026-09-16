@@ -17,6 +17,7 @@ async function feed(activeFeed, userId = 'alice', searchQuery = '') {
       itinerary: { findMany: async query => { queries.push(query); return [] } },
       bucketListItem: { findMany: async () => [] },
     } },
+    '@/components/StoryFeed': { default: () => null },
     '@/components/PlanningShortcut': { default: () => null },
     '@/components/ItineraryCard': { default: () => null },
     'next/link': { default: 'a' }, react: React, 'react/jsx-runtime': jsx,

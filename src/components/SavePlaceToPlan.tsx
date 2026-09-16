@@ -4,11 +4,12 @@ import Link from 'next/link'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Check, ChevronRight, MapPin, Plus, X } from 'lucide-react'
 import { copyPlaceToPlan, plansForSaving } from '@/actions/planning'
+import { copyStoryToPlan } from '@/actions/stories'
 import styles from './SavePlaceToPlan.module.css'
 
 type Trip = { id: string; title: string }
-export default function SavePlaceToPlan({ itemId, placeName, open, onClose, onSaved }: {
-  itemId: string; placeName: string; open: boolean; onClose: () => void; onSaved: () => void
+export default function SavePlaceToPlan({ itemId, storyId, placeName, open, onClose, onSaved }: {
+  itemId?: string; storyId?: string; placeName: string; open: boolean; onClose: () => void; onSaved: () => void
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const titleId = useId()
@@ -48,7 +49,7 @@ export default function SavePlaceToPlan({ itemId, placeName, open, onClose, onSa
     saving.current = true; setBusy(trip.id); setError('')
     if (!attempts.current.has(trip.id)) attempts.current.set(trip.id, crypto.randomUUID())
     try {
-      const result = await copyPlaceToPlan(itemId, trip.id, attempts.current.get(trip.id)!)
+      const result = storyId ? await copyStoryToPlan(storyId, trip.id, attempts.current.get(trip.id)!) : await copyPlaceToPlan(itemId!, trip.id, attempts.current.get(trip.id)!)
       if (result.error) setError(result.error)
       else { setAdded(previous => new Set([...previous, trip.id])); setSaved(trip); onSaved() }
     } catch { setError('Could not save this place. Please try again.') }
@@ -70,6 +71,6 @@ export default function SavePlaceToPlan({ itemId, placeName, open, onClose, onSa
         {error && <div className={styles.error}><p role="alert">{error}</p>{!trips.length && <button type="button" onClick={() => void load()}>Try again</button>}{error.toLowerCase().includes('sign in') && <Link href="/login" onClick={() => dialog.current?.close()}>Sign in</Link>}</div>}
       </>}
     </div>
-    {!saved && !busy && <footer className={styles.footer}><Link href={`/plan?savePlace=${encodeURIComponent(itemId)}`} onClick={() => dialog.current?.close()}><span className={styles.newIcon}><Plus size={20} /></span>Start a new plan</Link></footer>}
+    {!saved && !busy && <footer className={styles.footer}><Link href={`/plan?${storyId ? 'saveStory' : 'savePlace'}=${encodeURIComponent(storyId ?? itemId ?? '')}`} onClick={() => dialog.current?.close()}><span className={styles.newIcon}><Plus size={20} /></span>Start a new plan</Link></footer>}
   </dialog>
 }

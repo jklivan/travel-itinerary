@@ -25,6 +25,7 @@ model User {
   sentMessages DirectMessage[] @relation("MessageSender")
   receivedMessages DirectMessage[] @relation("MessageRecipient")
   savedImportNotes SavedImportNotes[]
+  stories Story[]
   createdAt      DateTime         @default(now())
 }
 
@@ -76,6 +77,7 @@ model Itinerary {
   bucketedBy   BucketListItem[]
   comments     Comment[]
   notifications Notification[]
+  stories Story[]
   createdAt    DateTime         @default(now())
 }
 
@@ -145,6 +147,7 @@ model DestItem {
   lng           Float?
   destinationId String
   destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  stories Story[]
 }
 
 model Photo {
@@ -219,4 +222,28 @@ model DirectMessage {
   @@unique([senderId, clientId])
   @@index([senderId, recipientId, createdAt])
   @@index([recipientId, createdAt])
+}
+
+model Story {
+  id String @id
+  userId String
+  sourceItineraryId String?
+  sourceItemId String?
+  placeName String
+  destination String
+  country String?
+  type String
+  placeId String?
+  lat Float?
+  lng Float?
+  photoUrl String
+  caption String @db.VarChar(500)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceItinerary Itinerary? @relation(fields: [sourceItineraryId], references: [id], onDelete: SetNull)
+  sourceItem DestItem? @relation(fields: [sourceItemId], references: [id], onDelete: SetNull)
+
+  @@index([expiresAt])
+  @@index([userId, createdAt])
 }

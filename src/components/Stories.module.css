@@ -1,0 +1,64 @@
+.bar { margin: 0 0 20px; color: #2e4147; }
+.barHeading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.barHeading h2 { font-family: var(--font-playfair), serif; font-size: 22px; }
+.barHeading > span { font-size: 11px; color: #74786e; letter-spacing: .06em; }
+.tray { display: flex; gap: 16px; overflow-x: auto; padding: 5px 3px 12px; scrollbar-width: thin; }
+.addStory, .storyThumb { flex: 0 0 78px; display: flex; align-items: center; flex-direction: column; gap: 9px; font-size: 12px; background: transparent; border: 0; cursor: pointer; text-decoration: none; color: inherit; }
+.addStory > span { width: 72px; height: 86px; display: grid; place-items: center; border: 1px dashed #8aa39a; background: #e7ece4; color: #507c76; }
+.miniPaper { position: relative; display: block; width: 76px; height: 88px; padding: 5px 5px 15px; background: #fffdf7; box-shadow: 0 2px 6px #2c18101c; border: 1px solid #dedbcf; transform: rotate(-3deg); }
+.miniPaper img { width: 100%; height: 100%; object-fit: cover; }
+.miniPaper i:not(:empty) { position: absolute; right: -5px; top: -5px; min-width: 20px; height: 20px; border-radius: 50%; background: #507c76; color: white; font-style: normal; font-size: 11px; display: grid; place-items: center; }
+.author { max-width: 78px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trayHint { align-self: center; font-size: 13px; line-height: 1.6; color: #74786e; }
+.message { font-size: 13px; margin-top: 8px; color: #507c76; }
+.composer { position: fixed; inset: 0; margin: auto; width: min(560px, calc(100% - 24px)); max-height: 90dvh; overflow-y: auto; border: 1px solid #d7cebc; border-radius: 20px; padding: 22px; background: #fffdf7; color: #2e4147; }
+.composer::backdrop, .viewer::backdrop { background: #21130ecc; }
+.composerHeader, .viewerHeader { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.composerHeader h2 { font-family: var(--font-playfair), serif; font-size: 25px; }
+.composerHeader p { font-size: 13px; color: #73786d; margin-top: 5px; }
+.close, .viewerClose { flex-shrink: 0; width: 44px; height: 44px; display: grid; place-items: center; background: transparent; border: 0; border-radius: 50%; cursor: pointer; }
+.fields { display: grid; gap: 16px; margin-top: 22px; border: 0; padding: 0; min-width: 0; }
+.fields label, .fieldLabel { font-size: 14px; font-weight: 600; }
+.fields label > span { font-weight: 400; color: #73786d; }
+.fields select, .fields textarea { display: block; margin-top: 6px; width: 100%; min-height: 44px; border: 1px solid #d7cebc; border-radius: 10px; padding: 10px; background: white; font-size: 16px; font-weight: 400; }
+.photoChoices { display: flex; gap: 10px; overflow-x: auto; padding: 10px 2px; }
+.photoChoices button { position: relative; flex: 0 0 72px; height: 72px; border: 2px solid transparent; padding: 2px; border-radius: 8px; }
+.photoChoices button[aria-pressed=true] { border-color: #507c76; }
+.photoChoices img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+.photoChoices button span { position: absolute; bottom: 2px; right: 2px; background: #507c76; color: white; border-radius: 50%; padding: 3px; }
+.preview { padding: 15px; background: #eee7da; border-radius: 10px; }
+.paper { margin: auto; width: 100%; max-width: 420px; padding: 12px 12px 22px; background: #fffdf7; color: #2e4147; box-shadow: 0 8px 25px #0002; overflow-wrap: anywhere; }
+.paper > img { display: block; width: 100%; aspect-ratio: 1 / 1; max-height: 48dvh; object-fit: cover; }
+.paper h3 { font-family: var(--font-playfair), serif; font-size: 27px; line-height: 1.2; margin-top: 10px; }
+.paper > p { font-size: 13px; color: #73786d; margin-top: 6px; }
+.paper > .caption { white-space: pre-wrap; font-size: 15px; line-height: 1.5; color: #2e4147; margin-top: 14px; }
+.preview .paper { max-width: 290px; }
+.preview .paper h3 { font-size: 22px; }
+.privacy { font-size: 12px; line-height: 1.5; color: #73786d; }
+.post { width: 100%; min-height: 46px; background: #2c1810; border: 0; color: white; border-radius: 12px; padding: 12px; font-weight: 600; }
+.post:disabled, .fields:disabled { opacity: .6; }
+.empty { padding: 24px 0; font-size: 14px; }
+.empty a { color: #507c76; text-decoration: underline; }
+.error { margin-top: 16px; color: #a33125; font-size: 14px; }
+.viewer { position: fixed; inset: 0; margin: 0; border: 0; padding: 0; max-width: none; max-height: none; width: 100%; height: 100dvh; overflow-y: auto; background: #2c1810; color: #fffdf7; }
+.viewerInner { max-width: 500px; min-height: 100%; margin: auto; padding: max(14px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom)); }
+.viewerHeader h2 { font-weight: 600; font-size: 15px; padding-top: 5px; }
+.viewerHeader p { font-size: 12px; opacity: .65; margin-top: 3px; }
+.viewerClose { color: inherit; }
+.progress { display: flex; gap: 4px; margin: 12px 0 18px; }
+.progress span { height: 3px; flex: 1; background: #ffffff38; border-radius: 2px; }
+.progress span[data-active=true] { background: #fffdf7; }
+.storyContent { touch-action: pan-y; }
+.placeType { display: block; margin-top: 14px; text-transform: uppercase; font-size: 10px; letter-spacing: .12em; color: #507c76; font-weight: 700; }
+.viewerActions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+.viewerActions button, .viewerActions a { display: flex; align-items: center; gap: 8px; min-height: 44px; color: inherit; border: 0; background: transparent; padding: 5px; font-size: 14px; cursor: pointer; }
+.viewerActions button span { width: 30px; height: 30px; border: 1px solid #ffffff60; border-radius: 50%; display: grid; place-items: center; }
+.storyNav { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+.storyNav button { width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; color: inherit; cursor: pointer; }
+.storyNav button:disabled { opacity: .2; }
+.storyNav span { font-size: 12px; opacity: .65; }
+.deletePrompt { background: #ffffff14; border-radius: 10px; padding: 12px; font-size: 14px; }
+.deletePrompt button, .expired button { min-height: 44px; padding: 8px 12px; text-decoration: underline; }
+.viewerError { color: #ffc3af; font-size: 14px; margin-top: 10px; }
+.expired { text-align: center; padding: 60px 0; }
+@media (max-width: 600px) { .composer { inset: auto 0 0; width: 100%; max-height: 94dvh; border-radius: 20px 20px 0 0; padding: 20px 18px max(24px, env(safe-area-inset-bottom)); } }

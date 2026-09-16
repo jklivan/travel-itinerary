@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { tripPhotoGallery } from '@/lib/eventPhotos'
+import StoryFeed from '@/components/StoryFeed'
 import PlanningShortcut from '@/components/PlanningShortcut'
 import ItineraryCard from '@/components/ItineraryCard'
 import Link from 'next/link'
@@ -68,6 +69,7 @@ async function FeedResults({ searchQuery, activeFeed }: { searchQuery: string; a
 
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
+      <Suspense fallback={null}><StoryFeed userId={userId} following={activeFeed === 'following'} /></Suspense>
       {userId && <Suspense fallback={null}><PlanningShortcut userId={userId} /></Suspense>}
       <nav aria-label="Feed filters" className="mb-6 flex border-b border-[#C4A882]/50">
         {([{ value: 'for-you', label: 'For You' }, { value: 'following', label: 'Following' }] as const).map(tab => {
