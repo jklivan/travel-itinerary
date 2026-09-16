@@ -420,7 +420,7 @@ export default async function ItineraryPage({
         {recommendation === 'avoid' && <span className={`${styles.mustDoStamp} ${styles.textStamp} ${styles.avoidStamp}`}><Ban size={24} aria-hidden="true" /><span>Avoid</span></span>}
         {recommendation === 'option' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><span>Alternative</span></span>}
         {tilePhoto ? (
-          <div className={styles.thumbnail}><Image src={tilePhoto} alt="" fill sizes="88px" className="object-cover" /></div>
+          <div className={styles.thumbnail}><Image src={tilePhoto} alt="" fill sizes="132px" className="object-cover" /></div>
         ) : (
           <div className={styles.thumbnail}>
             <div className={styles.keepsake} aria-hidden="true">

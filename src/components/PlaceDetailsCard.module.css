@@ -1,5 +1,5 @@
-.tile { padding-bottom: 34px; }
-.detailsHint { position: absolute; bottom: 9px; right: 10px; color: #507c76; font-size: 12px; font-weight: 600; }
+.tile.tile { padding-bottom: 32px; }
+.detailsHint { position: absolute; bottom: 9px; right: 10px; color: #507c76; font-size: 11px; font-weight: 600; }
 .providerPhoto { height: 240px; width: 100%; overflow: hidden; border-radius: 8px; }
 
 .openTile {
@@ -55,9 +55,11 @@
   .content { padding: 20px 20px max(24px, env(safe-area-inset-bottom)); }
 }
 
-.tile.saveable { padding-right: 58px; padding-bottom: 34px; }
-.savePlace { position: absolute; top: 7px; right: 7px; z-index: 2; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 1px solid #c4d1c6; background: #fffdf7; color: #507c76; box-shadow: 0 2px 6px #2e414710; cursor: pointer; }
-.savePlace:hover { background: #e6ece5; border-color: #507c76; }
+.tile.saveable { padding-right: 7px; padding-bottom: 32px; }
+.savePlace { position: absolute; top: 0; right: 0; z-index: 2; display: grid; place-items: center; width: 44px; height: 44px; border: 0; background: transparent; color: #507c76; cursor: pointer; }
+.savePlace::before { content: ''; position: absolute; width: 28px; height: 28px; border-radius: 50%; border: 1px solid #c4d1c6; background: #fffdf7; }
+.savePlace svg { position: relative; width: 16px; height: 16px; }
+.savePlace:hover::before { background: #e6ece5; border-color: #507c76; }
 .savePlace:focus-visible, .saveInline:focus-visible { outline: 2px solid #507c76; outline-offset: 3px; }
 .saveInline { display: inline-flex; align-items: center; gap: 10px; justify-self: start; min-height: 44px; color: #507c76; font-size: 14px; font-weight: 600; cursor: pointer; }
 .saveInline span { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid #c4d1c6; border-radius: 50%; background: #fffdf7; }

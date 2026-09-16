@@ -61,7 +61,7 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
 
   return (
     <>
-      <article className={`${className} ${styles.tile} ${canSave ? styles.saveable : ''}`} style={canSave ? { '--place-save-space': '58px', '--place-stamp-gap': '12px' } as CSSProperties : undefined}>
+      <article className={`${className} ${styles.tile} ${canSave ? styles.saveable : ''}`} style={canSave ? { '--place-save-space': '44px', '--place-stamp-gap': '40px', '--place-header-space': '36px' } as CSSProperties : undefined}>
         <button type="button" className={styles.openTile} onClick={() => setOpen(true)}
           aria-label={`View details for ${place.name}`} aria-haspopup="dialog">
           <span className={styles.detailsHint}>View notes &amp; details →</span>
