@@ -3,18 +3,19 @@
 import Link from 'next/link'
 import useBottomToolbar from './useBottomToolbar'
 import { usePathname } from 'next/navigation'
-import { Home, Compass, Plus, Users, MessageCircle } from 'lucide-react'
+import { Home, Compass, Plus, User, MessageCircle } from 'lucide-react'
 import useNotificationCounts from './useNotificationCounts'
 import { Suspense } from 'react'
 
-function BottomNavInner({ pendingCount }: { pendingCount: number }) {
+function BottomNavInner({ pendingCount, userId }: { pendingCount: number; userId: string | null }) {
   const pathname = usePathname()
   const { unreadMessages } = useNotificationCounts()
   const toolbarRef = useBottomToolbar()
 
   const isFeed = pathname === '/'
   const isExplore = pathname.startsWith('/explore')
-  const isFriends = pathname.startsWith('/friends')
+  const profileHref = userId ? `/user/${userId}` : '/login'
+  const isProfile = !!userId && pathname === profileHref
   const isMessages = pathname === '/messages' || pathname.startsWith('/messages/')
 
   function cls(active: boolean) {
@@ -39,14 +40,14 @@ function BottomNavInner({ pendingCount }: { pendingCount: number }) {
           <span className="text-center text-[10px] leading-tight font-semibold min-[393px]:text-xs">Start planning</span>
         </Link>
 
-        <Link href="/friends" className={`relative ${cls(isFriends)}`}>
-          <Users className="w-6 h-6" />
+        <Link href={profileHref} aria-current={isProfile ? 'page' : undefined} aria-label={`Profile${pendingCount ? `, ${pendingCount} pending friend requests` : ''}`} className={`relative ${cls(isProfile)}`}>
+          <User className="w-6 h-6" />
           {pendingCount > 0 && (
             <span className="absolute top-1 right-2 inline-flex items-center justify-center w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold leading-none">
               {pendingCount > 9 ? '9+' : pendingCount}
             </span>
           )}
-          <span className="text-xs font-medium">Friends</span>
+          <span className="text-xs font-medium">Profile</span>
         </Link>
 
         <Link href="/messages" aria-current={isMessages ? 'page' : undefined} aria-label={`Messages${unreadMessages ? `, ${unreadMessages} unread` : ''}`} className={`relative ${cls(isMessages)}`}>
@@ -60,10 +61,10 @@ function BottomNavInner({ pendingCount }: { pendingCount: number }) {
   )
 }
 
-export default function BottomNav({ pendingCount }: { pendingCount: number }) {
+export default function BottomNav({ pendingCount, userId }: { pendingCount: number; userId: string | null }) {
   return (
     <Suspense fallback={null}>
-      <BottomNavInner pendingCount={pendingCount} />
+      <BottomNavInner pendingCount={pendingCount} userId={userId} />
     </Suspense>
   )
 }

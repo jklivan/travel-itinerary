@@ -5,6 +5,8 @@ import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, MapPin, LockKeyhole, CalendarDays, Check, Hotel, Utensils, Camera } from 'lucide-react'
 import { addPlanPlace, editPlanPlace, savePlanDetails, sharePlan, removePlanPlace } from '@/actions/planning'
+import PlanImport from '@/components/PlanImport'
+import PlaceEntryForm from '@/components/PlaceEntryForm'
 import DeleteButton from '@/components/DeleteButton'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import PlanningMap from '@/components/PlanningMap'
@@ -15,11 +17,12 @@ type Place = { lat: number | null; lng: number | null; placeId: string | null; i
 type Trip = { id: string; title: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; items: Place[] }[] }
 const categories = [{ value: 'hotel', label: 'Hotels' }, { value: 'food_drink', label: 'Restaurants & drinks' }, { value: 'activity', label: 'Things to do' }]
 
-export default function Planner({ trip }: { trip: Trip }) {
+export default function Planner({ trip, initialImport = false }: { trip: Trip; initialImport?: boolean }) {
   const router = useRouter()
   const [tab, setTab] = useState<'places' | 'itinerary' | 'map'>('places')
   const [mapOpened, setMapOpened] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [importing, setImporting] = useState(initialImport)
   const [sharing, setSharing] = useState(false)
   const [confirmShare, setConfirmShare] = useState(false)
   const [error, setError] = useState('')
@@ -41,10 +44,11 @@ export default function Planner({ trip }: { trip: Trip }) {
       try { const result = await sharePlan(trip.id); if (result.error) setError(result.error); else { setConfirmShare(false); router.push(`/itinerary/${trip.id}`); router.refresh() } }
       catch { setError('Could not share. Please try again.') } finally { setSharing(false) }
     }}>{sharing ? 'Sharing…' : 'Share publicly'}</button><button disabled={sharing} onClick={() => setConfirmShare(false)} className="px-3 text-sm">Keep private</button></div>{error && <p role="alert" className="mt-2 text-red-700">{error}</p>}</section>}
-    <div className="sticky top-0 z-20 -mx-1 mt-5 bg-[#F3EAD9] px-1 py-3">
+    {!adding && !importing && <div className="sticky top-0 z-20 -mx-1 mt-5 bg-[#F3EAD9] px-1 py-3">
       <button className={`${buttonClass} flex w-full items-center justify-center gap-2`} onClick={() => setAdding(true)}><Plus size={20} />Add a place</button>
-    </div>
+    </div>}
     {adding && <AddPlace trip={trip} onClose={() => setAdding(false)} />}
+    {importing && <PlanImport tripId={trip.id} onClose={() => setImporting(false)} />}
     <div role="tablist" aria-label="Trip view" className="mb-5 mt-3 flex border-b border-[#d7cebc]">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className={`min-h-12 flex-1 border-b-2 p-3 font-semibold ${tab === value ? 'border-[#507c76] text-[#507c76]' : 'border-transparent text-[#73786d]'}`}>{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
     <section role="tabpanel" id="trip-panel" aria-labelledby={`${tab}-tab`}>
       {mapOpened && <div hidden={tab !== 'map'}><PlanningMap places={places.map(place => ({ id: place.id, name: place.name, city: place.destination, type: place.type === 'hotel' ? 'hotel' : place.type === 'food_drink' ? 'food_drink' : 'activity', day: place.day, placeId: place.placeId ?? undefined, lat: place.lat, lng: place.lng }))} /></div>}
@@ -67,24 +71,15 @@ function AddPlace({ trip, onClose }: { trip: Trip; onClose: () => void }) {
   const [error, setError] = useState('')
   const saving = useRef(false)
   const clientId = useRef('')
-  const [name, setName] = useState('')
-  const [placeId, setPlaceId] = useState('')
-  const [category, setCategory] = useState('hotel')
+  const [category, setCategory] = useState<'hotel' | 'food_drink' | 'activity'>('hotel')
+  const [uploading, setUploading] = useState(false)
+  const [day, setDay] = useState('')
   const [destination, setDestination] = useState(trip.destinations[0]?.name === 'Destination to decide' ? '' : trip.destinations[0]?.name ?? '')
   const selectedDestination = trip.destinations.find(d => d.name === destination)
   const city = [destination, selectedDestination?.country].filter(Boolean).join(', ')
-  function changeDestination(value: string) { setDestination(value); setPlaceId('') }
+  function changeDestination(value: string) { setDestination(value) }
 
-  return <form className="mb-4 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4" onSubmit={async event => {
-    event.preventDefault()
-    if (saving.current) return
-    saving.current = true; setBusy(true); setError('')
-    if (!clientId.current) clientId.current = crypto.randomUUID()
-    const data = new FormData(event.currentTarget); data.set('clientId', clientId.current)
-    try { const result = await addPlanPlace(trip.id, data); if (result.error) setError(result.error); else { router.refresh(); onClose() } }
-    catch { setError('Could not save. Your place is still here; try again.') }
-    finally { saving.current = false; setBusy(false) }
-  }}><h2 className="mb-3 text-lg font-semibold">Add a place</h2><fieldset disabled={busy} className="space-y-3">
+  return <section className="mb-4 space-y-3 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4" aria-label="Add a place"><h2 className="text-lg font-semibold">Add a place</h2><fieldset disabled={busy || uploading} className="space-y-3">
     <label className="block text-sm">Destination<PlacesAutocomplete name="destination" required maxLength={160} value={destination} onChange={changeDestination} onSelect={(main, secondary) => changeDestination([main, secondary].filter(Boolean).join(', '))} type="destination" placeholder="City or area" className={inputClass} /></label>
     {trip.destinations.length > 1 && <div className="flex flex-wrap gap-2">{trip.destinations.filter(d => d.name !== 'Destination to decide').map(d => <button type="button" key={d.id} onClick={() => changeDestination(d.name)} className="min-h-11 rounded-lg border border-[#d7cebc] px-3 text-xs">{d.name}</button>)}</div>}
     <fieldset><legend className="mb-2 text-sm">Category</legend><div className="flex flex-wrap gap-2">
@@ -93,18 +88,31 @@ function AddPlace({ trip, onClose }: { trip: Trip; onClose: () => void }) {
         { value: 'food_drink', label: 'Food / Drink', Icon: Utensils, color: 'peer-checked:border-orange-500 peer-checked:bg-orange-50 peer-checked:text-orange-700' },
         { value: 'activity', label: 'Activity', Icon: Camera, color: 'peer-checked:border-green-600 peer-checked:bg-green-50 peer-checked:text-green-700' },
       ].map(({ value, label, Icon, color }) => <label key={value} className="cursor-pointer">
-        <input type="radio" name="type" value={value} checked={category === value} onChange={() => { setCategory(value); setPlaceId('') }} className="peer sr-only" />
+        <input type="radio" name="type" value={value} checked={category === value} onChange={() => setCategory(value as 'hotel' | 'food_drink' | 'activity')} className="peer sr-only" />
         <span className={`flex min-h-11 items-center gap-2 rounded-full border border-[#d7cebc] bg-white px-3 py-2 text-sm font-medium text-[#73786d] transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#507c76] peer-disabled:opacity-50 ${color}`}><Icon size={16} />{label}</span>
       </label>)}
     </div></fieldset>
-    <label className="block text-sm">Place name<PlacesAutocomplete required name="name" maxLength={240} value={name} onChange={value => { setName(value); setPlaceId('') }} onSelect={(_main, _secondary, id) => setPlaceId(id ?? '')} type={category === 'food_drink' ? 'restaurant' : category === 'hotel' ? 'hotel' : 'activity'} city={city || undefined} placeholder="Hotel, restaurant, museum…" className={inputClass} /></label>
-    <input type="hidden" name="placeId" value={placeId} />
-    {city && <p className="text-xs text-[#73786d]">Suggestions near {city}</p>}
-    <label className="block text-sm">Notes (optional)<textarea name="notes" maxLength={8000} rows={3} placeholder="Reservation details, a recommendation, a reminder…" className={inputClass} /></label>
-    <DayField />
-    <div className="flex gap-3"><button className={buttonClass}>{busy ? 'Saving…' : 'Save place'}</button><button type="button" onClick={onClose} className="min-h-11 px-3 text-sm">Cancel</button></div>
-  </fieldset>{error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}</form>
+    </fieldset>
+    <PlaceEntryForm type={category} city={city || undefined} onPhotoBusyChange={setUploading} onClose={onClose} onAdd={async item => {
+      if (saving.current) return false
+      if (!destination.trim()) { setError('Choose a destination first.'); return false }
+      saving.current = true; setBusy(true); setError('')
+      if (!clientId.current) clientId.current = crypto.randomUUID()
+      const data = new FormData()
+      for (const [key, value] of Object.entries({ ...item, destination, day, clientId: clientId.current })) data.set(key, Array.isArray(value) ? JSON.stringify(value) : String(value))
+      try {
+        const result = await addPlanPlace(trip.id, data)
+        if (result.error) { setError(result.error); return false }
+        router.refresh(); onClose(); return true
+      } catch { setError('Could not save. Your place is still here; try again.'); return false }
+      finally { saving.current = false; setBusy(false) }
+    }}>
+      <label className="block text-sm">Day (optional)<input type="number" min={1} max={365} value={day} onChange={event => setDay(event.target.value)} placeholder="Unscheduled" className={inputClass} /></label>
+    </PlaceEntryForm>
+    {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
+  </section>
 }
+
 function DayField({ day }: { day?: number | null }) {
   return <label className="block text-sm">Day (optional)<input name="day" type="number" min={1} max={365} defaultValue={day ?? ''} placeholder="Unscheduled" className={inputClass} /></label>
 }

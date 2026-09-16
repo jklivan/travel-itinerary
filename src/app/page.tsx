@@ -12,30 +12,21 @@ export default async function FeedPage({
 }: {
   searchParams: Promise<{ search?: string; feed?: string }>
 }) {
-  const { search, feed } = await searchParams
-  const activeFeed = feed === 'following' ? 'following' : 'for-you'
+  const { search } = await searchParams
   const searchQuery = search?.trim() || ''
-  return <Suspense key={`${activeFeed}:${searchQuery}`} fallback={<div role="status" className="max-w-5xl mx-auto px-4 py-6">{searchQuery ? `Searching for “${searchQuery}”…` : 'Loading trips…'}</div>}>
-    <FeedResults searchQuery={searchQuery} activeFeed={activeFeed} />
+  return <Suspense key={searchQuery} fallback={<div role="status" className="max-w-5xl mx-auto px-4 py-6">{searchQuery ? `Searching for “${searchQuery}”…` : 'Loading trips…'}</div>}>
+    <FeedResults searchQuery={searchQuery} />
   </Suspense>
 }
 
-async function FeedResults({ searchQuery, activeFeed }: { searchQuery: string; activeFeed: 'for-you' | 'following' }) {
+async function FeedResults({ searchQuery }: { searchQuery: string }) {
   const session = await auth()
   const userId = session?.user?.id ?? null
-
-  const friendIds = activeFeed === 'following' && userId
-    ? (await prisma.follow.findMany({
-      where: { followerId: userId, status: 'accepted' },
-      select: { followingId: true },
-    })).map((follow) => follow.followingId)
-    : []
 
   const [itineraries, bucketIds] = await Promise.all([
     prisma.itinerary.findMany({
       where: {
         visibility: { not: 'draft' },
-        ...(activeFeed === 'following' ? { userId: { in: friendIds } } : {}),
         destinations: { some: { items: { some: {} } } },
         ...(searchQuery ? {
           destinations: {
@@ -69,37 +60,26 @@ async function FeedResults({ searchQuery, activeFeed }: { searchQuery: string; a
 
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-      <Suspense fallback={null}><StoryFeed userId={userId} following={activeFeed === 'following'} /></Suspense>
+      <Suspense fallback={null}><StoryFeed userId={userId} following={false} /></Suspense>
       {userId && <Suspense fallback={null}><PlanningShortcut userId={userId} /></Suspense>}
-      <nav aria-label="Feed filters" className="mb-6 flex border-b border-[#C4A882]/50">
-        {([{ value: 'for-you', label: 'For You' }, { value: 'following', label: 'Following' }] as const).map(tab => {
-          const query = new URLSearchParams()
-          if (tab.value === 'following') query.set('feed', 'following')
-          if (searchQuery) query.set('search', searchQuery)
-          const active = activeFeed === tab.value
-          return <Link key={tab.value} href={query.size ? `/?${query}` : '/'} aria-current={active ? 'page' : undefined}
-            className={`flex-1 border-b-2 px-4 py-3 text-center text-base font-semibold transition-colors ${active ? 'border-[#2C1810] text-[#2C1810]' : 'border-transparent text-[#8B6F4E] hover:text-[#2C1810]'}`}>
-            {tab.label}
-          </Link>
-        })}
-      </nav>
+      <h1 className="mb-6 border-b border-[#C4A882]/50 px-4 py-3 text-center text-base font-semibold text-[#2C1810]">For You</h1>
       {searchQuery && <div className="mb-5">
         <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">&quot;{searchQuery}&quot;</h1>
-        <Link href={activeFeed === 'following' ? '/?feed=following' : '/'} className="text-sm text-[#5C3D2E] hover:underline">Clear search</Link>
+        <Link href="/" className="text-sm text-[#5C3D2E] hover:underline">Clear search</Link>
       </div>}
 
       {itineraries.length === 0 ? (
         <div className="text-center py-20 bg-[#FAF7F2] rounded-xl border border-[#E8D5B7]">
           <p className="text-4xl mb-4">🌍</p>
           <p className="text-base font-medium text-[#2C1810]">
-            {activeFeed === 'following' ? userId ? 'No trips from people you follow yet.' : 'Sign in to see trips from people you follow.' : searchQuery ? 'No trips match your search.' : 'No itineraries yet.'}
+            {searchQuery ? 'No trips match your search.' : 'No itineraries yet.'}
           </p>
           <p className="text-sm mt-1 text-[#8B6F4E]">
-            {activeFeed === 'following' ? <Link href={userId ? '/friends' : '/login?callbackUrl=%2F%3Ffeed%3Dfollowing'} className="underline">{userId ? 'Find people to follow' : 'Sign in'}</Link> : searchQuery ? 'Try another destination in Explore.' : 'Be the first to share a trip!'}
+            {searchQuery ? 'Try another destination in Explore.' : 'Be the first to share a trip!'}
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3 sm:gap-5" aria-label={activeFeed === 'following' ? 'Following trips' : 'For You trips'}>
+        <div className="flex flex-col gap-3 sm:gap-5" aria-label="For You trips">
           {itineraries.map((it) => (
             <ItineraryCard
               key={it.id}

@@ -115,3 +115,25 @@ test('Google place identity is saved and preserved when editing notes only', asy
   assert.ok((await h.actions.editPlanPlace('place', form({ name: 'Typed manually', placeId: '' }))).success)
   assert.equal(h.items[0].placeId, null)
 })
+
+test('old entry fields persist with optional scheduling and idempotent retry', async () => {
+  const h = harness()
+  const data = form({ rating: '4', mealType: 'lunch,dinner', tags: JSON.stringify(['Great Food', '__highlight']), photos: JSON.stringify(['/api/img?url=photo']), day: '' })
+  assert.ok((await h.actions.addPlanPlace('trip', data)).success)
+  const place = h.items.at(-1)
+  assert.equal(place.rating, 4)
+  assert.equal(place.mealType, 'lunch,dinner')
+  assert.deepEqual(Array.from(place.tags), ['Great Food', '__highlight'])
+  assert.deepEqual(Array.from(place.photoUrls), ['/api/img?url=photo'])
+  assert.equal(place.photoUrl, '/api/img?url=photo')
+  assert.equal(place.dayIndex, null)
+  assert.ok((await h.actions.addPlanPlace('trip', data)).success)
+  assert.equal(h.items.length, 2)
+})
+test('invalid entry details are rejected before any write', async () => {
+  for (const values of [{ rating: '6' }, { photos: '["javascript:alert(1)"]' }, { tags: '[{}]' }, { mealType: 'unknown' }, { photos: 'not json' }]) {
+    const h = harness()
+    assert.ok((await h.actions.addPlanPlace('trip', form(values))).error)
+    assert.equal(h.writes.length, 0)
+  }
+})

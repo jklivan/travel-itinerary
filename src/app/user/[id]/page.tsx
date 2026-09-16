@@ -7,7 +7,7 @@ import SavedFolders from '@/components/SavedFolders'
 import SavedFolderPicker from '@/components/SavedFolderPicker'
 import HorizontalScrollFeed from '@/components/HorizontalScrollFeed'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
-import { MapPin, Users } from 'lucide-react'
+import { MapPin, Users, ChevronRight } from 'lucide-react'
 
 function getInitials(name: string) {
   return name.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
@@ -45,7 +45,7 @@ export default async function UserProfilePage({
   const showBucket = tab === 'bucket'
   const showDrafts = tab === 'drafts' && isOwn
 
-  const [itineraries, drafts, bucketItems, followRecord, followerCount, followingCount, viewerBucketIds, folders] = await Promise.all([
+  const [itineraries, drafts, bucketItems, followRecord, followerCount, followingCount, viewerBucketIds, folders, pendingCount] = await Promise.all([
     prisma.itinerary.findMany({
       where: { userId: id, visibility: { not: 'draft' } },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -95,6 +95,7 @@ export default async function UserProfilePage({
     isOwn
       ? prisma.savedFolder.findMany({ where: { userId: id }, orderBy: { name: 'asc' }, select: { id: true, name: true } })
       : Promise.resolve([]),
+    isOwn ? prisma.follow.count({ where: { followingId: id, status: 'pending' } }) : Promise.resolve(0),
   ])
 
   const selectedFolder = folder && folders.some(f => f.id === folder) ? folder : ''
@@ -109,9 +110,9 @@ export default async function UserProfilePage({
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <Link href="/friends" className="text-sm text-[#8B6F4E] hover:underline mb-5 inline-block">
+      {!isOwn && <Link href="/friends" className="text-sm text-[#8B6F4E] hover:underline mb-5 inline-block">
         ← Friends
-      </Link>
+      </Link>}
 
       {/* Profile header */}
       <div className="bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] p-5 mb-5 flex items-center gap-4">
@@ -155,6 +156,13 @@ export default async function UserProfilePage({
           </form>
         )}
       </div>
+
+      {isOwn && <Link href="/friends" className="group mb-5 flex min-h-20 items-center gap-4 rounded-2xl border border-[#c7d7cf] bg-[#edf1e9] p-4 text-[#2e4147] transition-colors hover:bg-[#e3ebe0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#507c76]">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#507c76]/10 text-[#507c76]"><Users size={23} /></span>
+        <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-xl">Friends</span><span className="mt-0.5 block text-sm text-[#507c76]">{pendingCount ? `${pendingCount} friend request${pendingCount === 1 ? '' : 's'} waiting` : 'Find friends & see who you follow'}</span></span>
+        {pendingCount > 0 && <span className="rounded-full bg-[#507c76] px-2 py-1 text-xs font-semibold text-white">{pendingCount}</span>}
+        <ChevronRight size={20} className="shrink-0 text-[#507c76] transition-transform group-hover:translate-x-0.5" />
+      </Link>}
 
       {/* Tabs */}
       {isOwn && (

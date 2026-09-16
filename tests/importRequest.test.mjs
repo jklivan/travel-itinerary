@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import vm from 'node:vm'
 import ts from 'typescript'
 
-const source = ts.createSourceFile('page.tsx', readFileSync(new URL('../src/app/create/page.tsx', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+const source = ts.createSourceFile('page.tsx', readFileSync(new URL('../src/lib/importFiles.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
 let fn
 function visit(node) {
   if (ts.isFunctionDeclaration(node) && node.name?.text === 'fetchExtraction') fn = node

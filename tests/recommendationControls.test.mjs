@@ -19,6 +19,11 @@ function editor(path) {
       return [hooks[index], value => { hooks[index] = typeof value === 'function' ? value(hooks[index]) : value }]
     } }
     if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx }
+    if (name === '@/components/PlaceEntryForm') {
+      const shared = { exports: {}, require: dependency => dependency.startsWith('.') ? {} : context.require(dependency) }
+      vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/components/PlaceEntryForm.tsx', import.meta.url), 'utf8'), { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, shared)
+      return shared.exports
+    }
     if (name === '@/components/RecommendationPicker') return { default: picker }
     if (name === '@/lib/eventPhotos') return photos
     if (name === '@/lib/placeRecommendation') return recommendations

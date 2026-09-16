@@ -74,6 +74,21 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
     const destinationName = text(form, 'destination', 160)
     const notes = text(form, 'notes', 8000)
     const clientId = text(form, 'clientId', 50)
+    const rating = Number(form.get('rating') ?? 0)
+    if (!Number.isInteger(rating) || rating < 0 || rating > 5) throw new InputError('Choose a rating from 1 to 5, or leave it blank.')
+    const mealType = form.has('mealType') ? text(form, 'mealType', 100) : ''
+    if (mealType && mealType.split(',').some(value => !['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'].includes(value))) throw new InputError('Choose a meal type from the available tags.')
+    function stringList(key: string, limit: number, maxLength: number) {
+      if (!form.has(key)) return [] as string[]
+      let values: unknown
+      try { values = JSON.parse(text(form, key, 100000)) } catch { throw new InputError(`Please check ${key}.`) }
+      if (!Array.isArray(values) || values.length > limit || values.some(value => typeof value !== 'string' || value.length > maxLength)) throw new InputError(`Please check ${key}.`)
+      return values as string[]
+    }
+    const tags = stringList('tags', 40, 100)
+    const photoUrls = stringList('photos', 20, 4096)
+    if (photoUrls.some(url => !/^(https:\/\/|\/(?!\/))/.test(url))) throw new InputError('Please choose valid photos.')
+
     if (!name || !destinationName || !['hotel', 'food_drink', 'activity'].includes(type) || !/^[a-f0-9-]{36}$/.test(clientId)) return { error: 'Enter a place name and destination.' }
     const day = text(form, 'day', 4)
     if (day && (!/^\d+$/.test(day) || Number(day) < 1 || Number(day) > 365)) return { error: 'Choose a day from 1 to 365, or leave it unscheduled.' }
@@ -91,6 +106,7 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
       const zeroBased = await tx.destItem.count({ where: { destinationId: dest.id, dayIndex: 0, type: { not: 'hotel' } } })
       if (zeroBased) await tx.destItem.updateMany({ where: { destinationId: dest.id, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
       await tx.destItem.create({ data: { id: clientId, destinationId: dest.id, name, type, placeId: placeId ?? null, notes: notes || null,
+        rating: rating || null, mealType: type === 'food_drink' ? mealType || null : null, tags, photoUrls, photoUrl: photoUrls[0] ?? null,
         dayIndex: day ? Number(day) : null,
         order: (last._max.order ?? -1) + 1, groupIndex: type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0,
       } })

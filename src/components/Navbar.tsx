@@ -38,7 +38,7 @@ export default async function Navbar() {
                 </button>
               </form>
               <Link href={session.user.id ? `/user/${session.user.id}` : '/login'} aria-label="Profile"
-                className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
+                className="hidden sm:flex size-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
                 <User size={22} />
               </Link>
             </>

@@ -24,7 +24,9 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
     if (busy.current) return
     busy.current = true; setSaving(true); setError('')
     if (!clientId.current) clientId.current = crypto.randomUUID()
+    const importing = (event.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'import'
     const data = new FormData(event.currentTarget)
+    if (importing && !String(data.get('title') ?? '').trim() && !String(data.get('destination') ?? '').trim()) data.set('title', 'My trip')
     data.set('clientId', clientId.current)
     try {
       const result = await startPlan(data)
@@ -36,7 +38,7 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
           const copied = saveStory ? await copyStoryToPlan(saveStory, result.id, placeCopyId.current) : await copyPlaceToPlan(savePlace!, result.id, placeCopyId.current)
           if (copied.error) { setError(`Your plan was saved, but the place couldn’t be added. ${copied.error}`); return }
         }
-        router.push(`/plan/${result.id}`); router.refresh()
+        router.push(`/plan/${result.id}${importing ? '?import=1' : ''}`); router.refresh()
       }
     } catch { setError('Could not save. Your details are still here; please try again.') }
     finally { busy.current = false; setSaving(false) }
@@ -47,7 +49,8 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
       <label className="block text-sm font-medium">Trip name <span className="font-normal">(optional)</span><input name="title" maxLength={160} placeholder="Summer in Italy" className={inputClass} /></label>
       <details><summary className="cursor-pointer py-2 text-sm text-[#507c76]">Add dates (optional)</summary><DateFields /></details>
       <p className="text-sm text-[#73786d]">Start with an idea. Save hotels, restaurants, and things to do as you find them. Your plan stays private until you share it.</p>
-      <button className={`${buttonClass} w-full`}>{saving ? 'Saving your plan…' : 'Start planning'}</button>
+      <button type="submit" value="plan" className={`${buttonClass} w-full`}>{saving ? 'Saving your plan…' : 'Start planning'}</button>
+      <button type="submit" value="import" className="min-h-11 w-full rounded-xl border border-[#d7cebc] px-5 py-3 text-sm font-semibold text-[#507c76] disabled:opacity-50">Import notes or a file</button>
     </fieldset>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
     {error && createdPlan && <Link href={`/plan/${createdPlan}`} className="block text-sm text-[#507c76] underline">Open your saved plan →</Link>}

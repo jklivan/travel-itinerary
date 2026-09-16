@@ -26,29 +26,24 @@ async function feed(activeFeed, userId = 'alice', searchQuery = '') {
   const element = await exports.results({ activeFeed, searchQuery })
   return { queries, follows, element }
 }
-test('Following filters to accepted follows and excludes drafts and empty trips', async () => {
-  const h = await feed('following')
-  assert.equal(h.follows[0].where.followerId, 'alice')
-  assert.equal(h.follows[0].where.status, 'accepted')
-  assert.deepEqual(Array.from(h.queries[0].where.userId.in), ['bob'])
-  assert.equal(h.queries[0].where.visibility.not, 'draft')
-  assert.ok(h.queries[0].where.destinations.some.items.some)
-})
-test('For You keeps the discovery feed and does not query follows', async () => {
+test('For You excludes drafts and empty trips without restricting authors', async () => {
   const h = await feed('for-you')
   assert.equal(h.follows.length, 0)
   assert.equal(h.queries[0].where.userId, undefined)
-  assert.equal(h.queries.length, 1)
+  assert.equal(h.queries[0].where.visibility.not, 'draft')
+  assert.ok(h.queries[0].where.destinations.some.items.some)
 })
-test('anonymous Following cannot fall back to everyone’s trips', async () => {
-  const h = await feed('following', null)
-  assert.equal(h.follows.length, 0)
-  assert.equal(h.queries[0].where.userId.in.length, 0)
+test('legacy Following requests use the same discovery feed, including anonymous visitors', async () => {
+  for (const user of ['alice', null]) {
+    const h = await feed('following', user)
+    assert.equal(h.follows.length, 0)
+    assert.equal(h.queries[0].where.userId, undefined)
+  }
 })
-test('existing search links retain Following and nonempty-trip filters', async () => {
+test('search retains destination and nonempty-trip filters', async () => {
   const h = await feed('following', 'alice', 'Paris')
   const where = h.queries[0].where
   assert.ok(where.destinations.some.items.some)
   assert.equal(where.destinations.some.OR[0].name.contains, 'Paris')
-  assert.deepEqual(Array.from(where.userId.in), ['bob'])
+  assert.equal(where.userId, undefined)
 })
