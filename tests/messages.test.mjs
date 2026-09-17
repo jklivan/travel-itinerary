@@ -41,7 +41,7 @@ function harness(userId = 'alice') {
       },
     },
     user: { findUnique: async ({ where }) => people.get(where.id) },
-    itinerary: { findFirst: async ({ where }) => { queries.push(where); return where.id === 'trip' ? { id: 'trip', title: 'Paris' } : null } },
+    itinerary: { findMany: async query => { queries.push(query); return [] }, findFirst: async ({ where }) => { queries.push(where); return where.id === 'trip' ? { id: 'trip', title: 'Paris' } : null } },
     destItem: { findFirst: async ({ where }) => { queries.push(where); return where.id === 'cafe' ? place : null } },
     directMessage: {
       findFirst: async ({ where }) => rows.find(row => match(row, where)),
@@ -258,4 +258,27 @@ test('replies preserve place references and deduplicate retries', async () => {
   assert.equal(h.rows.length, 2)
   assert.equal(h.rows[1].placeName, 'Cafe')
   assert.equal(h.rows[1].replyToId, 'm0')
+})
+
+
+test('itinerary picker only queries the signed-in owner’s published trips', async () => {
+  const h = harness()
+  await h.messageItineraries('Paris')
+  const q = h.queries.at(-1)
+  assert.equal(q.where.userId, 'alice')
+  assert.equal(q.where.visibility, 'public')
+  assert.equal(q.where.title.contains, 'Paris')
+  const anonymous = harness(null)
+  await anonymous.messageItineraries()
+  assert.equal(anonymous.queries.length, 0)
+})
+
+test('a trip can be sent without text, but empty or unavailable attachments cannot send', async () => {
+  const h = harness()
+  assert.ok((await h.sendDirectMessage({ ...h.input, content: '', itineraryId: 'trip' })).success)
+  assert.equal(h.rows[0].itineraryTitle, 'Paris')
+  assert.equal(h.notifications.length, 1)
+  assert.ok((await h.sendDirectMessage({ ...h.input, content: '' })).error)
+  assert.ok((await h.sendDirectMessage({ ...h.input, content: '', itineraryId: 'missing' })).error)
+  assert.equal(h.rows.length, 1)
 })

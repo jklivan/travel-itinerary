@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import MessageAttachment from './MessageAttachment'
+import ItineraryAttachmentPicker from './ItineraryAttachmentPicker'
 import { sendDirectMessage } from '@/actions/messages'
 
 export type MessageReplyTarget = { id: string; content: string; author: string; itineraryTitle?: string | null; placeName?: string | null }
@@ -10,7 +11,8 @@ export type ComposerAttachment = { id: string; name: string; trip?: string; kind
 
 export default function MessageComposer({ recipientId, attachment, replyTo, onClearReply }: { recipientId: string; attachment?: ComposerAttachment; replyTo?: MessageReplyTarget; onClearReply?: () => void }) {
   const [content, setContent] = useState('')
-  const [attached, setAttached] = useState(!!attachment)
+  const [selected, setSelected] = useState(attachment)
+  const [showPicker, setShowPicker] = useState(false)
   const [error, setError] = useState('')
   const [pending, startTransition] = useTransition()
   const clientId = useRef<string | null>(null)
@@ -27,9 +29,9 @@ export default function MessageComposer({ recipientId, attachment, replyTo, onCl
     clientId.current ??= crypto.randomUUID()
     startTransition(async () => {
       try {
-        const result = await sendDirectMessage({ recipientId, content, clientId: clientId.current!, replyToId: replyTo?.id, placeId: !replyTo && attached && attachment?.kind === 'place' ? attachment.id : undefined, itineraryId: !replyTo && attached && attachment?.kind === 'trip' ? attachment.id : undefined })
+        const result = await sendDirectMessage({ recipientId, content, clientId: clientId.current!, replyToId: replyTo?.id, placeId: selected?.kind === 'place' ? selected.id : undefined, itineraryId: selected?.kind === 'trip' ? selected.id : undefined })
         if (result.error) { setError(result.error); return }
-        setContent(''); setAttached(false); clientId.current = null
+        setContent(''); setSelected(undefined); setShowPicker(false); clientId.current = null
         onClearReply?.()
         router.replace(`/messages/${recipientId}`, { scroll: false })
         router.refresh()
@@ -42,15 +44,17 @@ export default function MessageComposer({ recipientId, attachment, replyTo, onCl
       <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words">{replyTo.content}</p>
       <button type="button" disabled={pending} onClick={onClearReply} className="mt-2 text-xs underline">Cancel reply</button>
     </div>}
-    {!replyTo && attached && attachment && <div className="space-y-2">
-      <MessageAttachment name={attachment.name} trip={attachment.trip} kind={attachment.kind} />
-      <button type="button" disabled={pending} className="text-xs text-[#8B6F4E] underline" onClick={() => { setAttached(false); clientId.current = null }}>Remove attachment</button>
+    {selected && <div className="space-y-2">
+      <MessageAttachment name={selected.name} trip={selected.trip} kind={selected.kind} />
+      <button type="button" disabled={pending} className="text-xs text-[#8B6F4E] underline" onClick={() => { setSelected(undefined); setShowPicker(false); clientId.current = null }}>Remove attachment</button>
     </div>}
     <label className="block text-sm font-medium text-[#2e4147]">Private message
-      <textarea ref={textarea} required maxLength={4000} rows={4} value={content} disabled={pending} onChange={event => { setContent(event.target.value); clientId.current = null }} placeholder={replyTo ? 'Write your reply…' : 'Ask about this trip or place…'} className="mt-2 w-full rounded-xl border-2 border-[#8caaa3] bg-[#fffdf6] p-3 text-base leading-relaxed placeholder:text-[#7a7b70] focus:outline-none focus:ring-2 focus:ring-[#507c76]/25 focus:border-[#507c76]" />
+      <textarea ref={textarea} required={!selected} maxLength={4000} rows={4} value={content} disabled={pending} onChange={event => { setContent(event.target.value); clientId.current = null }} placeholder={replyTo ? 'Write your reply…' : 'Write a message…'} className="mt-2 w-full rounded-xl border-2 border-[#8caaa3] bg-[#fffdf6] p-3 text-base leading-relaxed placeholder:text-[#7a7b70] focus:outline-none focus:ring-2 focus:ring-[#507c76]/25 focus:border-[#507c76]" />
     </label>
+    <button type="button" aria-label="Attach an itinerary" aria-expanded={showPicker} disabled={pending} onClick={() => setShowPicker(value => !value)} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#8caaa3] px-3 text-sm font-medium text-[#507c76] hover:bg-[#e6ece5] disabled:opacity-50"><span aria-hidden="true" className="text-2xl leading-none">+</span> Add itinerary</button>
+    {showPicker && <ItineraryAttachmentPicker disabled={pending} onSelect={trip => { setSelected({ id: trip.id, name: trip.title, kind: 'trip' }); setShowPicker(false); clientId.current = null }} />}
     <p className="text-xs text-[#8B6F4E]">Only you and this traveler can see this conversation.</p>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-    <button disabled={pending || !content.trim()} className="rounded-full bg-[#507c76] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#355650] transition-colors disabled:opacity-50">{pending ? 'Sending…' : 'Send message'}</button>
+    <button disabled={pending || (!content.trim() && !selected)} className="rounded-full bg-[#507c76] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#355650] transition-colors disabled:opacity-50">{pending ? 'Sending…' : 'Send message'}</button>
   </form>
 }

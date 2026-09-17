@@ -44,11 +44,21 @@ export async function getMessageInbox() {
   }) }
 }
 
+export async function messageItineraries(query = '') {
+  const userId = (await auth())?.user?.id
+  if (!userId || typeof query !== 'string' || query.length > 160) return []
+  return prisma.itinerary.findMany({
+    where: { userId, visibility: 'public', ...(query.trim() ? { title: { contains: query.trim(), mode: 'insensitive' as const } } : {}) },
+    select: { id: true, title: true },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 50,
+  })
+}
+
 export async function sendDirectMessage(input: { recipientId: string; content: string; clientId: string; placeId?: string; itineraryId?: string; replyToId?: string }) {
   const session = await auth()
   if (!session?.user?.id) return { error: 'Sign in to send a message.' }
   const senderId = session.user.id
-  if (!input || typeof input.content !== 'string' || !input.content.trim() || input.content.trim().length > 4000) return { error: 'Write a message of up to 4,000 characters.' }
+  if (!input || typeof input.content !== 'string' || input.content.trim().length > 4000 || (!input.content.trim() && !input.placeId && !input.itineraryId)) return { error: 'Write a message of up to 4,000 characters.' }
   if (typeof input.clientId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(input.clientId)) return { error: 'Please try sending again.' }
   if (typeof input.recipientId !== 'string' || input.recipientId === session.user.id) return { error: 'Choose another traveler to message.' }
   if (!await prisma.user.findUnique({ where: { id: input.recipientId }, select: { id: true } })) return { error: 'Traveler not found.' }

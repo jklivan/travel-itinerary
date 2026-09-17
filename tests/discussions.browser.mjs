@@ -16,13 +16,14 @@ async function source(name, text) {
   const compiled = ts.transpileModule(text, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
   await writeFile(path.join(temp, `${name}.js`), compiled)
 }
-for (const name of ['MessageThread', 'MessageComposer', 'MessageAttachment', 'QuestionComposer']) {
+for (const name of ['ItineraryAttachmentPicker', 'MessageThread', 'MessageComposer', 'MessageAttachment', 'QuestionComposer']) {
   await source(name, await readFile(path.join(root, 'src/components', `${name}.tsx`), 'utf8'))
 }
 await source('navigation', `const router = { push(url) { window.navigation = url }, replace(url) { window.navigation = url }, refresh() {} }; export function useRouter() { return router }`)
 await source('link', `export default function Link(props) { return <a {...props} /> }`)
 await source('icons', `export function MapPin() { return <span aria-hidden="true">📍</span> }`)
 await source('actions', `
+  export async function messageItineraries(query = '') { return 'Paris with kids'.toLowerCase().includes(query.toLowerCase()) ? [{ id: 'paris', title: 'Paris with kids' }] : [] }
   export async function sendDirectMessage(input) { window.sent.push(input); return { success: true } }
   export async function searchQuestionItineraries() { return [{ id: 'paris', title: 'Paris with kids', user: { name: 'Jen' } }] }
   export async function createFriendQuestion(input) { window.posts.push(input); if (window.failPost) throw Error('offline'); return { id: 'question1' } }
@@ -76,6 +77,23 @@ try {
   await page.waitForFunction(() => !document.querySelector('textarea').value)
   assert.doesNotMatch(await page.locator('form').innerText(), /Replying to/)
 
+  await page.getByRole('button', { name: 'Attach an itinerary' }).click()
+  await page.getByRole('button', { name: 'Paris with kids', exact: true }).click()
+  await page.getByRole('button', { name: 'Remove attachment' }).click()
+  assert.equal(await page.getByRole('button', { name: 'Send message', exact: true }).isDisabled(), true)
+  await page.getByRole('textbox', { name: 'Private message' }).fill('A text-only message')
+  await page.getByRole('button', { name: 'Send message', exact: true }).click()
+  await page.waitForFunction(() => window.sent.length === 2)
+  assert.equal((await page.evaluate(() => window.sent[1])).itineraryId, undefined)
+  await page.getByRole('button', { name: 'Attach an itinerary' }).click()
+  await page.getByRole('searchbox').fill('Nothing matches')
+  await page.getByText('No matching itineraries.', { exact: true }).waitFor()
+  await page.getByRole('searchbox').fill('Paris')
+  await page.getByRole('button', { name: 'Paris with kids', exact: true }).click()
+  await page.getByRole('button', { name: 'Send message', exact: true }).click()
+  await page.waitForFunction(() => window.sent.length === 3)
+  assert.equal((await page.evaluate(() => window.sent[2])).itineraryId, 'paris')
+  assert.equal((await page.evaluate(() => window.sent[2])).content, '')
   await page.evaluate(() => window.renderView('question'))
   await page.getByRole('textbox', { name: 'What would you like to ask?' }).fill('Where should we stay?')
   await page.getByRole('button', { name: '+ Tag an itinerary' }).click()
