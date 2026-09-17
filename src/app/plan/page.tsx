@@ -22,9 +22,27 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
     <p className="mb-6 mt-2 text-[#73786d]">Collect places now. Work out the days later.</p>
     <NewPlanForm saveStory={typeof saveStory === 'string' && saveStory.length <= 200 ? saveStory : undefined} savePlace={typeof savePlace === 'string' && savePlace.length <= 200 ? savePlace : undefined} />
     <div className="mt-6"><Link href={`/user/${userId}`} className="inline-flex min-h-11 items-center rounded-full border border-[#d7cebc] px-4 text-sm font-medium text-[#507c76] hover:bg-[#e6ece5]">View all trips on your profile →</Link></div>
-    {trips.length > 0 && <section className="mt-8"><h2 className="mb-3 text-xl font-semibold">Your trips</h2><div className="space-y-3">{trips.map(trip => <article key={trip.id} aria-label={trip.title} className="rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4"><Link href={`/plan/${trip.id}`} className="block">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[#507c76]">{trip.visibility === 'draft' ? 'Private plan' : 'Shared trip'}</p>
-      <h3 className="mt-1 text-lg font-semibold">{trip.title}</h3><p className="mt-1 text-sm text-[#73786d]">{trip.destinations.reduce((sum, d) => sum + d._count.items, 0)} places · Open trip →</p>
-    </Link><div className="mt-3"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" label="Delete trip" /></div></article>)}</div></section>}
+    <section className="mt-8" aria-labelledby="your-trips-heading">
+      <h2 id="your-trips-heading" className="text-xl font-semibold">Your trips</h2>
+      {[
+        { title: 'Private Plans', description: 'Only you can see these. Keep planning or publish whenever you’re ready.', private: true, empty: 'No private plans yet.' },
+        { title: 'Shared Trips', description: 'Already published. You can still add places and update your trip.', private: false, empty: 'No current or recently added shared trips.' },
+      ].map(group => {
+        const items = trips.filter(trip => (trip.visibility === 'draft') === group.private)
+        return <section key={group.title} aria-label={group.title} className="mt-6">
+          <div className="mb-3 border-b border-[#d7cebc] pb-3">
+            <h3 className="font-[family-name:var(--font-playfair)] text-xl text-[#507c76]">{group.title} <span className="ml-1 font-sans text-sm text-[#73786d]">{items.length}</span></h3>
+            <p className="mt-1 text-sm text-[#73786d]">{group.description}</p>
+          </div>
+          {items.length ? <div className="space-y-3">{items.map(trip => <article key={trip.id} aria-label={trip.title} className="rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4">
+            <Link href={`/plan/${trip.id}`} className="block">
+              <h4 className="text-lg font-semibold">{trip.title}</h4>
+              <p className="mt-1 text-sm text-[#73786d]">{trip.destinations.reduce((sum, d) => sum + d._count.items, 0)} places · {group.private ? 'Keep planning' : 'Open trip'} →</p>
+            </Link>
+            <div className="mt-3"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" label="Delete trip" /></div>
+          </article>)}</div> : <p className="py-3 text-sm text-[#73786d]">{group.empty}</p>}
+        </section>
+      })}
+    </section>
   </div>
 }

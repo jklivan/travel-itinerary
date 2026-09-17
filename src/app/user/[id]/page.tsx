@@ -1,3 +1,5 @@
+
+import BackButton from '@/components/BackButton'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { notFound } from 'next/navigation'
@@ -110,9 +112,7 @@ export default async function UserProfilePage({
 
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-      {!isOwn && <Link href="/friends" className="text-sm text-[#8B6F4E] hover:underline mb-5 inline-block">
-        ← Friends
-      </Link>}
+      {!isOwn && <BackButton fallback="/friends" className="text-sm text-[#8B6F4E] hover:underline mb-5 inline-block">← Back</BackButton>}
 
       {/* Profile header */}
       <div className="bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] p-5 mb-5 flex items-center gap-4">

@@ -1,5 +1,7 @@
 'use client'
 
+import BackButton from '@/components/BackButton'
+
 import TripFormatPicker from '@/components/TripFormatPicker'
 
 import { readFileForUpload, fetchExtraction } from '@/lib/importFiles'
@@ -12,7 +14,6 @@ import RecommendationPicker from '@/components/RecommendationPicker'
 import { getRecommendation, recommendationTags, type PlaceRecommendation } from '@/lib/placeRecommendation'
 
 import { useRef, useState } from 'react'
-import Link from 'next/link'
 import { upload } from '@vercel/blob/client'
 import { createItineraryDirect } from '@/actions/itinerary'
 import { saveImportNotes } from '@/actions/importNotes'
@@ -596,7 +597,7 @@ export default function CreatePage() {
         {step === 'start' && (
           <div className="space-y-5">
             <div className="flex items-center justify-between mb-1">
-              <Link href="/" className="text-sm text-blue-600 hover:underline">← Back</Link>
+              <BackButton fallback="/" className="text-sm text-blue-600 hover:underline">← Back</BackButton>
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900 mb-1">New post</h1>

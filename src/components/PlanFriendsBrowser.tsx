@@ -1,5 +1,7 @@
 'use client'
 
+import BackButton from '@/components/BackButton'
+
 import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -64,7 +66,7 @@ export default function PlanFriendsBrowser({ plan, initialQuery, initialResults 
   }
 
   return <div className="mx-auto max-w-2xl px-4 py-6 pb-64 text-[#2e4147]">
-    <Link href={`/plan/${plan.id}`} className="text-sm text-[#507c76]">← Back to {plan.title}</Link>
+    <BackButton fallback={`/plan/${plan.id}`} className="text-sm text-[#507c76]">← Back</BackButton>
     <h1 className="mt-5 font-[family-name:var(--font-playfair)] text-3xl">Browse friends’ places</h1>
     <p className="mt-2 text-sm leading-relaxed text-[#73786d]">Pick places from several trips and add them to {plan.title} together. Keep browsing without leaving your plan.</p>
     <form className="mt-5" onSubmit={event => { event.preventDefault(); void search(query) }}>

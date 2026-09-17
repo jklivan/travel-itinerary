@@ -1,3 +1,5 @@
+
+import BackButton from '@/components/BackButton'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/auth'
@@ -16,7 +18,7 @@ export default async function QuestionPage({ params, searchParams }: { params: P
   if (!result.question) notFound()
   const { question, replies } = result
   return <div className="mx-auto max-w-2xl space-y-5 px-4 py-6">
-    <Link href="/explore/questions" className="text-sm text-[#8B6F4E]">← Ask your friends</Link>
+    <BackButton fallback="/explore/questions" className="text-sm text-[#8B6F4E]">← Back</BackButton>
     <div className="flex items-center justify-between gap-3"><h1 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">{question.authorId === userId ? 'Your question' : `${question.author.name} asked`}</h1><MessageRefresh label="Refresh replies" /></div>
     <article className="space-y-4 rounded-2xl border border-[#C4A882] bg-[#FAF7F2] p-5">
       <p className="whitespace-pre-wrap break-words text-lg leading-relaxed text-[#2e4147]">{question.content}</p>

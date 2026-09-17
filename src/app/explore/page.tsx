@@ -1,3 +1,5 @@
+
+import BackButton from '@/components/BackButton'
 import ExploreLanding from '@/components/ExploreLanding'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
@@ -291,7 +293,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
+        <BackButton fallback="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Back</BackButton>
         <ExploreSearchBar />
         <SearchFiltersDisplay parsed={parsed} />
         <p className="text-sm text-[#8B6F4E] mb-4">
@@ -308,9 +310,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     const { itineraries, bucketSet } = await fetchItineraries({ tags: { has: tag } }, userId)
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <Link href="/explore?view=tags" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">
-          ← Browse by Type
-        </Link>
+        <BackButton fallback="/explore?view=tags" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="mb-5">
           <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">
             {meta ? `${meta.emoji} ${meta.label}` : tag}
@@ -343,9 +343,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     )
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <Link href={country === 'United States' ? '/explore?view=destinations' : `/explore?country=${encodeURIComponent(country)}`} className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">
-          ← {country === 'United States' ? 'Destinations' : country}
-        </Link>
+        <BackButton fallback={country === 'United States' ? '/explore?view=destinations' : `/explore?country=${encodeURIComponent(country)}`} className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="mb-5">
           <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] flex items-center gap-2">
             <MapPin size={18} className="text-[#5C3D2E]" />
@@ -437,7 +435,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
-        <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
+        <BackButton fallback="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="mb-5">
           <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">{country}</h2>
           <p className="text-sm text-[#8B6F4E]">{cities.length} destination{cities.length !== 1 ? 's' : ''}</p>
@@ -498,7 +496,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     const meta = TRIP_TYPE_META[type]
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <Link href="/explore?view=tags" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Trip types</Link>
+        <BackButton fallback="/explore?view=tags" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="mb-5">
           <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">{meta.emoji} {meta.label}</h2>
           <p className="text-sm text-[#8B6F4E]">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
@@ -515,7 +513,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
+        <BackButton fallback="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Back</BackButton>
         <h1 className="font-[family-name:var(--font-playfair)] text-2xl sm:text-3xl tracking-wide text-[#2C1810] mb-5">SEARCH BY TRIP TYPE</h1>
         <ExploreTripFilters key={`${filters.types.join(',')}|${filters.tags.join(',')}`} types={filters.types} tags={filters.tags} />
         <div className="mt-7">
@@ -531,7 +529,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
   if (view === 'hotspots') {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
+        <BackButton fallback="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="text-center py-24">
           <p className="text-5xl mb-4">🔥</p>
           <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-2">Hot Spots</h2>
@@ -545,7 +543,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
   if (view === 'recs') {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
+        <BackButton fallback="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="text-center py-24">
           <p className="text-5xl mb-4">👥</p>
           <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-2">Friends&apos; Trips</h2>
@@ -581,7 +579,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     return (
       <div className="flex flex-col" style={{ height: 'calc(100dvh - 3.5rem)' }}>
         <div className="px-4 py-3 flex items-center justify-between border-b border-[#E8D5B7] bg-[#FAF7F2] shrink-0">
-          <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline">← Explore</Link>
+          <BackButton fallback="/explore" className="text-sm text-[#5C3D2E] hover:underline">← Back</BackButton>
           <span className="text-sm text-[#8B6F4E]">{pins.length} place{pins.length !== 1 ? 's' : ''} mapped</span>
         </div>
         <div className="flex-1 min-h-0">
@@ -599,7 +597,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
-        <Link href="/explore?view=destinations" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Destinations</Link>
+        <BackButton fallback="/explore?view=destinations" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Back</BackButton>
         <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-5">{region}</h1>
         {cards.length === 0 ? (
           <p className="text-sm text-[#8B6F4E] italic">No destinations yet.</p>
@@ -642,7 +640,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
-      <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
+      <BackButton fallback="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Back</BackButton>
       <div className="mb-5">
         <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-[#2C1810]">Destinations</h1>
       </div>

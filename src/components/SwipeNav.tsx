@@ -1,5 +1,7 @@
 'use client'
 
+import BackButton from '@/components/BackButton'
+
 import { useRouter } from 'next/navigation'
 import { useRef } from 'react'
 import Link from 'next/link'
@@ -33,9 +35,7 @@ export default function SwipeNav({
   return (
     <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {/* Back link */}
-      <Link href="/" className="text-sm text-blue-600 hover:underline mb-5 inline-block">
-        ← Back to feed
-      </Link>
+      <BackButton fallback="/" className="text-sm text-blue-600 hover:underline mb-5 inline-block">← Back</BackButton>
 
       {/* Fixed side arrows */}
       {prevId && (

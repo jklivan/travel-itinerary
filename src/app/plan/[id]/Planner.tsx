@@ -1,5 +1,7 @@
 'use client'
 
+import BackButton from '@/components/BackButton'
+
 import Link from 'next/link'
 import Image from 'next/image'
 import styles from '../../itinerary/[id]/places.module.css'
@@ -31,7 +33,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const scheduled = [...new Set(places.flatMap(p => p.day === null ? [] : [p.day]))].sort((a, b) => a - b)
   function renderPlace(place: Place & { destination: string }) { return <PlaceRow key={place.id} place={place} /> }
   return <div className="mx-auto max-w-2xl px-4 py-6 text-[#2e4147]">
-    <Link href="/plan" className="text-sm text-[#507c76]">← Your trips</Link>
+    <BackButton fallback="/plan" className="text-sm text-[#507c76]">← Back</BackButton>
     <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#507c76]"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
     <h1 className="mt-2 break-words font-[family-name:var(--font-playfair)] text-3xl sm:text-4xl">{trip.title}</h1>
     <p className="mt-2 flex items-center gap-2 text-sm text-[#73786d]"><CalendarDays size={16} />{trip.start ? `${trip.start} — ${trip.end}` : 'Dates are flexible'} · {places.length} places</p>

@@ -3,6 +3,7 @@
 import TripFormatPicker from '@/components/TripFormatPicker'
 import { hasTripDates, tripDuration } from '@/lib/dayTrips'
 
+import { previousPage } from '@/lib/backNavigation'
 import { tripReturnPath } from '@/lib/tripNavigation'
 
 import TripEntryLayout from '@/components/TripEntryLayout'
@@ -593,7 +594,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
   function discardChanges() {
     if (pending) return
     // A full navigation also clears the editor's cached, unsaved React state.
-    window.location.replace(tripReturnPath(itinerary.id, `/itinerary/${itinerary.id}`))
+    window.location.replace(previousPage(window.history.state) ?? tripReturnPath(itinerary.id, `/itinerary/${itinerary.id}`))
   }
 
   const initialDates = monthAndDaysFromDates(fmt(itinerary.startDate), fmt(itinerary.endDate))
