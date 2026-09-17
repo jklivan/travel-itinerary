@@ -8,7 +8,7 @@ import HorizontalScrollFeed from '@/components/HorizontalScrollFeed'
 import ExploreSearchBar from '@/components/ExploreSearchBar'
 import { parseSearchQuery, type ParsedQuery } from '@/lib/parseSearchQuery'
 import { tagMeta } from '@/lib/tags'
-import { MapPin, Globe, ChevronRight, Users } from 'lucide-react'
+import { MapPin, Globe, ChevronRight, Users, MessagesSquare } from 'lucide-react'
 import ExploreMap from '@/components/ExploreMap'
 import ExploreTripFilters from '@/components/ExploreTripFilters'
 import { parseExploreFilters, exploreFilterWhere } from '@/lib/exploreFilters'
@@ -234,6 +234,7 @@ export default async function ExplorePage({
         <p className="text-sm text-[#8B6F4E] mb-6">How would you like to find your next trip?</p>
         <div className="space-y-4">
           {[
+            { href: '/explore/questions', title: 'Ask your friends', description: 'Ask a question, tag an itinerary, and swap travel advice.', Icon: MessagesSquare },
             { href: '/explore?view=tags', title: 'SEARCH BY TRIP TYPE', description: 'Family adventures, couples getaways, and trips with friends.', Icon: Users },
             { href: '/explore?view=destinations', title: 'SEARCH BY DESTINATION', description: 'Browse places around the world.', Icon: Globe },
           ].map(({ href, title, description, Icon }) => (

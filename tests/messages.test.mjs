@@ -12,6 +12,7 @@ function harness(userId = 'alice') {
   const match = (row, where) => (!where.id || row.id === where.id) && where.OR.some(pair => Object.entries(pair).every(([k, v]) => row[k] === v))
   const prisma = {
     user: { findUnique: async ({ where }) => people.get(where.id) },
+    itinerary: { findFirst: async ({ where }) => { queries.push(where); return where.id === 'trip' ? { id: 'trip', title: 'Paris' } : null } },
     destItem: { findFirst: async ({ where }) => { queries.push(where); return where.id === 'cafe' ? place : null } },
     directMessage: {
       findFirst: async ({ where }) => rows.find(row => match(row, where)),
@@ -23,7 +24,7 @@ function harness(userId = 'alice') {
           found = found.filter(row => { const key = `${row.senderId}:${row.recipientId}`; if (seen.has(key)) return false; seen.add(key); return true })
         }
         if (query.cursor) found = found.slice(found.findIndex(row => row.id === query.cursor.id) + query.skip)
-        return found.slice(0, query.take).map(row => ({ ...row, sender: people.get(row.senderId), recipient: people.get(row.recipientId) }))
+        return found.slice(0, query.take).map(row => ({ ...row, sender: people.get(row.senderId), recipient: people.get(row.recipientId), replyTo: query.include?.replyTo ? rows.find(parent => parent.id === row.replyToId) ?? null : undefined }))
       },
       upsert: async ({ create }) => {
         let row = rows.find(row => row.senderId === create.senderId && row.clientId === create.clientId)
@@ -70,6 +71,35 @@ test('attachment content comes from a non-draft database place, not client suppl
   assert.equal(h.queries[0].destination.itinerary.visibility.not,'draft')
   assert.ok((await h.sendDirectMessage({...h.input, placeId:'deleted-or-draft'})).error)
 })
+test('trip references persist for both travelers and the inbox, with retry deduplication', async () => {
+  const h = harness()
+  const input = { ...h.input, itineraryId: 'trip', itineraryTitle: 'Forged title' }
+  await h.sendDirectMessage(input)
+  await h.sendDirectMessage(input)
+  assert.equal(h.rows.length, 1)
+  assert.equal(h.rows[0].itineraryId, 'trip')
+  assert.equal(h.rows[0].itineraryTitle, 'Paris')
+  assert.equal(h.rows[0].placeId, undefined)
+  assert.equal(h.queries[0].visibility.not, 'draft')
+  assert.equal((await h.getConversation('bob')).messages[0].itineraryTitle, 'Paris')
+  assert.equal((await h.getMessageInbox()).threads[0].itineraryTitle, 'Paris')
+  const recipient = harness('bob')
+  recipient.rows.push(...h.rows)
+  assert.equal((await recipient.getConversation('alice')).messages[0].itineraryId, 'trip')
+})
+test('unavailable or malformed trip references fail without sending an unlinked message', async () => {
+  const h = harness()
+  for (const itineraryId of ['deleted-or-draft', 123, {}]) {
+    assert.ok((await h.sendDirectMessage({ ...h.input, itineraryId })).error)
+  }
+  assert.equal(h.rows.length, 0)
+})
+test('place attachments retain their own trip when another trip ID is supplied', async () => {
+  const h = harness()
+  await h.sendDirectMessage({ ...h.input, placeId: 'cafe', itineraryId: 'other-trip' })
+  assert.equal(h.rows[0].placeId, 'cafe')
+  assert.equal(h.rows[0].itineraryId, 'trip')
+})
 test('conversation reads exclude messages involving a third party and reject foreign cursors', async () => {
   const h = harness()
   h.rows.push({id:'secret',senderId:'bob',recipientId:'eve',content:'secret',createdAt:new Date()})
@@ -99,4 +129,43 @@ test('older messages page without dropping or duplicating messages', async () =>
   assert.equal(older.messages.length,5)
   assert.equal(older.hasOlder,false)
   assert.equal(older.messages[0].content,'0')
+})
+
+test('replies quote the selected message and inherit its trip, including further replies', async () => {
+  const h = harness()
+  await h.sendDirectMessage({ ...h.input, itineraryId: 'trip' })
+  h.rows.push({ id: 'other-trip', senderId: 'bob', recipientId: 'alice', content: 'What about Rome?', itineraryId: 'rome', itineraryTitle: 'Rome', createdAt: new Date(1000) })
+  await h.sendDirectMessage({ ...h.input, content: 'Paris answer', replyToId: 'm0', clientId: 'paris-reply-123456' })
+  await h.sendDirectMessage({ ...h.input, content: 'Rome answer', replyToId: 'other-trip', clientId: 'rome-reply-1234567' })
+  await h.sendDirectMessage({ ...h.input, content: 'More on Paris', replyToId: 'm2', clientId: 'paris-followup-12345' })
+  const { messages } = await h.getConversation('bob')
+  assert.equal(messages[2].replyTo.content, 'Hello')
+  assert.equal(messages[2].itineraryTitle, 'Paris')
+  assert.equal(messages[3].replyTo.content, 'What about Rome?')
+  assert.equal(messages[3].itineraryTitle, 'Rome')
+  assert.equal(messages[4].itineraryTitle, 'Paris')
+  const recipient = harness('bob')
+  recipient.rows.push(...h.rows)
+  assert.equal((await recipient.getConversation('alice')).messages[3].replyTo.content, 'What about Rome?')
+})
+
+test('reply targets must exist in the same private conversation', async () => {
+  const h = harness()
+  h.rows.push({ id: 'secret', senderId: 'bob', recipientId: 'eve', content: 'private', createdAt: new Date() })
+  h.rows.push({ id: 'different-thread', senderId: 'alice', recipientId: 'eve', content: 'also private', createdAt: new Date() })
+  for (const replyToId of ['secret', 'different-thread', 'missing', 123]) {
+    assert.ok((await h.sendDirectMessage({ ...h.input, replyToId })).error)
+  }
+  assert.equal(h.rows.length, 2)
+})
+
+test('replies preserve place references and deduplicate retries', async () => {
+  const h = harness()
+  await h.sendDirectMessage({ ...h.input, placeId: 'cafe' })
+  const reply = { ...h.input, replyToId: 'm0', clientId: 'reply-client-123456' }
+  await h.sendDirectMessage(reply)
+  await h.sendDirectMessage(reply)
+  assert.equal(h.rows.length, 2)
+  assert.equal(h.rows[1].placeName, 'Cafe')
+  assert.equal(h.rows[1].replyToId, 'm0')
 })

@@ -784,7 +784,7 @@ export default async function ItineraryPage({
 
             {!isOwn && <div className="mt-6 border-t border-[#C4A882] pt-6">
               <h2 className="font-semibold mb-2">Have a question about this trip?</h2>
-              <Link href={`/friends/messages/${it.user.id}`} className="inline-block rounded-full bg-[#507c76] px-4 py-2 text-sm text-white">Message {it.user.name} privately</Link>
+              <Link href={`/friends/messages/${it.user.id}?trip=${encodeURIComponent(it.id)}`} className="inline-block rounded-full bg-[#507c76] px-4 py-2 text-sm text-white">Message {it.user.name} privately</Link>
             </div>}
           </>
         )}
