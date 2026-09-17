@@ -26,6 +26,8 @@ model User {
   receivedMessages DirectMessage[] @relation("MessageRecipient")
   savedImportNotes SavedImportNotes[]
   stories Story[]
+  questions FriendQuestion[]
+  questionReplies FriendQuestionReply[]
   createdAt      DateTime         @default(now())
 }
 
@@ -214,6 +216,9 @@ model DirectMessage {
   placeId String?
   placeName String?
   placeNotes String?
+  replyToId String?
+  replyTo DirectMessage? @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies DirectMessage[] @relation("MessageReplies")
   createdAt DateTime @default(now())
   sender User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
   recipient User @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
@@ -222,6 +227,38 @@ model DirectMessage {
   @@unique([senderId, clientId])
   @@index([senderId, recipientId, createdAt])
   @@index([recipientId, createdAt])
+  @@index([replyToId])
+}
+
+model FriendQuestion {
+  id String @id @default(cuid())
+  authorId String
+  content String @db.VarChar(4000)
+  clientId String
+  itineraryId String?
+  itineraryTitle String?
+  createdAt DateTime @default(now())
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  replies FriendQuestionReply[]
+
+  @@unique([authorId, clientId])
+  @@index([authorId, createdAt, id])
+}
+
+model FriendQuestionReply {
+  id String @id @default(cuid())
+  questionId String
+  authorId String
+  content String @db.VarChar(4000)
+  clientId String
+  itineraryId String?
+  itineraryTitle String?
+  createdAt DateTime @default(now())
+  question FriendQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([authorId, clientId])
+  @@index([questionId, createdAt, id])
 }
 
 model Story {

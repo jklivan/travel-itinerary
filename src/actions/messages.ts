@@ -19,6 +19,7 @@ export async function getConversation(recipientId: string, before?: string) {
     where: participants,
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: 101,
+    include: { replyTo: { select: { id: true, senderId: true, content: true, itineraryTitle: true, placeName: true } } },
     ...(before ? { cursor: { id: before }, skip: 1 } : {}),
   })
   return { messages: messages.slice(0, 100).reverse(), hasOlder: messages.length > 100 }
@@ -39,11 +40,11 @@ export async function getMessageInbox() {
     const person = message.senderId === userId ? message.recipient : message.sender
     if (seen.has(person.id)) return []
     seen.add(person.id)
-    return [{ person, content: message.content, placeName: message.placeName, createdAt: message.createdAt }]
+    return [{ person, content: message.content, placeName: message.placeName, itineraryTitle: message.itineraryTitle, createdAt: message.createdAt }]
   }) }
 }
 
-export async function sendDirectMessage(input: { recipientId: string; content: string; clientId: string; placeId?: string }) {
+export async function sendDirectMessage(input: { recipientId: string; content: string; clientId: string; placeId?: string; itineraryId?: string; replyToId?: string }) {
   const session = await auth()
   if (!session?.user?.id) return { error: 'Sign in to send a message.' }
   const senderId = session.user.id
@@ -52,6 +53,14 @@ export async function sendDirectMessage(input: { recipientId: string; content: s
   if (typeof input.recipientId !== 'string' || input.recipientId === session.user.id) return { error: 'Choose another traveler to message.' }
   if (!await prisma.user.findUnique({ where: { id: input.recipientId }, select: { id: true } })) return { error: 'Traveler not found.' }
   let attachment = {}
+  if (input.replyToId) {
+    if (typeof input.replyToId !== 'string') return { error: 'Message not found.' }
+    const original = await prisma.directMessage.findFirst({
+      where: { id: input.replyToId, OR: [{ senderId: session.user.id, recipientId: input.recipientId }, { senderId: input.recipientId, recipientId: session.user.id }] },
+    })
+    if (!original) return { error: 'The message you are replying to is no longer available.' }
+    attachment = { itineraryId: original.itineraryId, itineraryTitle: original.itineraryTitle, placeId: original.placeId, placeName: original.placeName, placeNotes: original.placeNotes }
+  }
   if (input.placeId) {
     if (typeof input.placeId !== 'string') return { error: 'Place not found.' }
     const place = await prisma.destItem.findFirst({
@@ -60,13 +69,21 @@ export async function sendDirectMessage(input: { recipientId: string; content: s
     })
     if (!place) return { error: 'This place is no longer available. Remove the attachment to send your message.' }
     attachment = { placeId: place.id, placeName: place.name, placeNotes: place.notes, itineraryId: place.destination.itinerary.id, itineraryTitle: place.destination.itinerary.title }
+  } else if (input.itineraryId) {
+    if (typeof input.itineraryId !== 'string') return { error: 'Trip not found.' }
+    const trip = await prisma.itinerary.findFirst({
+      where: { id: input.itineraryId, visibility: { not: 'draft' } },
+      select: { id: true, title: true },
+    })
+    if (!trip) return { error: 'This trip is no longer available. Remove the attachment to send your message.' }
+    attachment = { itineraryId: trip.id, itineraryTitle: trip.title }
   }
   // Save the message and alert atomically; retries must not duplicate either.
   const notificationId = await prisma.$transaction(async tx => {
     const message = await tx.directMessage.upsert({
       where: { senderId_clientId: { senderId, clientId: input.clientId } },
       update: {},
-      create: { senderId, recipientId: input.recipientId, content: input.content.trim(), clientId: input.clientId, ...attachment },
+      create: { senderId, recipientId: input.recipientId, content: input.content.trim(), clientId: input.clientId, replyToId: input.replyToId || null, ...attachment },
     })
     const notifications = await tx.notification.createManyAndReturn({
       data: [{ recipientId: message.recipientId, actorId: message.senderId, kind: 'message', messageId: message.id, dedupeKey: `message:${message.id}` }],
