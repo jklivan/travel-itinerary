@@ -7,7 +7,7 @@ import planningStyles from './Planner.module.css'
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, MapPin, LockKeyhole, CalendarDays, Check, Hotel, Utensils, Camera, Plane } from 'lucide-react'
-import { addPlanPlace, editPlanPlace, savePlanDetails, sharePlan, removePlanPlace } from '@/actions/planning'
+import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
 import CopyTripButton from '@/components/CopyTripButton'
 import PlaceEntryForm from '@/components/PlaceEntryForm'
@@ -23,14 +23,10 @@ type Trip = { durationDays?: number | null; id: string; title: string; isPlan: b
 const categories = [{ value: 'hotel', label: 'Hotels', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
 
 export default function Planner({ trip, initialImport = false, initialDetails = false }: { trip: Trip; initialImport?: boolean; initialDetails?: boolean }) {
-  const router = useRouter()
   const [tab, setTab] = useState<'places' | 'itinerary' | 'map'>('places')
   const [mapOpened, setMapOpened] = useState(false)
   const [adding, setAdding] = useState(false)
   const [importing, setImporting] = useState(initialImport)
-  const [sharing, setSharing] = useState(false)
-  const [confirmShare, setConfirmShare] = useState(false)
-  const [error, setError] = useState('')
   const places = trip.destinations.flatMap(d => d.items.map(item => ({ ...item, destination: [d.name, d.country].filter(Boolean).join(', ') })))
   const scheduled = [...new Set(places.flatMap(p => p.day === null ? [] : [p.day]))].sort((a, b) => a - b)
   function renderPlace(place: Place & { destination: string }) { return <PlaceRow key={place.id} place={place} /> }
@@ -42,14 +38,9 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     {trip.isPlan && <details open={initialDetails || undefined} className="mt-3"><summary className="cursor-pointer py-2 text-sm text-[#507c76]">Edit trip name & dates</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
     <div className="mt-4 flex flex-wrap items-center gap-3">
       <CopyTripButton itineraryId={trip.id} title={trip.title} isOwn />
-      {trip.visibility === 'draft' && trip.isPlan ? <button disabled={!places.length} onClick={() => setConfirmShare(true)} className="min-h-11 rounded-xl border border-[#d7cebc] px-4 text-sm disabled:opacity-50">Share trip</button> : <Link href={trip.visibility === 'draft' ? `/itinerary/${trip.id}/edit` : `/itinerary/${trip.id}`} className="min-h-11 rounded-xl border border-[#d7cebc] px-4 py-3 text-sm">{trip.visibility === 'draft' ? 'Edit & publish' : 'View shared trip'}</Link>}
-      <span className="text-xs text-[#73786d]">{trip.visibility === 'draft' ? 'Share whenever you’re ready.' : 'Saved changes appear on your shared trip.'}</span>
+      {!(trip.visibility === 'draft' && trip.isPlan) && <Link href={trip.visibility === 'draft' ? `/itinerary/${trip.id}/edit` : `/itinerary/${trip.id}`} className="min-h-11 rounded-xl border border-[#d7cebc] px-4 py-3 text-sm">{trip.visibility === 'draft' ? 'Edit & publish' : 'View shared trip'}</Link>}
+      {trip.visibility !== 'draft' && <span className="text-xs text-[#73786d]">Saved changes appear on your shared trip.</span>}
     </div>
-    {confirmShare && <section className="mt-3 rounded-xl border border-[#d7cebc] bg-white p-4" aria-label="Share trip confirmation"><p className="text-sm">Sharing makes this trip, including its places, notes, and photos, visible to others. You can keep adding to it afterward.</p><div className="mt-3 flex gap-3"><button disabled={sharing} className={buttonClass} onClick={async () => {
-      setSharing(true); setError('')
-      try { const result = await sharePlan(trip.id); if (result.error) setError(result.error); else { setConfirmShare(false); router.push(`/itinerary/${trip.id}`); router.refresh() } }
-      catch { setError('Could not share. Please try again.') } finally { setSharing(false) }
-    }}>{sharing ? 'Sharing…' : 'Share publicly'}</button><button disabled={sharing} onClick={() => setConfirmShare(false)} className="px-3 text-sm">Keep private</button></div>{error && <p role="alert" className="mt-2 text-red-700">{error}</p>}</section>}
     {!adding && !importing && <div className="sticky top-0 z-20 -mx-1 mt-5 bg-[#F3EAD9] px-1 py-3">
       <button className={`${buttonClass} flex w-full items-center justify-center gap-2`} onClick={() => setAdding(true)}><Plus size={20} />Add a place</button>
       {trip.isPlan && <Link href={`/plan/${trip.id}/friends`} className="mt-2 flex min-h-11 items-center justify-center rounded-xl border border-[#8caaa3] bg-[#fffdf7] px-4 py-2 text-sm font-semibold text-[#507c76]">Browse friends’ places · Add several at once</Link>}
@@ -68,7 +59,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
         <section><h2 className="mb-3 text-lg font-semibold">Unscheduled</h2><div className="space-y-3">{places.filter(p => p.day === null).map(renderPlace)}</div>{places.every(p => p.day !== null) && <p className="text-sm text-[#73786d]">All your places have a day.</p>}</section>
       </>}
     </section>
-    <div className="mt-8 border-t border-[#d7cebc] pt-5"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div>
+    <div className="mt-8 flex justify-end border-t border-[#d7cebc] pt-5"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div>
   </div>
 }
 
