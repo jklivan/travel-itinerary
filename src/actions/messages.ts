@@ -6,11 +6,11 @@ import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
 import { deliverNotification } from '@/lib/push'
 
-export async function getConversation(recipientId: string, before?: string) {
+export async function getConversation(recipientId: string, before?: string, itineraryId?: string | null) {
   const session = await auth()
   if (!session?.user?.id) return { error: 'Sign in to read messages.' }
   const userId = session.user.id
-  const participants = { OR: [{ senderId: userId, recipientId }, { senderId: recipientId, recipientId: userId }] }
+  const participants = { itineraryId: itineraryId || null, OR: [{ senderId: userId, recipientId }, { senderId: recipientId, recipientId: userId }] }
   // A cursor must belong to this conversation, too.
   if (before && !await prisma.directMessage.findFirst({ where: { id: before, ...participants }, select: { id: true } })) {
     return { error: 'Message not found.' }
@@ -31,16 +31,17 @@ export async function getMessageInbox() {
   const userId = session.user.id
   const latest = await prisma.directMessage.findMany({
     where: { OR: [{ senderId: userId }, { recipientId: userId }] },
-    distinct: ['senderId', 'recipientId'],
+    distinct: ['senderId', 'recipientId', 'itineraryId'],
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     include: { sender: { select: { id: true, name: true } }, recipient: { select: { id: true, name: true } } },
   })
   const seen = new Set<string>()
   return { threads: latest.flatMap(message => {
     const person = message.senderId === userId ? message.recipient : message.sender
-    if (seen.has(person.id)) return []
-    seen.add(person.id)
-    return [{ person, content: message.content, placeName: message.placeName, itineraryTitle: message.itineraryTitle, createdAt: message.createdAt }]
+    const key = JSON.stringify([person.id, message.itineraryId ?? null])
+    if (seen.has(key)) return []
+    seen.add(key)
+    return [{ person, itineraryId: message.itineraryId, content: message.content, placeName: message.placeName, itineraryTitle: message.itineraryTitle, createdAt: message.createdAt }]
   }) }
 }
 
@@ -62,13 +63,15 @@ export async function sendDirectMessage(input: { recipientId: string; content: s
   if (typeof input.clientId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(input.clientId)) return { error: 'Please try sending again.' }
   if (typeof input.recipientId !== 'string' || input.recipientId === session.user.id) return { error: 'Choose another traveler to message.' }
   if (!await prisma.user.findUnique({ where: { id: input.recipientId }, select: { id: true } })) return { error: 'Traveler not found.' }
-  let attachment = {}
+  let attachment: { itineraryId?: string | null; itineraryTitle?: string | null; placeId?: string | null; placeName?: string | null; placeNotes?: string | null } = {}
+  let replyTripId: string | null | undefined
   if (input.replyToId) {
     if (typeof input.replyToId !== 'string') return { error: 'Message not found.' }
     const original = await prisma.directMessage.findFirst({
       where: { id: input.replyToId, OR: [{ senderId: session.user.id, recipientId: input.recipientId }, { senderId: input.recipientId, recipientId: session.user.id }] },
     })
     if (!original) return { error: 'The message you are replying to is no longer available.' }
+    replyTripId = original.itineraryId ?? null
     attachment = { itineraryId: original.itineraryId, itineraryTitle: original.itineraryTitle, placeId: original.placeId, placeName: original.placeName, placeNotes: original.placeNotes }
   }
   if (input.placeId) {
@@ -78,6 +81,7 @@ export async function sendDirectMessage(input: { recipientId: string; content: s
       include: { destination: { include: { itinerary: { select: { id: true, title: true } } } } },
     })
     if (!place) return { error: 'This place is no longer available. Remove the attachment to send your message.' }
+    if (input.itineraryId && input.itineraryId !== place.destination.itinerary.id) return { error: 'This place belongs to a different trip. Open that trip’s conversation to send it.' }
     attachment = { placeId: place.id, placeName: place.name, placeNotes: place.notes, itineraryId: place.destination.itinerary.id, itineraryTitle: place.destination.itinerary.title }
   } else if (input.itineraryId) {
     if (typeof input.itineraryId !== 'string') return { error: 'Trip not found.' }
@@ -85,11 +89,17 @@ export async function sendDirectMessage(input: { recipientId: string; content: s
       where: { id: input.itineraryId, visibility: { not: 'draft' } },
       select: { id: true, title: true },
     })
-    if (!trip) return { error: 'This trip is no longer available. Remove the attachment to send your message.' }
-    attachment = { itineraryId: trip.id, itineraryTitle: trip.title }
+    // Existing participants can continue a thread even after its trip is removed or made private.
+    const previous = !trip ? await prisma.directMessage.findFirst({ where: {
+      itineraryId: input.itineraryId,
+      OR: [{ senderId, recipientId: input.recipientId }, { senderId: input.recipientId, recipientId: senderId }],
+    }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] }) : null
+    if (!trip && !previous) return { error: 'This trip is no longer available.' }
+    attachment = { ...attachment, itineraryId: input.itineraryId, itineraryTitle: trip?.title ?? previous?.itineraryTitle }
   }
+  if (replyTripId !== undefined && replyTripId !== (attachment.itineraryId ?? null)) return { error: 'Reply in the same trip conversation as the original message.' }
   // Save the message and alert atomically; retries must not duplicate either.
-  const notificationId = await prisma.$transaction(async tx => {
+  const sent = await prisma.$transaction(async tx => {
     const message = await tx.directMessage.upsert({
       where: { senderId_clientId: { senderId, clientId: input.clientId } },
       update: {},
@@ -100,13 +110,13 @@ export async function sendDirectMessage(input: { recipientId: string; content: s
       skipDuplicates: true,
       select: { id: true },
     })
-    return notifications[0]?.id
+    return { notificationId: notifications[0]?.id, itineraryId: message.itineraryId ?? null }
   })
-  if (notificationId) after(() => deliverNotification(notificationId))
+  if (sent.notificationId) after(() => deliverNotification(sent.notificationId!))
   revalidatePath('/messages')
   revalidatePath(`/messages/${input.recipientId}`)
   revalidatePath('/notifications')
-  return { success: true }
+  return { success: true, itineraryId: sent.itineraryId }
 }
 
 export async function markMessagesRead(senderId: string, messageIds: string[]) {

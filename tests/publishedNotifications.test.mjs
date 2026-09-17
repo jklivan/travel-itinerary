@@ -4,7 +4,10 @@ import { test } from 'node:test'
 import vm from 'node:vm'
 import ts from 'typescript'
 import { createPublishedTripNotifications } from '../src/lib/notifications.ts'
-import { notificationText, notificationPath } from '../src/lib/notificationText.ts'
+import * as threadUrls from '../src/lib/messageThread.ts'
+const textExports = {}
+vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/lib/notificationText.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { exports: textExports, require: () => threadUrls })
+const { notificationText, notificationPath } = textExports
 
 test('published alerts only reach accepted followers and deduplicate per trip and recipient', async () => {
   const rows = new Map()

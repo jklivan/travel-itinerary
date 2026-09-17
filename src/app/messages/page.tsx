@@ -4,6 +4,7 @@ import { getMessageInbox } from '@/actions/messages'
 import { getForumReplyInbox } from '@/actions/questions'
 import { openNotification } from '@/actions/notifications'
 import MessageRefresh from '@/components/MessageRefresh'
+import { messageThreadHref } from '@/lib/messageThread'
 
 export default async function InboxPage() {
   const [result, forumReplies] = await Promise.all([getMessageInbox(), getForumReplyInbox()])
@@ -19,9 +20,10 @@ export default async function InboxPage() {
     </section>}
     {forumReplies.length > 0 && <h2 className="mb-3 font-[family-name:var(--font-playfair)] text-xl text-[#2e4147]">Private conversations</h2>}
     {result.threads.length === 0 && forumReplies.length === 0 && <p className="rounded-xl border border-[#E8D5B7] bg-[#FAF7F2] p-6 text-sm leading-relaxed text-[#8B6F4E]">No messages yet. Open a traveler’s profile or a place on their trip to start a conversation.</p>}
-    <div className="space-y-3">{result.threads.map(thread => <Link key={thread.person.id} href={`/messages/${thread.person.id}`} className="block rounded-xl border border-[#d7cebc] bg-[#FAF7F2] p-4 shadow-sm hover:border-[#507c76] transition-colors">
+    <div className="space-y-3">{result.threads.map(thread => <Link key={JSON.stringify([thread.person.id, thread.itineraryId])} href={messageThreadHref(thread.person.id, thread.itineraryId)} className="block rounded-xl border border-[#d7cebc] bg-[#FAF7F2] p-4 shadow-sm hover:border-[#507c76] transition-colors">
       <h2 className="font-[family-name:var(--font-playfair)] text-lg text-[#2e4147]">{thread.person.name}</h2>
-      {(thread.placeName || thread.itineraryTitle) && <p className="text-xs text-[#507c76] mt-1">📍 {thread.placeName || thread.itineraryTitle}</p>}
+      <p className="text-sm font-semibold text-[#507c76] mt-1">{thread.itineraryId ? thread.itineraryTitle || 'Trip conversation' : 'General conversation'}</p>
+      {thread.placeName && <p className="text-xs text-[#507c76] mt-1">📍 {thread.placeName}</p>}
       <p className="line-clamp-2 break-words text-sm text-[#8B6F4E] mt-1">{thread.content}</p>
       <time className="text-xs text-[#8B6F4E]" dateTime={thread.createdAt.toISOString()}>{thread.createdAt.toLocaleDateString('en-US')}</time>
     </Link>)}</div>

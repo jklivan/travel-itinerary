@@ -7,7 +7,7 @@ import MessageComposer, { type ComposerAttachment, type MessageReplyTarget } fro
 
 type Messages = NonNullable<Awaited<ReturnType<typeof getConversation>>['messages']>
 
-export default function MessageThread({ messages, userId, person, attachment }: { messages: Messages; userId: string; person: { id: string; name: string }; attachment?: ComposerAttachment }) {
+export default function MessageThread({ messages, userId, person, itineraryId, attachment }: { messages: Messages; userId: string; person: { id: string; name: string }; itineraryId?: string; attachment?: ComposerAttachment }) {
   const [replyTo, setReplyTo] = useState<MessageReplyTarget>()
   return <>
     <div className="space-y-4">{messages.map(message => <article id={`message-${message.id}`} key={message.id} className={`rounded-xl border border-[#d7cebc] p-4 shadow-sm ${message.senderId === userId ? 'ml-6 rounded-br-sm bg-[#e6ece5]' : 'mr-6 rounded-bl-sm bg-[#FAF7F2]'}`}>
@@ -24,6 +24,6 @@ export default function MessageThread({ messages, userId, person, attachment }: 
         <button type="button" className="shrink-0 rounded-full border border-[#8caaa3] px-3 py-1.5 text-sm font-medium text-[#507c76] hover:bg-[#e6ece5]" onClick={() => setReplyTo({ id: message.id, content: message.content, author: message.senderId === userId ? 'yourself' : person.name, itineraryTitle: message.itineraryTitle, placeName: message.placeName })}>Reply</button>
       </div>
     </article>)}</div>
-    <MessageComposer recipientId={person.id} attachment={attachment} replyTo={replyTo} onClearReply={() => setReplyTo(undefined)} />
+    <MessageComposer recipientId={person.id} itineraryId={itineraryId} attachment={attachment} replyTo={replyTo} onClearReply={() => setReplyTo(undefined)} />
   </>
 }

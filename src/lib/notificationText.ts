@@ -1,3 +1,5 @@
+import { messageThreadHref } from './messageThread'
+
 export function notificationText(kind: string, actor: string, trip: string) {
   if (kind === 'forum_reply') return `${actor} replied to your forum question.`
   if (kind === 'forum') return `${actor} posted in Ask your friends.`
@@ -8,7 +10,7 @@ export function notificationText(kind: string, actor: string, trip: string) {
 
 export function notificationPath(itineraryId: string | null, kind: string, actorId?: string, questionId?: string | null) {
   if (kind === 'forum' || kind === 'forum_reply') return questionId ? `/explore/questions/${encodeURIComponent(questionId)}` : '/explore/questions'
-  if (kind === 'message') return actorId ? `/messages/${encodeURIComponent(actorId)}` : '/messages'
+  if (kind === 'message') return actorId ? messageThreadHref(actorId, itineraryId) : '/messages'
   if (!itineraryId) return '/notifications'
   return `/itinerary/${encodeURIComponent(itineraryId)}${kind === 'comment' ? '#comments' : ''}`
 }

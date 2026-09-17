@@ -19,12 +19,13 @@ async function source(name, text) {
 for (const name of ['ItineraryAttachmentPicker', 'MessageThread', 'MessageComposer', 'MessageAttachment', 'QuestionComposer']) {
   await source(name, await readFile(path.join(root, 'src/components', `${name}.tsx`), 'utf8'))
 }
+await source('threadUrls', await readFile(path.join(root, 'src/lib/messageThread.ts'), 'utf8'))
 await source('navigation', `const router = { push(url) { window.navigation = url }, replace(url) { window.navigation = url }, refresh() {} }; export function useRouter() { return router }`)
 await source('link', `export default function Link(props) { return <a {...props} /> }`)
 await source('icons', `export function MapPin() { return <span aria-hidden="true">📍</span> }`)
 await source('actions', `
   export async function messageItineraries(query = '') { return 'Paris with kids'.toLowerCase().includes(query.toLowerCase()) ? [{ id: 'paris', title: 'Paris with kids' }] : [] }
-  export async function sendDirectMessage(input) { window.sent.push(input); return { success: true } }
+  export async function sendDirectMessage(input) { window.sent.push(input); return { success: true, itineraryId: input.itineraryId } }
   export async function searchQuestionItineraries() { return [{ id: 'paris', title: 'Paris with kids', user: { name: 'Jen' } }] }
   export async function createFriendQuestion(input) { window.posts.push(input); if (window.failPost) throw Error('offline'); return { id: 'question1' } }
   export async function replyToFriendQuestion(questionId, input) { window.posts.push({ questionId, ...input }); return { id: 'reply1' } }
@@ -37,15 +38,15 @@ await source('entry', `
   const root = createRoot(document.getElementById('root'))
   const messages = [
     { id: 'paris-message', senderId: 'me', content: 'Where did you stay in Paris?', itineraryId: 'paris', itineraryTitle: 'Paris with kids', createdAt: new Date('2026-09-17T12:00:00Z') },
-    { id: 'rome-message', senderId: 'jen', content: 'What was your favorite place in Rome?', itineraryId: 'rome', itineraryTitle: 'Rome weekend', createdAt: new Date('2026-09-17T13:00:00Z') },
+    { id: 'paris-neighborhood', senderId: 'jen', content: 'Which neighborhood in Paris?', itineraryId: 'paris', itineraryTitle: 'Paris with kids', createdAt: new Date('2026-09-17T13:00:00Z') },
     { id: 'quoted', senderId: 'jen', content: 'We stayed near the Louvre', itineraryId: 'paris', itineraryTitle: 'Paris with kids', replyTo: { id: 'paris-message', senderId: 'me', content: 'Where did you stay in Paris?', itineraryTitle: 'Paris with kids' }, createdAt: new Date('2026-09-17T14:00:00Z') },
   ]
-  window.renderView = (view) => root.render(view === 'messages' ? <MessageThread messages={messages} userId="me" person={{id:'jen',name:'Jen'}} /> : <QuestionComposer key={view} questionId={view === 'reply' ? 'question1' : undefined} />)
+  window.renderView = (view) => root.render((view === 'messages' || view === 'general') ? <MessageThread key={view} itineraryId={view === 'messages' ? 'paris' : undefined} messages={messages} userId="me" person={{id:'jen',name:'Jen'}} /> : <QuestionComposer key={view} questionId={view === 'reply' ? 'question1' : undefined} />)
   window.renderView('messages')
 `)
 await new Promise((resolve, reject) => {
   const compiler = webpack({ mode: 'development', devtool: false, entry: path.join(temp, 'entry.js'), output: { path: temp, filename: 'bundle.js' }, resolve: { modules: [path.join(root, 'node_modules'), 'node_modules'], alias: {
-    'next/navigation': path.join(temp, 'navigation.js'), 'next/link': path.join(temp, 'link.js'), 'lucide-react': path.join(temp, 'icons.js'), '@/actions/messages': path.join(temp, 'actions.js'), '@/actions/questions': path.join(temp, 'actions.js'),
+    '@/lib/messageThread': path.join(temp, 'threadUrls.js'), 'next/navigation': path.join(temp, 'navigation.js'), 'next/link': path.join(temp, 'link.js'), 'lucide-react': path.join(temp, 'icons.js'), '@/actions/messages': path.join(temp, 'actions.js'), '@/actions/questions': path.join(temp, 'actions.js'),
   } } })
   compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || new Error(stats.toString({ all: false, errors: true }))) : resolve()))
 })
@@ -61,10 +62,10 @@ try {
   await page.getByRole('button', { name: 'Reply', exact: true }).first().waitFor()
   assert.match(await page.locator('blockquote').innerText(), /Where did you stay in Paris/)
   await page.getByRole('button', { name: 'Reply', exact: true }).nth(1).click()
-  assert.match(await page.locator('form').innerText(), /Replying to Jen[\s\S]*Rome weekend/)
-  await page.getByRole('textbox').fill('Try Trastevere!')
+  assert.match(await page.locator('form').innerText(), /Replying to Jen[\s\S]*Paris with kids/)
+  await page.getByRole('textbox').fill('Try the Marais!')
   await page.getByRole('button', { name: 'Reply', exact: true }).first().click()
-  assert.equal(await page.getByRole('textbox').inputValue(), 'Try Trastevere!')
+  assert.equal(await page.getByRole('textbox').inputValue(), 'Try the Marais!')
   assert.match(await page.locator('form').innerText(), /Paris with kids/)
   await page.getByRole('button', { name: 'Cancel reply' }).click()
   assert.doesNotMatch(await page.locator('form').innerText(), /Replying to/)
@@ -72,28 +73,38 @@ try {
   await page.getByRole('button', { name: 'Send message', exact: true }).click()
   await page.waitForFunction(() => window.sent.length === 1)
   const message = await page.evaluate(() => window.sent[0])
-  assert.equal(message.replyToId, 'rome-message')
-  assert.equal(message.content, 'Try Trastevere!')
+  assert.equal(message.replyToId, 'paris-neighborhood')
+  assert.equal(message.content, 'Try the Marais!')
   await page.waitForFunction(() => !document.querySelector('textarea').value)
   assert.doesNotMatch(await page.locator('form').innerText(), /Replying to/)
 
+  assert.equal(message.itineraryId, 'paris')
+  assert.equal(await page.evaluate(() => window.navigation), '/messages/jen?trip=paris')
+  await page.getByRole('textbox').fill('One more Paris question')
+  await page.getByRole('button', { name: 'Send message', exact: true }).click()
+  await page.waitForFunction(() => window.sent.length === 2)
+  assert.equal((await page.evaluate(() => window.sent[1])).itineraryId, 'paris')
+  assert.equal((await page.evaluate(() => window.sent[1])).replyToId, undefined)
+  assert.equal(await page.evaluate(() => window.navigation), '/messages/jen?trip=paris')
+
+  await page.evaluate(() => window.renderView('general'))
   await page.getByRole('button', { name: 'Attach an itinerary' }).click()
   await page.getByRole('button', { name: 'Paris with kids', exact: true }).click()
   await page.getByRole('button', { name: 'Remove attachment' }).click()
   assert.equal(await page.getByRole('button', { name: 'Send message', exact: true }).isDisabled(), true)
   await page.getByRole('textbox', { name: 'Private message' }).fill('A text-only message')
   await page.getByRole('button', { name: 'Send message', exact: true }).click()
-  await page.waitForFunction(() => window.sent.length === 2)
-  assert.equal((await page.evaluate(() => window.sent[1])).itineraryId, undefined)
+  await page.waitForFunction(() => window.sent.length === 3)
+  assert.equal((await page.evaluate(() => window.sent[2])).itineraryId, undefined)
   await page.getByRole('button', { name: 'Attach an itinerary' }).click()
   await page.getByRole('searchbox').fill('Nothing matches')
   await page.getByText('No matching itineraries.', { exact: true }).waitFor()
   await page.getByRole('searchbox').fill('Paris')
   await page.getByRole('button', { name: 'Paris with kids', exact: true }).click()
   await page.getByRole('button', { name: 'Send message', exact: true }).click()
-  await page.waitForFunction(() => window.sent.length === 3)
-  assert.equal((await page.evaluate(() => window.sent[2])).itineraryId, 'paris')
-  assert.equal((await page.evaluate(() => window.sent[2])).content, '')
+  await page.waitForFunction(() => window.sent.length === 4)
+  assert.equal((await page.evaluate(() => window.sent[3])).itineraryId, 'paris')
+  assert.equal((await page.evaluate(() => window.sent[3])).content, '')
   await page.evaluate(() => window.renderView('question'))
   await page.getByRole('textbox', { name: 'What would you like to ask?' }).fill('Where should we stay?')
   await page.getByRole('button', { name: '+ Tag an itinerary' }).click()
