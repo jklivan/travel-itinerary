@@ -6,7 +6,7 @@ import { Camera, Star } from 'lucide-react'
 import EventPhotoInput from './EventPhotoInput'
 import { updatePlace } from '@/actions/placeQuickEdit'
 
-export default function PlaceQuickEdit({ itemId, name, rating, photos }: { itemId: string; name: string; rating: number | null; photos: string[] }) {
+export default function PlaceQuickEdit({ itemId, name, rating, photos, compact = false }: { compact?: boolean; itemId: string; name: string; rating: number | null; photos: string[] }) {
   const router = useRouter()
   const [mode, setMode] = useState<'photos' | 'rating' | null>(null)
   const [draftRating, setDraftRating] = useState(rating ?? 0)
@@ -44,7 +44,7 @@ export default function PlaceQuickEdit({ itemId, name, rating, photos }: { itemI
     finally { savingRef.current = false; setSaving(false) }
   }
 
-  return <section aria-label={`Edit ${name}`} className="mt-2 rounded-lg border border-[#d7cebc] bg-[#faf7ee] p-2 text-sm">
+  return <section aria-label={`Edit ${name}`} className={compact ? `text-sm ${mode ? 'w-full border-t border-[#e3dfd2] pt-3' : ''}` : 'mt-2 rounded-lg border border-[#d7cebc] bg-[#faf7ee] p-2 text-sm'}>
     {!mode ? <div className="flex flex-wrap gap-2">
       <button type="button" onClick={() => open('photos')} aria-label={`Edit photos for ${name}`} className="inline-flex min-h-11 items-center gap-1.5 px-2 text-[#507c76]"><Camera size={15} />{photos.length ? 'Edit photos' : 'Add photos'}</button>
       <button type="button" onClick={() => open('rating')} aria-label={`Change rating for ${name}`} className="inline-flex min-h-11 items-center gap-1.5 px-2 text-[#507c76]"><Star size={15} />{rating ? 'Change rating' : 'Add rating'}</button>

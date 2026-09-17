@@ -2,6 +2,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import DeleteButton from '@/components/DeleteButton'
 import NewPlanForm from './NewPlanForm'
 
 export default async function PlansPage({ searchParams }: { searchParams: Promise<{ savePlace?: string; saveStory?: string }> }) {
@@ -21,9 +22,9 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
     <p className="mb-6 mt-2 text-[#73786d]">Collect places now. Work out the days later.</p>
     <NewPlanForm saveStory={typeof saveStory === 'string' && saveStory.length <= 200 ? saveStory : undefined} savePlace={typeof savePlace === 'string' && savePlace.length <= 200 ? savePlace : undefined} />
     <div className="mt-6"><Link href={`/user/${userId}`} className="inline-flex min-h-11 items-center rounded-full border border-[#d7cebc] px-4 text-sm font-medium text-[#507c76] hover:bg-[#e6ece5]">View all trips on your profile →</Link></div>
-    {trips.length > 0 && <section className="mt-8"><h2 className="mb-3 text-xl font-semibold">Your trips</h2><div className="space-y-3">{trips.map(trip => <Link key={trip.id} href={`/plan/${trip.id}`} className="block rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4">
+    {trips.length > 0 && <section className="mt-8"><h2 className="mb-3 text-xl font-semibold">Your trips</h2><div className="space-y-3">{trips.map(trip => <article key={trip.id} aria-label={trip.title} className="rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4"><Link href={`/plan/${trip.id}`} className="block">
       <p className="text-xs font-semibold uppercase tracking-wide text-[#507c76]">{trip.visibility === 'draft' ? 'Private plan' : 'Shared trip'}</p>
       <h3 className="mt-1 text-lg font-semibold">{trip.title}</h3><p className="mt-1 text-sm text-[#73786d]">{trip.destinations.reduce((sum, d) => sum + d._count.items, 0)} places · Open trip →</p>
-    </Link>)}</div></section>}
+    </Link><div className="mt-3"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" label="Delete trip" /></div></article>)}</div></section>}
   </div>
 }

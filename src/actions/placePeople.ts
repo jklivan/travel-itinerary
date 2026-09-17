@@ -8,11 +8,12 @@ import { getRecommendation } from '@/lib/placeRecommendation'
 export async function placePeople(placeId: string, name = '', location = '') {
   const userId = (await auth())?.user?.id
   if (!userId) return { people: [], error: 'Sign in to see friends’ recommendations.' }
-  if (typeof placeId !== 'string' || !placeId || placeId.length > 512) return { people: [], error: 'Choose a place from the suggestions.' }
+  if (typeof placeId !== 'string' || placeId.length > 512) return { people: [], error: 'Choose a place from the suggestions.' }
   if (typeof name !== 'string' || name.length > 240 || typeof location !== 'string' || location.length > 1000) return { people: [], error: 'Please select the place again.' }
   const areas = [...new Set(location.split(',').map(part => part.trim()).filter(Boolean))]
-  const matches: Prisma.DestItemWhereInput[] = [{ placeId }]
-  if (name.trim() && areas.length) matches.push({ AND: [{ OR: [{ placeId: null }, { placeId: '' }] }, { name: { equals: name.trim(), mode: 'insensitive' } }, { destination: { OR: areas.map(area => ({ name: { equals: area, mode: 'insensitive' as const } })) } }] })
+  if (!placeId && (!name.trim() || !areas.length)) return { people: [], error: 'Choose a place and destination to see recommendations.' }
+  const matches: Prisma.DestItemWhereInput[] = placeId ? [{ placeId }] : []
+  if (name.trim() && areas.length) matches.push({ AND: [...(placeId ? [{ OR: [{ placeId: null }, { placeId: '' }] }] : []), { name: { equals: name.trim(), mode: 'insensitive' } }, { destination: { OR: (placeId ? areas : [...new Set([location.trim(), areas[0]])]).map(area => ({ name: { equals: area, mode: 'insensitive' as const } })) } }] })
   try {
     const follows = await prisma.follow.findMany({ where: { followerId: userId, status: 'accepted' }, select: { followingId: true } })
     const friendIds = follows.map(follow => follow.followingId)

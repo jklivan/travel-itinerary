@@ -1,6 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
+import styles from '../../itinerary/[id]/places.module.css'
+import planningStyles from './Planner.module.css'
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, MapPin, LockKeyhole, CalendarDays, Check, Hotel, Utensils, Camera, Plane } from 'lucide-react'
@@ -11,12 +14,13 @@ import PlaceEntryForm from '@/components/PlaceEntryForm'
 import DeleteButton from '@/components/DeleteButton'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import PlanningMap from '@/components/PlanningMap'
+import PlacePeople from '@/components/PlacePeople'
 import PlaceQuickEdit from '@/components/PlaceQuickEdit'
 import { DateFields, inputClass, buttonClass } from '../NewPlanForm'
 
 type Place = { lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[] }
 type Trip = { durationDays?: number | null; id: string; title: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; items: Place[] }[] }
-const categories = [{ value: 'hotel', label: 'Hotels' }, { value: 'food_drink', label: 'Restaurants & drinks' }, { value: 'activity', label: 'Things to do' }, { value: 'transport', label: 'Transportation' }]
+const categories = [{ value: 'hotel', label: 'Hotels', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
 
 export default function Planner({ trip, initialImport = false, initialDetails = false }: { trip: Trip; initialImport?: boolean; initialDetails?: boolean }) {
   const router = useRouter()
@@ -57,14 +61,14 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       {mapOpened && <div hidden={tab !== 'map'}><PlanningMap places={places.filter(place => place.type !== 'transport' || place.placeId || (place.lat !== null && place.lng !== null)).map(place => ({ id: place.id, name: place.name, city: place.destination, type: place.type === 'hotel' ? 'hotel' : place.type === 'food_drink' ? 'food_drink' : place.type === 'transport' ? 'transport' : 'activity', day: place.day, placeId: place.placeId ?? undefined, lat: place.lat, lng: place.lng }))} /></div>}
       {tab === 'map' ? null : !places.length ? <div className="rounded-2xl border border-dashed border-[#c4b99e] p-8 text-center"><MapPin className="mx-auto mb-3 text-[#507c76]" /><h2 className="text-xl font-semibold">A place to start</h2><p className="mt-2 text-sm text-[#73786d]">A hotel you love, a restaurant someone mentioned, something you want to do. Add it now and decide when later.</p></div> : tab === 'places' ? <>
         <p className="mb-5 text-sm text-[#73786d]">Everything you’re considering, all in one place. Days are optional.</p>
-        {categories.map(category => { const items = places.filter(p => p.type === category.value); return items.length > 0 && <section key={category.value} className="mb-7"><h2 className="mb-3 text-lg font-semibold">{category.label} <span className="text-sm font-normal text-[#73786d]">{items.length}</span></h2><div className="space-y-3">{items.map(renderPlace)}</div></section> })}
+        {categories.map(category => { const items = places.filter(p => p.type === category.value); return items.length > 0 && <section key={category.value} className="mb-7"><div className={`${styles.categoryHeading} ${styles[category.value]}`}><h3><span className={styles.categoryIcon}><category.Icon size={17} /></span>{category.label}</h3><span className={styles.count}>{items.length} {items.length === 1 ? 'place' : 'places'}</span></div><div className="space-y-3">{items.map(renderPlace)}</div></section> })}
       </> : <>
         <p className="mb-5 text-sm text-[#73786d]">Give a place a day whenever you’re ready. Everything else stays in Unscheduled.</p>
         {scheduled.map(day => <section key={day} className="mb-6"><h2 className="mb-3 text-lg font-semibold">Day {day}</h2><div className="space-y-3">{places.filter(p => p.day === day).map(renderPlace)}</div></section>)}
         <section><h2 className="mb-3 text-lg font-semibold">Unscheduled</h2><div className="space-y-3">{places.filter(p => p.day === null).map(renderPlace)}</div>{places.every(p => p.day !== null) && <p className="text-sm text-[#73786d]">All your places have a day.</p>}</section>
       </>}
     </section>
-    <div className="mt-8 border-t border-[#d7cebc] pt-5"><DeleteButton id={trip.id} /></div>
+    <div className="mt-8 border-t border-[#d7cebc] pt-5"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div>
   </div>
 }
 
@@ -130,10 +134,25 @@ function PlaceRow({ place }: { place: Place & { destination: string } }) {
   const saving = useRef(false)
   const [name, setName] = useState(place.name)
   const [placeId, setPlaceId] = useState(place.placeId ?? '')
-  return <article className="min-w-0 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4">
-    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words font-semibold">{place.name}</h3><p className="mt-1 text-xs text-[#73786d]">{place.destination} · {place.day === null ? 'Unscheduled' : `Day ${place.day}`}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-xs ${place.status === 'visited' ? 'bg-[#dcebe2] text-[#365e48]' : place.status === 'booked' ? 'bg-[#e5e9f5] text-[#495d86]' : 'bg-[#f0e8d9] text-[#7b6544]'}`}>{place.status === 'visited' ? 'Visited' : place.status === 'booked' ? 'Booked' : 'Considering'}</span></div>
-    {place.notes && !editing && <p className="mt-3 whitespace-pre-wrap break-words text-sm">{place.notes}</p>}
-    {!editing ? <button onClick={() => { setName(place.name); setPlaceId(place.placeId ?? ''); setEditing(true); setError(''); setSaved(false) }} className="mt-2 min-h-11 text-sm font-medium text-[#507c76]">Edit notes, day & status</button> : <form className="mt-3" onSubmit={async event => {
+  const category = categories.find(category => category.value === place.type) ?? categories[2]
+  const Icon = category.Icon
+  return <article className={`${planningStyles.place} ${styles[category.value]}`}>
+    <div className={`${styles.card} ${planningStyles.card}`}>
+      <div className={styles.thumbnail}>
+        {place.photos[0] ? <Image src={place.photos[0]} alt={place.name} fill sizes="132px" className="object-cover" /> : <div className={styles.keepsake} aria-hidden="true"><span>{category.eyebrow}</span><Icon size={25} strokeWidth={1} /><span>{place.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span></div>}
+      </div>
+      <div className={styles.cardBody}>
+        <p className={styles.eyebrow}>{category.eyebrow}</p>
+        <h3 className={styles.placeName}>{place.name}</h3>
+        {!!place.rating && <p className={planningStyles.rating} aria-label={`Your rating: ${place.rating} out of 5`}>{'★'.repeat(place.rating)}<span>Your rating</span></p>}
+        <p className={planningStyles.location}>{place.destination}</p>
+        {place.notes && <p className={styles.note}>{place.notes}</p>}
+        <div className={planningStyles.meta}><span>{place.status === 'visited' ? 'Visited' : place.status === 'booked' ? 'Booked' : 'Considering'}</span><span>{place.day === null ? 'Unscheduled' : `Day ${place.day}`}</span></div>
+      </div>
+    </div>
+    {place.type !== 'transport' && <PlacePeople key={`${place.placeId}:${place.name}:${place.destination}`} compact placeId={place.placeId ?? ''} name={place.name} location={place.destination} />}
+    <div className={planningStyles.controls}>
+    {!editing ? <button onClick={() => { setName(place.name); setPlaceId(place.placeId ?? ''); setEditing(true); setError(''); setSaved(false) }} type="button" className="min-h-11 text-sm font-semibold text-[#507c76]">Edit details →</button> : <form className="w-full" onSubmit={async event => {
       event.preventDefault(); if (saving.current) return
       saving.current = true; setBusy(true); setError('')
       const data = new FormData(event.currentTarget)
@@ -147,13 +166,14 @@ function PlaceRow({ place }: { place: Place & { destination: string } }) {
       <div className="flex gap-3"><button className={buttonClass}>{busy ? 'Saving…' : 'Save changes'}</button><button type="button" onClick={() => setEditing(false)} className="px-3 text-sm">Cancel</button></div>
     </fieldset>{error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}</form>}
     {saved && <p role="status" className="flex items-center gap-1 text-xs text-[#507c76]"><Check size={14} />Saved</p>}
-    {!editing && <div className="mb-2">{!removing ? <button type="button" aria-label={`Delete ${place.name}`} className="min-h-11 text-xs text-red-700" onClick={() => setRemoving(true)}>Delete place</button> : <div className="text-sm"><p>Delete this place and its notes? The rest of your trip will stay.</p><button type="button" disabled={busy} className="min-h-11 pr-4 text-red-700" onClick={async () => {
+    {editing && <div className="w-full">{!removing ? <button type="button" aria-label={`Delete ${place.name}`} className="min-h-11 text-xs text-red-700" onClick={() => setRemoving(true)}>Delete place</button> : <div className="text-sm"><p>Delete this place and its notes? The rest of your trip will stay.</p><button type="button" disabled={busy} className="min-h-11 pr-4 text-red-700" onClick={async () => {
       if (saving.current) return
       saving.current = true; setBusy(true); setError('')
       try { const result = await removePlanPlace(place.id); if (result.error) setError(result.error); else router.refresh() }
       catch { setError('Could not remove. Please try again.') } finally { saving.current = false; setBusy(false) }
     }}>{busy ? 'Deleting…' : 'Delete this place'}</button><button type="button" disabled={busy} className="min-h-11" onClick={() => setRemoving(false)}>Keep place</button></div>}{error && <p role="alert" className="text-sm text-red-700">{error}</p>}</div>}
-    <PlaceQuickEdit itemId={place.id} name={place.name} rating={place.rating} photos={place.photos} />
+    <PlaceQuickEdit compact itemId={place.id} name={place.name} rating={place.rating} photos={place.photos} />
+    </div>
   </article>
 }
 function DetailsForm({ trip }: { trip: Trip }) {

@@ -7,7 +7,7 @@ import { placePeople } from '@/actions/placePeople'
 import styles from './PlacePeople.module.css'
 
 type Result = Awaited<ReturnType<typeof placePeople>>
-export default function PlacePeople({ placeId, name, location = '' }: { placeId: string; name: string; location?: string }) {
+export default function PlacePeople({ placeId, name, location = '', compact = false }: { placeId: string; name: string; location?: string; compact?: boolean }) {
   const [result, setResult] = useState<Result | null>(null)
   const [open, setOpen] = useState(false)
   const [attempt, setAttempt] = useState(0)
@@ -20,12 +20,18 @@ export default function PlacePeople({ placeId, name, location = '' }: { placeId:
   if (result.error) return <p className={styles.status}>{result.error} <button type="button" onClick={() => setAttempt(value => value + 1)}>Try again</button></p>
   const liked = result.people.filter(person => person.isFriend && person.liked)
   const friends = result.people.filter(person => person.isFriend)
-  const label = liked.length ? `${liked[0].name}${liked.length > 1 ? ` + ${liked.length - 1} friend${liked.length > 2 ? 's' : ''}` : ''} liked this`
+  const recommendedNames = liked.slice(0, 2).map(person => person.name).join(' and ')
+  const friendRatings = friends.filter(person => person.rating !== null).slice(0, 2)
+    .map(person => `${person.name}: ${person.rating}/5 ★`).join(' · ')
+  const label = compact && liked.length ? `Recommended by ${recommendedNames}${liked.length > 2 ? ` + ${liked.length - 2} more` : ''}`
+    : compact && friends.length ? `Shared by ${friends.slice(0, 2).map(person => person.name).join(' and ')}${friends.length > 2 ? ` + ${friends.length - 2} more` : ''}`
+    : liked.length ? `${liked[0].name}${liked.length > 1 ? ` + ${liked.length - 1} friend${liked.length > 2 ? 's' : ''}` : ''} liked this`
     : friends.length ? `${friends.length} friend${friends.length === 1 ? '' : 's'} shared this place`
     : result.people.length ? `${result.people.length} ${result.people.length === 1 ? 'person' : 'people'} shared this place` : 'No shared visits or recommendations yet'
+  if (compact && !result.people.length) return null
   return <>
-    {result.people.length ? <button type="button" className={styles.cue} aria-haspopup="dialog" onClick={() => setOpen(true)}>
-      <span className={styles.icon}>{liked.length ? <Heart size={19} /> : <Users size={19} />}</span><span><strong>{label}</strong><small>See visits, guides & recommendations</small></span><ChevronRight size={18} />
+    {result.people.length ? <button type="button" className={`${styles.cue} ${compact ? styles.compact : ''}`} aria-haspopup="dialog" onClick={() => setOpen(true)}>
+      <span className={styles.icon}>{liked.length ? <Heart size={19} /> : <Users size={19} />}</span><span><strong>{label}</strong><small>{compact && friendRatings ? friendRatings : 'See visits, guides & recommendations'}</small></span><ChevronRight size={18} />
     </button> : <p className={styles.status}>{label}</p>}
     {open && <PeopleDialog name={name} people={result.people} onClose={() => setOpen(false)} />}
   </>

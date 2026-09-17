@@ -1023,7 +1023,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       </div>
     </form>
     <div className="mt-8 border-t border-[#d7cebc] pt-5">
-      <DeleteButton id={itinerary.id} />
+      <DeleteButton id={itinerary.id} visibility={itinerary.visibility} />
     </div>
     </TripEntryLayout>
   )

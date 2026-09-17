@@ -545,7 +545,7 @@ export default async function ItineraryPage({
                     Edit
                   </Link>
                   <Link href={`/plan/${it.id}`} className="rounded-full bg-[#507c76] px-3 py-2 text-xs font-semibold text-white">Add a place</Link>
-                  <DeleteButton id={it.id} />
+                  <DeleteButton id={it.id} visibility={it.visibility} />
                 </div>
               )}
               {session?.user && !isOwn && (

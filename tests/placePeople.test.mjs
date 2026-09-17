@@ -63,3 +63,15 @@ test('unrated guide entries are included without claiming a visit or a like', as
   assert.equal(legacy[1].name.equals, 'CRU')
   assert.equal(legacy[2].destination.OR[0].name.equals, 'Nantucket')
 })
+
+test('saved legacy places without a Google ID require a name and match only their destination/locality', async () => {
+  const h = harness([row('friend', { rating: 5 })])
+  const result = await h.run('', 'The Berkeley', 'London, UK')
+  assert.equal(result.people[0].rating, 5)
+  const match = h.queries[1].where.OR[0].AND
+  assert.equal(match[0].name.equals, 'The Berkeley')
+  assert.deepEqual(Array.from(match[1].destination.OR, area => area.name.equals), ['London, UK', 'London'])
+  const missing = harness()
+  assert.ok((await missing.run('', 'The Berkeley', '')).error)
+  assert.equal(missing.queries.length, 0)
+})
