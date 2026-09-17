@@ -2,12 +2,14 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, Star } from 'lucide-react'
+import { Camera, Star, Plus } from 'lucide-react'
+import StoryComposer from './StoryComposer'
 import EventPhotoInput from './EventPhotoInput'
 import { updatePlace } from '@/actions/placeQuickEdit'
 
 export default function PlaceQuickEdit({ itemId, name, rating, photos }: { itemId: string; name: string; rating: number | null; photos: string[] }) {
   const router = useRouter()
+  const [postingMoment, setPostingMoment] = useState(false)
   const [mode, setMode] = useState<'photos' | 'rating' | null>(null)
   const [draftRating, setDraftRating] = useState(rating ?? 0)
   const [draftPhotos, setDraftPhotos] = useState(photos)
@@ -48,6 +50,7 @@ export default function PlaceQuickEdit({ itemId, name, rating, photos }: { itemI
     {!mode ? <div className="flex flex-wrap gap-2">
       <button type="button" onClick={() => open('photos')} aria-label={`Edit photos for ${name}`} className="inline-flex min-h-11 items-center gap-1.5 px-2 text-[#507c76]"><Camera size={15} />{photos.length ? 'Edit photos' : 'Add photos'}</button>
       <button type="button" onClick={() => open('rating')} aria-label={`Change rating for ${name}`} className="inline-flex min-h-11 items-center gap-1.5 px-2 text-[#507c76]"><Star size={15} />{rating ? 'Change rating' : 'Add rating'}</button>
+      <button type="button" onClick={() => { setSaved(''); setPostingMoment(true) }} aria-label={`Post this moment at ${name}`} className="inline-flex min-h-11 items-center gap-1.5 px-2 text-[#507c76]"><Plus size={15} />Post this moment</button>
     </div> : <>
       <p className="px-2 py-1 font-medium text-[#2e4147]">{mode === 'photos' ? 'Photos' : 'Your rating'} · {name}</p>
       <fieldset disabled={saving || uploading}>
@@ -62,6 +65,7 @@ export default function PlaceQuickEdit({ itemId, name, rating, photos }: { itemI
         <button type="button" disabled={saving || uploading} onClick={() => void save()} className="min-h-11 rounded-lg bg-[#507c76] px-4 text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>
       </div>
     </>}
+    {postingMoment && <StoryComposer initialItemId={itemId} onClose={() => setPostingMoment(false)} onPosted={() => { setPostingMoment(false); setSaved('Posted to Little moments for 24 hours.'); router.refresh() }} />}
     {saved && <p role="status" className="px-2 text-xs text-[#507c76]">{saved}</p>}
   </section>
 }

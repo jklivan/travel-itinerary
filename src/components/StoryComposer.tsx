@@ -8,7 +8,7 @@ import EventPhotoInput from './EventPhotoInput'
 import styles from './Stories.module.css'
 
 type Sources = Awaited<ReturnType<typeof storySources>>
-export default function StoryComposer({ onClose, onPosted }: { onClose: () => void; onPosted: () => void }) {
+export default function StoryComposer({ onClose, onPosted, initialItemId }: { onClose: () => void; onPosted: () => void; initialItemId?: string }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   const clientId = useRef('')
@@ -36,10 +36,17 @@ export default function StoryComposer({ onClose, onPosted }: { onClose: () => vo
       if (!active) return
       setSources(result)
       if (result.error) setError(result.error)
-      setTripId(result.trips[0]?.id ?? '')
+      const selectedTrip = initialItemId
+        ? result.trips.find(trip => trip.places.some(place => place.id === initialItemId))
+        : result.trips[0]
+      const selectedPlace = selectedTrip?.places.find(place => place.id === initialItemId)
+      setTripId(selectedTrip?.id ?? '')
+      setItemId(selectedPlace?.id ?? '')
+      setPhoto(selectedPlace?.photos[0] ?? (selectedPlace ? selectedTrip?.photos[0] ?? '' : ''))
+      if (initialItemId && !selectedPlace && !result.error) setError('This place is no longer available. Choose another place to share.')
     }).catch(() => { if (active) setError('Could not load your trips. Close this window and try again.') })
     return () => { active = false; element?.close(); if (previous !== 'hidden') document.body.style.overflow = previous }
-  }, [])
+  }, [initialItemId])
 
   function selectPlace(id: string) {
     const selected = trip?.places.find(item => item.id === id)
