@@ -5,7 +5,7 @@ import Link from 'next/link'
 import ItineraryCard from '@/components/ItineraryCard'
 import SavedFolders from '@/components/SavedFolders'
 import SavedFolderPicker from '@/components/SavedFolderPicker'
-import HorizontalScrollFeed from '@/components/HorizontalScrollFeed'
+import { tripPhotoGallery } from '@/lib/eventPhotos'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
 import { MapPin, Users, ChevronRight } from 'lucide-react'
 
@@ -51,7 +51,7 @@ export default async function UserProfilePage({
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       include: {
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
-        photos: { take: 1, orderBy: { isStock: 'asc' } },
+        photos: { orderBy: { isStock: 'asc' } },
         _count: { select: { bucketedBy: true } },
       },
     }),
@@ -61,7 +61,7 @@ export default async function UserProfilePage({
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
           include: {
             destinations: { orderBy: { order: 'asc' }, include: { items: true } },
-            photos: { take: 1, orderBy: { isStock: 'asc' } },
+            photos: { orderBy: { isStock: 'asc' } },
             _count: { select: { bucketedBy: true } },
           },
         })
@@ -75,7 +75,7 @@ export default async function UserProfilePage({
               include: {
                 user: { select: { id: true, name: true } },
                 destinations: { orderBy: { order: 'asc' }, include: { items: true } },
-                photos: { take: 1, orderBy: { isStock: 'asc' } },
+                photos: { orderBy: { isStock: 'asc' } },
                 _count: { select: { bucketedBy: true } },
               },
             },
@@ -109,7 +109,7 @@ export default async function UserProfilePage({
   const ownBucketSet = new Set(bucketItems.map((b) => b.itineraryId))
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
+    <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
       {!isOwn && <Link href="/friends" className="text-sm text-[#8B6F4E] hover:underline mb-5 inline-block">
         ← Friends
       </Link>}
@@ -229,9 +229,10 @@ export default async function UserProfilePage({
               <p className="text-[#8B6F4E] italic text-sm">No public itineraries yet.</p>
             </div>
           ) : (
-            <HorizontalScrollFeed>
+            <div className="mx-auto flex w-full max-w-xl flex-col gap-3 sm:gap-5">
               {itineraries.map((it) => (
                 <ItineraryCard
+                  fullWidth
                   key={it.id}
                   id={it.id}
                   postType={it.postType}
@@ -248,13 +249,14 @@ export default async function UserProfilePage({
                   authorName={user.name}
                   destinations={it.destinations}
                   coverPhoto={it.photos[0]?.url ?? null}
+                  photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items))}
                   currentUserId={viewerId}
                   isOwn={isOwn}
                   isBucketed={viewerBucketSet.has(it.id)}
                   saveCount={it._count.bucketedBy}
                 />
               ))}
-            </HorizontalScrollFeed>
+            </div>
           )}
         </>
       ) : (
@@ -272,10 +274,11 @@ export default async function UserProfilePage({
               </p>
             </div>
           ) : (
-            <HorizontalScrollFeed>
+            <div className="mx-auto flex w-full max-w-xl flex-col gap-3 sm:gap-5">
               {visibleBucketItems.map((item) => (
-                <div key={item.id} className="w-[clamp(200px,44vw,320px)]">
+                <div key={item.id} className="w-full min-w-0">
                   <ItineraryCard
+                  fullWidth
                     id={item.itinerary.id}
                     postType={item.itinerary.postType}
                     tags={item.itinerary.tags}
@@ -291,6 +294,7 @@ export default async function UserProfilePage({
                     authorName={item.itinerary.user.name}
                     destinations={item.itinerary.destinations}
                     coverPhoto={item.itinerary.photos[0]?.url ?? null}
+                    photos={tripPhotoGallery(item.itinerary.photos, item.itinerary.destinations.flatMap(destination => destination.items))}
                     currentUserId={viewerId}
                     isOwn={item.itinerary.user.id === viewerId}
                     isBucketed={ownBucketSet.has(item.itinerary.id)}
@@ -299,7 +303,7 @@ export default async function UserProfilePage({
                   <div className="mt-3"><SavedFolderPicker itineraryId={item.itinerary.id} label={folders.find(f => f.id === item.folderId)?.name ?? 'Save to folder'} /></div>
                 </div>
               ))}
-            </HorizontalScrollFeed>
+            </div>
           )}
         </>
       )}

@@ -4,7 +4,7 @@ import type { ItineraryWhereInput } from '@/generated/prisma/models/Itinerary'
 import { auth } from '@/auth'
 import Link from 'next/link'
 import ItineraryCard from '@/components/ItineraryCard'
-import HorizontalScrollFeed from '@/components/HorizontalScrollFeed'
+import { tripPhotoGallery } from '@/lib/eventPhotos'
 import ExploreSearchBar from '@/components/ExploreSearchBar'
 import { parseSearchQuery, type ParsedQuery } from '@/lib/parseSearchQuery'
 import { tagMeta } from '@/lib/tags'
@@ -68,7 +68,7 @@ async function fetchItineraries(where: ItineraryWhereInput, userId: string | nul
       include: {
         user: { select: { name: true, id: true } },
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
-        photos: { take: 1, orderBy: { isStock: 'asc' } },
+        photos: { orderBy: { isStock: 'asc' } },
         _count: { select: { bucketedBy: true } },
       },
     }),
@@ -96,9 +96,10 @@ function ItineraryList({
     )
   }
   return (
-    <HorizontalScrollFeed>
+    <div className="mx-auto flex w-full max-w-xl flex-col gap-3 sm:gap-5">
       {itineraries.map((it) => (
         <ItineraryCard
+                  fullWidth
           key={it.id}
           id={it.id}
           postType={it.postType}
@@ -115,13 +116,14 @@ function ItineraryList({
           authorName={it.user.name}
           destinations={it.destinations}
           coverPhoto={it.photos[0]?.url ?? null}
+                  photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items))}
           currentUserId={userId}
           isOwn={it.user.id === userId}
           isBucketed={bucketSet.has(it.id)}
           saveCount={it._count.bucketedBy}
         />
       ))}
-    </HorizontalScrollFeed>
+    </div>
   )
 }
 
@@ -239,7 +241,7 @@ export default async function ExplorePage({
   const params = await searchParams
   if (!Object.values(params).some(Boolean)) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-[#2C1810] mb-2">Explore</h1>
         <p className="text-sm text-[#8B6F4E] mb-6">How would you like to find your next trip?</p>
         <div className="space-y-4">
@@ -306,7 +308,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     }
 
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
         <ExploreSearchBar />
         <SearchFiltersDisplay parsed={parsed} />
@@ -323,7 +325,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     const meta = tagMeta(tag)
     const { itineraries, bucketSet } = await fetchItineraries({ tags: { has: tag } }, userId)
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <Link href="/explore?view=tags" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">
           ← Browse by Type
         </Link>
@@ -358,7 +360,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
       userId
     )
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <Link href={country === 'United States' ? '/explore?view=destinations' : `/explore?country=${encodeURIComponent(country)}`} className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">
           ← {country === 'United States' ? 'Destinations' : country}
         </Link>
@@ -452,7 +454,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
       `/explore?country=${encodeURIComponent(country)}&city=${encodeURIComponent(name)}`
 
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 pb-10">
+      <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
         <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
         <div className="mb-5">
           <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">{country}</h2>
@@ -513,7 +515,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     const { itineraries, bucketSet } = await fetchItineraries(where, userId)
     const meta = TRIP_TYPE_META[type]
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <Link href="/explore?view=tags" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Trip types</Link>
         <div className="mb-5">
           <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">{meta.emoji} {meta.label}</h2>
@@ -530,7 +532,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     const { itineraries, bucketSet } = await fetchItineraries(exploreFilterWhere(filters), userId)
 
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
         <h1 className="font-[family-name:var(--font-playfair)] text-2xl sm:text-3xl tracking-wide text-[#2C1810] mb-5">SEARCH BY TRIP TYPE</h1>
         <ExploreTripFilters key={`${filters.types.join(',')}|${filters.tags.join(',')}`} types={filters.types} tags={filters.tags} />
@@ -546,7 +548,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
   // ── view=hotspots ──────────────────────────────────────────────────────────
   if (view === 'hotspots') {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
         <div className="text-center py-24">
           <p className="text-5xl mb-4">🔥</p>
@@ -560,7 +562,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
   // ── view=recs ──────────────────────────────────────────────────────────────
   if (view === 'recs') {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
         <div className="text-center py-24">
           <p className="text-5xl mb-4">👥</p>
@@ -614,7 +616,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     const cards = regionMap.get(region) ?? []
 
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 pb-10">
+      <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
         <Link href="/explore?view=destinations" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Destinations</Link>
         <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-5">{region}</h1>
         {cards.length === 0 ? (
@@ -657,7 +659,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
   if (otherCards.length > 0) destRegions.push({ label: 'Other', cards: otherCards })
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 pb-10">
+    <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
       <Link href="/explore" className="text-sm text-[#5C3D2E] hover:underline mb-5 inline-block">← Explore</Link>
       <div className="mb-5">
         <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-[#2C1810]">Destinations</h1>

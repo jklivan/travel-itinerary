@@ -29,7 +29,7 @@ export default async function FriendsPage() {
   ])
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
+    <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
       <div className="mb-5">
         <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">Friends</h1>
         <p className="text-[#8B6F4E] text-sm mt-0.5">
