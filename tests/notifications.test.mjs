@@ -18,7 +18,7 @@ function load(path, dependencies = {}, globals = {}) {
   return exports
 }
 const { createTripNotification } = load('../src/lib/notifications.ts')
-const text = load('../src/lib/notificationText.ts')
+const text = load('../src/lib/notificationText.ts', { './messageThread': load('../src/lib/messageThread.ts') })
 
 function harness(userId = 'visitor') {
   const rows = new Map()
@@ -158,6 +158,7 @@ test('APNs sends a signed production alert with the expected trip link and no co
   const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
   const env = { APNS_PRIVATE_KEY: privateKey.export({ type: 'pkcs8', format: 'pem' }), APNS_KEY_ID: 'key', APNS_TEAM_ID: 'team', APNS_BUNDLE_ID: 'com.example.app' }
   let host, headers, payload
+  let messageTripId = null
   const http2 = { connect: url => {
     host = url
     const client = new EventEmitter()
@@ -228,6 +229,7 @@ test('APNs message alerts link directly to the sender and omit private message t
   const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
   const env = { APNS_PRIVATE_KEY: privateKey.export({ type: 'pkcs8', format: 'pem' }), APNS_KEY_ID: 'key', APNS_TEAM_ID: 'team', APNS_BUNDLE_ID: 'com.example.app' }
   let host, headers, payload
+  let messageTripId = null
   const http2 = { connect: url => {
     host = url
     const client = new EventEmitter()
@@ -245,7 +247,7 @@ test('APNs message alerts link directly to the sender and omit private message t
   const { deliverNotification } = load('../src/lib/push.ts', {
     'node:crypto': crypto, 'node:http2': http2, '@/lib/notificationText': text,
     '@/lib/prisma': { prisma: {
-      notification: { findUnique: async () => ({ recipientId: 'owner', actorId: 'friend', kind: 'message', itineraryId: null, actor: { name: 'Friend' }, itinerary: null, message: { content: 'Private secret' } }) },
+      notification: { findUnique: async () => ({ recipientId: 'owner', actorId: 'friend', kind: 'message', itineraryId: null, actor: { name: 'Friend' }, itinerary: null, message: { content: 'Private secret', itineraryId: messageTripId } }) },
       pushDevice: { findMany: async () => [{ id: 'device', token: 'a'.repeat(64) }] },
     } },
   }, { process: { env }, Buffer, setTimeout, clearTimeout })
@@ -258,7 +260,22 @@ test('APNs message alerts link directly to the sender and omit private message t
   assert.equal(payload.aps.alert.body, 'Friend sent you a private message.')
   assert.equal(payload.aps['thread-id'], 'message:friend')
   assert.equal(JSON.stringify(payload).includes('Private secret'), false)
+  messageTripId = 'capri'
+  await deliverNotification('n2')
+  assert.equal(payload.url, '/messages/friend?trip=capri')
+  assert.equal(payload.aps['thread-id'], 'message:friend:capri')
   const [head, claims, signature] = headers.authorization.slice(7).split('.')
   assert.equal(JSON.parse(Buffer.from(claims, 'base64url')).iss, 'team')
   assert.ok(crypto.verify('sha256', Buffer.from(`${head}.${claims}`), { key: publicKey, dsaEncoding: 'ieee-p1363' }, Buffer.from(signature, 'base64url')))
+})
+
+test('opening a message alert routes to its trip-specific thread', async () => {
+  const actions = notificationActions({ notification: {
+    findFirst: async ({ include }) => {
+      assert.equal(include.message.select.itineraryId, true)
+      return { id: 'trip-message', recipientId: 'owner', actorId: 'sender', kind: 'message', itineraryId: null, message: { itineraryId: 'capri' } }
+    },
+    updateMany: async () => ({ count: 1 }),
+  } })
+  await assert.rejects(actions.openNotification(new Map([['id', 'trip-message']])), /redirect:\/messages\/sender\?trip=capri/)
 })

@@ -54,10 +54,10 @@ export async function openNotification(form: FormData) {
   if (!session?.user?.id) redirect('/login')
   const id = form.get('id')
   if (typeof id !== 'string') return
-  const notification = await prisma.notification.findFirst({ where: { id, recipientId: session.user.id, OR: [{ kind: 'message', messageId: { not: null } }, { itinerary: { visibility: { not: 'draft' } } }] } })
+  const notification = await prisma.notification.findFirst({ where: { id, recipientId: session.user.id, OR: [{ kind: 'message', messageId: { not: null } }, { itinerary: { visibility: { not: 'draft' } } }] }, include: { message: { select: { itineraryId: true } } } })
   if (!notification) return
   await prisma.notification.updateMany({ where: { id, recipientId: session.user.id }, data: { readAt: new Date() } })
   revalidatePath('/notifications')
   revalidatePath('/messages')
-  redirect(notificationPath(notification.itineraryId, notification.kind, notification.actorId))
+  redirect(notificationPath(notification.kind === 'message' ? notification.message?.itineraryId ?? null : notification.itineraryId, notification.kind, notification.actorId))
 }

@@ -4,11 +4,12 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import MessageAttachment from './MessageAttachment'
 import { sendDirectMessage } from '@/actions/messages'
+import { messageThreadHref } from '@/lib/messageThread'
 
 export type MessageReplyTarget = { id: string; content: string; author: string; itineraryTitle?: string | null; placeName?: string | null }
 export type ComposerAttachment = { id: string; name: string; trip?: string; kind: 'place' | 'trip' }
 
-export default function MessageComposer({ recipientId, attachment, replyTo, onClearReply }: { recipientId: string; attachment?: ComposerAttachment; replyTo?: MessageReplyTarget; onClearReply?: () => void }) {
+export default function MessageComposer({ recipientId, itineraryId, attachment, replyTo, onClearReply }: { recipientId: string; itineraryId?: string; attachment?: ComposerAttachment; replyTo?: MessageReplyTarget; onClearReply?: () => void }) {
   const [content, setContent] = useState('')
   const [attached, setAttached] = useState(!!attachment)
   const [error, setError] = useState('')
@@ -27,11 +28,11 @@ export default function MessageComposer({ recipientId, attachment, replyTo, onCl
     clientId.current ??= crypto.randomUUID()
     startTransition(async () => {
       try {
-        const result = await sendDirectMessage({ recipientId, content, clientId: clientId.current!, replyToId: replyTo?.id, placeId: !replyTo && attached && attachment?.kind === 'place' ? attachment.id : undefined, itineraryId: !replyTo && attached && attachment?.kind === 'trip' ? attachment.id : undefined })
+        const result = await sendDirectMessage({ recipientId, content, clientId: clientId.current!, replyToId: replyTo?.id, placeId: !replyTo && attached && attachment?.kind === 'place' ? attachment.id : undefined, itineraryId: itineraryId ?? (!replyTo && attached && attachment?.kind === 'trip' ? attachment.id : undefined) })
         if (result.error) { setError(result.error); return }
         setContent(''); setAttached(false); clientId.current = null
         onClearReply?.()
-        router.replace(`/messages/${recipientId}`, { scroll: false })
+        router.replace(messageThreadHref(recipientId, result.itineraryId ?? itineraryId), { scroll: false })
         router.refresh()
       } catch { setError('Could not send. Your message is still here—please try again.') }
     })

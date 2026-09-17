@@ -1,4 +1,5 @@
 import TripBackButton from '@/components/TripBackButton'
+import CopyTripButton from '@/components/CopyTripButton'
 import RatingStars from '@/components/RatingStars'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
@@ -524,6 +525,7 @@ export default async function ItineraryPage({
               )}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              {session?.user && <CopyTripButton itineraryId={it.id} title={it.title} isOwn={isOwn} />}
               {stamp && (
                 <span className={`-rotate-2 inline-block text-xs px-3 py-1 rounded-full font-bold text-white ${stamp.bg}`}>
                   {stamp.label}

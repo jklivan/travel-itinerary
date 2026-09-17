@@ -13,7 +13,7 @@ function harness(userId = 'alice') {
   const people = new Map(['alice', 'bob', 'eve'].map(id => [id, { id, name: id }]))
   const queries = []
   const place = { id: 'cafe', name: 'Cafe', notes: 'Try the breakfast', destination: { itinerary: { id: 'trip', title: 'Paris' } } }
-  const match = (row, where) => (!where.id || row.id === where.id) && where.OR.some(pair => Object.entries(pair).every(([k, v]) => row[k] === v))
+  const match = (row, where) => (!where.id || row.id === where.id) && (!('itineraryId' in where) || (row.itineraryId ?? null) === where.itineraryId) && where.OR.some(pair => Object.entries(pair).every(([k, v]) => row[k] === v))
   const prisma = {
     notification: {
       createManyAndReturn: async ({ data, skipDuplicates }) => {
@@ -50,7 +50,7 @@ function harness(userId = 'alice') {
         let found = rows.filter(row => match(row, query.where)).sort((a, b) => b.createdAt - a.createdAt)
         if (query.distinct) {
           const seen = new Set()
-          found = found.filter(row => { const key = `${row.senderId}:${row.recipientId}`; if (seen.has(key)) return false; seen.add(key); return true })
+          found = found.filter(row => { const key = JSON.stringify(query.distinct.map(key => row[key] ?? null)); if (seen.has(key)) return false; seen.add(key); return true })
         }
         if (query.cursor) found = found.slice(found.findIndex(row => row.id === query.cursor.id) + query.skip)
         return found.slice(0, query.take).map(row => ({ ...row, sender: people.get(row.senderId), recipient: people.get(row.recipientId), replyTo: query.include?.replyTo ? rows.find(parent => parent.id === row.replyToId) ?? null : undefined }))
@@ -115,11 +115,11 @@ test('trip references persist for both travelers and the inbox, with retry dedup
   assert.equal(h.rows[0].itineraryTitle, 'Paris')
   assert.equal(h.rows[0].placeId, undefined)
   assert.equal(h.queries[0].visibility.not, 'draft')
-  assert.equal((await h.getConversation('bob')).messages[0].itineraryTitle, 'Paris')
+  assert.equal((await h.getConversation('bob', undefined, 'trip')).messages[0].itineraryTitle, 'Paris')
   assert.equal((await h.getMessageInbox()).threads[0].itineraryTitle, 'Paris')
   const recipient = harness('bob')
   recipient.rows.push(...h.rows)
-  assert.equal((await recipient.getConversation('alice')).messages[0].itineraryId, 'trip')
+  assert.equal((await recipient.getConversation('alice', undefined, 'trip')).messages[0].itineraryId, 'trip')
 })
 test('unavailable or malformed trip references fail without sending an unlinked message', async () => {
   const h = harness()
@@ -128,11 +128,10 @@ test('unavailable or malformed trip references fail without sending an unlinked 
   }
   assert.equal(h.rows.length, 0)
 })
-test('place attachments retain their own trip when another trip ID is supplied', async () => {
+test('place attachments cannot be sent into a different trip thread', async () => {
   const h = harness()
-  await h.sendDirectMessage({ ...h.input, placeId: 'cafe', itineraryId: 'other-trip' })
-  assert.equal(h.rows[0].placeId, 'cafe')
-  assert.equal(h.rows[0].itineraryId, 'trip')
+  assert.ok((await h.sendDirectMessage({ ...h.input, placeId: 'cafe', itineraryId: 'other-trip' })).error)
+  assert.equal(h.rows.length, 0)
 })
 test('conversation reads exclude messages involving a third party and reject foreign cursors', async () => {
   const h = harness()
@@ -228,15 +227,17 @@ test('replies quote the selected message and inherit its trip, including further
   await h.sendDirectMessage({ ...h.input, content: 'Paris answer', replyToId: 'm0', clientId: 'paris-reply-123456' })
   await h.sendDirectMessage({ ...h.input, content: 'Rome answer', replyToId: 'other-trip', clientId: 'rome-reply-1234567' })
   await h.sendDirectMessage({ ...h.input, content: 'More on Paris', replyToId: 'm2', clientId: 'paris-followup-12345' })
-  const { messages } = await h.getConversation('bob')
-  assert.equal(messages[2].replyTo.content, 'Hello')
+  const { messages } = await h.getConversation('bob', undefined, 'trip')
+  assert.equal(messages.length, 3)
+  assert.equal(messages[1].replyTo.content, 'Hello')
+  assert.equal(messages[1].itineraryTitle, 'Paris')
   assert.equal(messages[2].itineraryTitle, 'Paris')
-  assert.equal(messages[3].replyTo.content, 'What about Rome?')
-  assert.equal(messages[3].itineraryTitle, 'Rome')
-  assert.equal(messages[4].itineraryTitle, 'Paris')
+  assert.equal((await h.getConversation('bob')).messages.length, 0)
   const recipient = harness('bob')
   recipient.rows.push(...h.rows)
-  assert.equal((await recipient.getConversation('alice')).messages[3].replyTo.content, 'What about Rome?')
+  const rome = await recipient.getConversation('alice', undefined, 'rome')
+  assert.equal(rome.messages.length, 2)
+  assert.equal(rome.messages[1].replyTo.content, 'What about Rome?')
 })
 
 test('reply targets must exist in the same private conversation', async () => {
@@ -258,4 +259,41 @@ test('replies preserve place references and deduplicate retries', async () => {
   assert.equal(h.rows.length, 2)
   assert.equal(h.rows[1].placeName, 'Cafe')
   assert.equal(h.rows[1].replyToId, 'm0')
+})
+
+test('inbox has one entry per person and trip, combining both directions only within that trip', async () => {
+  const h = harness()
+  await h.sendDirectMessage({ ...h.input, itineraryId: 'trip' })
+  await h.sendDirectMessage({ ...h.input, clientId: 'general-client-1234' })
+  h.rows.push({ id: 'rome', senderId: 'bob', recipientId: 'alice', itineraryId: 'rome', itineraryTitle: 'Rome', content: 'Rome question', createdAt: new Date(3000) })
+  h.rows.push({ id: 'paris-reply', senderId: 'bob', recipientId: 'alice', itineraryId: 'trip', itineraryTitle: 'Paris', content: 'Paris answer', createdAt: new Date(4000) })
+  const { threads } = await h.getMessageInbox()
+  assert.equal(threads.length, 3)
+  assert.deepEqual(Array.from(threads, t => t.itineraryId ?? null), ['trip', 'rome', null])
+  assert.equal(threads[0].content, 'Paris answer')
+  assert.equal((await h.getConversation('bob')).messages.length, 1)
+  assert.equal((await h.getConversation('bob', undefined, 'trip')).messages.length, 2)
+  assert.equal((await h.getConversation('bob', undefined, 'rome')).messages.length, 1)
+})
+
+test('trip threads reject other-trip cursors and reply targets, even for the same person', async () => {
+  const h = harness()
+  await h.sendDirectMessage({ ...h.input, itineraryId: 'trip' })
+  h.rows.push({ id: 'rome', senderId: 'bob', recipientId: 'alice', itineraryId: 'rome', content: 'Rome', createdAt: new Date(2000) })
+  assert.ok((await h.getConversation('bob', 'rome', 'trip')).error)
+  assert.ok((await h.getConversation('bob', 'm0')).error)
+  assert.ok((await h.sendDirectMessage({ ...h.input, clientId: 'invalid-reply-12345', itineraryId: 'trip', replyToId: 'rome' })).error)
+  assert.equal(h.rows.length, 2)
+})
+
+test('ordinary follow-ups stay in the chosen trip and existing threads survive deleted trips', async () => {
+  const h = harness()
+  await h.sendDirectMessage({ ...h.input, placeId: 'cafe' })
+  const sent = await h.sendDirectMessage({ ...h.input, clientId: 'followup-client-1234', itineraryId: 'trip', content: 'Thanks!' })
+  assert.equal(sent.itineraryId, 'trip')
+  assert.equal((await h.getConversation('bob', undefined, 'trip')).messages.length, 2)
+  h.rows.push({ id: 'deleted-trip-message', senderId: 'bob', recipientId: 'alice', itineraryId: 'deleted', itineraryTitle: 'Old trip', content: 'Hi', createdAt: new Date(2000) })
+  assert.ok((await h.sendDirectMessage({ ...h.input, clientId: 'deleted-followup-123', itineraryId: 'deleted' })).success)
+  assert.equal(h.rows.at(-1).itineraryTitle, 'Old trip')
+  assert.ok((await h.sendDirectMessage({ ...h.input, recipientId: 'eve', clientId: 'foreign-followup-123', itineraryId: 'deleted' })).error)
 })

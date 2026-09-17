@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, MapPin, LockKeyhole, CalendarDays, Check, Hotel, Utensils, Camera, Plane } from 'lucide-react'
 import { addPlanPlace, editPlanPlace, savePlanDetails, sharePlan, removePlanPlace } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
+import CopyTripButton from '@/components/CopyTripButton'
 import PlaceEntryForm from '@/components/PlaceEntryForm'
 import DeleteButton from '@/components/DeleteButton'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
@@ -17,7 +18,7 @@ type Place = { lat: number | null; lng: number | null; placeId: string | null; i
 type Trip = { id: string; title: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; items: Place[] }[] }
 const categories = [{ value: 'hotel', label: 'Hotels' }, { value: 'food_drink', label: 'Restaurants & drinks' }, { value: 'activity', label: 'Things to do' }, { value: 'transport', label: 'Transportation' }]
 
-export default function Planner({ trip, initialImport = false }: { trip: Trip; initialImport?: boolean }) {
+export default function Planner({ trip, initialImport = false, initialDetails = false }: { trip: Trip; initialImport?: boolean; initialDetails?: boolean }) {
   const router = useRouter()
   const [tab, setTab] = useState<'places' | 'itinerary' | 'map'>('places')
   const [mapOpened, setMapOpened] = useState(false)
@@ -34,8 +35,9 @@ export default function Planner({ trip, initialImport = false }: { trip: Trip; i
     <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#507c76]"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
     <h1 className="mt-2 break-words font-[family-name:var(--font-playfair)] text-3xl sm:text-4xl">{trip.title}</h1>
     <p className="mt-2 flex items-center gap-2 text-sm text-[#73786d]"><CalendarDays size={16} />{trip.start ? `${trip.start} — ${trip.end}` : 'Dates are flexible'} · {places.length} places</p>
-    {trip.isPlan && <details className="mt-3"><summary className="cursor-pointer py-2 text-sm text-[#507c76]">Edit trip name & dates</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
+    {trip.isPlan && <details open={initialDetails || undefined} className="mt-3"><summary className="cursor-pointer py-2 text-sm text-[#507c76]">Edit trip name & dates</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
     <div className="mt-4 flex flex-wrap items-center gap-3">
+      <CopyTripButton itineraryId={trip.id} title={trip.title} isOwn />
       {trip.visibility === 'draft' && trip.isPlan ? <button disabled={!places.length} onClick={() => setConfirmShare(true)} className="min-h-11 rounded-xl border border-[#d7cebc] px-4 text-sm disabled:opacity-50">Share trip</button> : <Link href={trip.visibility === 'draft' ? `/itinerary/${trip.id}/edit` : `/itinerary/${trip.id}`} className="min-h-11 rounded-xl border border-[#d7cebc] px-4 py-3 text-sm">{trip.visibility === 'draft' ? 'Edit & publish' : 'View shared trip'}</Link>}
       <span className="text-xs text-[#73786d]">{trip.visibility === 'draft' ? 'Share whenever you’re ready.' : 'Saved changes appear on your shared trip.'}</span>
     </div>
