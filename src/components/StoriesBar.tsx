@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, ChevronLeft, ChevronRight, Plus, Trash2, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Plus, Trash2, X, Pause, Play } from 'lucide-react'
 import { activeStories, deleteStory } from '@/actions/stories'
 import { groupStories, type StoryCard } from '@/lib/stories'
 import StoryComposer from './StoryComposer'
@@ -62,7 +62,10 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
   const [saveOpen, setSaveOpen] = useState(false)
   const [saved, setSaved] = useState<string[]>([])
   const [error, setError] = useState('')
-  const touch = useRef<{ x: number; y: number } | null>(null)
+  const touch = useRef<{ x: number; y: number; time: number } | null>(null)
+  const [holding, setHolding] = useState(false)
+  const [paused, setPaused] = useState(false)
+  const [loaded, setLoaded] = useState('')
   const available = stories.filter(story => Date.parse(story.expiresAt) > now && !removed.includes(story.id))
   const index = available.findIndex(story => story.id === selected)
   const story = available[index]
@@ -75,9 +78,10 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
     return () => { element?.close(); if (previous !== 'hidden') document.body.style.overflow = previous }
   }, [])
   function move(offset: number) {
-    if (deleting || saveOpen) return
+    if (deleting || saveOpen || confirmDelete) return
     const next = available[index + offset]
     if (next) { setSelected(next.id); setConfirmDelete(false); setError('') }
+    else if (offset > 0) dialog.current?.close()
   }
   const minutes = story ? Math.max(0, Math.floor((now - Date.parse(story.createdAt)) / 60000)) : 0
   const age = minutes < 1 ? 'Just now' : minutes < 60 ? `${minutes}m ago` : `${Math.floor(minutes / 60)}h ago`
@@ -90,16 +94,25 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
       <div className={styles.viewerInner}>
         <header className={styles.viewerHeader}><div><h2 id={titleId}>{story?.authorName ?? 'Story expired'}</h2><p>{story ? age : 'Stories disappear after 24 hours.'}</p></div><button type="button" autoFocus className={styles.viewerClose} aria-label="Close story" onClick={() => dialog.current?.close()}><X size={22} /></button></header>
         {story ? <>
-          <div className={styles.progress} aria-label={`Story ${authorStories.findIndex(item => item.id === story.id) + 1} of ${authorStories.length}`}>{authorStories.map(item => <span key={item.id} data-active={item.id === story.id} />)}</div>
-          <div className={styles.storyContent} onTouchStart={event => { touch.current = { x: event.touches[0].clientX, y: event.touches[0].clientY } }} onTouchEnd={event => {
-            const start = touch.current; touch.current = null
+          <StoryProgress key={story.id} stories={authorStories} selected={story.id} paused={paused || holding || saveOpen || confirmDelete || deleting || loaded !== story.id} onComplete={() => move(1)} />
+          <div className={styles.storyContent} onContextMenu={event => event.preventDefault()} onPointerDown={event => {
+            if (!event.isPrimary || event.button !== 0) return
+            touch.current = { x: event.clientX, y: event.clientY, time: performance.now() }
+            event.currentTarget.setPointerCapture(event.pointerId)
+            setHolding(true)
+          }} onPointerUp={event => {
+            const start = touch.current; touch.current = null; setHolding(false)
             if (!start) return
-            const dx = event.changedTouches[0].clientX - start.x, dy = event.changedTouches[0].clientY - start.y
+            const dx = event.clientX - start.x, dy = event.clientY - start.y
             if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) move(dx < 0 ? 1 : -1)
-          }}>
+            else if (performance.now() - start.time < 250 && Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+              const bounds = event.currentTarget.getBoundingClientRect()
+              move(event.clientX < bounds.left + bounds.width / 2 ? -1 : 1)
+            }
+          }} onPointerCancel={() => { touch.current = null; setHolding(false) }} onLostPointerCapture={() => { touch.current = null; setHolding(false) }}>
             <article className={styles.paper}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={story.photoUrl} alt={story.placeName} /><span className={styles.placeType}>{story.type === 'hotel' ? 'Stay' : story.type === 'food_drink' ? 'Eat & drink' : story.type === 'transport' ? 'Transport' : 'Experience'}</span><h3>{story.placeName}</h3><p>{story.destination}</p>{story.caption && <p className={styles.caption}>{story.caption}</p>}
+              <img key={story.id} src={story.photoUrl} alt={story.placeName} draggable={false} onLoad={() => setLoaded(story.id)} onError={() => setLoaded(story.id)} /><span className={styles.placeType}>{story.type === 'hotel' ? 'Stay' : story.type === 'food_drink' ? 'Eat & drink' : story.type === 'transport' ? 'Transport' : 'Experience'}</span><h3>{story.placeName}</h3><p>{story.destination}</p>{story.caption && <p className={styles.caption}>{story.caption}</p>}
             </article>
           </div>
           <div className={styles.viewerActions}>
@@ -116,10 +129,41 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
             } catch { setError('Could not delete your story. Please try again.') } finally { setDeleting(false) }
           }}>{deleting ? 'Removing…' : 'Delete'}</button><button type="button" disabled={deleting} onClick={() => setConfirmDelete(false)}>Keep story</button></div>}
           {error && <p role="alert" className={styles.viewerError}>{error}</p>}
-          <nav className={styles.storyNav} aria-label="Story navigation"><button type="button" disabled={index <= 0 || deleting} aria-label="Previous story" onClick={() => move(-1)}><ChevronLeft size={22} /></button><span>Swipe to explore</span><button type="button" disabled={index >= available.length - 1 || deleting} aria-label="Next story" onClick={() => move(1)}><ChevronRight size={22} /></button></nav>
+          <nav className={styles.storyNav} aria-label="Story navigation"><button type="button" disabled={index <= 0 || deleting || saveOpen || confirmDelete} aria-label="Previous story" onClick={() => move(-1)}><ChevronLeft size={22} /></button><button type="button" className={styles.playback} aria-label={paused ? 'Play stories' : 'Pause stories'} onClick={() => setPaused(value => !value)}>{paused ? <Play size={18} /> : <Pause size={18} />}{paused ? 'Paused' : 'Hold to pause'}</button><button type="button" disabled={deleting || saveOpen || confirmDelete} aria-label="Next story" onClick={() => move(1)}><ChevronRight size={22} /></button></nav>
         </> : <div className={styles.expired}><p>This polaroid is no longer available.</p><button type="button" onClick={() => dialog.current?.close()}>Back to feed</button></div>}
       </div>
     </dialog>
     {story && <SavePlaceToPlan key={story.id} storyId={story.id} placeName={story.placeName} open={saveOpen} onClose={() => setSaveOpen(false)} onSaved={() => setSaved(previous => [...previous, story.id])} />}
   </>
+}
+
+function StoryProgress({ stories, selected, paused, onComplete }: { stories: StoryCard[]; selected: string; paused: boolean; onComplete: () => void }) {
+  const [progress, setProgress] = useState(0)
+  const [hidden, setHidden] = useState(false)
+  const elapsed = useRef(0)
+  const complete = useRef(onComplete)
+  useEffect(() => { complete.current = onComplete }, [onComplete])
+  useEffect(() => {
+    const update = () => setHidden(document.hidden)
+    update()
+    document.addEventListener('visibilitychange', update)
+    return () => document.removeEventListener('visibilitychange', update)
+  }, [])
+  useEffect(() => {
+    if (paused || hidden) return
+    let previous = performance.now()
+    let frame = 0
+    function tick(now: number) {
+      if (document.hidden) return
+      elapsed.current += now - previous
+      previous = now
+      setProgress(Math.min(1, elapsed.current / 6000))
+      if (elapsed.current >= 6000) complete.current()
+      else frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [paused, hidden])
+  const current = stories.findIndex(item => item.id === selected)
+  return <div className={styles.progress} aria-label={`Story ${current + 1} of ${stories.length}`}>{stories.map((item, index) => <span key={item.id}><i style={{ transform: `scaleX(${index < current ? 1 : index === current ? progress : 0})` }} /></span>)}</div>
 }

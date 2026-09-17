@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { Heart, MessageCircle, Plane } from 'lucide-react'
 import { openNotification } from '@/actions/notifications'
 import MarkNotificationsRead from '@/components/MarkNotificationsRead'
-import { notificationText } from '@/lib/notificationText'
+import { notificationText, forumNotificationWhere, forumReplyNotificationWhere } from '@/lib/notificationText'
 import { NotificationPreferences } from '@/components/NativeNotifications'
 import MessageRefresh from '@/components/MessageRefresh'
 
@@ -12,7 +12,7 @@ export default async function NotificationsPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
   const notifications = await prisma.notification.findMany({
-    where: { recipientId: session.user.id, OR: [{ kind: 'message', messageId: { not: null } }, { itinerary: { visibility: { not: 'draft' } } }] },
+    where: { recipientId: session.user.id, OR: [forumReplyNotificationWhere(session.user.id), forumNotificationWhere(session.user.id), { kind: 'message', messageId: { not: null } }, { itinerary: { visibility: { not: 'draft' } } }] },
     include: { actor: { select: { name: true } }, itinerary: { select: { title: true } }, comment: { select: { content: true } } },
     orderBy: { createdAt: 'desc' }, take: 100,
   })
@@ -23,13 +23,13 @@ export default async function NotificationsPage() {
     </div>
     <NotificationPreferences />
     <div className="mb-4"><MessageRefresh label="Refresh alerts" /></div>
-    {notifications.length === 0 ? <p className="rounded-xl border border-[#e3dfd2] bg-[#fffdf6] p-6 text-[#6b7067]">Private messages, new trips from people you follow, and activity on your trips appear here.</p> :
+    {notifications.length === 0 ? <p className="rounded-xl border border-[#e3dfd2] bg-[#fffdf6] p-6 text-[#6b7067]">Forum posts, private messages, new trips from people you follow, and activity on your trips appear here.</p> :
       <ul className="overflow-hidden rounded-xl border border-[#e3dfd2] divide-y divide-[#e3dfd2]">
         {notifications.map(n => <li key={n.id} className={n.readAt ? 'bg-[#faf7ee]' : 'bg-[#fffdf6]'}>
           <form action={openNotification}>
             <input type="hidden" name="id" value={n.id} />
             <button className="flex w-full items-start gap-3 p-4 text-left hover:bg-[#eee7d9]">
-              {n.kind === 'published' ? <Plane className="mt-1 shrink-0 text-[#507c76]" size={20} /> : (n.kind === 'comment' || n.kind === 'message') ? <MessageCircle className="mt-1 shrink-0 text-[#507c76]" size={20} /> : <Heart className="mt-1 shrink-0 text-[#ad6b57]" size={20} />}
+              {n.kind === 'published' ? <Plane className="mt-1 shrink-0 text-[#507c76]" size={20} /> : (n.kind === 'forum_reply' || n.kind === 'forum' || n.kind === 'comment' || n.kind === 'message') ? <MessageCircle className="mt-1 shrink-0 text-[#507c76]" size={20} /> : <Heart className="mt-1 shrink-0 text-[#ad6b57]" size={20} />}
               <span className="min-w-0 flex-1">
                 <span className={`block text-sm text-[#2e4147] ${n.readAt ? '' : 'font-semibold'}`}>{notificationText(n.kind, n.actor.name, n.itinerary?.title ?? '')}</span>
                 {n.comment && <span className="mt-1 block line-clamp-2 text-sm text-[#6b7067]">{n.comment.content}</span>}

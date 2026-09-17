@@ -184,6 +184,8 @@ model Notification {
   dedupeKey String @unique
   commentId String? @unique
   messageId String? @unique
+  questionId String?
+  questionReplyId String? @unique
   readAt DateTime?
   createdAt DateTime @default(now())
   recipient User @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
@@ -191,6 +193,10 @@ model Notification {
   itinerary Itinerary? @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
   comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
   message DirectMessage? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  question FriendQuestion? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionReply FriendQuestionReply? @relation(fields: [questionReplyId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
 
   @@index([recipientId, readAt, createdAt])
 }
@@ -240,12 +246,14 @@ model FriendQuestion {
   createdAt DateTime @default(now())
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
   replies FriendQuestionReply[]
+  notifications Notification[]
 
   @@unique([authorId, clientId])
   @@index([authorId, createdAt, id])
 }
 
 model FriendQuestionReply {
+  notification Notification?
   id String @id @default(cuid())
   questionId String
   authorId String

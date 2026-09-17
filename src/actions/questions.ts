@@ -4,6 +4,9 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { questionAudience } from '@/lib/friendQuestions'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
+import { createForumNotifications } from '@/lib/notifications'
+import { deliverNotification } from '@/lib/push'
 
 type QuestionInput = { content: string; clientId: string; itineraryId?: string }
 const authorSelect = { id: true, name: true } as const
@@ -50,14 +53,25 @@ export async function getFriendQuestion(id: string, before?: string) {
 export async function createFriendQuestion(input: QuestionInput) {
   const session = await auth()
   if (!session?.user?.id) return { error: 'Sign in to ask your friends.' }
+  const authorId = session.user.id
   const error = validate(input)
   if (error) return { error }
   const attachment = await tripAttachment(input.itineraryId)
   if (!attachment) return { error: 'This itinerary is no longer available. Remove it or choose another.' }
-  const question = await prisma.friendQuestion.upsert({
-    where: { authorId_clientId: { authorId: session.user.id, clientId: input.clientId } }, update: {},
-    create: { authorId: session.user.id, content: input.content.trim(), clientId: input.clientId, ...attachment },
+  const { question, notifications } = await prisma.$transaction(async tx => {
+    const question = await tx.friendQuestion.upsert({
+      where: { authorId_clientId: { authorId, clientId: input.clientId } }, update: {},
+      create: { authorId, content: input.content.trim(), clientId: input.clientId, ...attachment },
+    })
+    const notifications = await createForumNotifications(tx, question.id, question.authorId)
+    return { question, notifications }
   })
+  if (notifications.length) after(async () => {
+    for (let offset = 0; offset < notifications.length; offset += 10) {
+      await Promise.allSettled(notifications.slice(offset, offset + 10).map(row => deliverNotification(row.id)))
+    }
+  })
+  revalidatePath('/notifications')
   revalidatePath('/explore/questions')
   return { id: question.id }
 }
@@ -67,14 +81,26 @@ export async function replyToFriendQuestion(questionId: string, input: QuestionI
   if (!session?.user?.id) return { error: 'Sign in to reply.' }
   const error = validate(input)
   if (error) return { error }
-  const question = await prisma.friendQuestion.findFirst({ where: { id: questionId, ...questionAudience(session.user.id) }, select: { id: true } })
+  const question = await prisma.friendQuestion.findFirst({ where: { id: questionId, ...questionAudience(session.user.id) }, select: { id: true, authorId: true } })
   if (!question) return { error: 'This question is no longer available to you.' }
   const attachment = await tripAttachment(input.itineraryId)
   if (!attachment) return { error: 'This itinerary is no longer available. Remove it or choose another.' }
-  const reply = await prisma.friendQuestionReply.upsert({
-    where: { authorId_clientId: { authorId: session.user.id, clientId: input.clientId } }, update: {},
-    create: { questionId, authorId: session.user.id, content: input.content.trim(), clientId: input.clientId, ...attachment },
+  const authorId = session.user.id
+  const { reply, notificationId } = await prisma.$transaction(async tx => {
+    const reply = await tx.friendQuestionReply.upsert({
+      where: { authorId_clientId: { authorId, clientId: input.clientId } }, update: {},
+      create: { questionId, authorId, content: input.content.trim(), clientId: input.clientId, ...attachment },
+    })
+    if (reply.questionId !== questionId) throw new Error('Reply retry belongs to another question')
+    const notifications = question.authorId === authorId ? [] : await tx.notification.createManyAndReturn({
+      data: [{ recipientId: question.authorId, actorId: authorId, questionId, questionReplyId: reply.id, kind: 'forum_reply', dedupeKey: `forum-reply:${reply.id}` }],
+      skipDuplicates: true, select: { id: true },
+    })
+    return { reply, notificationId: notifications[0]?.id }
   })
+  if (notificationId) after(() => deliverNotification(notificationId))
+  revalidatePath('/messages')
+  revalidatePath('/notifications')
   revalidatePath('/explore/questions')
   revalidatePath(`/explore/questions/${questionId}`)
   return { id: reply.id }
@@ -89,5 +115,15 @@ export async function searchQuestionItineraries(query: string) {
     where: { visibility: { not: 'draft' }, ...(linkedId ? { id: linkedId } : { title: { contains: search, mode: 'insensitive' as const } }) },
     select: { id: true, title: true, user: { select: { name: true } } },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 10,
+  })
+}
+
+export async function getForumReplyInbox() {
+  const userId = (await auth())?.user?.id
+  if (!userId) return []
+  return prisma.friendQuestionReply.findMany({
+    where: { question: { authorId: userId }, authorId: { not: userId } },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 50,
+    include: { question: { select: { id: true, content: true } }, author: { select: { name: true } }, notification: { select: { id: true, readAt: true } } },
   })
 }

@@ -211,17 +211,18 @@ test('message alerts open the sender conversation without needing a trip', async
 test('bell counts include message alerts while retaining the draft-trip visibility filter', async () => {
   const queries = []
   const actions = notificationActions({ notification: {
-    count: async query => { queries.push(query); return query.where.kind === 'message' ? 2 : 5 },
+    count: async query => { queries.push(query); return query.where.OR.some(filter => filter.kind === 'forum') ? 5 : 2 },
   } })
   const result = await actions.notificationStatus()
+  assert.equal(queries[0].where.OR.find(filter => filter.kind === 'forum').question.author.following.some.followingId, 'owner')
   assert.equal(result.unread, 5)
   assert.equal(result.unreadMessages, 2)
   for (const query of queries) {
     assert.equal(query.where.recipientId, 'owner')
     assert.equal(query.where.readAt, null)
   }
-  assert.equal(queries[0].where.OR[0].kind, 'message')
-  assert.equal(queries[0].where.OR[1].itinerary.visibility.not, 'draft')
+  assert.equal(queries[0].where.OR.find(filter => filter.kind === 'message').kind, 'message')
+  assert.equal(queries[0].where.OR.find(filter => filter.itinerary).itinerary.visibility.not, 'draft')
 })
 
 test('APNs message alerts link directly to the sender and omit private message text', async () => {
@@ -261,4 +262,32 @@ test('APNs message alerts link directly to the sender and omit private message t
   const [head, claims, signature] = headers.authorization.slice(7).split('.')
   assert.equal(JSON.parse(Buffer.from(claims, 'base64url')).iss, 'team')
   assert.ok(crypto.verify('sha256', Buffer.from(`${head}.${claims}`), { key: publicKey, dsaEncoding: 'ieee-p1363' }, Buffer.from(signature, 'base64url')))
+})
+
+
+test('forum notification text, destination, and visibility stay scoped to the discussion', () => {
+  assert.equal(text.notificationText('forum', 'Jen', ''), 'Jen posted in Ask your friends.')
+  assert.equal(text.notificationPath(null, 'forum', 'jen', 'question/id'), '/explore/questions/question%2Fid')
+  const where = text.forumNotificationWhere('viewer')
+  assert.equal(where.kind, 'forum')
+  assert.equal(where.question.author.following.some.followingId, 'viewer')
+  assert.equal(where.question.author.following.some.status, 'accepted')
+})
+
+
+test('opening a forum reply marks its alert read and goes to the discussion', async () => {
+  const writes = []
+  const actions = notificationActions({ notification: {
+    findFirst: async ({ where }) => {
+      assert.equal(where.recipientId, 'owner')
+      assert.equal(where.OR.find(filter => filter.kind === 'forum_reply').question.authorId, 'owner')
+      return { id: 'alert', kind: 'forum_reply', questionId: 'question', actorId: 'friend', itineraryId: null }
+    },
+    updateMany: async query => { writes.push(query); return { count: 1 } },
+  } })
+  const data = new FormData(); data.set('id', 'alert')
+  await assert.rejects(actions.openNotification(data), /redirect:\/explore\/questions\/question/)
+  assert.equal(writes[0].where.recipientId, 'owner')
+  assert.ok(writes[0].data.readAt)
+  assert.equal(text.notificationText('forum_reply', 'Jen', ''), 'Jen replied to your forum question.')
 })

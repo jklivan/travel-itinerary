@@ -1,4 +1,5 @@
 export const TAGS = [
+  { id: 'day-trip', label: 'Day trips', emoji: '☀️' },
   { id: 'adventure',  label: 'Adventure',  emoji: '🏔️' },
   { id: 'beach',      label: 'Beach',       emoji: '🏖️' },
   { id: 'city',       label: 'City',        emoji: '🏙️' },

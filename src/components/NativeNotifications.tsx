@@ -114,7 +114,7 @@ export function NotificationPreferences() {
   if (!push) return null
   return <section className="mb-5 rounded-xl border border-[#e3dfd2] bg-[#faf7ee] p-4">
     <h2 className="font-semibold text-[#2e4147]">iPhone notifications</h2>
-    <p className="mt-1 text-sm text-[#6b7067]">Get an alert for private messages, new trips from people you follow, and activity on your trips.</p>
+    <p className="mt-1 text-sm text-[#6b7067]">Get an alert for forum posts, private messages, new trips from people you follow, and activity on your trips.</p>
     {!push.native ? <p className="mt-2 text-sm text-[#6b7067]">Open the iPhone app to enable push notifications.</p> :
       !push.available ? <p className="mt-2 text-sm text-[#6b7067]">Update the iPhone app to enable notifications.</p> :
         !push.ready ? <p className="mt-2 text-sm text-[#6b7067]">Push notifications are not available yet. You can still check your activity here.</p> :

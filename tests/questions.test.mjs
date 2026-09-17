@@ -13,14 +13,14 @@ function moduleAt(path, dependencies = {}) {
 
 function harness() {
   let userId = 'alice'
-  const questions = [], replies = [], follows = []
+  const questions = [], replies = [], follows = [], notifications = [], scheduled = []
   const trips = [{ id: 'paris', title: 'Paris with kids', visibility: 'public', user: { name: 'Jen' } }, { id: 'draft', title: 'Secret', visibility: 'draft' }]
   const relationMatches = (row, filter) => {
     if (filter.authorId) return row.authorId === filter.authorId
     const some = filter.author.following.some
     return follows.some(f => f.followerId === row.authorId && f.followingId === some.followingId && f.status === some.status)
   }
-  const matches = (row, where) => (!where.id || row.id === where.id) && (!where.questionId || row.questionId === where.questionId) && (!where.OR || where.OR.some(filter => relationMatches(row, filter)))
+  const matches = (row, where) => (!where.question || questions.find(q => q.id === row.questionId)?.authorId === where.question.authorId) && (!where.authorId?.not || row.authorId !== where.authorId.not) && (!where.id || row.id === where.id) && (!where.questionId || row.questionId === where.questionId) && (!where.OR || where.OR.some(filter => relationMatches(row, filter)))
   const model = (rows, prefix) => ({
     findFirst: async ({ where }) => rows.find(row => matches(row, where)) ?? null,
     findMany: async ({ where, cursor, skip = 0, take }) => {
@@ -35,17 +35,24 @@ function harness() {
     },
   })
   const prisma = {
+    follow: { findMany: async ({ where }) => follows.filter(f => f.followerId === where.followerId && f.status === where.status && f.followingId !== where.followingId.not) },
+    notification: { createManyAndReturn: async ({ data }) => data.flatMap(row => {
+      if (notifications.some(n => n.dedupeKey === row.dedupeKey)) return []
+      const saved = { ...row, id: `n${notifications.length}` }; notifications.push(saved); return [saved]
+    }) },
     friendQuestion: model(questions, 'q'), friendQuestionReply: model(replies, 'r'),
     itinerary: {
       findFirst: async ({ where }) => trips.find(t => t.id === where.id && t.visibility !== where.visibility.not),
       findMany: async ({ where }) => trips.filter(t => t.visibility !== where.visibility.not && (where.id ? t.id === where.id : t.title.toLowerCase().includes(where.title.contains.toLowerCase()))),
     },
   }
+  prisma.$transaction = callback => callback(prisma)
   const actions = moduleAt('../src/actions/questions.ts', {
+    '@/lib/notifications': moduleAt('../src/lib/notifications.ts'), 'next/server': { after: callback => scheduled.push(callback) }, '@/lib/push': { deliverNotification: async () => {} },
     '@/auth': { auth: async () => userId ? { user: { id: userId } } : null },
     '@/lib/prisma': { prisma }, '@/lib/friendQuestions': moduleAt('../src/lib/friendQuestions.ts'), 'next/cache': { revalidatePath() {} },
   })
-  return { ...actions, questions, replies, follows, signIn: id => { userId = id }, input: { content: 'Where should we stay?', clientId: 'question-client-123456' } }
+  return { ...actions, questions, replies, follows, notifications, scheduled, signIn: id => { userId = id }, input: { content: 'Where should we stay?', clientId: 'question-client-123456' } }
 }
 
 test('all question operations require authentication', async () => {
@@ -130,4 +137,47 @@ test('reply pagination preserves discussion order and rejects cursors from other
   assert.equal(older.replies[0].content, '0')
   assert.equal(new Set([...latest.replies, ...older.replies].map(r => r.id)).size, 55)
   assert.ok((await h.getFriendQuestion('q0', 'r55')).error)
+})
+
+
+test('forum alerts reach only accepted audience members once and link to the new post', async () => {
+  const h = harness()
+  h.follows.push({ followerId: 'alice', followingId: 'bob', status: 'accepted' }, { followerId: 'alice', followingId: 'pending', status: 'pending' }, { followerId: 'eve', followingId: 'alice', status: 'accepted' })
+  const result = await h.createFriendQuestion(h.input)
+  await h.createFriendQuestion(h.input)
+  assert.equal(h.notifications.length, 1)
+  assert.equal(h.notifications[0].recipientId, 'bob')
+  assert.equal(h.notifications[0].questionId, result.id)
+  assert.equal(h.notifications[0].kind, 'forum')
+  assert.equal(h.scheduled.length, 1)
+  await h.replyToFriendQuestion(result.id, { ...h.input, clientId: 'different-reply-12345' })
+  assert.equal(h.notifications.length, 1)
+})
+
+
+test('forum replies notify the question author exactly once and keep their public discussion', async () => {
+  const h = harness()
+  h.follows.push({ followerId: 'alice', followingId: 'bob', status: 'accepted' })
+  const question = await h.createFriendQuestion(h.input)
+  h.signIn('bob')
+  const input = { content: 'Try this hotel', clientId: 'forum-reply-client-12345' }
+  const reply = await h.replyToFriendQuestion(question.id, input)
+  await h.replyToFriendQuestion(question.id, input)
+  const notifications = h.notifications.filter(n => n.kind === 'forum_reply')
+  assert.equal(h.replies.length, 1)
+  assert.equal(notifications.length, 1)
+  assert.equal(notifications[0].recipientId, 'alice')
+  assert.equal(notifications[0].actorId, 'bob')
+  assert.equal(notifications[0].questionId, question.id)
+  assert.equal(notifications[0].questionReplyId, reply.id)
+  assert.equal(h.scheduled.length, 2)
+  h.signIn('alice')
+  assert.equal((await h.getForumReplyInbox()).length, 1)
+  await h.replyToFriendQuestion(question.id, { ...input, clientId: 'self-reply-client-12345' })
+  assert.equal(h.notifications.filter(n => n.kind === 'forum_reply').length, 1)
+  assert.equal((await h.getForumReplyInbox()).length, 1)
+  h.signIn('eve')
+  assert.equal((await h.getForumReplyInbox()).length, 0)
+  h.signIn(null)
+  assert.equal((await h.getForumReplyInbox()).length, 0)
 })

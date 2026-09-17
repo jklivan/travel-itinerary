@@ -28,3 +28,13 @@ export async function createPublishedTripNotifications(tx: Prisma.TransactionCli
     select: { id: true },
   })
 }
+
+// Forum visibility is chosen by the author: people they follow can read it.
+export async function createForumNotifications(tx: Prisma.TransactionClient, questionId: string, authorId: string) {
+  const friends = await tx.follow.findMany({ where: { followerId: authorId, status: 'accepted', followingId: { not: authorId } }, select: { followingId: true } })
+  if (!friends.length) return []
+  return tx.notification.createManyAndReturn({
+    data: friends.map(friend => ({ recipientId: friend.followingId, actorId: authorId, questionId, kind: 'forum', dedupeKey: `forum:${questionId}:${friend.followingId}` })),
+    skipDuplicates: true, select: { id: true },
+  })
+}

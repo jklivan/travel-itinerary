@@ -8,6 +8,7 @@ import HorizontalScrollFeed from '@/components/HorizontalScrollFeed'
 import ExploreSearchBar from '@/components/ExploreSearchBar'
 import { parseSearchQuery, type ParsedQuery } from '@/lib/parseSearchQuery'
 import { tagMeta } from '@/lib/tags'
+import { DAY_TRIP_TAG, isDayTrip } from '@/lib/dayTrips'
 import { MapPin, Globe, ChevronRight, Users, MessagesSquare } from 'lucide-react'
 import ExploreMap from '@/components/ExploreMap'
 import ExploreTripFilters from '@/components/ExploreTripFilters'
@@ -56,9 +57,13 @@ function getRegionLabel(country: string): string {
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 async function fetchItineraries(where: ItineraryWhereInput, userId: string | null) {
-  const [itineraries, bucketIds] = await Promise.all([
+  const tagFilter = where.tags
+  const selectedTags = tagFilter && 'hasSome' in tagFilter && Array.isArray(tagFilter.hasSome) ? tagFilter.hasSome : tagFilter && 'has' in tagFilter && typeof tagFilter.has === 'string' ? [tagFilter.has] : []
+  const includeDayTrips = selectedTags.includes(DAY_TRIP_TAG)
+  const queryWhere = includeDayTrips ? { ...where, tags: undefined } : where
+  const [rows, bucketIds] = await Promise.all([
     prisma.itinerary.findMany({
-      where: { visibility: { not: 'draft' }, destinations: { some: { items: { some: {} } } }, ...where },
+      where: { visibility: { not: 'draft' }, destinations: { some: { items: { some: {} } } }, ...queryWhere },
       orderBy: { createdAt: 'desc' },
       include: {
         user: { select: { name: true, id: true } },
@@ -71,6 +76,7 @@ async function fetchItineraries(where: ItineraryWhereInput, userId: string | nul
       ? prisma.bucketListItem.findMany({ where: { userId }, select: { itineraryId: true } })
       : Promise.resolve([]),
   ])
+  const itineraries = includeDayTrips ? rows.filter(trip => isDayTrip(trip) || selectedTags.some(tag => tag !== DAY_TRIP_TAG && trip.tags.includes(tag))) : rows
   return { itineraries, bucketSet: new Set(bucketIds.map((b) => b.itineraryId)) }
 }
 
@@ -236,6 +242,7 @@ export default async function ExplorePage({
         <p className="text-sm text-[#8B6F4E] mb-6">How would you like to find your next trip?</p>
         <div className="space-y-4">
           {[
+            { href: '/explore?tag=day-trip', title: 'Day trips', description: 'One or two days away—quick escapes and overnight adventures.', Icon: MapPin },
             { href: '/explore/questions', title: 'Ask your friends', description: 'Ask a question, tag an itinerary, and swap travel advice.', Icon: MessagesSquare },
             { href: '/explore?view=tags', title: 'SEARCH BY TRIP TYPE', description: 'Family adventures, couples getaways, and trips with friends.', Icon: Users },
             { href: '/explore?view=destinations', title: 'SEARCH BY DESTINATION', description: 'Browse places around the world.', Icon: Globe },
@@ -322,6 +329,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
           <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">
             {meta ? `${meta.emoji} ${meta.label}` : tag}
           </h2>
+          {tag === DAY_TRIP_TAG && <p className="mt-2 mb-3 text-sm text-[#8B6F4E]">Ideas for 1–2 days away, including trips tagged by their authors.</p>}
           <p className="text-sm text-[#8B6F4E]">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />

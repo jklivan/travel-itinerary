@@ -6,14 +6,14 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { pushConfigured } from '@/lib/push'
-import { notificationPath } from '@/lib/notificationText'
+import { notificationPath, forumNotificationWhere, forumReplyNotificationWhere } from '@/lib/notificationText'
 
 export async function notificationStatus() {
   const session = await auth()
   if (!session?.user?.id) return { unread: 0, unreadMessages: 0, pushReady: false }
   const [unread, unreadMessages] = await Promise.all([
-    prisma.notification.count({ where: { recipientId: session.user.id, readAt: null, OR: [{ kind: 'message', messageId: { not: null } }, { itinerary: { visibility: { not: 'draft' } } }] } }),
-    prisma.notification.count({ where: { recipientId: session.user.id, readAt: null, kind: 'message', messageId: { not: null } } }),
+    prisma.notification.count({ where: { recipientId: session.user.id, readAt: null, OR: [forumReplyNotificationWhere(session.user.id), forumNotificationWhere(session.user.id), { kind: 'message', messageId: { not: null } }, { itinerary: { visibility: { not: 'draft' } } }] } }),
+    prisma.notification.count({ where: { recipientId: session.user.id, readAt: null, OR: [{ kind: 'message', messageId: { not: null } }, forumReplyNotificationWhere(session.user.id)] } }),
   ])
   return { unread, unreadMessages, pushReady: pushConfigured() }
 }
@@ -54,10 +54,10 @@ export async function openNotification(form: FormData) {
   if (!session?.user?.id) redirect('/login')
   const id = form.get('id')
   if (typeof id !== 'string') return
-  const notification = await prisma.notification.findFirst({ where: { id, recipientId: session.user.id, OR: [{ kind: 'message', messageId: { not: null } }, { itinerary: { visibility: { not: 'draft' } } }] } })
+  const notification = await prisma.notification.findFirst({ where: { id, recipientId: session.user.id, OR: [forumReplyNotificationWhere(session.user.id), forumNotificationWhere(session.user.id), { kind: 'message', messageId: { not: null } }, { itinerary: { visibility: { not: 'draft' } } }] } })
   if (!notification) return
   await prisma.notification.updateMany({ where: { id, recipientId: session.user.id }, data: { readAt: new Date() } })
   revalidatePath('/notifications')
   revalidatePath('/messages')
-  redirect(notificationPath(notification.itineraryId, notification.kind, notification.actorId))
+  redirect(notificationPath(notification.itineraryId, notification.kind, notification.actorId, notification.questionId))
 }
