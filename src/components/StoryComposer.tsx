@@ -84,6 +84,7 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photo} alt={`Story preview for ${place.name}`} /><h3>{place.name}</h3><p>{place.destination}</p>{caption && <p className={styles.caption}>{caption}</p>}
           </div></div>}
+          <p className={styles.privacy}>This photo will also be saved to {place.name} in your trip.</p>
           <p className={styles.privacy}>{sources.isPrivate ? 'Visible to your accepted followers' : 'Visible to everyone'} for 24 hours. Only this place, photo, and caption are shared. Your private trip stays private.</p>
           <button type="submit" className={styles.post} disabled={!photo || busy || uploading}>{busy ? 'Posting…' : 'Post for 24 hours'}</button>
         </>}

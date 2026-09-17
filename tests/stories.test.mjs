@@ -8,10 +8,12 @@ function module(path, deps = {}) {
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, { exports, Date, require: name => deps[name] })
   return exports
 }
+const photos = module('../src/lib/eventPhotos.ts')
 const lib = module('../src/lib/stories.ts')
 const id = '12345678-1234-1234-1234-123456789012'
 function harness(user = 'owner', itemType = 'hotel') {
   const rows = [], queries = []
+  const item = { id: 'place', name: 'Hotel', type: itemType, photoUrl: '/old.jpg', photoUrls: ['/old.jpg'], notes: 'secret notes', destination: { itineraryId: 'private', name: 'Rome', country: 'Italy' } }
   const prisma = {
     story: {
       findUnique: async ({ where }) => rows.find(row => row.id === where.id),
@@ -20,12 +22,16 @@ function harness(user = 'owner', itemType = 'hotel') {
       findFirst: async query => { queries.push(query); return rows.find(row => row.id === query.where.id && row.expiresAt > query.where.expiresAt.gt) },
       deleteMany: async ({ where }) => { const index = rows.findIndex(row => row.id === where.id && row.userId === where.userId); if (index < 0) return { count: 0 }; rows.splice(index, 1); return { count: 1 } },
     },
-    destItem: { findFirst: async ({ where }) => where.destination.itinerary.userId === 'owner' ? { id: 'place', name: 'Hotel', type: itemType, notes: 'secret notes', destination: { itineraryId: 'private', name: 'Rome', country: 'Italy' } } : null },
+    destItem: { findFirst: async ({ where }) => where.destination.itinerary.userId === 'owner' ? item : null, updateMany: async ({data}) => { Object.assign(item, data); return { count: 1 } } },
     itinerary: { findFirst: async () => ({ id: 'plan' }) },
   }
-  prisma.$transaction = callback => callback(prisma)
-  const actions = module('../src/actions/stories.ts', { '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} }, '@/lib/eventPhotos': {}, '@/lib/stories': lib })
-  return { actions, rows, queries }
+  prisma.$transaction = async callback => {
+    const before = structuredClone(item), beforeRows = rows.length
+    try { return await callback(prisma) }
+    catch (error) { Object.assign(item, before); rows.splice(beforeRows); throw error }
+  }
+  const actions = module('../src/actions/stories.ts', { '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} }, '@/lib/eventPhotos': photos, '@/lib/stories': lib })
+  return { actions, rows, queries, item, prisma }
 }
 const input = { id, itemId: 'place', photoUrl: '/photo.jpg', caption: 'Great stay' }
 test('posting expires exactly 24 hours later and retries do not extend expiry', async () => {
@@ -93,4 +99,27 @@ test('deletion is scoped to current account', async () => {
   assert.equal(h.rows[0].photoUrl, input.photoUrl)
   assert.equal(h.rows[0].caption, 'The ferry ride')
   assert.equal(h.rows[0].expiresAt - h.rows[0].createdAt, 24 * 60 * 60 * 1000)
+})
+
+test('story photos remain on the source place after story deletion and retries do not duplicate them', async () => {
+  const h = harness()
+  await h.actions.postStory(input)
+  await h.actions.postStory(input)
+  assert.deepEqual(Array.from(h.item.photoUrls), ['/old.jpg', '/photo.jpg'])
+  assert.equal(h.item.photoUrl, '/old.jpg')
+  await h.actions.deleteStory(id)
+  assert.deepEqual(Array.from(h.item.photoUrls), ['/old.jpg', '/photo.jpg'])
+})
+test('a failed story write rolls back its photo addition', async () => {
+  const h = harness()
+  h.prisma.story.create = async () => { throw new Error('Unavailable') }
+  assert.ok((await h.actions.postStory(input)).error)
+  assert.deepEqual(h.item.photoUrls, ['/old.jpg'])
+  assert.equal(h.rows.length, 0)
+})
+test('concurrent photo edits abort posting instead of replacing the photo list', async () => {
+  const h = harness()
+  h.prisma.destItem.updateMany = async () => ({ count: 0 })
+  assert.ok((await h.actions.postStory(input)).error)
+  assert.equal(h.rows.length, 0)
 })

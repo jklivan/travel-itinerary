@@ -47,16 +47,30 @@ export async function postStory(input: { id: string; itemId: string; photoUrl: s
   try {
     const previous = await prisma.story.findUnique({ where: { id: input.id }, select: { userId: true, expiresAt: true } })
     if (previous) return previous.userId === userId && previous.expiresAt > new Date() ? { success: true } : { error: 'This story is no longer available. Close the composer and start a new story.' }
-    const item = await prisma.destItem.findFirst({ where: { id: input.itemId, destination: { itinerary: { userId } } }, include: { destination: true } })
-    if (!item) return { error: 'Choose a place from one of your own trips.' }
-    const now = new Date()
-    await prisma.story.create({ data: {
-      id: input.id, userId, sourceItineraryId: item.destination.itineraryId, sourceItemId: item.id,
-      placeName: item.name, destination: item.destination.name, country: item.destination.country, type: item.type,
-      placeId: item.placeId, lat: item.lat, lng: item.lng, photoUrl: input.photoUrl, caption: input.caption.trim(),
-      createdAt: now, expiresAt: new Date(now.getTime() + STORY_LIFETIME_MS),
-    } })
-    revalidatePath('/')
+    const tripId = await prisma.$transaction(async tx => {
+      const owned = { id: input.itemId, destination: { itinerary: { userId } } }
+      const item = await tx.destItem.findFirst({ where: owned, include: { destination: true } })
+      if (!item) throw new Error('Place is not owned by this account')
+      const photos = eventPhotos(item.photoUrls, item.photoUrl)
+      if (!photos.includes(input.photoUrl)) {
+        photos.push(input.photoUrl)
+        // A concurrent photo edit must never be overwritten by this story.
+        const updated = await tx.destItem.updateMany({
+          where: { ...owned, photoUrls: { equals: item.photoUrls }, photoUrl: item.photoUrl },
+          data: { photoUrls: photos, photoUrl: item.photoUrl || photos[0] },
+        })
+        if (updated.count !== 1) throw new Error('Photos changed while posting; retry')
+      }
+      const now = new Date()
+      await tx.story.create({ data: {
+        id: input.id, userId, sourceItineraryId: item.destination.itineraryId, sourceItemId: item.id,
+        placeName: item.name, destination: item.destination.name, country: item.destination.country, type: item.type,
+        placeId: item.placeId, lat: item.lat, lng: item.lng, photoUrl: input.photoUrl, caption: input.caption.trim(),
+        createdAt: now, expiresAt: new Date(now.getTime() + STORY_LIFETIME_MS),
+      } })
+      return item.destination.itineraryId
+    })
+    for (const path of ['/', '/explore', '/plan', `/plan/${tripId}`, `/itinerary/${tripId}`, `/user/${userId}`]) revalidatePath(path)
     return { success: true }
   } catch { return { error: 'Could not post your story. Your photo and caption are still here; please try again.' } }
 }
