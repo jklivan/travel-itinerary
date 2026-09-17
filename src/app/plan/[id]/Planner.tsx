@@ -46,6 +46,7 @@ export default function Planner({ trip, initialImport = false }: { trip: Trip; i
     }}>{sharing ? 'Sharing…' : 'Share publicly'}</button><button disabled={sharing} onClick={() => setConfirmShare(false)} className="px-3 text-sm">Keep private</button></div>{error && <p role="alert" className="mt-2 text-red-700">{error}</p>}</section>}
     {!adding && !importing && <div className="sticky top-0 z-20 -mx-1 mt-5 bg-[#F3EAD9] px-1 py-3">
       <button className={`${buttonClass} flex w-full items-center justify-center gap-2`} onClick={() => setAdding(true)}><Plus size={20} />Add a place</button>
+      {trip.isPlan && <Link href={`/plan/${trip.id}/friends`} className="mt-2 flex min-h-11 items-center justify-center rounded-xl border border-[#8caaa3] bg-[#fffdf7] px-4 py-2 text-sm font-semibold text-[#507c76]">Browse friends’ places · Add several at once</Link>}
     </div>}
     {adding && <AddPlace trip={trip} onClose={() => setAdding(false)} />}
     {importing && <PlanImport tripId={trip.id} onClose={() => setImporting(false)} />}
