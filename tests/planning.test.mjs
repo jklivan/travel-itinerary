@@ -137,3 +137,16 @@ test('invalid entry details are rejected before any write', async () => {
     assert.equal(h.writes.length, 0)
   }
 })
+
+test('transport can be saved without a Google place and edited without changing its category', async () => {
+  const h = harness()
+  assert.ok((await h.actions.addPlanPlace('trip', form({ type: 'transport', name: 'Ferry to Nantucket', notes: 'Book ahead; taxis are limited', photos: JSON.stringify(['/ferry.jpg']), day: '2' }))).success)
+  const item = h.items.find(item => item.id === clientId)
+  assert.equal(item.type, 'transport')
+  assert.equal(item.dayIndex, 2)
+  assert.equal(item.notes, 'Book ahead; taxis are limited')
+  assert.equal(item.photoUrl, '/ferry.jpg')
+  assert.ok((await h.actions.editPlanPlace(clientId, form({ name: 'Morning ferry', notes: 'Arrive 30 minutes early', day: '3', status: 'booked' }))).success)
+  assert.equal(item.type, 'transport')
+  assert.equal(item.notes, 'Arrive 30 minutes early')
+})

@@ -89,7 +89,7 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
     const photoUrls = stringList('photos', 20, 4096)
     if (photoUrls.some(url => !/^(https:\/\/|\/(?!\/))/.test(url))) throw new InputError('Please choose valid photos.')
 
-    if (!name || !destinationName || !['hotel', 'food_drink', 'activity'].includes(type) || !/^[a-f0-9-]{36}$/.test(clientId)) return { error: 'Enter a place name and destination.' }
+    if (!name || !destinationName || !['hotel', 'food_drink', 'activity', 'transport'].includes(type) || !/^[a-f0-9-]{36}$/.test(clientId)) return { error: 'Enter a place name and destination.' }
     const day = text(form, 'day', 4)
     if (day && (!/^\d+$/.test(day) || Number(day) < 1 || Number(day) > 365)) return { error: 'Choose a day from 1 to 365, or leave it unscheduled.' }
     await prisma.$transaction(async tx => {

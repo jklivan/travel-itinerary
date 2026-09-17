@@ -11,7 +11,7 @@ export default function TripEntryLayout({ places, children }: { places: TripMapP
   const [mobileOpen, setMobileOpen] = useState(false)
   const cache = useRef(new Map<string, Location>())
   const [locations, setLocations] = useState<Record<string, Location>>({})
-  const namedPlaces = places.filter(place => place.name.trim())
+  const namedPlaces = places.filter(place => place.name.trim() && (place.type !== 'transport' || place.placeId))
   // Changes to notes, ordering, and day assignments don't repeat place lookups.
   const lookupKeys = JSON.stringify([...new Set(namedPlaces.map(tripMapLookupKey))].sort())
 

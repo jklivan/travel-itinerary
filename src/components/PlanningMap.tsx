@@ -12,7 +12,7 @@ export default function PlanningMap({ places }: { places: PlanningMapPlace[] }) 
   const cache = useRef(new Map<string, Location | null>())
   const [locations, setLocations] = useState<Record<string, Location | null>>({})
   const [attempt, setAttempt] = useState(0)
-  const lookupKeys = JSON.stringify([...new Set(places.filter(place => !validMapLocation(place)).map(tripMapLookupKey))].sort())
+  const lookupKeys = JSON.stringify([...new Set(places.filter(place => (place.type !== 'transport' || place.placeId) && !validMapLocation(place)).map(tripMapLookupKey))].sort())
 
   useEffect(() => {
     const controller = new AbortController()
@@ -40,7 +40,7 @@ export default function PlanningMap({ places }: { places: PlanningMapPlace[] }) 
     return () => controller.abort()
   }, [lookupKeys, attempt])
 
-  const resolved = places.map(place => ({ place, location: validMapLocation(place) ? { lat: place.lat, lng: place.lng } : locations[tripMapLookupKey(place)] }))
+  const resolved = places.map(place => ({ place, location: validMapLocation(place) ? { lat: place.lat, lng: place.lng } : place.type === 'transport' && !place.placeId ? null : locations[tripMapLookupKey(place)] }))
   const pins: ItemPin[] = resolved.flatMap(({ place, location }) => location ? [{ id: place.id, name: place.name, type: place.type, day: place.day, recommendation: 'none', ...location }] : [])
   const pending = resolved.filter(row => row.location === undefined).length
   const missing = resolved.filter(row => row.location === null)

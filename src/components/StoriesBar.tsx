@@ -99,7 +99,7 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
           }}>
             <article className={styles.paper}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={story.photoUrl} alt={story.placeName} /><span className={styles.placeType}>{story.type === 'hotel' ? 'Stay' : story.type === 'food_drink' ? 'Eat & drink' : 'Experience'}</span><h3>{story.placeName}</h3><p>{story.destination}</p>{story.caption && <p className={styles.caption}>{story.caption}</p>}
+              <img src={story.photoUrl} alt={story.placeName} /><span className={styles.placeType}>{story.type === 'hotel' ? 'Stay' : story.type === 'food_drink' ? 'Eat & drink' : story.type === 'transport' ? 'Transport' : 'Experience'}</span><h3>{story.placeName}</h3><p>{story.destination}</p>{story.caption && <p className={styles.caption}>{story.caption}</p>}
             </article>
           </div>
           <div className={styles.viewerActions}>

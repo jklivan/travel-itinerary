@@ -10,7 +10,7 @@ function module(path, deps = {}) {
 }
 const lib = module('../src/lib/stories.ts')
 const id = '12345678-1234-1234-1234-123456789012'
-function harness(user = 'owner') {
+function harness(user = 'owner', itemType = 'hotel') {
   const rows = [], queries = []
   const prisma = {
     story: {
@@ -20,7 +20,7 @@ function harness(user = 'owner') {
       findFirst: async query => { queries.push(query); return rows.find(row => row.id === query.where.id && row.expiresAt > query.where.expiresAt.gt) },
       deleteMany: async ({ where }) => { const index = rows.findIndex(row => row.id === where.id && row.userId === where.userId); if (index < 0) return { count: 0 }; rows.splice(index, 1); return { count: 1 } },
     },
-    destItem: { findFirst: async ({ where }) => where.destination.itinerary.userId === 'owner' ? { id: 'place', name: 'Hotel', type: 'hotel', notes: 'secret notes', destination: { itineraryId: 'private', name: 'Rome', country: 'Italy' } } : null },
+    destItem: { findFirst: async ({ where }) => where.destination.itinerary.userId === 'owner' ? { id: 'place', name: 'Hotel', type: itemType, notes: 'secret notes', destination: { itineraryId: 'private', name: 'Rome', country: 'Italy' } } : null },
     itinerary: { findFirst: async () => ({ id: 'plan' }) },
   }
   prisma.$transaction = callback => callback(prisma)
@@ -84,4 +84,13 @@ test('deletion is scoped to current account', async () => {
   h.rows[0].userId = 'owner'
   assert.ok((await h.actions.deleteStory(id)).success)
   assert.equal(h.rows.length, 0)
+})
+
+ test('transport stories preserve the category, photo and 24-hour expiry', async () => {
+  const h = harness('owner', 'transport')
+  assert.ok((await h.actions.postStory({ ...input, caption: 'The ferry ride' })).success)
+  assert.equal(h.rows[0].type, 'transport')
+  assert.equal(h.rows[0].photoUrl, input.photoUrl)
+  assert.equal(h.rows[0].caption, 'The ferry ride')
+  assert.equal(h.rows[0].expiresAt - h.rows[0].createdAt, 24 * 60 * 60 * 1000)
 })

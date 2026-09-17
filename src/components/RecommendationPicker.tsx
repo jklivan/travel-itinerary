@@ -4,11 +4,11 @@ import { Ban, BedDouble, Star, Bookmark } from 'lucide-react'
 import type { PlaceRecommendation } from '@/lib/placeRecommendation'
 
 export default function RecommendationPicker({ type, value, onChange }: {
-  type: 'hotel' | 'food_drink' | 'activity'
+  type: 'hotel' | 'food_drink' | 'activity' | 'transport'
   value: PlaceRecommendation
   onChange: (value: PlaceRecommendation) => void
 }) {
-  const label = type === 'hotel' ? 'Must stay' : 'Must do'
+  const label = type === 'hotel' ? 'Must stay' : type === 'transport' ? 'Recommended' : 'Must do'
   const Icon = type === 'hotel' ? BedDouble : Star
   return (
     <fieldset className="space-y-1.5">

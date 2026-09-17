@@ -47,7 +47,7 @@ export default function StoryComposer({ onClose, onPosted }: { onClose: () => vo
   }
 
   return <dialog ref={dialog} className={styles.composer} aria-labelledby={titleId} onClose={onClose} onCancel={event => { if (busy || uploading) event.preventDefault() }}>
-    <header className={styles.composerHeader}><div><h2 id={titleId}>Your polaroid story</h2><p>One place. One moment. Here for 24 hours.</p></div><button type="button" className={styles.close} disabled={busy || uploading} aria-label="Close story composer" onClick={() => dialog.current?.close()}><X size={20} /></button></header>
+    <header className={styles.composerHeader}><div><h2 id={titleId}>Your polaroid story</h2><p>One trip moment. Here for 24 hours.</p></div><button type="button" className={styles.close} disabled={busy || uploading} aria-label="Close story composer" onClick={() => dialog.current?.close()}><X size={20} /></button></header>
     <form onSubmit={async event => {
       event.preventDefault()
       if (saving.current || uploading || !place || !photo) return
@@ -64,7 +64,7 @@ export default function StoryComposer({ onClose, onPosted }: { onClose: () => vo
       {sources && !sources.trips.length && !error && <p className={styles.empty}>Add a place to a trip first. <Link href="/plan">Start planning →</Link></p>}
       {!!sources?.trips.length && <fieldset disabled={busy || uploading} className={styles.fields}>
         <label>Your trip<select value={tripId} onChange={event => { setTripId(event.target.value); setItemId(''); setPhoto(''); setUploaded([]) }}>{sources.trips.map(trip => <option key={trip.id} value={trip.id}>{trip.title}</option>)}</select></label>
-        <label>Choose a place<select required value={itemId} onChange={event => selectPlace(event.target.value)}><option value="">Hotel, restaurant, or activity…</option>{trip?.places.map(place => <option key={place.id} value={place.id}>{place.name} · {place.destination}</option>)}</select></label>
+        <label>Choose a place or transport<select required value={itemId} onChange={event => selectPlace(event.target.value)}><option value="">Hotel, restaurant, activity, or transport…</option>{trip?.places.map(place => <option key={place.id} value={place.id}>{place.name} · {place.type === 'transport' ? 'Transport · ' : ''}{place.destination}</option>)}</select></label>
         {place && <>
           <div><p className={styles.fieldLabel}>Choose one photo</p>{photos.length > 0 && <div className={styles.photoChoices}>{photos.map((url, index) => <button key={url} type="button" aria-label={`Choose photo ${index + 1}`} aria-pressed={photo === url} onClick={() => setPhoto(url)}>
             {/* eslint-disable-next-line @next/next/no-img-element */}

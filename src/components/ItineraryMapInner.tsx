@@ -9,7 +9,7 @@ import type { PlaceRecommendation } from '@/lib/placeRecommendation'
 export type ItemPin = {
   id: string
   name: string
-  type: 'hotel' | 'food_drink' | 'activity'
+  type: 'hotel' | 'food_drink' | 'activity' | 'transport'
   lat: number
   lng: number
   day: number | null
@@ -20,6 +20,7 @@ const TYPE_STYLE: Record<string, { emoji: string }> = {
   hotel:      { emoji: '🏨' },
   food_drink: { emoji: '🍴' },
   activity:   { emoji: '📍' },
+  transport: { emoji: '✈️' },
 }
 
 function itemIcon(type: string, day: number | null) {

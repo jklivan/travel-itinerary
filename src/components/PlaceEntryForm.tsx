@@ -8,7 +8,7 @@ import EventPhotoInput from './EventPhotoInput'
 import RecommendationPicker from './RecommendationPicker'
 import { recommendationTags, type PlaceRecommendation } from '@/lib/placeRecommendation'
 
-type ItemType = 'hotel' | 'food_drink' | 'activity'
+type ItemType = 'hotel' | 'food_drink' | 'activity' | 'transport'
 export type PlaceEntry = { type: ItemType; name: string; mealType: string; rating: number; notes: string; tags: string[]; photo: string; photos?: string[]; placeId: string }
 
 export const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] as const
@@ -31,7 +31,7 @@ const FOOD_TAGS  = ['Worth the Hype', 'Great Food', 'Hidden Gem', 'Local Favorit
 const HOTEL_TAGS = ['Great Service', 'Worth the Splurge', 'Great Value', 'Hidden Gem', 'Boutique', 'Luxury', 'Romantic', 'Family-Friendly', 'Great Location', 'Great Views', 'Amazing Spa']
 const ACTIVITY_TAGS = ['Hidden Gem', 'Family Friendly', 'Great Views', 'Free', 'Outdoor', 'Cultural', 'Adventurous']
 
-export const ITEM_TAGS: Record<ItemType, string[]> = { food_drink: FOOD_TAGS, hotel: HOTEL_TAGS, activity: ACTIVITY_TAGS }
+export const ITEM_TAGS: Record<ItemType, string[]> = { food_drink: FOOD_TAGS, hotel: HOTEL_TAGS, activity: ACTIVITY_TAGS, transport: ['Flight', 'Ferry', 'Train', 'Bus', 'Car rental', 'Taxi / Uber', 'Transfer', 'Book Ahead', 'Great Value'] }
 
 export function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
@@ -74,6 +74,7 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
     hotel:     { color: 'bg-blue-50 border-blue-200',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
     food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const, notesPh: 'e.g. Order the truffle pasta, great for groups…'           },
     activity:  { color: 'bg-green-50 border-green-200',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const,   notesPh: 'e.g. Book tickets online, go early to beat the crowds…'   },
+    transport: { color: 'bg-[#edf1f5] border-[#c5cfdb]', label: 'Transportation', placeholder: 'e.g. Ferry to Nantucket, car rental, Uber tips…', placeType: 'activity' as const, notesPh: 'Flight or ferry details, routes, times, booking tips, car rentals, or taxi / Uber availability…' },
   }[type]
 
   function toggleTag(tag: string) {
@@ -99,10 +100,10 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
           <X size={16} />
         </button>
       </div>
-      <PlacesAutocomplete value={name} onChange={v => { setName(v); setPlaceId('') }}
+      {type === 'transport' ? <input aria-label="Transport name" maxLength={240} value={name} onChange={event => setName(event.target.value)} placeholder={cfg.placeholder} className={inputCls} /> : <PlacesAutocomplete value={name} onChange={v => { setName(v); setPlaceId('') }}
         onSelect={(_m, _s, pid) => { setPlaceId(pid ?? ''); setPlaceLocation(_s); setPlaceContext(JSON.stringify([city, type])) }}
-        aria-label="Place name" maxLength={240} type={cfg.placeType} placeholder={cfg.placeholder} className={inputCls} city={city} />
-      {placeId && placeContext === JSON.stringify([city, type]) && <PlacePeople key={placeId} placeId={placeId} name={name} location={[city, placeLocation].filter(Boolean).join(', ')} />}
+        aria-label="Place name" maxLength={240} type={cfg.placeType} placeholder={cfg.placeholder} className={inputCls} city={city} />}
+      {type !== 'transport' && placeId && placeContext === JSON.stringify([city, type]) && <PlacePeople key={placeId} placeId={placeId} name={name} location={[city, placeLocation].filter(Boolean).join(', ')} />}
       {type === 'food_drink' && (
         <div className="flex flex-wrap gap-1.5">
           {MEAL_TYPES.map(mt => {

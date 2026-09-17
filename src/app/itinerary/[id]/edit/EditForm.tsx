@@ -21,7 +21,7 @@ import TagPicker from '@/components/TagPicker'
 import DeleteButton from '@/components/DeleteButton'
 import { TripRatingPicker } from '@/components/TripRatingPicker'
 import { dateRangeFromMonthAndDays, monthAndDaysFromDates } from '@/lib/tripDates'
-import { MapPin, Hotel, Utensils, Camera, Star, Check, X, ImageIcon, GripVertical, ArrowRight, Plus } from 'lucide-react'
+import { MapPin, Hotel, Utensils, Camera, Plane, Star, Check, X, ImageIcon, GripVertical, ArrowRight, Plus } from 'lucide-react'
 import {
   DndContext,
   DragOverlay,
@@ -45,7 +45,7 @@ import { moveItemToDay, reorderItems } from '@/lib/reorderItems'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ItemType = 'hotel' | 'food_drink' | 'activity'
+type ItemType = 'hotel' | 'food_drink' | 'activity' | 'transport'
 
 type EditItem = {
   id: string
@@ -116,7 +116,7 @@ const MEAL_ACTIVE: Record<string, string> = Object.fromEntries(
 const FOOD_TAGS     = ['Worth the Hype', 'Great Food', 'Hidden Gem', 'Local Favorite', "Can't-Miss", 'Good for Groups', 'Family Friendly', 'Great Cocktails', 'Great Ambiance', 'Lively', 'Romantic', 'Casual', 'Outdoor Dining', 'Great Views']
 const HOTEL_TAGS    = ['Great Service', 'Worth the Splurge', 'Great Value', 'Hidden Gem', 'Boutique', 'Luxury', 'Romantic', 'Family-Friendly', 'Great Location', 'Great Views', 'Amazing Spa']
 const ACTIVITY_TAGS = ['Hidden Gem', 'Family Friendly', 'Great Views', 'Free', 'Outdoor', 'Cultural', 'Adventurous']
-const ITEM_TAGS: Record<ItemType, string[]> = { food_drink: FOOD_TAGS, hotel: HOTEL_TAGS, activity: ACTIVITY_TAGS }
+const ITEM_TAGS: Record<ItemType, string[]> = { food_drink: FOOD_TAGS, hotel: HOTEL_TAGS, activity: ACTIVITY_TAGS, transport: ['Flight', 'Ferry', 'Train', 'Bus', 'Car rental', 'Taxi / Uber', 'Transfer', 'Book Ahead', 'Great Value'] }
 
 function uid() { return Math.random().toString(36).slice(2) }
 function fmt(d: Date) { return new Date(d).toISOString().slice(0, 10) }
@@ -160,7 +160,7 @@ function destFromRaw(d: ItineraryData['destinations'][number]): EditDest {
 
     for (const item of nonHotel.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))) {
       items.push({
-        id: uid(), type: item.type as 'food_drink' | 'activity',
+        id: uid(), type: item.type as 'food_drink' | 'activity' | 'transport',
         name: item.name, mealType: item.mealType ?? '', photo: item.photoUrl ?? '', photos: eventPhotos(item.photoUrls, item.photoUrl),
         rating: item.rating ?? 0, notes: item.notes ?? '',
         tags: (item.tags ?? []).filter(t => t !== '__highlight'),
@@ -205,8 +205,8 @@ function buildDestinations(dests: EditDest[]) {
               order: dayItems.indexOf(i), tags: recommendationTags(i.tags, getRecommendation(i.tags, i.isHighlight)),
               alternative: i.alternative, photo: i.photos[0] ?? '', photos: i.photos,
             })),
-            activities: dayItems.filter(i => i.type === 'activity').map(i => ({
-              name: i.name, notes: i.notes, link: i.link, rating: i.rating,
+            activities: dayItems.filter(i => i.type === 'activity' || i.type === 'transport').map(i => ({
+              type: i.type, name: i.name, notes: i.notes, link: i.link, rating: i.rating,
               order: dayItems.indexOf(i), tags: recommendationTags(i.tags, getRecommendation(i.tags, i.isHighlight)),
               alternative: i.alternative, photo: i.photos[0] ?? '', photos: i.photos,
             })),
@@ -303,6 +303,7 @@ function ItemEditForm({ type, initial, onDraftChange, onSave, onClose, onRecomme
     hotel:     { color: 'bg-[#edf1e9] border-[#bbcfc5]',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
     food_drink:{ color: 'bg-[#f5ebe1] border-[#dec4b4]', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const, notesPh: 'e.g. Order the truffle pasta, great for groups…'           },
     activity:  { color: 'bg-[#f3eddb] border-[#d9c99f]',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const,   notesPh: 'e.g. Book tickets online, go early to beat the crowds…'   },
+    transport: { color: 'bg-[#edf1f5] border-[#c5cfdb]', label: 'Transportation', placeholder: 'e.g. Ferry to Nantucket, car rental, Uber tips…', placeType: 'activity' as const, notesPh: 'Flight or ferry details, routes, times, booking tips, car rentals, or taxi / Uber availability…' },
   }[type]
 
   function toggleTag(tag: string) {
@@ -322,8 +323,8 @@ function ItemEditForm({ type, initial, onDraftChange, onSave, onClose, onRecomme
         <p className="text-xs font-semibold text-[#6b7067] uppercase tracking-wide">Edit {cfg.label}</p>
         <button type="button" onClick={cancel} className="text-[#918d81] hover:text-[#6b7067]"><X size={16} /></button>
       </div>
-      <PlacesAutocomplete value={name} onChange={setName} type={cfg.placeType}
-        placeholder={cfg.placeholder} className={inputCls} city={city} />
+      {type === 'transport' ? <input aria-label="Transport name" value={name} onChange={event => setName(event.target.value)} placeholder={cfg.placeholder} className={inputCls} /> : <PlacesAutocomplete value={name} onChange={setName} type={cfg.placeType}
+        placeholder={cfg.placeholder} className={inputCls} city={city} />}
       {type === 'food_drink' && (
         <div className="flex flex-wrap gap-1.5">
           {MEAL_TYPES.map(mt => {
@@ -417,6 +418,7 @@ function ItemForm({ type, onAdd, onClose, city }: {
     hotel:     { color: 'bg-[#edf1e9] border-[#bbcfc5]',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
     food_drink:{ color: 'bg-[#f5ebe1] border-[#dec4b4]', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const, notesPh: 'e.g. Order the truffle pasta, great for groups…'           },
     activity:  { color: 'bg-[#f3eddb] border-[#d9c99f]',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const,   notesPh: 'e.g. Book tickets online, go early to beat the crowds…'   },
+    transport: { color: 'bg-[#edf1f5] border-[#c5cfdb]', label: 'Transportation', placeholder: 'e.g. Ferry to Nantucket, car rental, Uber tips…', placeType: 'activity' as const, notesPh: 'Flight or ferry details, routes, times, booking tips, car rentals, or taxi / Uber availability…' },
   }[type]
 
   function toggleTag(tag: string) { setTags(t => t.includes(tag) ? t.filter(x => x !== tag) : [...t, tag]) }
@@ -433,8 +435,8 @@ function ItemForm({ type, onAdd, onClose, city }: {
         <p className="text-xs font-semibold text-[#6b7067] uppercase tracking-wide">{cfg.label}</p>
         <button type="button" onClick={onClose} className="text-[#918d81] hover:text-[#6b7067]"><X size={16} /></button>
       </div>
-      <PlacesAutocomplete value={name} onChange={setName} type={cfg.placeType}
-        placeholder={cfg.placeholder} className={inputCls} city={city} />
+      {type === 'transport' ? <input aria-label="Transport name" value={name} onChange={event => setName(event.target.value)} placeholder={cfg.placeholder} className={inputCls} /> : <PlacesAutocomplete value={name} onChange={setName} type={cfg.placeType}
+        placeholder={cfg.placeholder} className={inputCls} city={city} />}
       {type === 'food_drink' && (
         <div className="flex flex-wrap gap-1.5">
           {MEAL_TYPES.map(mt => {
@@ -507,7 +509,7 @@ function ItemSummary({ item }: { item: EditItem }) {
     ? <Hotel size={13} className="text-blue-500 shrink-0" />
     : item.type === 'food_drink'
     ? <Utensils size={13} className="text-[#ad6b57] shrink-0" />
-    : <Camera size={13} className="text-[#a27e3b] shrink-0" />
+    : item.type === 'transport' ? <Plane size={13} className="text-[#687e9b] shrink-0" /> : <Camera size={13} className="text-[#a27e3b] shrink-0" />
 
   return (
     <>
@@ -933,7 +935,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                     <span className="text-xs text-[#918d81]">Add places for this day</span>
                   </div>
                 )}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <button type="button" onClick={() => setActiveInput({ destId: dest.id, type: 'hotel' })}
                     className="flex flex-col items-center gap-1.5 py-4 rounded-xl border-2 border-dashed border-[#bbcfc5] text-[#507c76] hover:border-[#507c76] hover:bg-[#edf1e9] transition-all">
                     <Hotel size={20} />
@@ -949,6 +951,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                     <Camera size={20} />
                     <span className="text-xs font-semibold">+ Activity</span>
                   </button>
+                  <button type="button" onClick={() => setActiveInput({ destId: dest.id, type: 'transport' })} className="flex flex-col items-center gap-1.5 py-4 rounded-xl border-2 border-dashed border-[#c5cfdb] text-[#465e7a] hover:bg-[#edf1f5]"><Plane size={20} /><span className="text-xs font-semibold">+ Transport</span></button>
                 </div>
                 {postType !== 'guide' && (
                   <button type="button" onClick={() => updDest(dest.id, d => ({ ...d, curDayIndex: d.curDayIndex + 1 }))}
@@ -979,7 +982,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
         </label>
         {photoError && <p className="text-xs text-red-600">{photoError}</p>}
         {photos.length > 0 && (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {photos.map((photo, i) => (
               <div key={i} className="relative group">
                 {/* eslint-disable-next-line @next/next/no-img-element */}

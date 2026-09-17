@@ -16,7 +16,7 @@ import { generateDescriptions } from '@/lib/generateDescriptions'
 export type ItineraryState = { error?: string; itineraryId?: string } | undefined
 
 type FoodInput = { name: string; mealType?: string; description?: string; notes: string; rating: number; link: string; priceLevel?: number | null; familyFriendly?: boolean | null; familyFriendlySource?: string | null; lat?: number | null; lng?: number | null; tags?: string[]; dayIndex?: number | null; order?: number; alternative?: string; photo?: string; photos?: string[]; placeId?: string }
-type ActivityInput = { name: string; notes: string; rating: number; link: string; dayIndex?: number | null; order?: number; tags?: string[]; alternative?: string; photo?: string; photos?: string[]; placeId?: string }
+type ActivityInput = { type?: 'activity' | 'transport'; name: string; notes: string; rating: number; link: string; dayIndex?: number | null; order?: number; tags?: string[]; alternative?: string; photo?: string; photos?: string[]; placeId?: string }
 type DayInput = { dayIndex?: number; food: FoodInput[]; activities: ActivityInput[] }
 type StayGroup = {
   hotelName: string; hotelDescription?: string; hotelNotes: string; hotelAddress?: string; hotelLink: string; hotelRating: number; hotelPriceLevel?: number | null; hotelLat?: number | null; hotelLng?: number | null; hotelTags?: string[]; hotelAlternative?: string; hotelPhoto?: string; hotelPhotos?: string[]; hotelPlaceId?: string
@@ -45,7 +45,7 @@ function flattenGroups(groups: StayGroup[]): ItemRow[] {
           if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), description: f.description?.trim() || null, notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: f.priceLevel ?? null, familyFriendly: f.familyFriendly ?? null, familyFriendlySource: f.familyFriendlySource ?? null, mealType: f.mealType?.trim() || null, groupIndex: gi, dayIndex, order: f.order ?? fi, lat: f.lat ?? null, lng: f.lng ?? null, tags: f.tags ?? [], alternative: f.alternative?.trim() || null, photoUrl: eventPhotos(f.photos, f.photo)[0] ?? null, photoUrls: eventPhotos(f.photos, f.photo), placeId: f.placeId?.trim() || null })
         }
         for (const [ai, a] of (day.activities ?? []).entries()) {
-          if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), description: null, notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi, dayIndex, order: a.order ?? ((day.food?.length ?? 0) + ai), lat: null, lng: null, tags: a.tags ?? [], alternative: a.alternative?.trim() || null, photoUrl: eventPhotos(a.photos, a.photo)[0] ?? null, photoUrls: eventPhotos(a.photos, a.photo), placeId: a.placeId?.trim() || null })
+          if (a.name?.trim()) rows.push({ type: a.type === 'transport' ? 'transport' : 'activity', name: a.name.trim(), description: null, notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi, dayIndex, order: a.order ?? ((day.food?.length ?? 0) + ai), lat: null, lng: null, tags: a.tags ?? [], alternative: a.alternative?.trim() || null, photoUrl: eventPhotos(a.photos, a.photo)[0] ?? null, photoUrls: eventPhotos(a.photos, a.photo), placeId: a.placeId?.trim() || null })
         }
       }
     } else {
@@ -53,7 +53,7 @@ function flattenGroups(groups: StayGroup[]): ItemRow[] {
         if (f.name?.trim()) rows.push({ type: 'food_drink', name: f.name.trim(), description: f.description?.trim() || null, notes: f.notes?.trim() || null, address: null, link: f.link?.trim() || null, rating: f.rating > 0 ? f.rating : null, priceLevel: f.priceLevel ?? null, familyFriendly: f.familyFriendly ?? null, familyFriendlySource: f.familyFriendlySource ?? null, mealType: f.mealType?.trim() || null, groupIndex: gi, dayIndex: f.dayIndex ?? null, order: fi, lat: f.lat ?? null, lng: f.lng ?? null, tags: f.tags ?? [], alternative: f.alternative?.trim() || null, photoUrl: eventPhotos(f.photos, f.photo)[0] ?? null, photoUrls: eventPhotos(f.photos, f.photo), placeId: f.placeId?.trim() || null })
       }
       for (const [ai, a] of (g.activities ?? []).entries()) {
-        if (a.name?.trim()) rows.push({ type: 'activity', name: a.name.trim(), description: null, notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi, dayIndex: a.dayIndex ?? null, order: (g.food?.length ?? 0) + ai, lat: null, lng: null, tags: a.tags ?? [], alternative: a.alternative?.trim() || null, photoUrl: eventPhotos(a.photos, a.photo)[0] ?? null, photoUrls: eventPhotos(a.photos, a.photo), placeId: a.placeId?.trim() || null })
+        if (a.name?.trim()) rows.push({ type: a.type === 'transport' ? 'transport' : 'activity', name: a.name.trim(), description: null, notes: a.notes?.trim() || null, address: null, link: a.link?.trim() || null, rating: a.rating > 0 ? a.rating : null, priceLevel: null, familyFriendly: null, familyFriendlySource: null, mealType: null, groupIndex: gi, dayIndex: a.dayIndex ?? null, order: (g.food?.length ?? 0) + ai, lat: null, lng: null, tags: a.tags ?? [], alternative: a.alternative?.trim() || null, photoUrl: eventPhotos(a.photos, a.photo)[0] ?? null, photoUrls: eventPhotos(a.photos, a.photo), placeId: a.placeId?.trim() || null })
       }
     }
     return rows
@@ -172,7 +172,7 @@ async function geocodeItineraryDests(itineraryId: string): Promise<void> {
 // "The Edition, Rome, Italy" — so imported itineraries appear as map pins immediately.
 async function geocodeItineraryItems(itineraryId: string): Promise<void> {
   const items = await prisma.destItem.findMany({
-    where: { destination: { itineraryId }, OR: [{ lat: null }, { placeId: null }, { placeId: '' }], name: { not: '' } },
+    where: { type: { not: 'transport' }, destination: { itineraryId }, OR: [{ lat: null }, { placeId: null }, { placeId: '' }], name: { not: '' } },
     select: { id: true, name: true, placeId: true, lat: true, lng: true, destination: { select: { name: true, country: true, lat: true, lng: true } } },
   })
   for (const item of items) {
@@ -268,10 +268,10 @@ export async function createItinerary(
             ...(g.hotelName?.trim() ? [{ type: 'hotel', name: g.hotelName.trim(), notes: g.hotelNotes?.trim() || null }] : []),
             ...(g.days ?? []).flatMap(day => [
               ...day.food.filter(f => f.name?.trim()).map(f => ({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null })),
-              ...day.activities.filter(a => a.name?.trim()).map(a => ({ type: 'activity', name: a.name.trim(), notes: a.notes?.trim() || null })),
+              ...day.activities.filter(a => a.name?.trim()).map(a => ({ type: a.type === 'transport' ? 'transport' : 'activity', name: a.name.trim(), notes: a.notes?.trim() || null })),
             ]),
             ...(g.food ?? []).filter((f) => f.name?.trim()).map((f) => ({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null })),
-            ...(g.activities ?? []).filter((a) => a.name?.trim()).map((a) => ({ type: 'activity', name: a.name.trim(), notes: a.notes?.trim() || null })),
+            ...(g.activities ?? []).filter((a) => a.name?.trim()).map((a) => ({ type: a.type === 'transport' ? 'transport' : 'activity', name: a.name.trim(), notes: a.notes?.trim() || null })),
           ]),
         })), audience)
           .then((autoTags) => autoTags.length > 0 ? prisma.itinerary.update({ where: { id: itinerary.id }, data: { tags: autoTags } }) : null)
@@ -340,10 +340,10 @@ export async function createItineraryDirect(input: {
             ...(g.hotelName?.trim() ? [{ type: 'hotel', name: g.hotelName.trim(), notes: g.hotelNotes?.trim() || null }] : []),
             ...(g.days ?? []).flatMap(day => [
               ...day.food.filter(f => f.name?.trim()).map(f => ({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null })),
-              ...day.activities.filter(a => a.name?.trim()).map(a => ({ type: 'activity', name: a.name.trim(), notes: a.notes?.trim() || null })),
+              ...day.activities.filter(a => a.name?.trim()).map(a => ({ type: a.type === 'transport' ? 'transport' : 'activity', name: a.name.trim(), notes: a.notes?.trim() || null })),
             ]),
             ...(g.food ?? []).filter((f) => f.name?.trim()).map((f) => ({ type: 'food_drink', name: f.name.trim(), notes: f.notes?.trim() || null })),
-            ...(g.activities ?? []).filter((a) => a.name?.trim()).map((a) => ({ type: 'activity', name: a.name.trim(), notes: a.notes?.trim() || null })),
+            ...(g.activities ?? []).filter((a) => a.name?.trim()).map((a) => ({ type: a.type === 'transport' ? 'transport' : 'activity', name: a.name.trim(), notes: a.notes?.trim() || null })),
           ]),
         })), audience)
           .then((autoTags) => autoTags.length > 0 ? prisma.itinerary.update({ where: { id: itinerary.id }, data: { tags: autoTags } }) : null)

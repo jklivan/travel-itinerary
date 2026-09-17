@@ -126,3 +126,12 @@ test('hotel and restaurant options survive editor load/save without losing notes
   assert.equal(food.notes, 'Try if time')
   assert.deepEqual(Array.from(food.photos), ['/cafe.svg'])
 })
+
+test('transport survives guide and itinerary editor conversion with notes and photos', () => {
+  const dest = destFromRaw({ ...raw, items: [{ type: 'transport', name: 'Ferry', notes: 'Book ahead', dayIndex: 2, rating: 4, photoUrls: ['/ferry.jpg'] }] })
+  const saved = buildDestinations([dest])[0].groups[0].days[0].activities[0]
+  assert.equal(saved.type, 'transport')
+  assert.equal(saved.notes, 'Book ahead')
+  assert.equal(saved.rating, 4)
+  assert.deepEqual(Array.from(saved.photos), ['/ferry.jpg'])
+})

@@ -2,7 +2,7 @@ export type TripMapPlace = {
   id: string
   name: string
   city: string
-  type: 'hotel' | 'food_drink' | 'activity'
+  type: 'hotel' | 'food_drink' | 'activity' | 'transport'
   day: number | null
   placeId?: string
 }

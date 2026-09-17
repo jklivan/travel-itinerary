@@ -7,7 +7,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
-import { Hotel, Utensils, Camera, MapPin, Check, Ban, BedDouble } from 'lucide-react'
+import { Plane, Hotel, Utensils, Camera, MapPin, Check, Ban, BedDouble } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import SavedFolderPicker from '@/components/SavedFolderPicker'
 import { eventPhotos, pickEventPhoto, tripPhotoGallery } from '@/lib/eventPhotos'
@@ -94,6 +94,7 @@ const PLACE_CATEGORIES = {
   hotel: { label: 'Hotels', eyebrow: 'Stay', Icon: Hotel },
   food_drink: { label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils },
   activity: { label: 'Activities', eyebrow: 'Explore', Icon: Camera },
+  transport: { label: 'Transportation', eyebrow: 'Getting around', Icon: Plane },
 } as const
 
 type PlaceCategory = keyof typeof PLACE_CATEGORIES
@@ -379,7 +380,7 @@ export default async function ItineraryPage({
       .map(i => ({
         id: i.id,
         name: i.name,
-        type: i.type as 'hotel' | 'food_drink' | 'activity',
+        type: i.type as 'hotel' | 'food_drink' | 'activity' | 'transport',
         lat: i.lat!,
         lng: i.lng!,
         day: isGuide || i.type === 'hotel' || getRecommendation(i.tags) === 'option' ? null : mapDayNumber(i.dayIndex, zeroBased),
@@ -452,7 +453,7 @@ export default async function ItineraryPage({
 
   const renderHotelCard = (item: DestItemRow, compact = false) => renderPlaceCard(item, 'hotel', compact)
   const renderFoodCard = (item: DestItemRow, compact = false) => renderPlaceCard(item, 'food_drink', compact)
-  const renderActivityCard = (item: DestItemRow, compact = false) => renderPlaceCard(item, 'activity', compact)
+  const renderActivityCard = (item: DestItemRow, compact = false) => renderPlaceCard(item, item.type === 'transport' ? 'transport' : 'activity', compact)
 
   return (
     <div className="min-h-screen bg-[#F0E8D9]">
@@ -628,7 +629,7 @@ export default async function ItineraryPage({
             {showDayByDay && it.isPlan && <div className="space-y-6 mb-10">
               {[...new Set(mainDestinations.flatMap(d => d.items.flatMap(i => i.dayIndex === null ? [] : [i.dayIndex])))].sort((a, b) => a - b).concat([-1]).map(day => {
                 const items = mainDestinations.flatMap(d => d.items).filter(i => day === -1 ? i.dayIndex === null : i.dayIndex === day)
-                return items.length > 0 && <section key={day}><h2 className="mb-3 text-xl font-semibold">{day === -1 ? 'Unscheduled' : `Day ${day}`}</h2><div className={styles.placeGrid}>{items.map(item => renderPlaceCard(item, item.type === 'hotel' ? 'hotel' : item.type === 'food_drink' ? 'food_drink' : 'activity'))}</div></section>
+                return items.length > 0 && <section key={day}><h2 className="mb-3 text-xl font-semibold">{day === -1 ? 'Unscheduled' : `Day ${day}`}</h2><div className={styles.placeGrid}>{items.map(item => renderPlaceCard(item, item.type === 'hotel' ? 'hotel' : item.type === 'food_drink' ? 'food_drink' : item.type === 'transport' ? 'transport' : 'activity'))}</div></section>
               })}
             </div>}
             {/* ── Day by Day (itineraries) ── */}
@@ -722,6 +723,7 @@ export default async function ItineraryPage({
                     const dHotels = dItems.filter(i => i.type === 'hotel')
                     const dFood = dItems.filter(i => i.type === 'food_drink')
                     const dActs = dItems.filter(i => i.type === 'activity')
+                    const dTransport = dItems.filter(i => i.type === 'transport')
                     return (
                       <div key={dest.id}>
                         {mainDestinations.length > 1 && (
@@ -759,6 +761,7 @@ export default async function ItineraryPage({
                               </div>
                             </div>
                           )}
+                          {dTransport.length > 0 && <div><CategoryHeading type="transport" count={dTransport.length} /><div className="space-y-2">{dTransport.map(item => renderPlaceCard(item, 'transport'))}</div></div>}
                           {dActs.length > 0 && (
                             <div>
                               <CategoryHeading type="activity" count={dActs.length} />
@@ -782,7 +785,7 @@ export default async function ItineraryPage({
                     <div key={dest.id}>
                       {it.destinations.length > 1 && <p className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-3">{dest.name}{dest.country ? `, ${dest.country}` : ''}</p>}
                       <div className={styles.placeGrid}>
-                        {dest.items.map(item => renderPlaceCard(item, item.type === 'hotel' ? 'hotel' : item.type === 'food_drink' ? 'food_drink' : 'activity'))}
+                        {dest.items.map(item => renderPlaceCard(item, item.type === 'hotel' ? 'hotel' : item.type === 'food_drink' ? 'food_drink' : item.type === 'transport' ? 'transport' : 'activity'))}
                       </div>
                     </div>
                   ))}

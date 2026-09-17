@@ -48,7 +48,7 @@ const EXTRACT_FUNCTION: OpenAI.Chat.ChatCompletionTool = {
                 items: {
                   type: 'object',
                   properties: {
-                    type: { type: 'string', enum: ['hotel', 'activity', 'food_drink'] },
+                    type: { type: 'string', enum: ['hotel', 'activity', 'food_drink', 'transport'] },
                     name: { type: 'string' },
                     notes: { type: 'string' },
                     mealType: { type: 'string', enum: ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] },
@@ -80,10 +80,10 @@ const EXTRACT_PROMPT = `Extract only confirmed or scheduled items from this trav
 - Rate 1–5 stars if any sentiment is expressed. Omit rating if none.
 - Write notes for someone deciding whether they would want to stay there, do the activity, or visit the restaurant. Keep only concise, generally useful context such as what the experience includes, a notable feature, atmosphere, location context, or a broadly relevant dress code. If there is nothing genuinely useful to say about the place itself, leave notes as an empty string — do not fill it with booking status, confirmation phrases ("confirmed dinner", "reserved", "booked"), or any logistics. Omit: confirmation numbers and dates, cancellation or payment terms, rates, contact details, check-in instructions, transport coordination, seating or dietary requests, and similar personal logistics.
 - Populate startDate/endDate from the earliest and latest dates in the document (YYYY-MM-DD).
-- Skip all transportation: flights, transfers, shuttles, airport pickups, hotel pickups, private drivers, and any item whose sole purpose is moving the traveller between places.`
+- Include transportation as "transport": flights, ferries, trains, buses, transfers, car rentals, taxis and rideshare. Also preserve explicitly supplied advice about getting around, such as Uber availability, as transport entries. For transport, retain useful routes, departure times, flight numbers, and booking advice in notes; omit personal confirmation codes and payment details.`
 
 const PDF_JSON_INSTRUCTION = `Return only valid JSON in exactly this shape:
-{"title":"","description":"","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD","notes":"","destinations":[{"name":"","country":"","items":[{"type":"hotel|activity|food_drink","name":"","notes":"","dayIndex":1,"mealType":"breakfast|lunch|dinner|drinks|coffee|dessert|bakery","rating":1}]}]}.
+{"title":"","description":"","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD","notes":"","destinations":[{"name":"","country":"","items":[{"type":"hotel|activity|food_drink|transport","name":"","notes":"","dayIndex":1,"mealType":"breakfast|lunch|dinner|drinks|coffee|dessert|bakery","rating":1}]}]}.
 Use an empty array for destinations only when the document contains no travel places.`
 
 function parseResult(completion: OpenAI.Chat.ChatCompletion): ExtractedItinerary {

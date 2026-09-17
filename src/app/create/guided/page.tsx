@@ -43,7 +43,7 @@ import { getRecommendation, recommendationTags, type PlaceRecommendation } from 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ItemType = 'hotel' | 'food_drink' | 'activity'
+type ItemType = 'hotel' | 'food_drink' | 'activity' | 'transport'
 type ActiveInput = ItemType | 'notes' | 'photos' | null
 
 type GuidedItem = {
@@ -149,6 +149,7 @@ function ItemEditForm({ type, initial, onDraftChange, onSave, onClose, onRecomme
     hotel:     { color: 'bg-blue-50 border-blue-200',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
     food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const, notesPh: 'e.g. Order the truffle pasta, great for groups…'           },
     activity:  { color: 'bg-green-50 border-green-200',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const,   notesPh: 'e.g. Book tickets online, go early to beat the crowds…'   },
+    transport: { color: 'bg-[#edf1f5] border-[#c5cfdb]', label: 'Transportation', placeholder: 'Flight, ferry, rental car, or Uber tips…', placeType: 'activity' as const, notesPh: 'Routes, times, booking tips, car rentals, or taxi / Uber availability…' },
   }[type]
 
   function toggleTag(tag: string) {
@@ -166,9 +167,9 @@ function ItemEditForm({ type, initial, onDraftChange, onSave, onClose, onRecomme
         <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Edit {cfg.label}</p>
         <button type="button" disabled={photoUploading} onClick={cancel} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
       </div>
-      <PlacesAutocomplete value={name} onChange={v => { setName(v); setPlaceId('') }}
+      {type === 'transport' ? <input aria-label="Transport name" value={name} onChange={event => setName(event.target.value)} placeholder={cfg.placeholder} className={inputCls} /> : <PlacesAutocomplete value={name} onChange={v => { setName(v); setPlaceId('') }}
         onSelect={(_m, _s, pid) => setPlaceId(pid ?? '')}
-        type={cfg.placeType} placeholder={cfg.placeholder} className={inputCls} city={city} />
+        type={cfg.placeType} placeholder={cfg.placeholder} className={inputCls} city={city} />}
       {type === 'food_drink' && (
         <div className="flex flex-wrap gap-1.5">
           {MEAL_TYPES.map(mt => {
@@ -580,8 +581,8 @@ export default function GuidedCreatePage() {
                 .map(({ item: i, pos }) => ({ name: i.name, mealType: i.mealType, notes: i.notes, link: '', rating: i.rating, order: pos, tags: recommendationTags(i.tags, getRecommendation(i.tags, i.isHighlight)), alternative: i.alternative || '', photo: i.photos?.[0] ?? i.photo ?? '', photos: eventPhotos(i.photos, i.photo), placeId: i.placeId || '' })),
               activities: dayItems
                 .map((item, pos) => ({ item, pos }))
-                .filter(({ item }) => item.type === 'activity')
-                .map(({ item: i, pos }) => ({ name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos, tags: recommendationTags(i.tags, getRecommendation(i.tags, i.isHighlight)), alternative: i.alternative || '', photo: i.photos?.[0] ?? i.photo ?? '', photos: eventPhotos(i.photos, i.photo), placeId: i.placeId || '' })),
+                .filter(({ item }) => (item.type === 'activity' || item.type === 'transport'))
+                .map(({ item: i, pos }) => ({ type: i.type, name: i.name, notes: i.notes, link: '', rating: i.rating, order: pos, tags: recommendationTags(i.tags, getRecommendation(i.tags, i.isHighlight)), alternative: i.alternative || '', photo: i.photos?.[0] ?? i.photo ?? '', photos: eventPhotos(i.photos, i.photo), placeId: i.placeId || '' })),
             }))
           : [{ food: [], activities: [] }]
       }
@@ -831,7 +832,7 @@ export default function GuidedCreatePage() {
               )}
 
               {/* Active input form */}
-              {(activeInput === 'hotel' || activeInput === 'food_drink' || activeInput === 'activity') && (
+              {(activeInput === 'hotel' || activeInput === 'food_drink' || activeInput === 'activity' || activeInput === 'transport') && (
                 <ItemForm
                   type={activeInput}
                   onAdd={addItem}
@@ -928,6 +929,7 @@ export default function GuidedCreatePage() {
                       <Camera size={20} />
                       <span className="text-xs font-semibold">+ Activity</span>
                     </button>
+                    <button type="button" onClick={() => setActiveInput('transport')} className="rounded-xl border border-[#c5cfdb] px-3 py-4 text-sm text-[#465e7a]">✈ Transport</button>
                     <button type="button"
                       onClick={() => setActiveInput('notes')}
                       className="flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 border-dashed border-amber-200 text-amber-600 hover:border-amber-400 hover:bg-amber-50 transition-all">

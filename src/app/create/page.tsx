@@ -21,7 +21,7 @@ import { TripRatingPicker } from '@/components/TripRatingPicker'
 import { tripDetailsError, dateRangeFromMonthAndDays, monthAndDaysFromDates } from '@/lib/tripDates'
 
 type FoodItem     = { name: string; mealType: string; notes: string; link: string; rating: number; priceLevel: number | null; familyFriendly: boolean | null; familyFriendlySource: string | null; lat: number | null; lng: number | null; tags: string[]; dayIndex?: number | null; order?: number; isHighlight?: boolean; alternative?: string }
-type ActivityItem = { tags?: string[]; name: string; notes: string; link: string; rating: number; dayIndex?: number | null; order?: number; isHighlight?: boolean; alternative?: string }
+type ActivityItem = { type?: 'activity' | 'transport'; tags?: string[]; name: string; notes: string; link: string; rating: number; dayIndex?: number | null; order?: number; isHighlight?: boolean; alternative?: string }
 type DayGroup    = { dayIndex?: number; food: FoodItem[]; activities: ActivityItem[] }
 type StayGroup   = { hotelName: string; hotelNotes: string; hotelLink: string; hotelRating: number; hotelPriceLevel: number | null; hotelNightlyRate: string; hotelLat: number | null; hotelLng: number | null; hotelTags: string[]; hotelAlternative?: string; days: DayGroup[] }
 type Destination  = { name: string; country: string; notes: string; groups: StayGroup[] }
@@ -73,8 +73,8 @@ function mapExtractionDests(rawDests: RawDest[]): Destination[] {
       .map(({ item: f, docPos }) => ({ name: f.name ?? '', mealType: f.mealType ?? '', notes: f.notes ?? '', link: f.link ?? '', rating: f.rating ?? 0, priceLevel: null, familyFriendly: null, familyFriendlySource: null, lat: null, lng: null, tags: [], dayIndex: f.dayIndex ?? null, order: docPos, isHighlight: false }))
     const acts = nonHotelItems
       .map((item, docPos) => ({ item, docPos }))
-      .filter(({ item }) => item.type === 'activity')
-      .map(({ item: a, docPos }) => ({ name: a.name ?? '', notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0, dayIndex: a.dayIndex ?? null, order: docPos, isHighlight: false }))
+      .filter(({ item }) => (item.type === 'activity' || item.type === 'transport'))
+      .map(({ item: a, docPos }) => ({ type: a.type === 'transport' ? 'transport' as const : 'activity' as const, name: a.name ?? '', notes: a.notes ?? '', link: a.link ?? '', rating: a.rating ?? 0, dayIndex: a.dayIndex ?? null, order: docPos, isHighlight: false }))
     const groups: StayGroup[] = hotels.length === 0
       ? [{ hotelName: '', hotelNotes: '', hotelLink: '', hotelRating: 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: buildDays(food, acts) }]
       : hotels.map((h, hi) => ({ hotelName: h.name ?? '', hotelNotes: h.notes ?? '', hotelLink: h.link ?? '', hotelRating: h.rating ?? 0, hotelPriceLevel: null, hotelNightlyRate: '', hotelLat: null, hotelLng: null, hotelTags: [], days: hi === 0 ? buildDays(food, acts) : [emptyDay()] }))
@@ -206,14 +206,13 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating, onRecommenda
   return (
     <div className={`rounded-xl border border-l-4 border-l-green-400 ${index % 2 === 0 ? 'bg-gray-50' : 'bg-gray-100'} p-4 space-y-3`}>
       <div className="flex gap-2 items-start">
-        <PlacesAutocomplete value={item.name} onChange={val => onUpdate('name', val)}
-          type="activity" placeholder="e.g. Temple tour, Hiking, Museum visit" className={inputClass} />
+        {item.type === 'transport' ? <input aria-label="Transport name" value={item.name} onChange={event => onUpdate('name', event.target.value)} className={inputClass} /> : <PlacesAutocomplete value={item.name} onChange={val => onUpdate('name', val)} type="activity" placeholder="e.g. Temple tour, Hiking, Museum visit" className={inputClass} />}
         <button type="button" onClick={onRemove} className="mt-1.5 text-gray-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
       </div>
       {showRating && (
         <div className="flex items-center gap-2"><span className="text-xs text-gray-600 shrink-0">Rate it!</span><StarRating value={item.rating} onChange={v => onUpdate('rating', String(v))} /></div>
       )}
-      <RecommendationPicker type="activity" value={getRecommendation(item.tags, item.isHighlight)} onChange={onRecommendationChange} />
+      <RecommendationPicker type={item.type ?? 'activity'} value={getRecommendation(item.tags, item.isHighlight)} onChange={onRecommendationChange} />
       <button type="button" onClick={() => setShowDetails(value => !value)} className="text-xs font-medium text-gray-500 hover:text-gray-800">
         {showDetails ? '− Hide details' : '+ Add details'}
       </button>
@@ -550,7 +549,7 @@ export default function CreatePage() {
       { id: `${di}:${gi}:hotel`, name: group.hotelName, city, type: 'hotel' as const, day: null },
       ...group.days.flatMap((day, dyi) => [
         ...day.food.map((item, ii) => ({ id: `${di}:${gi}:${dyi}:food:${ii}`, name: item.name, city, type: 'food_drink' as const, day: postType === 'guide' ? null : day.dayIndex ?? dyi + 1 })),
-        ...day.activities.map((item, ii) => ({ id: `${di}:${gi}:${dyi}:activity:${ii}`, name: item.name, city, type: 'activity' as const, day: postType === 'guide' ? null : day.dayIndex ?? dyi + 1 })),
+        ...day.activities.map((item, ii) => ({ id: `${di}:${gi}:${dyi}:activity:${ii}`, name: item.name, city, type: item.type ?? 'activity' as const, day: postType === 'guide' ? null : day.dayIndex ?? dyi + 1 })),
       ]),
     ]
   }))
