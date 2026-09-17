@@ -50,7 +50,7 @@ export default function PlaceQuickEdit({ itemId, name, rating, photos, compact =
     {!mode ? <div className="flex flex-wrap gap-2">
       <button type="button" onClick={() => open('photos')} aria-label={`Edit photos for ${name}`} className="inline-flex min-h-11 items-center gap-1.5 px-2 text-[#507c76]"><Camera size={15} />{photos.length ? 'Edit photos' : 'Add photos'}</button>
       <button type="button" onClick={() => open('rating')} aria-label={`Change rating for ${name}`} className="inline-flex min-h-11 items-center gap-1.5 px-2 text-[#507c76]"><Star size={15} />{rating ? 'Change rating' : 'Add rating'}</button>
-      <button type="button" onClick={() => { setSaved(''); setPostingMoment(true) }} aria-label={`Post this moment at ${name}`} className="inline-flex min-h-11 items-center gap-1.5 px-2 text-[#507c76]"><Plus size={15} />Post this moment</button>
+      <button type="button" onClick={() => { setSaved(''); setPostingMoment(true) }} aria-label={`Post this moment at ${name}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[#c78e77] bg-[#f6e6dc] px-3 font-semibold text-[#874a35] transition-colors hover:bg-[#efd6c7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#874a35]"><Plus size={15} />Post this moment</button>
     </div> : <>
       <p className="px-2 py-1 font-medium text-[#2e4147]">{mode === 'photos' ? 'Photos' : 'Your rating'} · {name}</p>
       <fieldset disabled={saving || uploading}>
