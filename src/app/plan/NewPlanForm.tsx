@@ -1,5 +1,6 @@
 'use client'
 
+import TripFormatPicker, { type TripFormat } from '@/components/TripFormatPicker'
 import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -18,6 +19,7 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
   const [createdPlan, setCreatedPlan] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [format, setFormat] = useState<TripFormat>('guide')
   const [destination, setDestination] = useState('')
   return <form onSubmit={async event => {
     event.preventDefault()
@@ -45,6 +47,10 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
   }} className="space-y-4 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-5">
     {(savePlace || saveStory) && <p className="text-sm text-[#507c76]">We’ll add the place you selected to this new plan.</p>}
     <fieldset disabled={saving} className="space-y-4">
+      <TripFormatPicker value={format} onChange={setFormat} />
+      <input type="hidden" name="format" value={format} />
+      {format === 'day-trip' && <input type="hidden" name="durationDays" value="1" />}
+      {format === 'itinerary' && <label className="block text-sm font-medium">Number of days (optional)<input name="durationDays" type="number" min="2" step="1" className={inputClass} placeholder="Or add a daily schedule later" /></label>}
       <label className="block text-sm font-medium">Where are you thinking?<PlacesAutocomplete name="destination" value={destination} onChange={setDestination} onSelect={(main, secondary) => setDestination([main, secondary].filter(Boolean).join(', '))} type="destination" maxLength={160} placeholder="e.g. Italy, Japan, a weekend away…" className={inputClass} /></label>
       <label className="block text-sm font-medium">Trip name <span className="font-normal">(optional)</span><input name="title" maxLength={160} placeholder="Summer in Italy" className={inputClass} /></label>
       <details><summary className="cursor-pointer py-2 text-sm text-[#507c76]">Add dates (optional)</summary><DateFields /></details>

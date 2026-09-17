@@ -13,6 +13,7 @@ type ExtractedDest = { name: string; country: string; items: ExtractedItem[] }
 type ExtractedItinerary = {
   title: string
   description?: string
+  durationDays?: number
   startDate?: string
   endDate?: string
   budget?: number
@@ -31,6 +32,7 @@ const EXTRACT_FUNCTION: OpenAI.Chat.ChatCompletionTool = {
       properties: {
         title: { type: 'string' },
         description: { type: 'string' },
+        durationDays: { type: 'integer', minimum: 1, description: 'Explicit trip duration or last trip-wide scheduled day. Omit if neither is stated; never default to one.' },
         startDate: { type: 'string', description: 'YYYY-MM-DD' },
         endDate: { type: 'string', description: 'YYYY-MM-DD' },
         budget: { type: 'number' },
@@ -79,7 +81,7 @@ const EXTRACT_PROMPT = `Extract only confirmed or scheduled items from this trav
 - For restaurants and activities with a clear date or day in the document, include dayIndex counting from Day 1 of the entire trip — not Day 1 of that destination. For example, if Rome is Days 1–2 and Puglia is Days 3–5, a Puglia dinner on Day 3 gets dayIndex 3, not dayIndex 1. Do not guess a day when the document does not establish one. Hotels are location-level stays: omit dayIndex for them.
 - Rate 1–5 stars if any sentiment is expressed. Omit rating if none.
 - Write notes for someone deciding whether they would want to stay there, do the activity, or visit the restaurant. Keep only concise, generally useful context such as what the experience includes, a notable feature, atmosphere, location context, or a broadly relevant dress code. If there is nothing genuinely useful to say about the place itself, leave notes as an empty string — do not fill it with booking status, confirmation phrases ("confirmed dinner", "reserved", "booked"), or any logistics. Omit: confirmation numbers and dates, cancellation or payment terms, rates, contact details, check-in instructions, transport coordination, seating or dietary requests, and similar personal logistics.
-- Populate startDate/endDate from the earliest and latest dates in the document (YYYY-MM-DD).
+- Populate startDate/endDate only from actual trip dates in the document (YYYY-MM-DD). Do not use document creation dates or invent dates. Set durationDays from an explicit duration or the final day of a day-by-day itinerary even when calendar dates are absent. If neither is provided, omit durationDays and dates; this is an undated guide, not a one-day trip.
 - Include transportation as "transport": flights, ferries, trains, buses, transfers, car rentals, taxis and rideshare. Also preserve explicitly supplied advice about getting around, such as Uber availability, as transport entries. For transport, retain useful routes, departure times, flight numbers, and booking advice in notes; omit personal confirmation codes and payment details.`
 
 const PDF_JSON_INSTRUCTION = `Return only valid JSON in exactly this shape:

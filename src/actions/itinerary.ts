@@ -65,6 +65,8 @@ function parseFormData(formData: FormData) {
   const description = (formData.get('description') as string)?.trim() || null
   const startDateStr = formData.get('startDate') as string
   const endDateStr = formData.get('endDate') as string
+  const rawDuration = Number(formData.get('durationDays'))
+  const durationDays = Number.isInteger(rawDuration) && rawDuration > 0 && rawDuration <= 10000 ? rawDuration : null
   const postType = (formData.get('postType') as string) || 'itinerary'
   const audience = (formData.get('audience') as string) || 'family'
   const isDraft = formData.get('isDraft') === '1'
@@ -83,7 +85,7 @@ function parseFormData(formData: FormData) {
   const photos: { url: string; caption: string }[] = formData.get('photos')
     ? JSON.parse(formData.get('photos') as string)
     : []
-  return { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, tripRating, bestMonths, destinations, photos }
+  return { durationDays, postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, tripRating, bestMonths, destinations, photos }
 }
 
 async function generateMissingDescriptions(itineraryId: string): Promise<void> {
@@ -198,13 +200,13 @@ export async function createItinerary(
   const session = await auth()
   if (!session?.user?.id) return { error: 'You must be logged in.' }
 
-  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, tripRating, bestMonths, destinations, photos } =
+  const { durationDays, postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, tripRating, bestMonths, destinations, photos } =
     parseFormData(formData)
 
-  // Dates required for itineraries — unless saving as draft
+  // An itinerary can have a duration or daily schedule without calendar dates.
   const isGuide = postType === 'guide'
   if (!isDraft && !title.trim()) return { error: 'Add a title before publishing.' }
-  if (!isDraft && !isGuide && (!startDateStr || !endDateStr)) return { error: 'Add a month and number of days before publishing.' }
+  if (!isDraft && !isGuide && (!startDateStr || !endDateStr) && !durationDays && !destinations.some(d => flattenGroups(d.groups ?? []).some(item => item.dayIndex != null))) return { error: 'Add a duration or daily schedule, or choose Guide.' }
 
   const today = new Date()
   const startDate = startDateStr ? new Date(startDateStr) : today
@@ -223,10 +225,12 @@ export async function createItinerary(
   const itinerary = await prisma.itinerary.create({
     data: {
       postType,
+      durationDays: postType === 'guide' ? null : durationDays,
       title,
       description,
       startDate,
       endDate,
+      datesFlexible: postType === 'guide' || !startDateStr || !endDateStr,
       audience,
       visibility,
       notes,
@@ -242,7 +246,7 @@ export async function createItinerary(
           country: d.country || null,
           notes: d.notes?.trim() || null,
           order: i,
-          items: { create: flattenGroups(d.groups ?? []) },
+          items: { create: flattenGroups(d.groups ?? []).map(item => postType === 'guide' ? { ...item, dayIndex: null } : item) },
         })),
       },
       photos: {
@@ -290,15 +294,16 @@ export async function createItinerary(
 
 export async function createItineraryDirect(input: {
   title: string; description: string; startDate: string; endDate: string
-  postType: string; audience: string; visibility: string; isDraft: boolean
+  postType: string; durationDays?: number | null; audience: string; visibility: string; isDraft: boolean
   notes: string; highlights: string; tags: string[]; tripRating?: number | null
   destinations: DestInput[]; photos: { url: string; caption: string }[]
 }): Promise<ItineraryState> {
   const session = await auth()
   if (!session?.user?.id) return { error: 'You must be logged in.' }
 
-  const { title, description, startDate: startDateStr, endDate: endDateStr, postType, audience, isDraft, notes, highlights, tags, tripRating, destinations, photos } = input
+  const { title, description, startDate: startDateStr, endDate: endDateStr, postType, durationDays, audience, isDraft, notes, highlights, tags, tripRating, destinations, photos } = input
   const visibility = isDraft ? 'draft' : 'public'
+  if (durationDays != null && (!Number.isInteger(durationDays) || durationDays < 1 || durationDays > 10000)) return { error: 'Enter a positive whole number of days.' }
 
   const resolvedTitle = title?.trim() || ''
 
@@ -310,19 +315,20 @@ export async function createItineraryDirect(input: {
   if (!isDraft) {
     if (!resolvedTitle) return { error: 'Add a title before publishing.' }
     if (!destinations.some((destination) => destination.name.trim())) return { error: 'Add at least one destination before publishing.' }
-    if (postType !== 'guide' && (!startDateStr || !endDateStr)) return { error: 'Add a month and number of days before publishing.' }
+    if (postType !== 'guide' && (!startDateStr || !endDateStr) && !durationDays && !destinations.some(d => flattenGroups(d.groups ?? []).some(item => item.dayIndex != null))) return { error: 'Add a duration or daily schedule, or choose Guide.' }
     const totalItems = destinations.flatMap(d => flattenGroups(d.groups ?? [])).length
     if (totalItems === 0) return { error: 'Add at least one hotel, restaurant, or activity before publishing.' }
   }
 
   const itinerary = await prisma.itinerary.create({
     data: {
-      postType, title: resolvedTitle, description: description?.trim() || null,
+      postType, durationDays: postType === 'guide' ? null : durationDays, title: resolvedTitle, description: description?.trim() || null,
       startDate, endDate, audience, visibility,
+      datesFlexible: postType === 'guide' || !startDateStr || !endDateStr,
       notes: notes?.trim() || null, highlights: highlights?.trim() || null, tags, budget: null,
       tripRating: tripRating ?? null,
       userId: session.user.id,
-      destinations: { create: destinations.map((d, i) => ({ name: d.name, country: d.country || null, notes: d.notes?.trim() || null, order: i, items: { create: flattenGroups(d.groups ?? []) } })) },
+      destinations: { create: destinations.map((d, i) => ({ name: d.name, country: d.country || null, notes: d.notes?.trim() || null, order: i, items: { create: flattenGroups(d.groups ?? []).map(item => postType === 'guide' ? { ...item, dayIndex: null } : item) } })) },
       photos: { create: photos.map((p) => ({ url: p.url, caption: p.caption || null, isStock: false })) },
     },
   })
@@ -372,13 +378,13 @@ export async function updateItinerary(
   if (!existing || existing.userId !== session.user.id) return { error: 'Not found.' }
   if (existing.isPlan) return { error: 'Open this trip in Your trips to edit your plan.' }
 
-  const { postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, tripRating, bestMonths, destinations, photos } =
+  const { durationDays, postType, title, description, startDateStr, endDateStr, audience, visibility, isDraft, notes, highlights, tags, budget, tripRating, bestMonths, destinations, photos } =
     parseFormData(formData)
 
   if (!title) return { error: 'Title is required.' }
 
   const isGuide = postType === 'guide'
-  if (!isDraft && !isGuide && (!startDateStr || !endDateStr)) return { error: 'Start and end dates are required.' }
+  if (!isDraft && !isGuide && (!startDateStr || !endDateStr) && !durationDays && !destinations.some(d => flattenGroups(d.groups ?? []).some(item => item.dayIndex != null))) return { error: 'Add a duration or daily schedule, or choose Guide.' }
 
   const today = new Date()
   const startDate = startDateStr ? new Date(startDateStr) : today
@@ -401,10 +407,12 @@ export async function updateItinerary(
         where: { id },
         data: {
           postType,
+          durationDays: postType === 'guide' ? null : durationDays,
           title,
           description,
           startDate,
           endDate,
+          datesFlexible: postType === 'guide' || !startDateStr || !endDateStr,
           audience,
           visibility,
           notes,
@@ -419,7 +427,7 @@ export async function updateItinerary(
               country: d.country || null,
               notes: d.notes?.trim() || null,
               order: i,
-              items: { create: flattenGroups(d.groups ?? []) },
+              items: { create: flattenGroups(d.groups ?? []).map(item => postType === 'guide' ? { ...item, dayIndex: null } : item) },
             })),
           },
           photos: {

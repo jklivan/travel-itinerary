@@ -235,6 +235,8 @@ export default async function UserProfilePage({
                   key={it.id}
                   id={it.id}
                   postType={it.postType}
+              tags={it.tags}
+              durationDays={it.durationDays}
                   title={it.title}
                   bestMonths={it.bestMonths}
               datesFlexible={it.datesFlexible}
@@ -276,6 +278,8 @@ export default async function UserProfilePage({
                   <ItineraryCard
                     id={item.itinerary.id}
                     postType={item.itinerary.postType}
+                    tags={item.itinerary.tags}
+                    durationDays={item.itinerary.durationDays}
                     title={item.itinerary.title}
                     bestMonths={item.itinerary.bestMonths}
                     datesFlexible={item.itinerary.datesFlexible}

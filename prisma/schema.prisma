@@ -60,6 +60,7 @@ model Itinerary {
   title        String
   description  String?
   isPlan       Boolean          @default(false)
+  durationDays  Int?
   datesFlexible Boolean         @default(false)
   startDate    DateTime
   endDate      DateTime

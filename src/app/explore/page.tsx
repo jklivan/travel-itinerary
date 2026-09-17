@@ -102,6 +102,8 @@ function ItineraryList({
           key={it.id}
           id={it.id}
           postType={it.postType}
+              tags={it.tags}
+              durationDays={it.durationDays}
           title={it.title}
           bestMonths={it.bestMonths}
               datesFlexible={it.datesFlexible}

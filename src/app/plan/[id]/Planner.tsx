@@ -15,7 +15,7 @@ import PlaceQuickEdit from '@/components/PlaceQuickEdit'
 import { DateFields, inputClass, buttonClass } from '../NewPlanForm'
 
 type Place = { lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[] }
-type Trip = { id: string; title: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; items: Place[] }[] }
+type Trip = { durationDays?: number | null; id: string; title: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; items: Place[] }[] }
 const categories = [{ value: 'hotel', label: 'Hotels' }, { value: 'food_drink', label: 'Restaurants & drinks' }, { value: 'activity', label: 'Things to do' }, { value: 'transport', label: 'Transportation' }]
 
 export default function Planner({ trip, initialImport = false, initialDetails = false }: { trip: Trip; initialImport?: boolean; initialDetails?: boolean }) {
@@ -166,5 +166,5 @@ function DetailsForm({ trip }: { trip: Trip }) {
     const data = new FormData(event.currentTarget)
     try { const result = await savePlanDetails(trip.id, data); setMessage(result.error || 'Saved'); if (!result.error) router.refresh() }
     catch { setMessage('Could not save. Please try again.') } finally { setBusy(false) }
-  }}><fieldset disabled={busy} className="space-y-3"><label className="block text-sm">Trip name<input name="title" required defaultValue={trip.title} maxLength={160} className={inputClass} /></label><DateFields start={trip.start} end={trip.end} /><p className="text-xs text-[#73786d]">Leave both dates blank to keep things flexible.</p><button className={buttonClass}>{busy ? 'Saving…' : 'Save details'}</button></fieldset>{message && <p role="status" className="text-sm">{message}</p>}</form>
+  }}><fieldset disabled={busy} className="space-y-3"><label className="block text-sm">Trip name<input name="title" required defaultValue={trip.title} maxLength={160} className={inputClass} /></label><label className="block text-sm">Number of days (optional)<input name="durationDays" type="number" min="1" step="1" defaultValue={trip.durationDays ?? ''} className={inputClass} /></label><DateFields start={trip.start} end={trip.end} /><p className="text-xs text-[#73786d]">Leave both dates blank to keep things flexible.</p><button className={buttonClass}>{busy ? 'Saving…' : 'Save details'}</button></fieldset>{message && <p role="status" className="text-sm">{message}</p>}</form>
 }

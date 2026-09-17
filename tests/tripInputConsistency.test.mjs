@@ -45,3 +45,21 @@ test('standard day transfer preserves other events and moves to the target stay/
  const target=destinations[0].groups[1].days[0]
  assert.equal(target.food[0].notes,'Keep');assert.equal(target.food[0].order,10);assert.equal(target.activities[0].name,'Museum')
 })
+
+test('duration is allowed without a month, including an explicit one-day trip', () => {
+ assert.equal(tripDetailsError('Day out', 'itinerary', '', '1'), null)
+ assert.equal(tripDetailsError('Three days', 'itinerary', '', '3'), null)
+})
+
+test('imports infer duration from daily schedules and leave unscheduled recommendations as guides', () => {
+ const context = { monthAndDaysFromDates: () => ({month:'',days:''}), mapExtractionDests: x => x, setDescription() {}, setTripMonth() {}, setNotes() {}, setDestinations() {}, setImportSources() {}, setStep() {}, setTripDays(value) {context.days=value}, setPostType(value) {context.postType=value} }
+ context.results=[{destinations:[{items:[{type:'activity',dayIndex:1},{type:'activity',dayIndex:4}]}]}]
+ runFunction('../src/app/create/page.tsx','applyExtractionResults','applyExtractionResults(results, [])',context)
+ assert.equal(context.days,'4'); assert.equal(context.postType,'itinerary')
+ context.results=[{destinations:[{items:[{type:'activity'}]}]}]
+ runFunction('../src/app/create/page.tsx','applyExtractionResults','applyExtractionResults(results, [])',context)
+ assert.equal(context.days,''); assert.equal(context.postType,'guide')
+ context.results=[{durationDays:1}]
+ runFunction('../src/app/create/page.tsx','applyExtractionResults','applyExtractionResults(results, [])',context)
+ assert.equal(context.days,'1'); assert.equal(context.postType,'itinerary')
+})

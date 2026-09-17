@@ -1,3 +1,4 @@
+import { hasTripDates, tripDuration } from '@/lib/dayTrips'
 import TripBackButton from '@/components/TripBackButton'
 import CopyTripButton from '@/components/CopyTripButton'
 import RatingStars from '@/components/RatingStars'
@@ -146,7 +147,8 @@ export default async function ItineraryPage({
   const isOwn = session?.user?.id === it.user.id
   const mainDestinations = it.destinations.map(dest => ({ ...dest, items: partitionPlaces(dest.items).main })).filter(dest => dest.items.length > 0)
   const alternativeDestinations = it.destinations.map(dest => ({ ...dest, items: partitionPlaces(dest.items).alternatives })).filter(dest => dest.items.length > 0)
-  const isGuide = it.postType === 'guide'
+  const days = tripDuration(it)
+  const isGuide = days === null
   const hasDailyPlan = !isGuide && mainDestinations.some(dest => dest.items.some(item => (it.isPlan || item.type !== 'hotel') && item.dayIndex != null))
   const showDayByDay = view === 'day-by-day' && hasDailyPlan
   const showMap = view === 'map'
@@ -392,8 +394,6 @@ export default async function ItineraryPage({
   function fmtShort(d: Date) {
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
-  const days =
-    Math.ceil((new Date(it.endDate).getTime() - new Date(it.startDate).getTime()) / 86400000) + 1
 
   const placeDestinations = new Map(it.destinations.flatMap(destination =>
     destination.items.map(item => [item.id, [destination.name, destination.country].filter(Boolean).join(', ')] as const)
@@ -518,9 +518,10 @@ export default async function ItineraryPage({
                 </div>
                 <span className="text-sm font-medium text-[#2C1810]">{it.user.name}</span>
               </Link>
-              {!isGuide && !it.datesFlexible && (
+              {isGuide && <span className="text-xs text-[#8B6F4E]">Guide</span>}
+              {days !== null && (
                 <span className="text-xs text-[#8B6F4E]">
-                  {fmtShort(it.startDate)} – {fmtShort(it.endDate)} · {days} days
+                  {hasTripDates(it) && `${fmtShort(it.startDate)} – ${fmtShort(it.endDate)} · `}{days} {days === 1 ? 'day' : 'days'}
                 </span>
               )}
             </div>

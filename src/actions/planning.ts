@@ -22,6 +22,14 @@ function dates(form: FormData) {
   if (!valid(start) || !valid(end) || end < start) throw new InputError('Choose a start and end date, with the end after the start, or leave both blank.')
   return { datesFlexible: false, startDate: new Date(start), endDate: new Date(end) }
 }
+function duration(form: FormData) {
+  if (!form.has('durationDays')) return null
+  const raw = text(form, 'durationDays', 8)
+  if (!raw) return null
+  const value = Number(raw)
+  if (!Number.isInteger(value) || value < 1 || value > 10000) throw new InputError('Enter a positive whole number of days.')
+  return value
+}
 function refresh(id: string, userId: string) {
   for (const path of ['/', '/plan', `/plan/${id}`, `/itinerary/${id}`, `/user/${userId}`, '/explore']) revalidatePath(path)
 }
@@ -44,6 +52,8 @@ export async function startPlan(form: FormData): Promise<Result> {
     if (existing) return existing.userId === userId ? { id } : { error: unavailable }
     await prisma.itinerary.create({ data: {
       id, userId, title: title || `Trip to ${destination}`, visibility: 'draft', isPlan: true, ...dateFields,
+      durationDays: form.get('format') === 'day-trip' ? 1 : duration(form),
+      tags: form.get('format') === 'day-trip' ? ['day-trip'] : [],
       destinations: { create: { name: destination || 'Destination to decide', order: 0 } },
     } })
     refresh(id, userId)
@@ -57,7 +67,7 @@ export async function savePlanDetails(id: string, form: FormData): Promise<Resul
   try {
     const title = text(form, 'title', 160)
     if (!title) return { error: 'Give your trip a name.' }
-    const result = await prisma.itinerary.updateMany({ where: { id, userId, isPlan: true }, data: { title, ...dates(form) } })
+    const result = await prisma.itinerary.updateMany({ where: { id, userId, isPlan: true }, data: { title, ...dates(form), ...(form.has('durationDays') ? { durationDays: duration(form) } : {}) } })
     if (!result.count) return { error: unavailable }
     refresh(id, userId)
     return { success: true }

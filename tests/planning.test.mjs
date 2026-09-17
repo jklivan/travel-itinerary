@@ -150,3 +150,11 @@ test('transport can be saved without a Google place and edited without changing 
   assert.equal(item.type, 'transport')
   assert.equal(item.notes, 'Arrive 30 minutes early')
 })
+
+test('starting a day trip records its category and duration without calendar dates', async () => {
+  const h = harness()
+  await h.actions.startPlan(form({ format: 'day-trip' }))
+  assert.equal(h.writes[0].durationDays, 1)
+  assert.ok(h.writes[0].tags.includes('day-trip'))
+  assert.equal(h.writes[0].datesFlexible, true)
+})

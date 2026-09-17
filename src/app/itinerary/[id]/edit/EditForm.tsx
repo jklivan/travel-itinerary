@@ -1,5 +1,8 @@
 'use client'
 
+import TripFormatPicker from '@/components/TripFormatPicker'
+import { hasTripDates, tripDuration } from '@/lib/dayTrips'
+
 import { tripReturnPath } from '@/lib/tripNavigation'
 
 import TripEntryLayout from '@/components/TripEntryLayout'
@@ -93,7 +96,7 @@ type RawItem = {
 
 type ItineraryData = {
   id: string; postType: string; title: string; description: string | null
-  startDate: Date; endDate: Date; audience: string; visibility: string
+  durationDays?: number | null; datesFlexible?: boolean; startDate: Date; endDate: Date; audience: string; visibility: string
   notes: string | null; highlights: string | null; tags: string[]
   budget: number | null; tripRating: number | null; bestMonths?: string[]
   destinations: { name: string; country: string | null; notes: string | null; items: RawItem[] }[]
@@ -595,10 +598,10 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
 
   const initialDates = monthAndDaysFromDates(fmt(itinerary.startDate), fmt(itinerary.endDate))
 
-  const [postType]   = useState<'itinerary' | 'guide'>(itinerary.postType === 'guide' ? 'guide' : 'itinerary')
+  const [postType, setPostType] = useState<'itinerary' | 'guide'>(tripDuration(itinerary) === null ? 'guide' : 'itinerary')
   const [title, setTitle]         = useState(itinerary.title)
-  const [tripMonth, setTripMonth] = useState(initialDates.month)
-  const [tripDays, setTripDays]   = useState(initialDates.days)
+  const [tripMonth, setTripMonth] = useState(hasTripDates(itinerary) ? initialDates.month : '')
+  const [tripDays, setTripDays]   = useState(String(tripDuration(itinerary) ?? ''))
   const [tripAudience, setTripAudience] = useState<'family' | 'friends' | 'romantic' | 'adult'>(
     ['family', 'friends', 'romantic'].includes(itinerary.audience) ? itinerary.audience as 'family' | 'friends' | 'romantic' : 'adult'
   )
@@ -723,6 +726,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       <input type="hidden" name="audience"     value={tripAudience} />
       <input type="hidden" name="visibility"   value="public" />
       <input type="hidden" name="postType"     value={postType} />
+      <input type="hidden" name="durationDays" value={postType === 'guide' ? '' : tripDays} />
       <input type="hidden" name="tripRating"   value={tripRating ?? ''} />
       <input type="hidden" name="tags"         value={JSON.stringify(tags)} />
       {budget > 0 && <input type="hidden" name="budget" value={budget} />}
@@ -754,10 +758,16 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
             <label className="block text-xs font-medium text-[#7a7b70] mb-1">Title</label>
             <input name="title" type="text" required value={title} onChange={e => setTitle(e.target.value)} className={inputCls} />
           </div>
+          <TripFormatPicker value={postType === 'guide' ? 'guide' : tripDays === '1' ? 'day-trip' : 'itinerary'} onChange={format => {
+            setPostType(format === 'guide' ? 'guide' : 'itinerary')
+                setTags(current => [...current.filter(tag => tag !== 'day-trip'), ...(format === 'day-trip' ? ['day-trip'] : [])])
+            setTripDays(format === 'day-trip' ? '1' : '')
+            if (format === 'guide') setTripMonth('')
+          }} />
           {postType === 'itinerary' && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-[#7a7b70] mb-1">Month and year</label>
+                <label className="block text-xs font-medium text-[#7a7b70] mb-1">Month and year (optional)</label>
                 <input type="month" value={tripMonth} onChange={e => setTripMonth(e.target.value)} className={inputCls} />
               </div>
               <div>

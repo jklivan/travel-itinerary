@@ -1,5 +1,7 @@
 'use client'
 
+import TripFormatPicker from '@/components/TripFormatPicker'
+
 import { readFileForUpload, fetchExtraction } from '@/lib/importFiles'
 import TripEntryLayout from '@/components/TripEntryLayout'
 import type { TripMapPlace } from '@/lib/tripMapPlaces'
@@ -29,7 +31,7 @@ type UploadedPhoto = { url: string; caption: string }
 
 type RawDestItem = { type: string; mealType?: string; rating?: number; name: string; notes?: string; link?: string; dayIndex?: number }
 type RawDest = { name?: string; country?: string; items?: RawDestItem[] }
-type ExtractionData = { title?: string; description?: string; startDate?: string; endDate?: string; notes?: string; destinations?: RawDest[] }
+type ExtractionData = { durationDays?: number; title?: string; description?: string; startDate?: string; endDate?: string; notes?: string; destinations?: RawDest[] }
 
 const DOC_ACCEPT = '.pdf,.docx,.xlsx,.xls,.csv,.txt,.html,.htm,image/jpeg,image/png,image/gif,image/webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain,text/html'
 
@@ -241,7 +243,7 @@ export default function CreatePage() {
   const [description, setDescription] = useState('')
   const [tripMonth, setTripMonth] = useState('')
   const [tripDays, setTripDays] = useState('')
-  const [postType] = useState<'itinerary' | 'guide'>('itinerary')
+  const [postType, setPostType] = useState<'itinerary' | 'guide'>('guide')
   const [tripAudience, setTripAudience] = useState<'family' | 'friends' | 'romantic' | 'adult'>('family')
   const [notes, setNotes] = useState('')
   const [tags, setTags] = useState<string[]>([])
@@ -337,7 +339,7 @@ export default function CreatePage() {
         title, description, startDate, endDate, notes,
         highlights: computedHighlightNames.join('\n'),
         destinations: submittableDests, photos, tags, tripRating,
-        postType, audience: tripAudience,
+        postType, durationDays: postType === 'guide' ? null : Number(tripDays) || null, audience: tripAudience,
         visibility: 'public',
         isDraft,
       })
@@ -356,7 +358,10 @@ export default function CreatePage() {
     if (first.description) setDescription(first.description)
     const extractedDates = monthAndDaysFromDates(first.startDate, first.endDate)
     if (extractedDates.month) setTripMonth(extractedDates.month)
-    if (extractedDates.days) setTripDays(extractedDates.days)
+    const scheduledDays = Math.max(0, ...results.flatMap(result => (result.destinations ?? []).flatMap(destination => (destination.items ?? []).filter(item => item.type !== 'hotel').map(item => item.dayIndex ?? 0))))
+    const duration = Math.max(Number(extractedDates.days) || 0, scheduledDays, ...results.map(result => Number.isInteger(result.durationDays) && result.durationDays! > 0 ? result.durationDays! : 0))
+    setTripDays(duration ? String(duration) : '')
+    setPostType(duration ? 'itinerary' : 'guide')
     if (first.notes) setNotes(first.notes)
     const allDests = results.flatMap(r => Array.isArray(r.destinations) && r.destinations.length > 0 ? mapExtractionDests(r.destinations) : [])
     if (allDests.length > 0) setDestinations(allDests)
@@ -788,10 +793,16 @@ export default function CreatePage() {
                 placeholder="A quick summary…" value={description} onChange={e => setDescription(e.target.value)} />
             </div>
 
-            {postType === 'itinerary' && (
+            <TripFormatPicker value={postType === 'guide' ? 'guide' : tripDays === '1' ? 'day-trip' : 'itinerary'} onChange={format => {
+                setPostType(format === 'guide' ? 'guide' : 'itinerary')
+                setTags(current => [...current.filter(tag => tag !== 'day-trip'), ...(format === 'day-trip' ? ['day-trip'] : [])])
+                setTripDays(format === 'day-trip' ? '1' : '')
+                if (format === 'guide') setTripMonth('')
+              }} />
+              {postType === 'itinerary' && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="tripMonth" className={labelClass}>Month and year *</label>
+                  <label htmlFor="tripMonth" className={labelClass}>Month and year (optional)</label>
                   <input id="tripMonth" type="month" className={inputClass} value={tripMonth} onChange={e => setTripMonth(e.target.value)} />
                 </div>
                 <div>
@@ -900,7 +911,7 @@ export default function CreatePage() {
                       {group.days.map((day, dyi) => (
                         <div key={dyi} className="rounded-xl border border-gray-100 overflow-hidden">
                           <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100">
-                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Day {dyi + 1}</span>
+                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{postType === 'guide' ? 'Places' : `Day ${day.dayIndex ?? dyi + 1}`}</span>
                             {group.days.length > 1 && (
                               <button type="button" onClick={() => removeDay(di, gi, dyi)} className="text-xs text-red-400 hover:text-red-600 font-medium">Remove day</button>
                             )}
@@ -921,7 +932,7 @@ export default function CreatePage() {
                           </div>
                         </div>
                       ))}
-                      <button type="button" onClick={() => addDay(di, gi)} className="w-full text-xs text-gray-500 hover:text-blue-600 border border-dashed border-gray-200 hover:border-blue-300 rounded-lg py-2 transition-colors">+ Add day</button>
+                      {postType !== 'guide' && <button type="button" onClick={() => addDay(di, gi)} className="w-full text-xs text-gray-500 hover:text-blue-600 border border-dashed border-gray-200 hover:border-blue-300 rounded-lg py-2 transition-colors">+ Add day</button>}
                     </div>
                   </div>
                 ))}

@@ -84,6 +84,8 @@ async function FeedResults({ searchQuery }: { searchQuery: string }) {
               fullWidth
               id={it.id}
               postType={it.postType}
+              tags={it.tags}
+              durationDays={it.durationDays}
               title={it.title}
               bestMonths={it.bestMonths}
               datesFlexible={it.datesFlexible}

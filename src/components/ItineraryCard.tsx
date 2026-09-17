@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { MapPin } from 'lucide-react'
+import { hasTripDates, tripDuration } from '@/lib/dayTrips'
 import { tripSeason } from '@/lib/tripSeason'
 import { TRIP_STAMPS } from '@/lib/tripStamps'
 import PhotoStrip from './PhotoStrip'
@@ -10,7 +11,7 @@ import { Amatic_SC, Kalam } from 'next/font/google'
 const amatic = Amatic_SC({ subsets: ['latin'], weight: '700' })
 const kalam = Kalam({ subsets: ['latin'], weight: '400' })
 
-type DestItem = { type: string; name: string }
+type DestItem = { type: string; name: string; dayIndex?: number | null }
 type Destination = { lat?: number | null; name: string; country: string | null; items: DestItem[] }
 
 type Props = {
@@ -31,6 +32,8 @@ type Props = {
   isBucketed?: boolean
   saveCount: number
   bestMonths?: string[]
+  durationDays?: number | null
+  tags?: string[]
   datesFlexible?: boolean
   fullWidth?: boolean
 }
@@ -62,23 +65,19 @@ function getInitials(name: string) {
   return name.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
-function tripDays(start: Date, end: Date) {
-  return Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / 86400000) + 1
-}
-
 export default function ItineraryCard({
   id, postType, title, startDate, endDate, audience, budget, tripRating, authorName, destinations, coverPhoto, photos = [],
-  currentUserId, isOwn, isBucketed = false, saveCount, fullWidth = false, datesFlexible = false, bestMonths = [],
+  currentUserId, isOwn, isBucketed = false, saveCount, fullWidth = false, datesFlexible = false, bestMonths = [], tags = [], durationDays,
 }: Props) {
-  const isGuide = postType === 'guide'
+  const days = tripDuration({ postType, startDate, endDate, datesFlexible, destinations, tags, durationDays })
+  const isGuide = days === null
   const stamp = TRIP_STAMPS.find(stamp => stamp.value === tripRating)
   const coverColor = hashPick(title, COVER_COLORS)
   const avatarColor = hashPick(authorName, AVATAR_COLORS)
   const initials = getInitials(authorName)
   const tapeColor = hashPick(id, TAPE_COLORS)
   const tapeRotation = hashPick(title, TAPE_ROTATIONS)
-  const days = tripDays(startDate, endDate)
-  const season = tripSeason({ startDate, endDate, datesFlexible, postType, bestMonths, latitude: destinations.find(destination => destination.lat != null)?.lat })
+  const season = tripSeason({ startDate, endDate, datesFlexible: !hasTripDates({ startDate, endDate, datesFlexible, postType }), postType: isGuide ? 'guide' : postType, bestMonths, latitude: destinations.find(destination => destination.lat != null)?.lat })
 
   function locationLabel(dests: Destination[]): string | null {
     if (dests.length === 0) return null
@@ -169,7 +168,8 @@ export default function ItineraryCard({
                 {location}
               </span>
             )}
-            {!isGuide && !datesFlexible && (
+            {days === null && <span className="block">Guide</span>}
+            {days !== null && (
               <span className="block">
                 {days}-day trip
               </span>
