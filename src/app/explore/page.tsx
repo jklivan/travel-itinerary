@@ -1,3 +1,4 @@
+import ExploreLanding from '@/components/ExploreLanding'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
 import type { ItineraryWhereInput } from '@/generated/prisma/models/Itinerary'
@@ -9,7 +10,7 @@ import ExploreSearchBar from '@/components/ExploreSearchBar'
 import { parseSearchQuery, type ParsedQuery } from '@/lib/parseSearchQuery'
 import { tagMeta } from '@/lib/tags'
 import { DAY_TRIP_TAG, isDayTrip } from '@/lib/dayTrips'
-import { MapPin, Globe, ChevronRight, Users, MessagesSquare } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import ExploreMap from '@/components/ExploreMap'
 import ExploreTripFilters from '@/components/ExploreTripFilters'
 import { parseExploreFilters, exploreFilterWhere } from '@/lib/exploreFilters'
@@ -240,26 +241,7 @@ export default async function ExplorePage({
 }) {
   const params = await searchParams
   if (!Object.values(params).some(Boolean)) {
-    return (
-      <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-[#2C1810] mb-2">Explore</h1>
-        <p className="text-sm text-[#8B6F4E] mb-6">How would you like to find your next trip?</p>
-        <div className="space-y-4">
-          {[
-            { href: '/explore?tag=day-trip', title: 'Day trips', description: 'One or two days away—quick escapes and overnight adventures.', Icon: MapPin },
-            { href: '/explore/questions', title: 'Ask your friends', description: 'Ask a question, tag an itinerary, and swap travel advice.', Icon: MessagesSquare },
-            { href: '/explore?view=tags', title: 'SEARCH BY TRIP TYPE', description: 'Family adventures, couples getaways, and trips with friends.', Icon: Users },
-            { href: '/explore?view=destinations', title: 'SEARCH BY DESTINATION', description: 'Browse places around the world.', Icon: Globe },
-          ].map(({ href, title, description, Icon }) => (
-            <Link key={href} href={href} className="flex items-center gap-4 rounded-2xl border border-[#C4A882] bg-[#FAF7F2] p-5 hover:bg-[#E8D5B7] transition-colors">
-              <Icon size={28} className="shrink-0 text-[#507c76]" />
-              <div className="flex-1"><h2 className="font-[family-name:var(--font-playfair)] text-lg tracking-wide text-[#2C1810]">{title}</h2><p className="text-sm text-[#8B6F4E] mt-1">{description}</p></div>
-              <ChevronRight size={20} className="shrink-0 text-[#8B6F4E]" />
-            </Link>
-          ))}
-        </div>
-      </div>
-    )
+    return <ExploreLanding />
   }
   return <Suspense key={JSON.stringify(params)} fallback={<div role="status" className="max-w-5xl mx-auto px-4 py-6">{params.q ? `Searching for “${params.q}”…` : 'Loading destinations…'}</div>}>
     <ExploreResults params={params} />

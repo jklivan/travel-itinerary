@@ -152,7 +152,7 @@ function PlaceRow({ place }: { place: Place & { destination: string } }) {
       finally { saving.current = false; setBusy(false) }
     }}><fieldset disabled={busy} className="space-y-3"><label className="block text-sm">{place.type === 'transport' ? 'Transport name' : 'Place name'}{place.type === 'transport' ? <input name="name" value={name} onChange={event => setName(event.target.value)} required maxLength={240} className={inputClass} /> : <PlacesAutocomplete name="name" value={name} onChange={value => { setName(value); setPlaceId('') }} onSelect={(_main, _secondary, id) => setPlaceId(id ?? '')} type={place.type === 'food_drink' ? 'restaurant' : place.type === 'hotel' ? 'hotel' : 'activity'} city={place.destination} required maxLength={240} className={inputClass} />}</label>
       <input type="hidden" name="placeId" value={placeId} />
-      <label className="block text-sm">Status<select name="status" defaultValue={place.status} className={inputClass}><option value="considering">Considering</option><option value="booked">Booked</option><option value="visited">Visited</option></select></label>
+      <input type="hidden" name="status" value={place.status} />
       <label className="block text-sm">Notes<textarea name="notes" defaultValue={place.notes ?? ''} maxLength={8000} rows={3} className={inputClass} /></label><DayField day={place.day} />
       <div className="flex gap-3"><button className={buttonClass}>{busy ? 'Saving…' : 'Save changes'}</button><button type="button" onClick={() => setEditing(false)} className="px-3 text-sm">Cancel</button></div>
     </fieldset>{error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}</form>}
