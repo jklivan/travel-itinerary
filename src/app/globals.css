@@ -22,7 +22,7 @@
 body {
   background: #f3eee5;
   color: #242e25;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
 input, textarea, select {
@@ -65,8 +65,12 @@ input, textarea, select {
 /* Postcard's serif wordmark and postal cancellation mark. */
 .postcard-header { background:linear-gradient(115deg,#242e25,#3d4734); border-bottom:1px solid #cfb79d50; }
 .postcard-brand { display:inline-flex; flex-direction:column; color:#faf7f1; }
-.postcard-wordmark { position:relative; display:inline-flex; align-items:center; gap:9px; font-family:var(--font-playfair),Georgia,serif; font-size:32px; font-weight:400; letter-spacing:-.05em; line-height:1.15; }
+.postcard-wordmark { position:relative; display:inline-flex; align-items:center; gap:9px; font-family:var(--font-playfair),Georgia,serif; font-size:27px; font-weight:400; letter-spacing:.12em; text-transform:uppercase; line-height:1.15; }
 .postcard-waves { width:33px; height:21px; color:#cfb79d; }
 .postcard-tagline { margin-top:5px; font-size:8px; line-height:1.4; letter-spacing:.27em; text-transform:uppercase; color:#e4d9c8; }
-@media(min-width:640px) { .postcard-wordmark { font-size:38px; } .postcard-tagline { font-size:9px; } }
+@media(min-width:640px) { .postcard-wordmark { font-size:31px; } .postcard-tagline { font-size:9px; } }
 @media(max-width:350px) { .postcard-wordmark { font-size:28px; } .postcard-waves { width:26px; } }
+
+/* One clear typographic hierarchy across Postcard navigation and trip cards. */
+.app-bottom-nav a > span:not(.absolute) { text-transform:uppercase; letter-spacing:.12em; font-size:9px; line-height:1.25; }
+.postcard-wordmark { white-space:nowrap; }

@@ -6,10 +6,7 @@ import { tripSeason } from '@/lib/tripSeason'
 import { TRIP_STAMPS } from '@/lib/tripStamps'
 import PhotoStrip from './PhotoStrip'
 import BucketButton from './BucketButton'
-import { Amatic_SC, Kalam } from 'next/font/google'
 
-const amatic = Amatic_SC({ subsets: ['latin'], weight: '700' })
-const kalam = Kalam({ subsets: ['latin'], weight: '400' })
 
 type DestItem = { type: string; name: string; dayIndex?: number | null }
 type Destination = { lat?: number | null; name: string; country: string | null; items: DestItem[] }
@@ -157,7 +154,7 @@ export default function ItineraryCard({
 
         {/* Caption */}
         <Link href={`/itinerary/${id}`} className={fullWidth ? 'block px-1' : 'block'}>
-          <h2 className={`${amatic.className} text-[28px] text-[#242e25] leading-tight line-clamp-2 mb-2`}>
+          <h2 className={`font-[family-name:var(--font-playfair)] text-[25px] text-[#242e25] leading-tight line-clamp-2 mb-2`}>
             {title}
           </h2>
 
@@ -176,7 +173,7 @@ export default function ItineraryCard({
             )}
           </div>
 
-          {season && <p className={`${kalam.className} mt-1.5 text-right text-sm text-[#8B6F4E]`} aria-label={`${isGuide || datesFlexible ? 'Recommended season' : 'Trip season'}: ${season}`}>{season}</p>}
+          {season && <p className={`mt-1.5 text-right text-xs uppercase tracking-[0.14em] text-[#8B6F4E]`} aria-label={`${isGuide || datesFlexible ? 'Recommended season' : 'Trip season'}: ${season}`}>{season}</p>}
 
           <div className={`flex items-center gap-2 border-t border-[#dfd3c2] ${fullWidth ? 'mt-2 pt-2' : 'mt-3 pt-3'}`}>
             <div
@@ -185,7 +182,7 @@ export default function ItineraryCard({
             >
               {initials}
             </div>
-            <span className={`${kalam.className} text-sm text-[#8B6F4E] truncate flex-1`}>
+            <span className={`text-xs font-medium text-[#8B6F4E] truncate flex-1`}>
               {authorName}
             </span>
             <div className="flex items-center gap-1.5 shrink-0">
