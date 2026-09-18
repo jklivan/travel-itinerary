@@ -12,7 +12,6 @@ import { notFound, redirect } from 'next/navigation'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
 import { Plane, Hotel, Utensils, Camera, MapPin, Check, Ban, BedDouble } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
-import SavedFolderPicker from '@/components/SavedFolderPicker'
 import { eventPhotos, pickEventPhoto, tripPhotoGallery } from '@/lib/eventPhotos'
 import PhotoStrip from '@/components/PhotoStrip'
 import { tagMeta } from '@/lib/tags'
@@ -544,8 +543,7 @@ export default async function ItineraryPage({
               )}
               {!isOwn && (
                 <>
-                  <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" />
-                  {session?.user && <SavedFolderPicker itineraryId={it.id} />}
+                  <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />
                 </>
               )}
               {session?.user && !isOwn && (
