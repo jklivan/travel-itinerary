@@ -117,7 +117,7 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
           </div>
           <div className={styles.viewerActions}>
             {story.tripHref && <Link href={story.tripHref} onClick={() => dialog.current?.close()}>View trip →</Link>}
-            {story.authorId !== userId && <button type="button" onClick={() => setSaveOpen(true)} aria-haspopup="dialog"><span>{saved.includes(story.id) ? <Check size={18} /> : <Plus size={19} />}</span>Save to a trip</button>}
+            {(story.authorId !== userId || !story.hasTrip) && <button type="button" onClick={() => setSaveOpen(true)} aria-haspopup="dialog"><span>{saved.includes(story.id) ? <Check size={18} /> : <Plus size={19} />}</span>Save to a trip</button>}
             {story.authorId === userId && <button type="button" onClick={() => setConfirmDelete(true)}><Trash2 size={16} />Delete story</button>}
           </div>
           {confirmDelete && <div className={styles.deletePrompt}><p>Remove this story now?</p><button type="button" disabled={deleting} onClick={async () => {

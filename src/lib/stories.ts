@@ -2,7 +2,7 @@ import type { Prisma } from '@/generated/prisma/client'
 
 export const STORY_LIFETIME_MS = 24 * 60 * 60 * 1000
 export type StoryCard = {
-  id: string; authorId: string; authorName: string; placeName: string; destination: string;
+  id: string; authorId: string; authorName: string; placeName: string; destination: string; hasTrip: boolean;
   type: string; photoUrl: string; caption: string; createdAt: string; expiresAt: string; tripHref: string | null
 }
 export function visibleStoriesWhere(userId: string | null, following = false, now = new Date()): Prisma.StoryWhereInput {

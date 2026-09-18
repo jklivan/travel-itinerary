@@ -12,7 +12,7 @@ const photos = module('../src/lib/eventPhotos.ts')
 const lib = module('../src/lib/stories.ts')
 const id = '12345678-1234-1234-1234-123456789012'
 function harness(user = 'owner', itemType = 'hotel') {
-  const rows = [], queries = []
+  const rows = [], queries = [], plans = [], destinations = [], addedItems = []
   const item = { id: 'place', name: 'Hotel', type: itemType, photoUrl: '/old.jpg', photoUrls: ['/old.jpg'], notes: 'secret notes', destination: { itineraryId: 'private', name: 'Rome', country: 'Italy' } }
   const prisma = {
     story: {
@@ -22,18 +22,38 @@ function harness(user = 'owner', itemType = 'hotel') {
       findFirst: async query => { queries.push(query); return rows.find(row => row.id === query.where.id && row.expiresAt > query.where.expiresAt.gt) },
       deleteMany: async ({ where }) => { const index = rows.findIndex(row => row.id === where.id && row.userId === where.userId); if (index < 0) return { count: 0 }; rows.splice(index, 1); return { count: 1 } },
     },
-    destItem: { findFirst: async ({ where }) => where.destination.itinerary.userId === 'owner' ? item : null, updateMany: async ({data}) => { Object.assign(item, data); return { count: 1 } } },
-    itinerary: { findFirst: async () => ({ id: 'plan' }) },
+    destItem: { findFirst: async ({ where }) => where.destination.itinerary.userId === 'owner' ? item : null, updateMany: async ({data}) => { Object.assign(item, data); return { count: 1 } }, aggregate: async () => ({ _max: { order: -1, groupIndex: -1 } }), create: async ({ data }) => { const created = { ...data, id: 'new-place', lat: null, lng: null }; addedItems.push(created); return created } },
+    destination: { findFirst: async ({ where }) => destinations.find(destination => destination.itineraryId === where.itineraryId && destination.name.toLowerCase() === where.name.equals.toLowerCase()) ?? null, create: async ({ data }) => { const created = { ...data, id: `destination-${destinations.length + 1}` }; destinations.push(created); return created }, count: async ({ where }) => destinations.filter(destination => destination.itineraryId === where.itineraryId).length },
+    itinerary: { create: async ({ data }) => { plans.push(data); return data }, findFirst: async () => ({ id: 'plan' }) },
   }
   prisma.$transaction = async callback => {
-    const before = structuredClone(item), beforeRows = rows.length
+    const before = structuredClone(item), beforeRows = rows.length, beforePlans = plans.length, beforeDestinations = destinations.length, beforeItems = addedItems.length
     try { return await callback(prisma) }
-    catch (error) { Object.assign(item, before); rows.splice(beforeRows); throw error }
+    catch (error) { Object.assign(item, before); rows.splice(beforeRows); plans.splice(beforePlans); destinations.splice(beforeDestinations); addedItems.splice(beforeItems); throw error }
   }
   const actions = module('../src/actions/stories.ts', { '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} }, '@/lib/eventPhotos': photos, '@/lib/stories': lib })
-  return { actions, rows, queries, item, prisma }
+  return { actions, rows, queries, item, prisma, plans, destinations, addedItems }
 }
 const input = { id, itemId: 'place', photoUrl: '/photo.jpg', caption: 'Great stay' }
+test('posting a new activity creates an editable itinerary and adds the place to it', async () => {
+  const h = harness()
+  const newPlanId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+  const result = await h.actions.postStory({ id, placeName: 'A lakeside walk', destination: 'Lucerne', country: 'Switzerland', type: 'activity', placeId: 'google-place-id', newPlanId, newPlanTitle: 'Lucerne weekend', photoUrl: '/walk.jpg', caption: 'So peaceful' })
+  assert.ok(result.success)
+  assert.equal(h.rows.length, 1)
+  assert.equal(h.rows[0].sourceItineraryId, newPlanId)
+  assert.equal(h.rows[0].sourceItemId, 'new-place')
+  assert.equal(h.rows[0].placeName, 'A lakeside walk')
+  assert.equal(h.rows[0].destination, 'Lucerne')
+  assert.equal(h.rows[0].country, 'Switzerland')
+  assert.equal(h.rows[0].type, 'activity')
+  assert.equal(h.rows[0].placeId, 'google-place-id')
+  assert.equal(h.plans[0].id, newPlanId)
+  assert.equal(h.plans[0].title, 'Lucerne weekend')
+  assert.equal(h.plans[0].isPlan, true)
+  assert.equal(h.destinations[0].name, 'Lucerne')
+  assert.equal(h.addedItems[0].photoUrl, '/walk.jpg')
+})
 test('posting expires exactly 24 hours later and retries do not extend expiry', async () => {
   const h = harness()
   assert.ok((await h.actions.postStory(input)).success)
@@ -53,15 +73,18 @@ test('only owners can post their place; anonymous posts rejected', async () => {
     assert.equal(h.rows.length, 0)
   }
 })
-test('private trip identifiers are never exposed by story feed', async () => {
+test('private plan links are shown only to the owner', async () => {
   const h = harness()
   await h.actions.postStory(input)
-  Object.assign(h.rows[0], { user: { id: 'owner', name: 'Alice' }, sourceItinerary: { id: 'private', visibility: 'draft' } })
+  Object.assign(h.rows[0], { user: { id: 'owner', name: 'Alice' }, sourceItinerary: { id: 'private', visibility: 'draft', isPlan: true } })
   const result = (await h.actions.activeStories())[0]
-  assert.equal(result.tripHref, null)
+  assert.equal(result.tripHref, '/plan/private')
   assert.equal(result.sourceItineraryId, undefined)
   assert.equal(result.sourceItemId, undefined)
   assert.equal(result.notes, undefined)
+  const viewer = harness('viewer')
+  viewer.rows.push(h.rows[0])
+  assert.equal((await viewer.actions.activeStories())[0].tripHref, null)
   h.rows[0].sourceItinerary.visibility = 'public'
   assert.equal((await h.actions.activeStories())[0].tripHref, '/itinerary/private')
 })
