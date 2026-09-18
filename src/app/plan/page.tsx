@@ -18,12 +18,18 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
     { createdAt: { gte: recentCutoff } },
   ] }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, visibility: true, isPlan: true, destinations: { select: { name: true, _count: { select: { items: true } } } } } })
   return <div className="mx-auto max-w-2xl px-4 py-7 text-[#2e4147]">
-    <h1 className="font-[family-name:var(--font-playfair)] text-3xl">Your next trip starts here</h1>
-    <p className="mb-6 mt-2 text-[#73786d]">Collect places now. Work out the days later.</p>
-    <NewPlanForm saveStory={typeof saveStory === 'string' && saveStory.length <= 200 ? saveStory : undefined} savePlace={typeof savePlace === 'string' && savePlace.length <= 200 ? savePlace : undefined} />
-    <div className="mt-6"><Link href={`/user/${userId}`} className="inline-flex min-h-11 items-center rounded-full border border-[#d7cebc] px-4 text-sm font-medium text-[#59694f] hover:bg-[#e6ece5]">View all trips on your profile →</Link></div>
+    <section aria-labelledby="start-planning-heading" className="rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4 sm:p-5">
+      <header className="mb-4">
+        <h1 id="start-planning-heading" className="font-[family-name:var(--font-playfair)] text-2xl tracking-wide text-[#242e25]">Start planning</h1>
+        <p className="mt-1 text-sm text-[#73786d]">Collect places now. Work out the days later.</p>
+      </header>
+      <NewPlanForm saveStory={typeof saveStory === 'string' && saveStory.length <= 200 ? saveStory : undefined} savePlace={typeof savePlace === 'string' && savePlace.length <= 200 ? savePlace : undefined} />
+    </section>
     <section className="mt-8" aria-labelledby="your-trips-heading">
-      <h2 id="your-trips-heading" className="text-xl font-semibold">Your trips</h2>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 id="your-trips-heading" className="font-[family-name:var(--font-playfair)] text-2xl tracking-wide text-[#242e25]">Your trips</h2>
+        <Link href={`/user/${userId}`} className="inline-flex min-h-10 items-center text-sm font-medium text-[#59694f] hover:underline">All trips →</Link>
+      </div>
       {[
         { title: 'Private Plans', description: 'Only you can see these. Keep planning or publish whenever you’re ready.', private: true, empty: 'No private plans yet.' },
         { title: 'Shared Trips', description: 'Already published. You can still add places and update your trip.', private: false, empty: 'No current or recently added shared trips.' },

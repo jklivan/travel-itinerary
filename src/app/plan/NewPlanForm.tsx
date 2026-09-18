@@ -44,7 +44,7 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
       }
     } catch { setError('Could not save. Your details are still here; please try again.') }
     finally { busy.current = false; setSaving(false) }
-  }} className="space-y-4 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-5">
+  }} className="space-y-4">
     {(savePlace || saveStory) && <p className="text-sm text-[#59694f]">We’ll add the place you selected to this new plan.</p>}
     <fieldset disabled={saving} className="space-y-4">
       <TripFormatPicker value={format} onChange={setFormat} />
