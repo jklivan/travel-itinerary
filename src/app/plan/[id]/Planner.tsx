@@ -9,7 +9,7 @@ import planningStyles from './Planner.module.css'
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, MapPin, LockKeyhole, CalendarDays, Check, Hotel, Utensils, Camera, Plane } from 'lucide-react'
-import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace } from '@/actions/planning'
+import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace, sharePlan } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
 import CopyTripButton from '@/components/CopyTripButton'
 import PlaceEntryForm from '@/components/PlaceEntryForm'
@@ -25,10 +25,13 @@ type Trip = { durationDays?: number | null; id: string; title: string; isPlan: b
 const categories = [{ value: 'hotel', label: 'Hotels', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
 
 export default function Planner({ trip, initialImport = false, initialDetails = false }: { trip: Trip; initialImport?: boolean; initialDetails?: boolean }) {
+  const router = useRouter()
   const [tab, setTab] = useState<'places' | 'itinerary' | 'map'>('places')
   const [mapOpened, setMapOpened] = useState(false)
   const [adding, setAdding] = useState(false)
   const [importing, setImporting] = useState(initialImport)
+  const [publishing, setPublishing] = useState(false)
+  const [publishMessage, setPublishMessage] = useState('')
   const places = trip.destinations.flatMap(d => d.items.map(item => ({ ...item, destination: [d.name, d.country].filter(Boolean).join(', ') })))
   const scheduled = [...new Set(places.flatMap(p => p.day === null ? [] : [p.day]))].sort((a, b) => a - b)
   function renderPlace(place: Place & { destination: string }) { return <PlaceRow key={place.id} place={place} /> }
@@ -39,10 +42,21 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     <p className="mt-2 flex items-center gap-2 text-sm text-[#73786d]"><CalendarDays size={16} />{trip.start ? `${trip.start} — ${trip.end}` : 'Dates are flexible'} · {places.length} places</p>
     {trip.isPlan && <details open={initialDetails || undefined} className="mt-3"><summary className="cursor-pointer py-2 text-sm text-[#59694f]">Edit trip name & dates</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
     <div className="mt-4 flex flex-wrap items-center gap-3">
+      {trip.isPlan && trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={async () => {
+        if (publishing) return
+        setPublishing(true); setPublishMessage('')
+        try {
+          const result = await sharePlan(trip.id)
+          if (result.error) setPublishMessage(result.error)
+          else { setPublishMessage('Your itinerary is now published.'); router.refresh() }
+        } catch { setPublishMessage('Could not publish your itinerary. Please try again.') }
+        finally { setPublishing(false) }
+      }} className="min-h-11 rounded-xl bg-[#355650] px-4 py-3 text-sm font-semibold text-white hover:bg-[#294640] disabled:opacity-60">{publishing ? 'Publishing…' : 'Publish itinerary'}</button>}
       <CopyTripButton itineraryId={trip.id} title={trip.title} isOwn />
       {!(trip.visibility === 'draft' && trip.isPlan) && <Link href={trip.visibility === 'draft' ? `/itinerary/${trip.id}/edit` : `/itinerary/${trip.id}`} className="min-h-11 rounded-xl border border-[#d7cebc] px-4 py-3 text-sm">{trip.visibility === 'draft' ? 'Edit & publish' : 'View shared trip'}</Link>}
       {trip.visibility !== 'draft' && <span className="text-xs text-[#73786d]">Saved changes appear on your shared trip.</span>}
     </div>
+    {publishMessage && <p role="status" className="mt-2 text-sm text-[#59694f]">{publishMessage}</p>}
     {!adding && !importing && <div className="sticky top-0 z-20 -mx-1 mt-5 bg-[#f3eee5] px-1 py-3">
       <button className={`${buttonClass} flex w-full items-center justify-center gap-2`} onClick={() => setAdding(true)}><Plus size={20} />Add a place</button>
       {trip.isPlan && <Link href={`/plan/${trip.id}/friends`} className="mt-2 flex min-h-11 items-center justify-center rounded-xl border border-[#8caaa3] bg-[#fffdf7] px-4 py-2 text-sm font-semibold text-[#59694f]">Browse friends’ places · Add several at once</Link>}
