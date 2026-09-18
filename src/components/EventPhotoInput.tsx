@@ -46,7 +46,7 @@ export default function EventPhotoInput({ photos, name, onChange, onBusyChange }
         <button type="button" disabled={busy} onClick={() => onChange(photos.filter(photo => photo !== url))} aria-label={`Remove photo ${index + 1} for ${name}`} className="absolute -top-1 -right-1 rounded-full bg-[#2e4147] p-1 text-white disabled:opacity-50"><X size={12} /></button>
       </div>)}
     </div>}
-    <label className={`inline-flex items-center gap-1.5 text-xs font-medium text-[#507c76] ${busy ? 'opacity-50' : 'cursor-pointer'}`}>
+    <label className={`inline-flex items-center gap-1.5 text-xs font-medium text-[#59694f] ${busy ? 'opacity-50' : 'cursor-pointer'}`}>
       <ImageIcon size={14} />{busy ? 'Uploading…' : photos.length ? 'Add more photos' : 'Add photos'}
       <input type="file" multiple accept="image/*" className="sr-only" disabled={busy} aria-label={`Add photos for ${name}`} onChange={event => {
         const files = Array.from(event.target.files ?? [])

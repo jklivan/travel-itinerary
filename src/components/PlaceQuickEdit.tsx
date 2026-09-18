@@ -48,8 +48,8 @@ export default function PlaceQuickEdit({ itemId, name, rating, photos, compact =
 
   return <section aria-label={`Edit ${name}`} className={compact ? `text-sm ${mode ? 'w-full border-t border-[#e3dfd2] pt-3' : ''}` : 'mt-2 rounded-lg border border-[#d7cebc] bg-[#faf7ee] p-2 text-sm'}>
     {!mode ? <div className="flex flex-wrap gap-2">
-      <button type="button" onClick={() => open('photos')} aria-label={`Edit photos for ${name}`} className="inline-flex min-h-11 items-center gap-1.5 px-2 text-[#507c76]"><Camera size={15} />{photos.length ? 'Edit photos' : 'Add photos'}</button>
-      <button type="button" onClick={() => open('rating')} aria-label={`Change rating for ${name}`} className="inline-flex min-h-11 items-center gap-1.5 px-2 text-[#507c76]"><Star size={15} />{rating ? 'Change rating' : 'Add rating'}</button>
+      <button type="button" onClick={() => open('photos')} aria-label={`Edit photos for ${name}`} className="inline-flex min-h-11 items-center gap-1.5 px-2 text-[#59694f]"><Camera size={15} />{photos.length ? 'Edit photos' : 'Add photos'}</button>
+      <button type="button" onClick={() => open('rating')} aria-label={`Change rating for ${name}`} className="inline-flex min-h-11 items-center gap-1.5 px-2 text-[#59694f]"><Star size={15} />{rating ? 'Change rating' : 'Add rating'}</button>
       <button type="button" onClick={() => { setSaved(''); setPostingMoment(true) }} aria-label={`Post this moment at ${name}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[#c78e77] bg-[#f6e6dc] px-3 font-semibold text-[#874a35] transition-colors hover:bg-[#efd6c7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#874a35]"><Plus size={15} />Post this moment</button>
     </div> : <>
       <p className="px-2 py-1 font-medium text-[#2e4147]">{mode === 'photos' ? 'Photos' : 'Your rating'} · {name}</p>
@@ -62,10 +62,10 @@ export default function PlaceQuickEdit({ itemId, name, rating, photos, compact =
       {error && <p role="alert" className="px-2 py-1 text-red-700">{error}</p>}
       <div className="flex justify-end gap-2 pt-2">
         <button type="button" disabled={saving || uploading} onClick={() => { setMode(null); setError('') }} className="min-h-11 px-3 disabled:opacity-50">Cancel</button>
-        <button type="button" disabled={saving || uploading} onClick={() => void save()} className="min-h-11 rounded-lg bg-[#507c76] px-4 text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>
+        <button type="button" disabled={saving || uploading} onClick={() => void save()} className="min-h-11 rounded-lg bg-[#59694f] px-4 text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>
       </div>
     </>}
     {postingMoment && <StoryComposer initialItemId={itemId} onClose={() => setPostingMoment(false)} onPosted={() => { setPostingMoment(false); setSaved('Posted to Little moments for 24 hours.'); router.refresh() }} />}
-    {saved && <p role="status" className="px-2 text-xs text-[#507c76]">{saved}</p>}
+    {saved && <p role="status" className="px-2 text-xs text-[#59694f]">{saved}</p>}
   </section>
 }

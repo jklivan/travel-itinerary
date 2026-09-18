@@ -12,17 +12,18 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  themeColor: '#303b2c',
 }
 
 export const metadata: Metadata = {
-  title: 'MilesAway — Share Your Itineraries',
-  description: 'Discover and share travel itineraries with the world.',
+  title: 'Postcard — Travel lives here',
+  description: 'Collect places. Keep the memories. Plan trips and share your favorite places with friends on Postcard.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geist.variable} ${playfair.variable} h-full antialiased`}>
-      <body className="min-h-screen bg-[#F0E8D9] font-[family-name:var(--font-geist-sans)]">
+      <body className="min-h-screen bg-[#f3eee5] font-[family-name:var(--font-geist-sans)]">
         <Providers>
           <Navbar />
           <main className="app-main">{children}</main>

@@ -9,7 +9,7 @@ import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import { startPlan, copyPlaceToPlan } from '@/actions/planning'
 
 export const inputClass = 'mt-1 w-full min-w-0 rounded-xl border border-[#d7cebc] bg-white px-3 py-3 text-base text-[#2e4147]'
-export const buttonClass = 'min-h-11 rounded-xl bg-[#2C1810] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50'
+export const buttonClass = 'min-h-11 rounded-xl bg-[#242e25] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50'
 
 export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: string; saveStory?: string }) {
   const router = useRouter()
@@ -45,7 +45,7 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
     } catch { setError('Could not save. Your details are still here; please try again.') }
     finally { busy.current = false; setSaving(false) }
   }} className="space-y-4 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-5">
-    {(savePlace || saveStory) && <p className="text-sm text-[#507c76]">We’ll add the place you selected to this new plan.</p>}
+    {(savePlace || saveStory) && <p className="text-sm text-[#59694f]">We’ll add the place you selected to this new plan.</p>}
     <fieldset disabled={saving} className="space-y-4">
       <TripFormatPicker value={format} onChange={setFormat} />
       <input type="hidden" name="format" value={format} />
@@ -53,13 +53,13 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
       {format === 'itinerary' && <label className="block text-sm font-medium">Number of days (optional)<input name="durationDays" type="number" min="2" step="1" className={inputClass} placeholder="Or add a daily schedule later" /></label>}
       <label className="block text-sm font-medium">Where are you thinking?<PlacesAutocomplete name="destination" value={destination} onChange={setDestination} onSelect={(main, secondary) => setDestination([main, secondary].filter(Boolean).join(', '))} type="destination" maxLength={160} placeholder="e.g. Italy, Japan, a weekend away…" className={inputClass} /></label>
       <label className="block text-sm font-medium">Trip name <span className="font-normal">(optional)</span><input name="title" maxLength={160} placeholder="Summer in Italy" className={inputClass} /></label>
-      <details><summary className="cursor-pointer py-2 text-sm text-[#507c76]">Add dates (optional)</summary><DateFields /></details>
+      <details><summary className="cursor-pointer py-2 text-sm text-[#59694f]">Add dates (optional)</summary><DateFields /></details>
       <p className="text-sm text-[#73786d]">Start with an idea. Save hotels, restaurants, and things to do as you find them. Your plan stays private until you share it.</p>
       <button type="submit" value="plan" className={`${buttonClass} w-full`}>{saving ? 'Saving your plan…' : 'Start planning'}</button>
-      <button type="submit" value="import" className="min-h-11 w-full rounded-xl border border-[#d7cebc] px-5 py-3 text-sm font-semibold text-[#507c76] disabled:opacity-50">Import notes or a file</button>
+      <button type="submit" value="import" className="min-h-11 w-full rounded-xl border border-[#d7cebc] px-5 py-3 text-sm font-semibold text-[#59694f] disabled:opacity-50">Import notes or a file</button>
     </fieldset>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-    {error && createdPlan && <Link href={`/plan/${createdPlan}`} className="block text-sm text-[#507c76] underline">Open your saved plan →</Link>}
+    {error && createdPlan && <Link href={`/plan/${createdPlan}`} className="block text-sm text-[#59694f] underline">Open your saved plan →</Link>}
   </form>
 }
 

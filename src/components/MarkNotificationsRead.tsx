@@ -7,7 +7,7 @@ export default function MarkNotificationsRead() {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState(false)
   return <div>
-    <button disabled={pending} className="text-sm text-[#507c76] hover:underline disabled:opacity-50" onClick={() => startTransition(async () => {
+    <button disabled={pending} className="text-sm text-[#59694f] hover:underline disabled:opacity-50" onClick={() => startTransition(async () => {
       setError(false)
       try {
         await markAllNotificationsRead()

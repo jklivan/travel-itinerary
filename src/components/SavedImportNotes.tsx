@@ -28,7 +28,7 @@ export default function SavedImportNotes({ refreshKey, disabled, onRestore }: {
   }
   if (!notes.length && !error) return null
   return <details className="rounded-xl border border-[#d7cebc] bg-[#faf7ee] p-4">
-    <summary className="cursor-pointer text-sm font-semibold text-[#507c76]">Recover saved notes{notes.length ? ` (${notes.length})` : ''}</summary>
+    <summary className="cursor-pointer text-sm font-semibold text-[#59694f]">Recover saved notes{notes.length ? ` (${notes.length})` : ''}</summary>
     <p className="mt-2 text-xs text-[#6b7067]">Your last 20 saved imports. Only you can access these notes. Choose one to try importing again.</p>
     {error && <p role="alert" className="mt-2 text-sm text-red-700">{error} <button type="button" onClick={() => setRetry(value => value + 1)} className="underline">Retry</button></p>}
     <ul className="mt-3 space-y-2">{notes.map(note => <li key={note.id}>

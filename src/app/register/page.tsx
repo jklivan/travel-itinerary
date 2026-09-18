@@ -14,11 +14,11 @@ function RegisterForm() {
     <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-[#2C1810]">Create an account</h1>
-          <p className="text-sm text-[#8B6F4E] mt-1">Start sharing your travel adventures</p>
+          <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-[#242e25]">Create an account</h1>
+          <p className="text-sm text-[#8B6F4E] mt-1">Join Postcard. Good places ahead.</p>
         </div>
 
-        <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8D5B7] p-6">
+        <div className="bg-[#faf7f1] rounded-2xl border border-[#dfd3c2] p-6">
           <form action={action} className="space-y-4">
             <input type="hidden" name="saveTrip" value={tripId} />
             {state?.message && (
@@ -28,7 +28,7 @@ function RegisterForm() {
             )}
 
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-[#5C3D2E] mb-1">
+              <label htmlFor="name" className="block text-sm font-medium text-[#485340] mb-1">
                 Name
               </label>
               <input
@@ -37,7 +37,7 @@ function RegisterForm() {
                 type="text"
                 autoComplete="name"
                 required
-                className="w-full rounded-lg border border-[#C4A882] px-4 py-2.5 text-sm text-[#2C1810] bg-white focus:outline-none focus:ring-2 focus:ring-[#8B6F4E] focus:border-transparent"
+                className="w-full rounded-lg border border-[#c1ad93] px-4 py-2.5 text-sm text-[#242e25] bg-white focus:outline-none focus:ring-2 focus:ring-[#8B6F4E] focus:border-transparent"
                 placeholder="Jane Smith"
               />
               {state?.errors?.name && (
@@ -46,7 +46,7 @@ function RegisterForm() {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-[#5C3D2E] mb-1">
+              <label htmlFor="email" className="block text-sm font-medium text-[#485340] mb-1">
                 Email
               </label>
               <input
@@ -55,7 +55,7 @@ function RegisterForm() {
                 type="email"
                 autoComplete="email"
                 required
-                className="w-full rounded-lg border border-[#C4A882] px-4 py-2.5 text-sm text-[#2C1810] bg-white focus:outline-none focus:ring-2 focus:ring-[#8B6F4E] focus:border-transparent"
+                className="w-full rounded-lg border border-[#c1ad93] px-4 py-2.5 text-sm text-[#242e25] bg-white focus:outline-none focus:ring-2 focus:ring-[#8B6F4E] focus:border-transparent"
                 placeholder="you@example.com"
               />
               {state?.errors?.email && (
@@ -64,7 +64,7 @@ function RegisterForm() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-[#5C3D2E] mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-[#485340] mb-1">
                 Password
               </label>
               <input
@@ -73,7 +73,7 @@ function RegisterForm() {
                 type="password"
                 autoComplete="new-password"
                 required
-                className="w-full rounded-lg border border-[#C4A882] px-4 py-2.5 text-sm text-[#2C1810] bg-white focus:outline-none focus:ring-2 focus:ring-[#8B6F4E] focus:border-transparent"
+                className="w-full rounded-lg border border-[#c1ad93] px-4 py-2.5 text-sm text-[#242e25] bg-white focus:outline-none focus:ring-2 focus:ring-[#8B6F4E] focus:border-transparent"
                 placeholder="Min. 8 characters"
               />
               {state?.errors?.password && (
@@ -84,7 +84,7 @@ function RegisterForm() {
             <button
               type="submit"
               disabled={pending}
-              className="w-full bg-[#2C1810] text-white font-medium py-2.5 rounded-lg hover:bg-[#5C3D2E] transition-colors disabled:opacity-60"
+              className="w-full bg-[#242e25] text-white font-medium py-2.5 rounded-lg hover:bg-[#485340] transition-colors disabled:opacity-60"
             >
               {pending ? 'Creating account…' : 'Create account'}
             </button>
@@ -93,7 +93,7 @@ function RegisterForm() {
 
         <p className="text-center text-sm text-[#8B6F4E] mt-6">
           Already have an account?{' '}
-          <Link href={tripId ? `/login?saveTrip=${encodeURIComponent(tripId)}` : "/login"} className="text-[#5C3D2E] font-medium hover:underline">
+          <Link href={tripId ? `/login?saveTrip=${encodeURIComponent(tripId)}` : "/login"} className="text-[#485340] font-medium hover:underline">
             Sign in
           </Link>
         </p>

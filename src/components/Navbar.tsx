@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import PostcardBrand from './PostcardBrand'
 import { auth, signOut } from '@/auth'
 import NotificationBell from './NotificationBell'
 import { unregisterPushDevice } from '@/actions/notifications'
@@ -8,11 +9,10 @@ export default async function Navbar() {
   const session = await auth()
 
   return (
-    <header className="app-header bg-[#2C1810] text-white shadow-md sticky top-0 z-40">
+    <header className="app-header postcard-header bg-[#242e25] text-white shadow-md sticky top-0 z-40">
       <div className="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-        <Link href="/" className="shrink-0">
-          <h1 className="text-xl font-bold text-white leading-tight font-[family-name:var(--font-playfair)]">MilesAway</h1>
-          <p className="text-[#C4A882] text-xs leading-none hidden sm:block">Share your journey</p>
+        <Link href="/" aria-label="Postcard home" className="shrink-0">
+          <PostcardBrand />
         </Link>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -49,7 +49,7 @@ export default async function Navbar() {
                 Sign in
               </Link>
               <Link href="/register"
-                className="text-xs bg-[#E8D5B7] text-[#2C1810] font-semibold px-3 py-1.5 rounded-lg hover:bg-[#C4A882] transition-colors">
+                className="text-xs bg-[#dfd3c2] text-[#242e25] font-semibold px-3 py-1.5 rounded-lg hover:bg-[#c1ad93] transition-colors">
                 Get started
               </Link>
             </>

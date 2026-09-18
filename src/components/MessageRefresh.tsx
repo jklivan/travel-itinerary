@@ -16,5 +16,5 @@ export default function MessageRefresh({ label = 'Refresh messages' }: { label?:
       document.removeEventListener('visibilitychange', refresh)
     }
   }, [router])
-  return <button type="button" onClick={() => router.refresh()} className="text-sm underline text-[#507c76]">{label}</button>
+  return <button type="button" onClick={() => router.refresh()} className="text-sm underline text-[#59694f]">{label}</button>
 }

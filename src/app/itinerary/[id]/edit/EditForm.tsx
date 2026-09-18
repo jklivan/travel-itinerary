@@ -106,8 +106,8 @@ type ItineraryData = {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const inputCls = 'w-full rounded-xl border border-[#e3dfd2] px-3 py-2.5 text-sm text-[#2e4147] focus:outline-none focus:ring-2 focus:ring-[#507c76] focus:border-transparent bg-[#fffdf6]'
-const subInputCls = 'w-full rounded-xl border border-[#e3dfd2] px-3 py-2.5 text-sm text-[#2e4147] focus:outline-none focus:ring-1 focus:ring-[#507c76] bg-[#fffdf6]'
+const inputCls = 'w-full rounded-xl border border-[#e3dfd2] px-3 py-2.5 text-sm text-[#2e4147] focus:outline-none focus:ring-2 focus:ring-[#59694f] focus:border-transparent bg-[#fffdf6]'
+const subInputCls = 'w-full rounded-xl border border-[#e3dfd2] px-3 py-2.5 text-sm text-[#2e4147] focus:outline-none focus:ring-1 focus:ring-[#59694f] bg-[#fffdf6]'
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] as const
 const MEAL_EMOJI: Record<string, string> = {
@@ -358,7 +358,7 @@ function ItemEditForm({ type, initial, onDraftChange, onSave, onClose, onRecomme
       <p className="text-xs text-[#7a7b70]">Name a different place to suggest instead. To mark this place as a backup, use “Save as alternative.”</p>
       <RecommendationPicker type={type} value={recommendation} onChange={onRecommendationChange} />
       <button type="button" onClick={() => setShowMore(s => !s)}
-        className="text-xs text-[#507c76] hover:text-[#355650] font-medium flex items-center gap-1 transition-colors">
+        className="text-xs text-[#59694f] hover:text-[#355650] font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
         {moreCount > 0 && !showMore && (
           <span className="ml-1 bg-[#e6ece5] text-[#426862] rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{moreCount}</span>
@@ -370,7 +370,7 @@ function ItemEditForm({ type, initial, onDraftChange, onSave, onClose, onRecomme
           <div className="flex flex-wrap gap-1.5">
             {ITEM_TAGS[type].map(tag => (
               <button key={tag} type="button" onClick={() => toggleTag(tag)}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-[#2C1810] text-white border-[#2C1810]' : 'border-[#e3dfd2] text-[#7a7b70] hover:border-[#b8a98e]'}`}>
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-[#242e25] text-white border-[#242e25]' : 'border-[#e3dfd2] text-[#7a7b70] hover:border-[#b8a98e]'}`}>
                 {tag}
               </button>
             ))}
@@ -394,7 +394,7 @@ function ItemEditForm({ type, initial, onDraftChange, onSave, onClose, onRecomme
           Cancel
         </button>
         <button type="button" onClick={submit} disabled={!name.trim()}
-          className="flex-1 py-2.5 rounded-xl bg-[#2C1810] text-white text-sm font-semibold hover:bg-[#5C3D2E] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+          className="flex-1 py-2.5 rounded-xl bg-[#242e25] text-white text-sm font-semibold hover:bg-[#485340] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
           <Check size={14} /> Save
         </button>
       </div>
@@ -467,7 +467,7 @@ function ItemForm({ type, onAdd, onClose, city }: {
       </div>
       <RecommendationPicker type={type} value={recommendation} onChange={setRecommendation} />
       <button type="button" onClick={() => setShowMore(s => !s)}
-        className="text-xs text-[#507c76] hover:text-[#355650] font-medium flex items-center gap-1 transition-colors">
+        className="text-xs text-[#59694f] hover:text-[#355650] font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
         {tags.length > 0 && !showMore && (
           <span className="ml-1 bg-[#e6ece5] text-[#426862] rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{tags.length}</span>
@@ -479,7 +479,7 @@ function ItemForm({ type, onAdd, onClose, city }: {
           <div className="flex flex-wrap gap-1.5">
             {ITEM_TAGS[type].map(tag => (
               <button key={tag} type="button" onClick={() => toggleTag(tag)}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-[#2C1810] text-white border-[#2C1810]' : 'border-[#e3dfd2] text-[#7a7b70] hover:border-[#b8a98e]'}`}>
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-[#242e25] text-white border-[#242e25]' : 'border-[#e3dfd2] text-[#7a7b70] hover:border-[#b8a98e]'}`}>
                 {tag}
               </button>
             ))}
@@ -487,7 +487,7 @@ function ItemForm({ type, onAdd, onClose, city }: {
         </div>
       )}
       <button type="button" onClick={submit} disabled={!name.trim()}
-        className="w-full py-2.5 rounded-xl bg-[#2C1810] text-white text-sm font-semibold hover:bg-[#5C3D2E] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+        className="w-full py-2.5 rounded-xl bg-[#242e25] text-white text-sm font-semibold hover:bg-[#485340] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
         <Check size={14} /> Add
       </button>
     </div>
@@ -500,7 +500,7 @@ function DayDropZone({ destId, day }: { destId: string; day: number }) {
     data: { day },
   })
   return (
-    <div ref={setNodeRef} className={`mt-2 rounded-lg border border-dashed px-3 py-3 text-xs text-center ${isOver ? 'border-[#507c76] bg-[#edf1e9] text-[#426862]' : 'border-[#e3dfd2] text-[#918d81]'}`}>
+    <div ref={setNodeRef} className={`mt-2 rounded-lg border border-dashed px-3 py-3 text-xs text-center ${isOver ? 'border-[#59694f] bg-[#edf1e9] text-[#426862]' : 'border-[#e3dfd2] text-[#918d81]'}`}>
       Drop here to move to the end of this day
     </div>
   )
@@ -523,7 +523,7 @@ function ItemSummary({ item }: { item: EditItem }) {
           <div className="flex items-center gap-2 flex-wrap">
             {item.mealType && <span className="text-xs text-[#7a7b70]">{item.mealType.split(',').map(t => `${MEAL_EMOJI[t]} ${t}`).join(' · ')}</span>}
             {item.rating > 0 && <span className="text-xs text-yellow-500">{'★'.repeat(item.rating)}</span>}
-            {getRecommendation(item.tags, item.isHighlight) !== 'none' && <span className={`text-xs font-medium ${getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'text-red-700' : 'text-[#507c76]'}`}>{getRecommendation(item.tags, item.isHighlight) === 'option' ? 'Alternative' : getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'Avoid' : item.type === 'hotel' ? 'Must stay' : 'Must do'}</span>}
+            {getRecommendation(item.tags, item.isHighlight) !== 'none' && <span className={`text-xs font-medium ${getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'text-red-700' : 'text-[#59694f]'}`}>{getRecommendation(item.tags, item.isHighlight) === 'option' ? 'Alternative' : getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'Avoid' : item.type === 'hotel' ? 'Must stay' : 'Must do'}</span>}
             {item.notes && <span className="text-xs text-[#918d81] truncate">{item.notes}</span>}
           </div>
         </div>
@@ -784,7 +784,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
               {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map(month => (
                 <button key={month} type="button" aria-pressed={bestMonths.includes(month)}
                   onClick={() => setBestMonths(months => months.includes(month) ? months.filter(value => value !== month) : [...months, month])}
-                  className={`min-h-10 rounded-lg border text-sm font-medium ${bestMonths.includes(month) ? 'bg-[#507c76] border-[#507c76] text-white' : 'bg-[#fffdf6] border-[#d7cebc] text-[#6b7067] hover:border-[#507c76]'}`}>
+                  className={`min-h-10 rounded-lg border text-sm font-medium ${bestMonths.includes(month) ? 'bg-[#59694f] border-[#59694f] text-white' : 'bg-[#fffdf6] border-[#d7cebc] text-[#6b7067] hover:border-[#59694f]'}`}>
                   {month}
                 </button>
               ))}
@@ -800,7 +800,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 { value: 'adult',    label: '🍷 Other'   },
               ].map(({ value, label }) => (
                 <button key={value} type="button" onClick={() => setTripAudience(value as typeof tripAudience)}
-                  className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${tripAudience === value ? 'bg-[#507c76] text-white border-[#507c76]' : 'border-[#d7cebc] text-[#6b7067] hover:border-[#b8a98e]'}`}>
+                  className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${tripAudience === value ? 'bg-[#59694f] text-white border-[#59694f]' : 'border-[#d7cebc] text-[#6b7067] hover:border-[#b8a98e]'}`}>
                   {label}
                 </button>
               ))}
@@ -837,14 +837,14 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       {dests.map(dest => (
         <div key={dest.id} className="bg-[#fffdf6] rounded-xl shadow-sm border border-[#e3dfd2] overflow-hidden">
           {/* Header */}
-          <div className="bg-[#e6ece5] border-t-2 border-t-[#507c76] border-b border-b-[#d7cebc] px-5 py-3 flex items-center gap-2">
-            <MapPin size={15} className="text-[#507c76]" />
+          <div className="bg-[#e6ece5] border-t-2 border-t-[#59694f] border-b border-b-[#d7cebc] px-5 py-3 flex items-center gap-2">
+            <MapPin size={15} className="text-[#59694f]" />
             <span className="font-[family-name:var(--font-playfair)] text-[#2e4147] text-lg flex-1">
               {dest.name || 'Destination'}{dest.country ? `, ${dest.country}` : ''}
             </span>
             {dests.length > 1 && (
               <button type="button" onClick={() => setDests(ds => ds.filter(d => d.id !== dest.id))}
-                className="text-[#507c76] hover:text-red-700 text-lg leading-none">×</button>
+                className="text-[#59694f] hover:text-red-700 text-lg leading-none">×</button>
             )}
           </div>
 
@@ -948,7 +948,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 )}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <button type="button" onClick={() => setActiveInput({ destId: dest.id, type: 'hotel' })}
-                    className="flex flex-col items-center gap-1.5 py-4 rounded-xl border-2 border-dashed border-[#bbcfc5] text-[#507c76] hover:border-[#507c76] hover:bg-[#edf1e9] transition-all">
+                    className="flex flex-col items-center gap-1.5 py-4 rounded-xl border-2 border-dashed border-[#bbcfc5] text-[#59694f] hover:border-[#59694f] hover:bg-[#edf1e9] transition-all">
                     <Hotel size={20} />
                     <span className="text-xs font-semibold">+ Hotel</span>
                   </button>
@@ -966,7 +966,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 </div>
                 {postType !== 'guide' && (
                   <button type="button" onClick={() => updDest(dest.id, d => ({ ...d, curDayIndex: d.curDayIndex + 1 }))}
-                    className="w-full py-2.5 rounded-xl border-2 border-[#bbcfc5] text-[#507c76] text-sm font-semibold hover:border-[#507c76] hover:bg-[#edf1e9] transition-all flex items-center justify-center gap-2">
+                    className="w-full py-2.5 rounded-xl border-2 border-[#bbcfc5] text-[#59694f] text-sm font-semibold hover:border-[#59694f] hover:bg-[#edf1e9] transition-all flex items-center justify-center gap-2">
                     <ArrowRight size={14} /> Add Day {dest.curDayIndex + 1}
                   </button>
                 )}
@@ -977,16 +977,16 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       ))}
 
       <button type="button" onClick={() => setDests(ds => [...ds, { id: uid(), name: '', country: '', notes: '', items: [], curDayIndex: 1 }])}
-        className="w-full py-3 rounded-xl border-2 border-dashed border-[#bbcfc5] text-[#507c76] text-sm font-semibold hover:border-[#507c76] hover:bg-[#edf1e9] transition-all flex items-center justify-center gap-2">
+        className="w-full py-3 rounded-xl border-2 border-dashed border-[#bbcfc5] text-[#59694f] text-sm font-semibold hover:border-[#59694f] hover:bg-[#edf1e9] transition-all flex items-center justify-center gap-2">
         <Plus size={15} /> Add destination
       </button>
 
       {/* ── PHOTOS ───────────────────────────────────────────────────────────── */}
       <div className="bg-[#fffdf6] rounded-xl shadow-sm border border-[#e3dfd2] p-5 space-y-4">
         <h2 className="font-[family-name:var(--font-playfair)] text-xl text-[#2e4147]">Photos</h2>
-        <label className={`flex flex-col items-center justify-center border-2 border-dashed border-[#d7cebc] rounded-xl p-5 cursor-pointer hover:border-[#507c76] transition-colors ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}>
+        <label className={`flex flex-col items-center justify-center border-2 border-dashed border-[#d7cebc] rounded-xl p-5 cursor-pointer hover:border-[#59694f] transition-colors ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}>
           <ImageIcon size={22} className="text-[#7a7b70] mb-1" />
-          <span className="text-sm font-medium text-[#507c76]">{uploading ? 'Uploading…' : 'Click to upload photos'}</span>
+          <span className="text-sm font-medium text-[#59694f]">{uploading ? 'Uploading…' : 'Click to upload photos'}</span>
           <span className="text-xs text-[#7a7b70] mt-0.5">JPG, PNG, WEBP</span>
           <input type="file" accept="image/*" multiple className="sr-only" disabled={uploading}
             onChange={e => { uploadPhotos(Array.from(e.target.files ?? [])); e.target.value = '' }} />
@@ -1013,12 +1013,12 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
           Discard changes
         </button>
         <button type="submit" name="isDraft" value="1" disabled={pending || uploading || itemUploads > 0 || hasUnnamedItems}
-          className="flex-1 bg-[#fffdf6] text-[#5C3D2E] font-semibold py-3 rounded-xl border-2 border-[#d7cebc] hover:border-[#b8a98e] transition-colors disabled:opacity-60 text-sm">
+          className="flex-1 bg-[#fffdf6] text-[#485340] font-semibold py-3 rounded-xl border-2 border-[#d7cebc] hover:border-[#b8a98e] transition-colors disabled:opacity-60 text-sm">
           {pending ? 'Saving…' : 'Save as Draft'}
         </button>
         <button type="submit" disabled={pending || uploading || itemUploads > 0 || hasUnnamedItems || !hasItems}
           title={!hasItems ? 'Add at least one item first' : undefined}
-          className="flex-1 bg-[#507c76] text-white font-semibold py-3 rounded-xl hover:bg-[#426862] transition-colors disabled:opacity-60 text-sm">
+          className="flex-1 bg-[#59694f] text-white font-semibold py-3 rounded-xl hover:bg-[#426862] transition-colors disabled:opacity-60 text-sm">
           {pending ? 'Saving…' : itinerary.visibility === 'draft' ? 'Publish' : 'Save changes'}
         </button>
       </div>

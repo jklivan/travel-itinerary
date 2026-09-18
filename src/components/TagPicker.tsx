@@ -27,8 +27,8 @@ export default function TagPicker({
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
               theme === 'paper'
                 ? active
-                  ? 'bg-[#507c76] border-[#507c76] text-white shadow-sm'
-                  : 'bg-[#fffdf6] border-[#d7cebc] text-[#6b7067] hover:border-[#507c76] hover:text-[#507c76]'
+                  ? 'bg-[#59694f] border-[#59694f] text-white shadow-sm'
+                  : 'bg-[#fffdf6] border-[#d7cebc] text-[#6b7067] hover:border-[#59694f] hover:text-[#59694f]'
                 : active
                 ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
                 : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600'

@@ -22,14 +22,14 @@ export default function SavedFolders({ userId, folders, selected, total }: {
   const options = [{ id: '', name: 'All saved', count: total }, ...folders]
 
   return (
-    <div className="mb-6 rounded-xl border border-[#E8D5B7] bg-[#FAF7F2] p-4">
+    <div className="mb-6 rounded-xl border border-[#dfd3c2] bg-[#faf7f1] p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 font-semibold text-[#2C1810]"><Folder size={18} />Your folders</h2>
-        <button type="button" disabled={pending} onClick={() => { setEditing('new'); setName(''); setError(''); setDeleting(false) }} className="flex items-center gap-1 text-sm text-[#5C3D2E]"><Plus size={16} />New folder</button>
+        <h2 className="flex items-center gap-2 font-semibold text-[#242e25]"><Folder size={18} />Your folders</h2>
+        <button type="button" disabled={pending} onClick={() => { setEditing('new'); setName(''); setError(''); setDeleting(false) }} className="flex items-center gap-1 text-sm text-[#485340]"><Plus size={16} />New folder</button>
       </div>
       <nav aria-label="Saved folders" className="flex flex-wrap gap-2">
         {options.map(folder => <Link key={folder.id} href={folder.id ? `${base}&folder=${encodeURIComponent(folder.id)}` : base} aria-current={selected === folder.id ? 'page' : undefined}
-          className={`max-w-full rounded-lg border px-3 py-2 text-sm break-words ${selected === folder.id ? 'border-[#2C1810] bg-[#2C1810] text-white' : 'border-[#E8D5B7] text-[#5C3D2E] hover:bg-[#E8D5B7]'}`}>
+          className={`max-w-full rounded-lg border px-3 py-2 text-sm break-words ${selected === folder.id ? 'border-[#242e25] bg-[#242e25] text-white' : 'border-[#dfd3c2] text-[#485340] hover:bg-[#dfd3c2]'}`}>
           {folder.name} <span className="opacity-70">({folder.count})</span>
         </Link>)}
       </nav>
@@ -49,15 +49,15 @@ export default function SavedFolders({ userId, folders, selected, total }: {
           } catch { setError('Could not save your folder. Please try again.') }
         })
       }}>
-        <label className="block text-sm text-[#5C3D2E]">{editing === 'new' ? 'New folder name' : 'Folder name'}
-          <input autoFocus required maxLength={80} value={name} onChange={event => setName(event.target.value)} placeholder="Beach ideas" disabled={pending} className="mt-2 w-full rounded-lg border border-[#C4A882] bg-white px-3 py-2" />
+        <label className="block text-sm text-[#485340]">{editing === 'new' ? 'New folder name' : 'Folder name'}
+          <input autoFocus required maxLength={80} value={name} onChange={event => setName(event.target.value)} placeholder="Beach ideas" disabled={pending} className="mt-2 w-full rounded-lg border border-[#c1ad93] bg-white px-3 py-2" />
         </label>
         <div className="mt-2 flex gap-3 text-sm">
-          <button disabled={pending} className="rounded-lg bg-[#2C1810] px-4 py-2 text-white disabled:opacity-50">{pending ? 'Saving…' : editing === 'new' ? 'Create folder' : 'Save name'}</button>
+          <button disabled={pending} className="rounded-lg bg-[#242e25] px-4 py-2 text-white disabled:opacity-50">{pending ? 'Saving…' : editing === 'new' ? 'Create folder' : 'Save name'}</button>
           <button type="button" disabled={pending} onClick={() => { setEditing(null); setError('') }}>Cancel</button>
         </div>
       </form>}
-      {deleting && active && <div className="mt-4 text-sm text-[#5C3D2E]">
+      {deleting && active && <div className="mt-4 text-sm text-[#485340]">
         <p>Delete “{active.name}”? Its trips will stay in All saved.</p>
         <div className="mt-2 flex gap-3">
           <button type="button" disabled={pending} className="rounded-lg bg-red-700 px-3 py-2 text-white disabled:opacity-50" onClick={() => {

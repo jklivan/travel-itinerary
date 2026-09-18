@@ -64,7 +64,7 @@ function CommentInput({
         aria-label={onCancel ? 'Your reply' : 'Your comment'}
         autoFocus={autoFocus}
         rows={3}
-        className="w-full text-sm text-[#2e4147] bg-[#fffdf6] border-2 border-[#8caaa3] rounded-xl px-3 py-3 shadow-sm placeholder:text-[#6b7067] resize-y focus:outline-none focus:ring-2 focus:ring-[#507c76]/25 focus:border-[#507c76] transition-colors"
+        className="w-full text-sm text-[#2e4147] bg-[#fffdf6] border-2 border-[#8caaa3] rounded-xl px-3 py-3 shadow-sm placeholder:text-[#6b7067] resize-y focus:outline-none focus:ring-2 focus:ring-[#59694f]/25 focus:border-[#59694f] transition-colors"
         onKeyDown={(e) => {
           if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit()
         }}

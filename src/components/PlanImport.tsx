@@ -54,13 +54,13 @@ export default function PlanImport({ tripId, onClose }: { tripId: string; onClos
     finally { busy.current = false; setStage('') }
   }
   return <section className="my-5 space-y-4 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4" aria-label="Import into this trip">
-    <div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">Add places from notes or a file</h2><p className="mt-1 text-sm text-[#73786d]">Review the places, then add them to this trip. You can assign days whenever you’re ready.</p></div><button type="button" disabled={!!stage} onClick={onClose} className="min-h-11 px-2 text-sm text-[#507c76]">Close</button></div>
+    <div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">Add places from notes or a file</h2><p className="mt-1 text-sm text-[#73786d]">Review the places, then add them to this trip. You can assign days whenever you’re ready.</p></div><button type="button" disabled={!!stage} onClick={onClose} className="min-h-11 px-2 text-sm text-[#59694f]">Close</button></div>
     {!places.length ? <>
       <fieldset disabled={!!stage} className="space-y-4">
         <label className="block text-sm">Paste notes<textarea value={text} onChange={event => { setText(event.target.value); setFile(null) }} maxLength={200000} rows={5} placeholder="Hotels, restaurants, activities…" className="mt-2 w-full rounded-xl border border-[#d7cebc] bg-white p-3 text-base" /></label>
         <label className="block text-sm">Or choose a file<input key={file?.name ?? 'empty'} type="file" accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.html,.htm,image/jpeg,image/png,image/gif,image/webp" onChange={event => setFile(event.target.files?.[0] ?? null)} className="mt-2 block w-full min-w-0 text-sm" /></label>
         {file && <p className="break-words text-xs text-[#73786d]">Selected: {file.name}</p>}
-        <button type="button" disabled={!file && !text.trim()} onClick={() => void read()} className="min-h-11 w-full rounded-xl bg-[#2c1810] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">Find places</button>
+        <button type="button" disabled={!file && !text.trim()} onClick={() => void read()} className="min-h-11 w-full rounded-xl bg-[#242e25] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">Find places</button>
       </fieldset>
       <SavedImportNotes refreshKey={savedVersion} disabled={!!stage} onRestore={value => { setText(value); setFile(null) }} />
     </> : <>
@@ -69,10 +69,10 @@ export default function PlanImport({ tripId, onClose }: { tripId: string; onClos
         {places.map((place, index) => <label key={index} className="flex items-start gap-3 rounded-xl border border-[#d7cebc] p-3"><input type="checkbox" checked={selected.has(index)} onChange={event => setSelected(previous => { const next = new Set(previous); if (event.target.checked) next.add(index); else next.delete(index); return next })} className="mt-1 h-5 w-5 shrink-0" /><span className="min-w-0 break-words"><strong className="block text-sm">{place.name}</strong><span className="block text-xs text-[#73786d]">{[place.destination, place.country].filter(Boolean).join(', ')} · {place.day ? `Day ${place.day}` : 'Unscheduled'}</span>{place.notes && <span className="mt-1 block whitespace-pre-wrap text-sm">{place.notes}</span>}</span></label>)}
       </fieldset>
       <p className="text-xs text-[#73786d]">Your existing places, dates, and sharing settings stay the same.</p>
-      <button type="button" disabled={!!stage || !selected.size} onClick={() => void save()} className="min-h-11 w-full rounded-xl bg-[#2c1810] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{stage === 'Adding places…' ? stage : `Add ${selected.size} places to this trip`}</button>
-      {!attemptedSave && <button type="button" disabled={!!stage} onClick={() => { setPlaces([]); setError('') }} className="min-h-11 text-sm text-[#507c76]">Back to import</button>}
+      <button type="button" disabled={!!stage || !selected.size} onClick={() => void save()} className="min-h-11 w-full rounded-xl bg-[#242e25] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{stage === 'Adding places…' ? stage : `Add ${selected.size} places to this trip`}</button>
+      {!attemptedSave && <button type="button" disabled={!!stage} onClick={() => { setPlaces([]); setError('') }} className="min-h-11 text-sm text-[#59694f]">Back to import</button>}
     </>}
-    {stage && <div role="status" className="text-sm text-[#507c76]">{stage}{stage !== 'Adding places…' && <button type="button" onClick={() => controller.current?.abort()} className="ml-3 min-h-11 underline">Cancel</button>}</div>}
+    {stage && <div role="status" className="text-sm text-[#59694f]">{stage}{stage !== 'Adding places…' && <button type="button" onClick={() => controller.current?.abort()} className="ml-3 min-h-11 underline">Cancel</button>}</div>}
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
   </section>
 }

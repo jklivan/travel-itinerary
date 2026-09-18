@@ -157,7 +157,7 @@ export default function ItineraryCard({
 
         {/* Caption */}
         <Link href={`/itinerary/${id}`} className={fullWidth ? 'block px-1' : 'block'}>
-          <h2 className={`${amatic.className} text-[28px] text-[#2C1810] leading-tight line-clamp-2 mb-2`}>
+          <h2 className={`${amatic.className} text-[28px] text-[#242e25] leading-tight line-clamp-2 mb-2`}>
             {title}
           </h2>
 
@@ -178,7 +178,7 @@ export default function ItineraryCard({
 
           {season && <p className={`${kalam.className} mt-1.5 text-right text-sm text-[#8B6F4E]`} aria-label={`${isGuide || datesFlexible ? 'Recommended season' : 'Trip season'}: ${season}`}>{season}</p>}
 
-          <div className={`flex items-center gap-2 border-t border-[#E8D5B7] ${fullWidth ? 'mt-2 pt-2' : 'mt-3 pt-3'}`}>
+          <div className={`flex items-center gap-2 border-t border-[#dfd3c2] ${fullWidth ? 'mt-2 pt-2' : 'mt-3 pt-3'}`}>
             <div
               className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
               style={{ backgroundColor: avatarColor }}

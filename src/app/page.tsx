@@ -60,16 +60,16 @@ async function FeedResults({ searchQuery }: { searchQuery: string }) {
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
       <Suspense fallback={null}><StoryFeed userId={userId} following={false} /></Suspense>
-      <h1 className="mb-6 border-b border-[#C4A882]/50 px-4 py-3 text-center text-base font-semibold text-[#2C1810]">For You</h1>
+      <h1 className="mb-6 border-b border-[#c1ad93]/50 px-4 py-3 text-center text-base font-semibold text-[#242e25]">For You</h1>
       {searchQuery && <div className="mb-5">
-        <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810]">&quot;{searchQuery}&quot;</h1>
-        <Link href="/" className="text-sm text-[#5C3D2E] hover:underline">Clear search</Link>
+        <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-[#242e25]">&quot;{searchQuery}&quot;</h1>
+        <Link href="/" className="text-sm text-[#485340] hover:underline">Clear search</Link>
       </div>}
 
       {itineraries.length === 0 ? (
-        <div className="text-center py-20 bg-[#FAF7F2] rounded-xl border border-[#E8D5B7]">
+        <div className="text-center py-20 bg-[#faf7f1] rounded-xl border border-[#dfd3c2]">
           <p className="text-4xl mb-4">🌍</p>
-          <p className="text-base font-medium text-[#2C1810]">
+          <p className="text-base font-medium text-[#242e25]">
             {searchQuery ? 'No trips match your search.' : 'No itineraries yet.'}
           </p>
           <p className="text-sm mt-1 text-[#8B6F4E]">

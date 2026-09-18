@@ -89,6 +89,6 @@ export default function SavePlaceToPlan({ itemId, storyId, placeName, open, onCl
         {error && <div className={styles.error}><p role="alert">{error}</p>{!trips.length && <button type="button" onClick={() => void load()}>Try again</button>}{error.toLowerCase().includes('sign in') && <Link href="/login" onClick={() => dialog.current?.close()}>Sign in</Link>}</div>}
       </>}
     </div>
-    {!saved && <footer className={styles.footer}><button type="button" disabled={!!busy || loading} className="flex min-h-12 w-full items-center gap-3 text-left text-sm font-semibold text-[#507c76]" onClick={() => void saveNew()}><span className={styles.newIcon}><Plus size={20} /></span><span>{busy === 'new-plan' ? 'Saving to a new trip…' : 'New trip'}<small className="mt-1 block font-normal text-[#73786d]">Save now with a temporary title. Finish later.</small></span></button></footer>}
+    {!saved && <footer className={styles.footer}><button type="button" disabled={!!busy || loading} className="flex min-h-12 w-full items-center gap-3 text-left text-sm font-semibold text-[#59694f]" onClick={() => void saveNew()}><span className={styles.newIcon}><Plus size={20} /></span><span>{busy === 'new-plan' ? 'Saving to a new trip…' : 'New trip'}<small className="mt-1 block font-normal text-[#73786d]">Save now with a temporary title. Finish later.</small></span></button></footer>}
   </dialog>
 }

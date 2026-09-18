@@ -30,7 +30,7 @@ export async function deliverNotification(id: string) {
   if (!devices.length) return
   const authorization = `bearer ${providerToken()}`
   const payload = JSON.stringify({
-    aps: { alert: { title: 'MilesAway', body: notificationText(notification.kind, notification.actor.name.slice(0, 80), notification.itinerary?.title.slice(0, 200) ?? '') }, sound: 'default', 'thread-id': (notification.kind === 'forum' || notification.kind === 'forum_reply') ? `forum:${notification.questionId}` : notification.kind === 'message' ? `message:${notification.actorId}${notification.message?.itineraryId ? `:${notification.message.itineraryId}` : ''}` : notification.itineraryId },
+    aps: { alert: { title: 'Postcard', body: notificationText(notification.kind, notification.actor.name.slice(0, 80), notification.itinerary?.title.slice(0, 200) ?? '') }, sound: 'default', 'thread-id': (notification.kind === 'forum' || notification.kind === 'forum_reply') ? `forum:${notification.questionId}` : notification.kind === 'message' ? `message:${notification.actorId}${notification.message?.itineraryId ? `:${notification.message.itineraryId}` : ''}` : notification.itineraryId },
     url: notificationPath(notification.kind === 'message' ? notification.message?.itineraryId ?? null : notification.itineraryId, notification.kind, notification.actorId, notification.questionId), notificationId: id,
   })
   // TestFlight and App Store builds use production APNs. Sandbox is for local development builds only.

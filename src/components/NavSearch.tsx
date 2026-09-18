@@ -111,14 +111,14 @@ function NavSearchForm({ initialQuery }: { initialQuery: string }) {
           className="w-full min-h-12 pl-9 pr-3 py-3 text-base text-white placeholder-white/60 rounded-lg bg-white/10 border border-white/20 focus:outline-none focus:ring-2 focus:ring-white/40 focus:bg-white/20 transition-all"
         />
         {open && suggestions.length > 0 && (
-          <ul className="absolute z-50 mt-1 w-full bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] shadow-lg overflow-hidden">
+          <ul className="absolute z-50 mt-1 w-full bg-[#faf7f1] rounded-xl border border-[#dfd3c2] shadow-lg overflow-hidden">
             {suggestions.map((s, i) => (
               <li
                 key={i}
                 onMouseDown={() => pick(s)}
-                className={`px-3 py-2.5 cursor-pointer text-sm transition-colors ${i === activeIdx ? 'bg-[#E8D5B7]' : 'hover:bg-[#E8D5B7]'}`}
+                className={`px-3 py-2.5 cursor-pointer text-sm transition-colors ${i === activeIdx ? 'bg-[#dfd3c2]' : 'hover:bg-[#dfd3c2]'}`}
               >
-                <span className="font-medium text-[#2C1810]">{s.main}</span>
+                <span className="font-medium text-[#242e25]">{s.main}</span>
                 {s.secondary && (
                   <span className="text-[#8B6F4E] text-xs ml-1.5">{s.secondary}</span>
                 )}

@@ -1,6 +1,6 @@
 .transport { --place-accent: #687e9b; --place-tint: #edf1f5; }
 .hotel {
-  --place-accent: #507c76;
+  --place-accent: #59694f;
   --place-tint: #e6ece5;
 }
 
@@ -86,7 +86,7 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  color: #507c76;
+  color: #59694f;
   font-size: 8px;
   font-weight: 800;
   font-style: italic;
@@ -226,7 +226,7 @@
 }
 
 .price {
-  color: #507c76;
+  color: #59694f;
   letter-spacing: 0.08em;
 }
 
@@ -244,7 +244,7 @@
 
 .recommendation {
   margin-top: 9px;
-  color: #507c76;
+  color: #59694f;
   font-size: 9px;
 }
 
@@ -279,20 +279,20 @@
 }
 
 .friendName {
-  color: #507c76;
+  color: #59694f;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 
 .friendLink {
-  color: #507c76;
+  color: #59694f;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .friendDetails summary {
   cursor: pointer;
-  color: #507c76;
+  color: #59694f;
 }
 
 .friendDetails summary .rating {

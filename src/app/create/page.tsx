@@ -298,7 +298,7 @@ export default function CreatePage() {
   }
   function moveControl(di: number, gi: number, dyi: number, ii: number, kind: 'food' | 'activities', name: string) {
     if (postType === 'guide') return null
-    return <label className="flex items-center gap-2 px-3 py-2 text-xs text-[#507c76]">Move to day
+    return <label className="flex items-center gap-2 px-3 py-2 text-xs text-[#59694f]">Move to day
       <select aria-label={`Move ${name || 'place'} to day`} value={`${gi}:${dyi}`} onChange={event => movePlace(di, gi, dyi, ii, kind, event.target.value)} className="min-h-10 rounded-lg border border-[#bbcfc5] bg-[#fffdf6] px-2 text-sm">
         {destinations[di].groups.flatMap((group, groupIndex) => group.days.map((day, dayIndex) => <option key={`${groupIndex}:${dayIndex}`} value={`${groupIndex}:${dayIndex}`}>{destinations[di].groups.length > 1 ? `Stay ${groupIndex + 1} · ` : ''}Day {day.dayIndex ?? dayIndex + 1}</option>))}
       </select>
@@ -992,7 +992,7 @@ export default function CreatePage() {
         {/* ── DETAILS ────────────────────────────────────────────────────── */}
         {step === 'details' && (
           <div className="space-y-4">
-            <button type="button" onClick={() => { setReturnToReview(true); setStep('basics') }} className="text-sm text-[#507c76] underline">Edit trip details</button>
+            <button type="button" onClick={() => { setReturnToReview(true); setStep('basics') }} className="text-sm text-[#59694f] underline">Edit trip details</button>
             <h2 className="font-semibold text-gray-900 text-lg">Finishing touches</h2>
 
             <section className="bg-white rounded-2xl border border-gray-200 p-5">

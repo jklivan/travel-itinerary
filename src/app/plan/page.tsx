@@ -21,7 +21,7 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
     <h1 className="font-[family-name:var(--font-playfair)] text-3xl">Your next trip starts here</h1>
     <p className="mb-6 mt-2 text-[#73786d]">Collect places now. Work out the days later.</p>
     <NewPlanForm saveStory={typeof saveStory === 'string' && saveStory.length <= 200 ? saveStory : undefined} savePlace={typeof savePlace === 'string' && savePlace.length <= 200 ? savePlace : undefined} />
-    <div className="mt-6"><Link href={`/user/${userId}`} className="inline-flex min-h-11 items-center rounded-full border border-[#d7cebc] px-4 text-sm font-medium text-[#507c76] hover:bg-[#e6ece5]">View all trips on your profile →</Link></div>
+    <div className="mt-6"><Link href={`/user/${userId}`} className="inline-flex min-h-11 items-center rounded-full border border-[#d7cebc] px-4 text-sm font-medium text-[#59694f] hover:bg-[#e6ece5]">View all trips on your profile →</Link></div>
     <section className="mt-8" aria-labelledby="your-trips-heading">
       <h2 id="your-trips-heading" className="text-xl font-semibold">Your trips</h2>
       {[
@@ -31,7 +31,7 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
         const items = trips.filter(trip => (trip.visibility === 'draft') === group.private)
         return <section key={group.title} aria-label={group.title} className="mt-6">
           <div className="mb-3 border-b border-[#d7cebc] pb-3">
-            <h3 className="font-[family-name:var(--font-playfair)] text-xl text-[#507c76]">{group.title} <span className="ml-1 font-sans text-sm text-[#73786d]">{items.length}</span></h3>
+            <h3 className="font-[family-name:var(--font-playfair)] text-xl text-[#59694f]">{group.title} <span className="ml-1 font-sans text-sm text-[#73786d]">{items.length}</span></h3>
             <p className="mt-1 text-sm text-[#73786d]">{group.description}</p>
           </div>
           {items.length ? <div className="space-y-3">{items.map(trip => <article key={trip.id} aria-label={trip.title} className="rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4">

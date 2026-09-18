@@ -1,6 +1,6 @@
 {
 	"appId": "com.joshuaklivan.travelitineraryapp",
-	"appName": "MilesAway",
+	"appName": "Postcard",
 	"webDir": "mobile",
 	"plugins": {
 		"PushNotifications": {

@@ -93,7 +93,7 @@ export default function NativeNotifications({ children }: { children: React.Reac
       }
       const permission = await PushNotifications.requestPermissions()
       if (permission.receive !== 'granted') {
-        setMessage('To allow alerts, turn on notifications for MilesAway in iPhone Settings.')
+        setMessage('To allow alerts, turn on notifications for Postcard in iPhone Settings.')
         setBusy(false)
         return
       }
@@ -118,7 +118,7 @@ export function NotificationPreferences() {
     {!push.native ? <p className="mt-2 text-sm text-[#6b7067]">Open the iPhone app to enable push notifications.</p> :
       !push.available ? <p className="mt-2 text-sm text-[#6b7067]">Update the iPhone app to enable notifications.</p> :
         !push.ready ? <p className="mt-2 text-sm text-[#6b7067]">Push notifications are not available yet. You can still check your activity here.</p> :
-          <button onClick={push.toggle} disabled={push.busy} className="mt-3 rounded-full bg-[#507c76] px-4 py-2 text-sm text-white disabled:opacity-50">{push.busy ? 'Updating…' : push.enabled ? 'Turn off on this iPhone' : 'Enable notifications'}</button>}
+          <button onClick={push.toggle} disabled={push.busy} className="mt-3 rounded-full bg-[#59694f] px-4 py-2 text-sm text-white disabled:opacity-50">{push.busy ? 'Updating…' : push.enabled ? 'Turn off on this iPhone' : 'Enable notifications'}</button>}
     {push.message && <p role="status" className="mt-2 text-sm text-[#6b7067]">{push.message}</p>}
   </section>
 }

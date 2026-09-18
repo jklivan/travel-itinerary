@@ -457,7 +457,7 @@ export default async function ItineraryPage({
   const renderActivityCard = (item: DestItemRow, compact = false) => renderPlaceCard(item, item.type === 'transport' ? 'transport' : 'activity', compact)
 
   return (
-    <div className="min-h-screen bg-[#F0E8D9]">
+    <div className="min-h-screen bg-[#f3eee5]">
       <div className="max-w-4xl mx-auto px-4 py-6">
         <TripBackButton itineraryId={it.id} fallback={isOwn ? `/user/${it.user.id}` : "/"} />
 
@@ -479,7 +479,7 @@ export default async function ItineraryPage({
           </div>
 
           {/* Serif title */}
-          <h1 className="font-[family-name:var(--font-playfair)] text-4xl md:text-5xl text-[#2C1810] leading-tight mb-3">
+          <h1 className="font-[family-name:var(--font-playfair)] text-4xl md:text-5xl text-[#242e25] leading-tight mb-3">
             {it.title}
           </h1>
 
@@ -492,7 +492,7 @@ export default async function ItineraryPage({
             {displayTags.map(tag => {
               const meta = tagMeta(tag)
               return meta ? (
-                <span key={tag} className="inline-flex items-center gap-1 text-xs bg-[#E8D5B7] text-[#5C3D2E] px-2.5 py-1 rounded-full font-medium">
+                <span key={tag} className="inline-flex items-center gap-1 text-xs bg-[#dfd3c2] text-[#485340] px-2.5 py-1 rounded-full font-medium">
                   {meta.emoji} {meta.label}
                 </span>
               ) : null
@@ -504,19 +504,19 @@ export default async function ItineraryPage({
 
           {/* Italic description */}
           {it.description && (
-            <p className="font-[family-name:var(--font-playfair)] italic text-[#5C3D2E] text-lg mb-3">
+            <p className="font-[family-name:var(--font-playfair)] italic text-[#485340] text-lg mb-3">
               {it.description}
             </p>
           )}
 
           {/* Author / meta / actions row */}
-          <div className="flex items-center justify-between flex-wrap gap-3 border-t border-b border-[#C4A882] py-3 mb-3">
+          <div className="flex items-center justify-between flex-wrap gap-3 border-t border-b border-[#c1ad93] py-3 mb-3">
             <div className="flex items-center gap-3 flex-wrap">
               <Link href={`/user/${it.user.id}`} className="flex items-center gap-2 hover:opacity-80">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold shrink-0">
                   {it.user.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
-                <span className="text-sm font-medium text-[#2C1810]">{it.user.name}</span>
+                <span className="text-sm font-medium text-[#242e25]">{it.user.name}</span>
               </Link>
               {isGuide && <span className="text-xs text-[#8B6F4E]">Guide</span>}
               {days !== null && (
@@ -541,10 +541,10 @@ export default async function ItineraryPage({
               {isOwn && (
                 <div className="flex items-center gap-2">
                   <Link href={`/itinerary/${it.id}/edit`}
-                    className="text-xs font-medium px-3 py-1.5 rounded-full border border-[#C4A882] text-[#5C3D2E] hover:bg-[#E8D5B7] transition-colors">
+                    className="text-xs font-medium px-3 py-1.5 rounded-full border border-[#c1ad93] text-[#485340] hover:bg-[#dfd3c2] transition-colors">
                     Edit
                   </Link>
-                  <Link href={`/plan/${it.id}`} className="rounded-full bg-[#507c76] px-3 py-2 text-xs font-semibold text-white">Add a place</Link>
+                  <Link href={`/plan/${it.id}`} className="rounded-full bg-[#59694f] px-3 py-2 text-xs font-semibold text-white">Add a place</Link>
                   <DeleteButton id={it.id} visibility={it.visibility} />
                 </div>
               )}
@@ -560,7 +560,7 @@ export default async function ItineraryPage({
                       ? 'border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-500'
                       : followStatus === 'pending'
                       ? 'border-amber-300 text-amber-700 hover:border-red-300 hover:text-red-500'
-                      : 'bg-[#2C1810] border-[#2C1810] text-white hover:bg-[#5C3D2E]'
+                      : 'bg-[#242e25] border-[#242e25] text-white hover:bg-[#485340]'
                   }`}>
                     {followStatus === 'accepted' ? 'Following' : followStatus === 'pending' ? 'Requested' : '+ Follow'}
                   </button>
@@ -570,9 +570,9 @@ export default async function ItineraryPage({
           </div>
 
           {it.notes && (
-            <section className="mb-5 border-l-2 border-[#C4A882] pl-4">
+            <section className="mb-5 border-l-2 border-[#c1ad93] pl-4">
               <h2 className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-2">Notes &amp; Tips</h2>
-              <p className="text-sm leading-relaxed text-[#5C3D2E] whitespace-pre-line break-words">{it.notes}</p>
+              <p className="text-sm leading-relaxed text-[#485340] whitespace-pre-line break-words">{it.notes}</p>
             </section>
           )}
 
@@ -580,7 +580,7 @@ export default async function ItineraryPage({
           <div className="flex flex-wrap gap-2 items-center">
             {itineraryFriendBucketers.length > 0 && (
               <span className="text-xs text-[#8B6F4E]">
-                🔖 <span className="font-medium text-[#5C3D2E]">
+                🔖 <span className="font-medium text-[#485340]">
                   {itineraryFriendBucketers.slice(0, 3).map(n => n.split(' ')[0]).join(', ')}
                 </span>
                 {itineraryFriendBucketers.length > 3 && ` +${itineraryFriendBucketers.length - 3} more`} saved this
@@ -606,23 +606,23 @@ export default async function ItineraryPage({
           return null
         })()}
 
-        <nav aria-label="Itinerary view" className="flex flex-wrap gap-1 bg-[#E8D5B7] rounded-xl p-1 text-sm font-medium mb-6 w-fit">
+        <nav aria-label="Itinerary view" className="flex flex-wrap gap-1 bg-[#dfd3c2] rounded-xl p-1 text-sm font-medium mb-6 w-fit">
           <Link href={`/itinerary/${it.id}`} aria-current={!showMap && !showDayByDay ? 'page' : undefined}
-            className={`px-4 py-2 rounded-lg transition-colors ${!showMap && !showDayByDay ? 'bg-[#FAF7F2] shadow-sm text-[#2C1810]' : 'text-[#8B6F4E] hover:text-[#5C3D2E]'}`}>
+            className={`px-4 py-2 rounded-lg transition-colors ${!showMap && !showDayByDay ? 'bg-[#faf7f1] shadow-sm text-[#242e25]' : 'text-[#8B6F4E] hover:text-[#485340]'}`}>
             Trip Summary
           </Link>
           {hasDailyPlan && <Link href={`/itinerary/${it.id}?view=day-by-day`} aria-current={showDayByDay ? 'page' : undefined}
-            className={`px-4 py-2 rounded-lg transition-colors ${showDayByDay ? 'bg-[#FAF7F2] shadow-sm text-[#2C1810]' : 'text-[#8B6F4E] hover:text-[#5C3D2E]'}`}>
+            className={`px-4 py-2 rounded-lg transition-colors ${showDayByDay ? 'bg-[#faf7f1] shadow-sm text-[#242e25]' : 'text-[#8B6F4E] hover:text-[#485340]'}`}>
             Itinerary View
           </Link>}
           {mapPins.length > 0 && <Link href={`/itinerary/${it.id}?view=map`} aria-current={showMap ? 'page' : undefined}
-            className={`px-4 py-2 rounded-lg transition-colors ${showMap ? 'bg-[#FAF7F2] shadow-sm text-[#2C1810]' : 'text-[#8B6F4E] hover:text-[#5C3D2E]'}`}>
+            className={`px-4 py-2 rounded-lg transition-colors ${showMap ? 'bg-[#faf7f1] shadow-sm text-[#242e25]' : 'text-[#8B6F4E] hover:text-[#485340]'}`}>
             Map View
           </Link>}
         </nav>
 
         {showMap && (
-          <div className="h-[60vh] rounded-2xl overflow-hidden border border-[#C4A882] mb-6">
+          <div className="h-[60vh] rounded-2xl overflow-hidden border border-[#c1ad93] mb-6">
             <ItineraryMap pins={mapPins} />
           </div>
         )}
@@ -638,8 +638,8 @@ export default async function ItineraryPage({
             {/* ── Day by Day (itineraries) ── */}
             {showDayByDay && !it.isPlan && mainDestinations.length > 0 && (
               <div className="mb-10">
-                <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-1">Day by Day</h2>
-                <div className="h-px bg-[#C4A882] mb-5" />
+                <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#242e25] mb-1">Day by Day</h2>
+                <div className="h-px bg-[#c1ad93] mb-5" />
                 <div className="space-y-10">
                   {mainDestinations.map((dest) => {
                     const groups = groupItems(dest.items as DestItemRow[])
@@ -658,14 +658,14 @@ export default async function ItineraryPage({
                         {(dFriends.length > 0 || dSaved > 0) && (
                           <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3 text-xs text-[#8B6F4E]">
                             {dFriends.length > 0 && (
-                              <span>👫 <span className="font-medium text-[#5C3D2E]">{dFriends.slice(0, 3).map(n => n.split(' ')[0]).join(', ')}</span>
+                              <span>👫 <span className="font-medium text-[#485340]">{dFriends.slice(0, 3).map(n => n.split(' ')[0]).join(', ')}</span>
                                 {dFriends.length > 3 && ` +${dFriends.length - 3} more`} also visited
                               </span>
                             )}
                             {dSaved > 0 && <span>🔖 Saved by {dSaved} {dSaved === 1 ? 'traveler' : 'travelers'}</span>}
                           </div>
                         )}
-                        {dest.notes && <p className="text-xs text-[#8B6F4E] italic mb-3 border-l-2 border-[#C4A882] pl-2">{dest.notes}</p>}
+                        {dest.notes && <p className="text-xs text-[#8B6F4E] italic mb-3 border-l-2 border-[#c1ad93] pl-2">{dest.notes}</p>}
                         <div className="space-y-5">
                           {groups.map((group, gi) => {
                             if (multiStay) {
@@ -676,7 +676,7 @@ export default async function ItineraryPage({
                                     return (
                                       <div key={di}>
                                         <div className="flex items-center gap-2 mb-2">
-                                          <span className="text-xs font-bold text-[#FAF7F2] bg-[#2C1810] px-2.5 py-1 rounded-full">Day {dn}</span>
+                                          <span className="text-xs font-bold text-[#faf7f1] bg-[#242e25] px-2.5 py-1 rounded-full">Day {dn}</span>
                                         </div>
                                         {di === 0 && group.hotel && renderHotelCard(group.hotel)}
                                         <div className="space-y-2 mt-2">
@@ -695,7 +695,7 @@ export default async function ItineraryPage({
                                     <div key={di}>
                                       {(group.days.length > 1 || dayNumber(day.dayIndex) > 1) && (
                                         <div className="flex items-center gap-2 mb-2 mt-2">
-                                          <span className="text-xs font-bold text-[#FAF7F2] bg-[#2C1810] px-2.5 py-1 rounded-full">Day {dayNumber(day.dayIndex)}</span>
+                                          <span className="text-xs font-bold text-[#faf7f1] bg-[#242e25] px-2.5 py-1 rounded-full">Day {dayNumber(day.dayIndex)}</span>
                                         </div>
                                       )}
                                       <div className="space-y-2">
@@ -718,8 +718,8 @@ export default async function ItineraryPage({
             {/* All places grouped by category, for both itineraries and guides. */}
             {!showDayByDay && mainDestinations.length > 0 && (
               <div className="mb-10">
-                <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-1">Places from the trip</h2>
-                <div className="h-px bg-[#C4A882] mb-5" />
+                <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#242e25] mb-1">Places from the trip</h2>
+                <div className="h-px bg-[#c1ad93] mb-5" />
                 <div className="space-y-10">
                   {mainDestinations.map((dest) => {
                     const dItems = dest.items as DestItemRow[]
@@ -734,7 +734,7 @@ export default async function ItineraryPage({
                             <MapPin size={11} /> {dest.name}{dest.country ? `, ${dest.country}` : ''}
                           </p>
                         )}
-                        {dest.notes && <p className="text-xs text-[#8B6F4E] italic mb-3 border-l-2 border-[#C4A882] pl-2">{dest.notes}</p>}
+                        {dest.notes && <p className="text-xs text-[#8B6F4E] italic mb-3 border-l-2 border-[#c1ad93] pl-2">{dest.notes}</p>}
                         <div className={styles.placeGrid}>
                           {dHotels.length > 0 && (
                             <div>
@@ -781,7 +781,7 @@ export default async function ItineraryPage({
 
             {alternativeDestinations.length > 0 && (
               <section aria-labelledby="alternatives-heading" className="mb-10">
-                <h2 id="alternatives-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-[#2C1810] mb-1">Alternatives</h2>
+                <h2 id="alternatives-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-[#242e25] mb-1">Alternatives</h2>
                 <p className="text-sm text-[#8B6F4E] mb-5">Other places to consider.</p>
                 <div className="space-y-6">
                   {alternativeDestinations.map(dest => (
@@ -796,9 +796,9 @@ export default async function ItineraryPage({
               </section>
             )}
 
-            {!isOwn && <div className="mt-6 border-t border-[#C4A882] pt-6">
+            {!isOwn && <div className="mt-6 border-t border-[#c1ad93] pt-6">
               <h2 className="font-semibold mb-2">Have a question about this trip?</h2>
-              <Link href={`/messages/${it.user.id}?trip=${encodeURIComponent(it.id)}`} className="inline-block rounded-full bg-[#507c76] px-4 py-2 text-sm text-white">Message {it.user.name} privately</Link>
+              <Link href={`/messages/${it.user.id}?trip=${encodeURIComponent(it.id)}`} className="inline-block rounded-full bg-[#59694f] px-4 py-2 text-sm text-white">Message {it.user.name} privately</Link>
             </div>}
           </>
         )}

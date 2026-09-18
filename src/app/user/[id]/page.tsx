@@ -115,7 +115,7 @@ export default async function UserProfilePage({
       {!isOwn && <BackButton fallback="/friends" className="text-sm text-[#8B6F4E] hover:underline mb-5 inline-block">← Back</BackButton>}
 
       {/* Profile header */}
-      <div className="bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] p-5 mb-5 flex items-center gap-4">
+      <div className="bg-[#faf7f1] rounded-xl border border-[#dfd3c2] p-5 mb-5 flex items-center gap-4">
         <div
           className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold shrink-0"
           style={{ backgroundColor: avatarColor }}
@@ -123,7 +123,7 @@ export default async function UserProfilePage({
           {initials}
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="font-[family-name:var(--font-playfair)] text-xl text-[#2C1810]">{user.name}</h1>
+          <h1 className="font-[family-name:var(--font-playfair)] text-xl text-[#242e25]">{user.name}</h1>
           <div className="flex items-center gap-3 mt-1 text-xs text-[#8B6F4E]">
             <span className="flex items-center gap-1">
               <Users size={12} />
@@ -146,10 +146,10 @@ export default async function UserProfilePage({
             <button type="submit"
               className={`text-sm font-medium px-4 py-2 rounded-full border transition-colors ${
                 followStatus === 'accepted'
-                  ? 'border-[#C4A882] text-[#5C3D2E] hover:border-red-300 hover:text-red-500'
+                  ? 'border-[#c1ad93] text-[#485340] hover:border-red-300 hover:text-red-500'
                   : followStatus === 'pending'
                   ? 'border-amber-300 text-amber-700 hover:border-red-300 hover:text-red-500'
-                  : 'bg-[#2C1810] border-[#2C1810] text-white hover:bg-[#5C3D2E]'
+                  : 'bg-[#242e25] border-[#242e25] text-white hover:bg-[#485340]'
               }`}>
               {followStatus === 'accepted' ? 'Following' : followStatus === 'pending' ? 'Requested' : '+ Follow'}
             </button>
@@ -157,20 +157,20 @@ export default async function UserProfilePage({
         )}
       </div>
 
-      {isOwn && <Link href="/friends" className="group mb-5 flex min-h-20 items-center gap-4 rounded-2xl border border-[#c7d7cf] bg-[#edf1e9] p-4 text-[#2e4147] transition-colors hover:bg-[#e3ebe0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#507c76]">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#507c76]/10 text-[#507c76]"><Users size={23} /></span>
-        <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-xl">Friends</span><span className="mt-0.5 block text-sm text-[#507c76]">{pendingCount ? `${pendingCount} friend request${pendingCount === 1 ? '' : 's'} waiting` : 'Find friends & see who you follow'}</span></span>
-        {pendingCount > 0 && <span className="rounded-full bg-[#507c76] px-2 py-1 text-xs font-semibold text-white">{pendingCount}</span>}
-        <ChevronRight size={20} className="shrink-0 text-[#507c76] transition-transform group-hover:translate-x-0.5" />
+      {isOwn && <Link href="/friends" className="group mb-5 flex min-h-20 items-center gap-4 rounded-2xl border border-[#c7d7cf] bg-[#edf1e9] p-4 text-[#2e4147] transition-colors hover:bg-[#e3ebe0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#59694f]">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#59694f]/10 text-[#59694f]"><Users size={23} /></span>
+        <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-xl">Friends</span><span className="mt-0.5 block text-sm text-[#59694f]">{pendingCount ? `${pendingCount} friend request${pendingCount === 1 ? '' : 's'} waiting` : 'Find friends & see who you follow'}</span></span>
+        {pendingCount > 0 && <span className="rounded-full bg-[#59694f] px-2 py-1 text-xs font-semibold text-white">{pendingCount}</span>}
+        <ChevronRight size={20} className="shrink-0 text-[#59694f] transition-transform group-hover:translate-x-0.5" />
       </Link>}
 
       {/* Tabs */}
       {isOwn && (
-        <div className="flex flex-wrap gap-1 bg-[#FAF7F2] rounded-xl p-1 text-sm font-medium border border-[#E8D5B7] mb-5 w-fit">
+        <div className="flex flex-wrap gap-1 bg-[#faf7f1] rounded-xl p-1 text-sm font-medium border border-[#dfd3c2] mb-5 w-fit">
           <Link
             href={`/user/${id}`}
             className={`px-4 py-1.5 rounded-lg transition-colors ${
-              !showBucket && !showDrafts ? 'bg-[#2C1810] text-white shadow-sm' : 'text-[#8B6F4E] hover:text-[#2C1810]'
+              !showBucket && !showDrafts ? 'bg-[#242e25] text-white shadow-sm' : 'text-[#8B6F4E] hover:text-[#242e25]'
             }`}
           >
             My Posts
@@ -178,13 +178,13 @@ export default async function UserProfilePage({
           <Link
             href={`/user/${id}?tab=bucket`}
             className={`px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              showBucket ? 'bg-red-500 text-white shadow-sm' : 'text-[#8B6F4E] hover:text-[#2C1810]'
+              showBucket ? 'bg-red-500 text-white shadow-sm' : 'text-[#8B6F4E] hover:text-[#242e25]'
             }`}
           >
             <span>❤️</span> Saved
             {bucketItems.length > 0 && (
               <span className={`text-xs rounded-full px-1.5 py-0.5 font-bold ${
-                showBucket ? 'bg-red-400 text-white' : 'bg-[#E8D5B7] text-[#5C3D2E]'
+                showBucket ? 'bg-red-400 text-white' : 'bg-[#dfd3c2] text-[#485340]'
               }`}>
                 {bucketItems.length}
               </span>
@@ -193,13 +193,13 @@ export default async function UserProfilePage({
           <Link
             href={`/user/${id}?tab=in-progress`}
             className={`px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              showDrafts ? 'bg-amber-500 text-white shadow-sm' : 'text-[#8B6F4E] hover:text-[#2C1810]'
+              showDrafts ? 'bg-amber-500 text-white shadow-sm' : 'text-[#8B6F4E] hover:text-[#242e25]'
             }`}
           >
             In progress
             {drafts.length > 0 && (
               <span className={`text-xs rounded-full px-1.5 py-0.5 font-bold ${
-                showDrafts ? 'bg-amber-400 text-white' : 'bg-[#E8D5B7] text-[#5C3D2E]'
+                showDrafts ? 'bg-amber-400 text-white' : 'bg-[#dfd3c2] text-[#485340]'
               }`}>
                 {drafts.length}
               </span>
@@ -208,24 +208,24 @@ export default async function UserProfilePage({
         </div>
       )}
 
-      {!isOwn && <Link href={`/messages/${id}`} className="mb-5 inline-block rounded-full bg-[#507c76] px-4 py-2 text-sm text-white">Send private message</Link>}
+      {!isOwn && <Link href={`/messages/${id}`} className="mb-5 inline-block rounded-full bg-[#59694f] px-4 py-2 text-sm text-white">Send private message</Link>}
 
       {showDrafts ? (
         <>
-          <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="font-semibold text-[#2C1810]">In progress</h2><p className="mt-1 text-sm text-[#8B6F4E]">All your unpublished trips, ready to pick up anytime.</p></div></div>
-          {drafts.length === 0 ? <div className="rounded-xl border border-[#E8D5B7] bg-[#FAF7F2] p-8 text-center"><p className="text-sm text-[#8B6F4E]">No trips in progress yet.</p><Link href="/plan" className="mt-4 inline-flex min-h-11 items-center rounded-full bg-[#2C1810] px-5 text-sm font-semibold text-white">Start planning</Link></div> : <div className="space-y-3">
+          <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="font-semibold text-[#242e25]">In progress</h2><p className="mt-1 text-sm text-[#8B6F4E]">All your unpublished trips, ready to pick up anytime.</p></div></div>
+          {drafts.length === 0 ? <div className="rounded-xl border border-[#dfd3c2] bg-[#faf7f1] p-8 text-center"><p className="text-sm text-[#8B6F4E]">No trips in progress yet.</p><Link href="/plan" className="mt-4 inline-flex min-h-11 items-center rounded-full bg-[#242e25] px-5 text-sm font-semibold text-white">Start planning</Link></div> : <div className="space-y-3">
             {drafts.map(trip => <Link key={trip.id} href={trip.isPlan ? `/plan/${trip.id}` : `/itinerary/${trip.id}/edit`} className="flex items-center gap-3 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4 transition-colors hover:bg-[#edf1e9]">
-              <span className="min-w-0 flex-1"><span className="text-xs font-semibold uppercase tracking-wide text-[#507c76]">Only you · Not posted</span><span className="mt-1 block break-words font-[family-name:var(--font-playfair)] text-xl text-[#2e4147]">{trip.title || 'Untitled trip'}</span><span className="mt-1 block text-sm text-[#73786d]">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places · Open to keep planning</span></span><ChevronRight size={20} className="shrink-0 text-[#507c76]" />
+              <span className="min-w-0 flex-1"><span className="text-xs font-semibold uppercase tracking-wide text-[#59694f]">Only you · Not posted</span><span className="mt-1 block break-words font-[family-name:var(--font-playfair)] text-xl text-[#2e4147]">{trip.title || 'Untitled trip'}</span><span className="mt-1 block text-sm text-[#73786d]">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places · Open to keep planning</span></span><ChevronRight size={20} className="shrink-0 text-[#59694f]" />
             </Link>)}
           </div>}
         </>
       ) : !showBucket ? (
         <>
-          <h2 className="font-semibold text-[#2C1810] text-sm mb-3">
+          <h2 className="font-semibold text-[#242e25] text-sm mb-3">
             {isOwn ? 'Your itineraries' : 'Itineraries'}
           </h2>
           {itineraries.length === 0 ? (
-            <div className="bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] p-8 text-center">
+            <div className="bg-[#faf7f1] rounded-xl border border-[#dfd3c2] p-8 text-center">
               <p className="text-[#8B6F4E] italic text-sm">No public itineraries yet.</p>
             </div>
           ) : (
@@ -261,12 +261,12 @@ export default async function UserProfilePage({
         </>
       ) : (
         <>
-          <h2 className="font-semibold text-[#2C1810] text-sm mb-3 flex items-center gap-2">
+          <h2 className="font-semibold text-[#242e25] text-sm mb-3 flex items-center gap-2">
             <span>❤️</span> {folders.find(f => f.id === selectedFolder)?.name ?? 'Saved'}
           </h2>
           {isOwn && <SavedFolders key={selectedFolder} userId={id} folders={folders.map(f => ({ ...f, count: bucketItems.filter(item => item.folderId === f.id).length }))} selected={selectedFolder} total={bucketItems.length} />}
           {visibleBucketItems.length === 0 ? (
-            <div className="bg-[#FAF7F2] rounded-xl border border-[#E8D5B7] p-8 text-center">
+            <div className="bg-[#faf7f1] rounded-xl border border-[#dfd3c2] p-8 text-center">
               <p className="text-4xl mb-3">❤️</p>
               <p className="text-[#8B6F4E] text-sm">{selectedFolder ? 'No trips in this folder yet.' : 'Nothing saved yet.'}</p>
               <p className="text-[#8B6F4E] text-xs mt-1">

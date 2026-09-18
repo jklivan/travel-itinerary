@@ -56,17 +56,17 @@ export default function TripEntryLayout({ places, children }: { places: TripMapP
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <div>
             <h2 className="font-semibold text-[#2e4147]">Your trip on the map</h2>
-            <p className="text-xs text-[#5C3D2E]" aria-live="polite">{pending ? `Finding ${pending} ${pending === 1 ? 'place' : 'places'}…` : `${pins.length} of ${namedPlaces.length} places mapped`}</p>
+            <p className="text-xs text-[#485340]" aria-live="polite">{pending ? `Finding ${pending} ${pending === 1 ? 'place' : 'places'}…` : `${pins.length} of ${namedPlaces.length} places mapped`}</p>
           </div>
-          <button type="button" onClick={() => setMobileOpen(open => !open)} aria-expanded={mobileOpen} aria-controls="trip-entry-map" className="min-h-11 px-3 text-sm font-semibold text-[#507c76] lg:hidden">
+          <button type="button" onClick={() => setMobileOpen(open => !open)} aria-expanded={mobileOpen} aria-controls="trip-entry-map" className="min-h-11 px-3 text-sm font-semibold text-[#59694f] lg:hidden">
             {mobileOpen ? 'Hide map' : 'Show map'}
           </button>
         </div>
         <div id="trip-entry-map" className={`${mobileOpen ? 'block' : 'hidden'} lg:block`}>
           <div className="relative isolate h-80 overflow-hidden lg:h-[calc(100dvh-16rem)] lg:min-h-80">
-            {pins.length > 0 ? <ItineraryMap pins={pins} /> : <div className="flex h-full items-center justify-center px-6 text-center text-sm text-[#5C3D2E]">{pending ? 'Finding your places…' : namedPlaces.length ? 'No locations found yet. Try a more specific place name.' : 'Add a hotel, restaurant, or activity to see where it is.'}</div>}
+            {pins.length > 0 ? <ItineraryMap pins={pins} /> : <div className="flex h-full items-center justify-center px-6 text-center text-sm text-[#485340]">{pending ? 'Finding your places…' : namedPlaces.length ? 'No locations found yet. Try a more specific place name.' : 'Add a hotel, restaurant, or activity to see where it is.'}</div>}
           </div>
-          <div className="px-4 py-3 text-xs text-[#5C3D2E]">
+          <div className="px-4 py-3 text-xs text-[#485340]">
             <p>Pins update as you add places. Colors show each day.</p>
             {missing.length > 0 && <p className="mt-1">Couldn’t locate: {missing.map(place => place.name).join(', ')}. Try a more specific name or select a search suggestion.</p>}
           </div>

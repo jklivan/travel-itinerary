@@ -33,26 +33,26 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const scheduled = [...new Set(places.flatMap(p => p.day === null ? [] : [p.day]))].sort((a, b) => a - b)
   function renderPlace(place: Place & { destination: string }) { return <PlaceRow key={place.id} place={place} /> }
   return <div className="mx-auto max-w-2xl px-4 py-6 text-[#2e4147]">
-    <BackButton fallback="/plan" className="text-sm text-[#507c76]">← Back</BackButton>
-    <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#507c76]"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
+    <BackButton fallback="/plan" className="text-sm text-[#59694f]">← Back</BackButton>
+    <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#59694f]"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
     <h1 className="mt-2 break-words font-[family-name:var(--font-playfair)] text-3xl sm:text-4xl">{trip.title}</h1>
     <p className="mt-2 flex items-center gap-2 text-sm text-[#73786d]"><CalendarDays size={16} />{trip.start ? `${trip.start} — ${trip.end}` : 'Dates are flexible'} · {places.length} places</p>
-    {trip.isPlan && <details open={initialDetails || undefined} className="mt-3"><summary className="cursor-pointer py-2 text-sm text-[#507c76]">Edit trip name & dates</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
+    {trip.isPlan && <details open={initialDetails || undefined} className="mt-3"><summary className="cursor-pointer py-2 text-sm text-[#59694f]">Edit trip name & dates</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
     <div className="mt-4 flex flex-wrap items-center gap-3">
       <CopyTripButton itineraryId={trip.id} title={trip.title} isOwn />
       {!(trip.visibility === 'draft' && trip.isPlan) && <Link href={trip.visibility === 'draft' ? `/itinerary/${trip.id}/edit` : `/itinerary/${trip.id}`} className="min-h-11 rounded-xl border border-[#d7cebc] px-4 py-3 text-sm">{trip.visibility === 'draft' ? 'Edit & publish' : 'View shared trip'}</Link>}
       {trip.visibility !== 'draft' && <span className="text-xs text-[#73786d]">Saved changes appear on your shared trip.</span>}
     </div>
-    {!adding && !importing && <div className="sticky top-0 z-20 -mx-1 mt-5 bg-[#F3EAD9] px-1 py-3">
+    {!adding && !importing && <div className="sticky top-0 z-20 -mx-1 mt-5 bg-[#f3eee5] px-1 py-3">
       <button className={`${buttonClass} flex w-full items-center justify-center gap-2`} onClick={() => setAdding(true)}><Plus size={20} />Add a place</button>
-      {trip.isPlan && <Link href={`/plan/${trip.id}/friends`} className="mt-2 flex min-h-11 items-center justify-center rounded-xl border border-[#8caaa3] bg-[#fffdf7] px-4 py-2 text-sm font-semibold text-[#507c76]">Browse friends’ places · Add several at once</Link>}
+      {trip.isPlan && <Link href={`/plan/${trip.id}/friends`} className="mt-2 flex min-h-11 items-center justify-center rounded-xl border border-[#8caaa3] bg-[#fffdf7] px-4 py-2 text-sm font-semibold text-[#59694f]">Browse friends’ places · Add several at once</Link>}
     </div>}
     {adding && <AddPlace trip={trip} onClose={() => setAdding(false)} />}
     {importing && <PlanImport tripId={trip.id} onClose={() => setImporting(false)} />}
-    <div role="tablist" aria-label="Trip view" className="mb-5 mt-3 flex border-b border-[#d7cebc]">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className={`min-h-12 flex-1 border-b-2 p-3 font-semibold ${tab === value ? 'border-[#507c76] text-[#507c76]' : 'border-transparent text-[#73786d]'}`}>{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
+    <div role="tablist" aria-label="Trip view" className="mb-5 mt-3 flex border-b border-[#d7cebc]">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className={`min-h-12 flex-1 border-b-2 p-3 font-semibold ${tab === value ? 'border-[#59694f] text-[#59694f]' : 'border-transparent text-[#73786d]'}`}>{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
     <section role="tabpanel" id="trip-panel" aria-labelledby={`${tab}-tab`}>
       {mapOpened && <div hidden={tab !== 'map'}><PlanningMap places={places.filter(place => place.type !== 'transport' || place.placeId || (place.lat !== null && place.lng !== null)).map(place => ({ id: place.id, name: place.name, city: place.destination, type: place.type === 'hotel' ? 'hotel' : place.type === 'food_drink' ? 'food_drink' : place.type === 'transport' ? 'transport' : 'activity', day: place.day, placeId: place.placeId ?? undefined, lat: place.lat, lng: place.lng }))} /></div>}
-      {tab === 'map' ? null : !places.length ? <div className="rounded-2xl border border-dashed border-[#c4b99e] p-8 text-center"><MapPin className="mx-auto mb-3 text-[#507c76]" /><h2 className="text-xl font-semibold">A place to start</h2><p className="mt-2 text-sm text-[#73786d]">A hotel you love, a restaurant someone mentioned, something you want to do. Add it now and decide when later.</p></div> : tab === 'places' ? <>
+      {tab === 'map' ? null : !places.length ? <div className="rounded-2xl border border-dashed border-[#c4b99e] p-8 text-center"><MapPin className="mx-auto mb-3 text-[#59694f]" /><h2 className="text-xl font-semibold">A place to start</h2><p className="mt-2 text-sm text-[#73786d]">A hotel you love, a restaurant someone mentioned, something you want to do. Add it now and decide when later.</p></div> : tab === 'places' ? <>
         <p className="mb-5 text-sm text-[#73786d]">Everything you’re considering, all in one place. Days are optional.</p>
         {categories.map(category => { const items = places.filter(p => p.type === category.value); return items.length > 0 && <section key={category.value} className="mb-7"><div className={`${styles.categoryHeading} ${styles[category.value]}`}><h3><span className={styles.categoryIcon}><category.Icon size={17} /></span>{category.label}</h3><span className={styles.count}>{items.length} {items.length === 1 ? 'place' : 'places'}</span></div><div className="space-y-3">{items.map(renderPlace)}</div></section> })}
       </> : <>
@@ -90,7 +90,7 @@ function AddPlace({ trip, onClose }: { trip: Trip; onClose: () => void }) {
         { value: 'transport', label: 'Transport', Icon: Plane, color: 'peer-checked:border-[#687e9b] peer-checked:bg-[#edf1f5] peer-checked:text-[#465e7a]' },
       ].map(({ value, label, Icon, color }) => <label key={value} className="cursor-pointer">
         <input type="radio" name="type" value={value} checked={category === value} onChange={() => setCategory(value as 'hotel' | 'food_drink' | 'activity' | 'transport')} className="peer sr-only" />
-        <span className={`flex min-h-11 items-center gap-2 rounded-full border border-[#d7cebc] bg-white px-3 py-2 text-sm font-medium text-[#73786d] transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#507c76] peer-disabled:opacity-50 ${color}`}><Icon size={16} />{label}</span>
+        <span className={`flex min-h-11 items-center gap-2 rounded-full border border-[#d7cebc] bg-white px-3 py-2 text-sm font-medium text-[#73786d] transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#59694f] peer-disabled:opacity-50 ${color}`}><Icon size={16} />{label}</span>
       </label>)}
     </div></fieldset>
     </fieldset>
@@ -145,7 +145,7 @@ function PlaceRow({ place }: { place: Place & { destination: string } }) {
     </div>
     {place.type !== 'transport' && <PlacePeople key={`${place.placeId}:${place.name}:${place.destination}`} compact placeId={place.placeId ?? ''} name={place.name} location={place.destination} />}
     <div className={planningStyles.controls}>
-    {!editing ? <button onClick={() => { setName(place.name); setPlaceId(place.placeId ?? ''); setEditing(true); setError(''); setSaved(false) }} type="button" className="min-h-11 text-sm font-semibold text-[#507c76]">Edit details →</button> : <form className="w-full" onSubmit={async event => {
+    {!editing ? <button onClick={() => { setName(place.name); setPlaceId(place.placeId ?? ''); setEditing(true); setError(''); setSaved(false) }} type="button" className="min-h-11 text-sm font-semibold text-[#59694f]">Edit details →</button> : <form className="w-full" onSubmit={async event => {
       event.preventDefault(); if (saving.current) return
       saving.current = true; setBusy(true); setError('')
       const data = new FormData(event.currentTarget)
@@ -158,7 +158,7 @@ function PlaceRow({ place }: { place: Place & { destination: string } }) {
       <label className="block text-sm">Notes<textarea name="notes" defaultValue={place.notes ?? ''} maxLength={8000} rows={3} className={inputClass} /></label><DayField day={place.day} />
       <div className="flex gap-3"><button className={buttonClass}>{busy ? 'Saving…' : 'Save changes'}</button><button type="button" onClick={() => setEditing(false)} className="px-3 text-sm">Cancel</button></div>
     </fieldset>{error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}</form>}
-    {saved && <p role="status" className="flex items-center gap-1 text-xs text-[#507c76]"><Check size={14} />Saved</p>}
+    {saved && <p role="status" className="flex items-center gap-1 text-xs text-[#59694f]"><Check size={14} />Saved</p>}
     {editing && <div className="w-full">{!removing ? <button type="button" aria-label={`Delete ${place.name}`} className="min-h-11 text-xs text-red-700" onClick={() => setRemoving(true)}>Delete place</button> : <div className="text-sm"><p>Delete this place and its notes? The rest of your trip will stay.</p><button type="button" disabled={busy} className="min-h-11 pr-4 text-red-700" onClick={async () => {
       if (saving.current) return
       saving.current = true; setBusy(true); setError('')

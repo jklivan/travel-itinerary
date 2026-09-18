@@ -19,11 +19,11 @@ function BottomNavInner({ pendingCount, userId }: { pendingCount: number; userId
   const isMessages = pathname === '/messages' || pathname.startsWith('/messages/')
 
   function cls(active: boolean) {
-    return `flex min-w-0 flex-col items-center gap-0.5 px-1 py-2 transition-colors ${active ? 'text-[#2C1810]' : 'text-[#8B6F4E] hover:text-[#5C3D2E]'}`
+    return `flex min-w-0 flex-col items-center gap-0.5 px-1 py-2 transition-colors ${active ? 'text-[#242e25]' : 'text-[#8B6F4E] hover:text-[#485340]'}`
   }
 
   return (
-    <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#FAF7F2] border-t border-[#E8D5B7] shadow-lg z-50">
+    <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#faf7f1] border-t border-[#dfd3c2] shadow-lg z-50">
       <div className="max-w-2xl mx-auto grid grid-cols-5 items-center py-2">
         <Link href="/" className={cls(isFeed)}>
           <Home className="w-6 h-6" />
@@ -35,8 +35,8 @@ function BottomNavInner({ pendingCount, userId }: { pendingCount: number; userId
           <span className="text-xs font-medium">Explore</span>
         </Link>
 
-        <Link href="/plan" aria-label="Start planning" className="flex min-w-0 flex-col items-center gap-1 text-[#2C1810]">
-          <span className="-mt-5 flex h-12 w-12 items-center justify-center rounded-full bg-[#2C1810] text-white shadow-lg"><Plus className="h-7 w-7" /></span>
+        <Link href="/plan" aria-label="Start planning" className="flex min-w-0 flex-col items-center gap-1 text-[#242e25]">
+          <span className="-mt-5 flex h-12 w-12 items-center justify-center rounded-full bg-[#242e25] text-white shadow-lg"><Plus className="h-7 w-7" /></span>
           <span className="text-center text-[10px] leading-tight font-semibold min-[393px]:text-xs">Start planning</span>
         </Link>
 
@@ -52,7 +52,7 @@ function BottomNavInner({ pendingCount, userId }: { pendingCount: number; userId
 
         <Link href="/messages" aria-current={isMessages ? 'page' : undefined} aria-label={`Messages${unreadMessages ? `, ${unreadMessages} unread` : ''}`} className={`relative ${cls(isMessages)}`}>
           <MessageCircle className="w-6 h-6" />
-          {unreadMessages > 0 && <span className="absolute top-1 right-1 min-w-4 rounded-full bg-[#507c76] px-1 text-center text-[10px] font-bold text-white">{unreadMessages > 99 ? '99+' : unreadMessages}</span>}
+          {unreadMessages > 0 && <span className="absolute top-1 right-1 min-w-4 rounded-full bg-[#59694f] px-1 text-center text-[10px] font-bold text-white">{unreadMessages > 99 ? '99+' : unreadMessages}</span>}
           <span className="text-[10px] min-[375px]:text-xs font-medium">Messages</span>
         </Link>
 

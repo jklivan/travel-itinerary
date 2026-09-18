@@ -16,7 +16,7 @@ export function TripRatingPicker({
     <div className="flex gap-2">
       {TRIP_STAMPS.map((stamp) => {
         const filled = value !== null && stamp.value <= value
-        const paperColor = ['#99776a', '#a27e3b', '#739287', '#507c76', '#355650'][stamp.value - 1]
+        const paperColor = ['#99776a', '#a27e3b', '#739287', '#59694f', '#355650'][stamp.value - 1]
         return (
           <div key={stamp.value} className="flex-1">
             <button
