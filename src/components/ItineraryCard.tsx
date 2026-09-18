@@ -104,7 +104,11 @@ export default function ItineraryCard({
             {audience === 'romantic' && <span className="w-fit rounded-sm bg-[#fffdf2]/90 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-[#2e4147]">Romantic</span>}
           </div>
 
-          <div aria-hidden="true" className="pointer-events-none absolute right-2.5 top-2.5 z-20 grid size-14 place-items-center border-[3px] border-dotted border-[#9c917e] bg-[#f6f1e7]/95 text-[#2e4147] shadow-md outline outline-2 outline-white/90">
+          <div aria-hidden="true" className="pointer-events-none absolute right-2.5 top-2.5 z-20 grid size-14 place-items-center bg-[#f6f1e7]/95 text-[#2e4147] shadow-md">
+            <svg viewBox="0 0 100 100" className="absolute inset-0 size-full" fill="none" aria-hidden="true">
+              <rect x="5" y="5" width="90" height="90" fill="#f6f1e7" stroke="#9c917e" strokeWidth="9" strokeDasharray="0 11" strokeLinecap="round" />
+              <rect x="12" y="12" width="76" height="76" stroke="#ffffff" strokeWidth="2" />
+            </svg>
             <span className="flex items-center gap-0.5 font-[family-name:var(--font-playfair)] text-[29px] leading-none">P
               <svg viewBox="0 0 34 22" className="h-5 w-7 text-[#8b6f4e]" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M2 5c6-4 10 4 16 0s10 4 14 0M2 11c6-4 10 4 16 0s10 4 14 0M2 17c6-4 10 4 16 0s10 4 14 0" /></svg>
             </span>
