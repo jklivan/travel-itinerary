@@ -22,3 +22,15 @@
 .arrow { display:grid; place-items:center; flex-shrink:0; width:25px; height:25px; background:#eadcc5; border-radius:50%; }
 @media(min-width:540px) { .page { padding:34px 32px 44px; } .grid { gap:18px; } .cardContent { padding:28px 16px 16px; } .cardFooter p { font-size:10px; } .search input { font-size:14px; } }
 @media(max-width:350px) { .page { padding-inline:14px; } .grid { gap:10px; } .cardContent { padding-inline:10px; } .cardFooter p { font-size:8px; } }
+
+/* Frame each Explore tile like a small Postcard Polaroid. */
+.card { overflow:visible; padding:8px 8px 12px; border:1px solid #ece5da; border-radius:4px; background:#fffdf8; box-shadow:2px 4px 12px #392a1b20; }
+.card:nth-child(odd) { transform:rotate(-.35deg); }
+.card:nth-child(even) { transform:rotate(.35deg); }
+.card:hover { transform:translateY(-2px) rotate(0); box-shadow:2px 7px 16px #392a1b26; }
+.photo { position:relative; z-index:1; border:5px solid #fff; background-color:#f3eee5; box-shadow:0 1px 4px #392a1b20; }
+.cardContent { border-radius:0; background:transparent; margin:0; padding:10px 5px 0; }
+.badge { z-index:2; top:-20px; left:8px; width:37px; height:37px; box-shadow:0 1px 4px #392a1b24; }
+@media(min-width:540px) { .card { padding:10px 10px 15px; } .cardContent { padding:12px 7px 0; } }
+@media(max-width:350px) { .card { padding:6px 6px 10px; } .cardContent { padding-inline:4px; } .card h2 { font-size:16px; } }
+@media(prefers-reduced-motion:reduce) { .card,.card:hover { transform:none; } }
