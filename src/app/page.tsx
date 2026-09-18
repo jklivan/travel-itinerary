@@ -60,7 +60,7 @@ async function FeedResults({ searchQuery }: { searchQuery: string }) {
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
       <Suspense fallback={null}><StoryFeed userId={userId} following={false} /></Suspense>
-      <h1 className="mb-6 border-b border-[#c1ad93]/50 px-4 py-3 text-center text-base font-semibold text-[#242e25]">For You</h1>
+      <h1 className="mb-6 border-b border-[#c1ad93]/50 px-4 py-3 text-center text-base font-semibold text-[#242e25]">FOR YOU</h1>
       {searchQuery && <div className="mb-5">
         <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-[#242e25]">&quot;{searchQuery}&quot;</h1>
         <Link href="/" className="text-sm text-[#485340] hover:underline">Clear search</Link>
