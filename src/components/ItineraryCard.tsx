@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { MapPin } from 'lucide-react'
+import { MapPin, MessageCircle } from 'lucide-react'
 import { hasTripDates, tripDuration } from '@/lib/dayTrips'
 import { tripSeason } from '@/lib/tripSeason'
 import { TRIP_STAMPS } from '@/lib/tripStamps'
@@ -18,6 +18,7 @@ type Props = {
   startDate: Date
   endDate: Date
   audience: string
+  authorId?: string
   budget?: number | null
   tripRating: number | null
   authorName: string
@@ -33,6 +34,8 @@ type Props = {
   tags?: string[]
   datesFlexible?: boolean
   fullWidth?: boolean
+  commentCount?: number
+  showBudget?: boolean
 }
 
 const COVER_COLORS = [
@@ -63,8 +66,9 @@ function getInitials(name: string) {
 }
 
 export default function ItineraryCard({
-  id, postType, title, startDate, endDate, audience, budget, tripRating, authorName, destinations, coverPhoto, photos = [],
+  id, postType, title, startDate, endDate, audience, budget, tripRating, authorName, authorId, destinations, coverPhoto, photos = [],
   currentUserId, isOwn, isBucketed = false, saveCount, fullWidth = false, datesFlexible = false, bestMonths = [], tags = [], durationDays,
+  commentCount = 0, showBudget = true,
 }: Props) {
   const days = tripDuration({ postType, startDate, endDate, datesFlexible, destinations, tags, durationDays })
   const isGuide = days === null
@@ -113,9 +117,16 @@ export default function ItineraryCard({
         className={`bg-white rounded-[3px] ${fullWidth ? 'px-2.5 pt-3 pb-4' : 'px-4 pt-5 pb-7'}`}
         style={{ boxShadow: '2px 5px 20px rgba(0,0,0,0.16)' }}
       >
+        {authorId ? <Link href={`/user/${authorId}`} className="mb-2 flex min-h-8 items-center gap-2 px-1 hover:opacity-80">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white" style={{ backgroundColor: avatarColor }}>{initials}</span>
+          <span className="truncate text-[10px] font-semibold uppercase tracking-[0.13em] text-[#2e4147]">{authorName}</span>
+        </Link> : <div className="mb-2 flex min-h-8 items-center gap-2 px-1">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white" style={{ backgroundColor: avatarColor }}>{initials}</span>
+          <span className="truncate text-[10px] font-semibold uppercase tracking-[0.13em] text-[#2e4147]">{authorName}</span>
+        </div>}
         {/* Photo */}
         <div
-          className={`relative w-full overflow-hidden ${fullWidth ? 'aspect-[6/5] mb-2.5' : 'aspect-[4/3] mb-4'}`}
+          className={`relative w-full overflow-hidden ${fullWidth ? 'aspect-[3/2] mb-2.5' : 'aspect-[4/3] mb-4'}`}
           style={{ backgroundColor: coverColor }}
         >
           {fullWidth && photos.length > 0 ? <PhotoStrip photos={photos} title={title} fillContainer counterPosition="left" /> : <Link href={`/itinerary/${id}`} aria-label={`Open ${title}`} className="absolute inset-0">
@@ -154,11 +165,11 @@ export default function ItineraryCard({
 
         {/* Caption */}
         <Link href={`/itinerary/${id}`} className={fullWidth ? 'block px-1' : 'block'}>
-          <h2 className={`trip-title font-[family-name:var(--font-playfair)] text-[25px] text-[#242e25] leading-tight line-clamp-2 mb-2`}>
+          <h2 className={`trip-title font-[family-name:var(--font-playfair)] text-[22px] uppercase tracking-[0.13em] text-[#2e4147] leading-tight line-clamp-2 mb-2`}>
             {title}
           </h2>
 
-          <div className="text-xs text-[#8B6F4E] space-y-0.5">
+          <div className="space-y-0.5 text-[10px] uppercase tracking-[0.15em] text-[#8B6F4E]">
             {location && (
               <span className="flex items-center gap-1 truncate min-w-0">
                 <MapPin size={9} className="shrink-0" />
@@ -175,30 +186,16 @@ export default function ItineraryCard({
 
           {season && <p className={`mt-1.5 text-right text-xs uppercase tracking-[0.14em] text-[#8B6F4E]`} aria-label={`${isGuide || datesFlexible ? 'Recommended season' : 'Trip season'}: ${season}`}>{season}</p>}
 
-          <div className={`flex items-center gap-2 border-t border-[#dfd3c2] ${fullWidth ? 'mt-2 pt-2' : 'mt-3 pt-3'}`}>
-            <div
-              className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-              style={{ backgroundColor: avatarColor }}
-            >
-              {initials}
-            </div>
-            <span className={`text-xs font-medium text-[#8B6F4E] truncate flex-1`}>
-              {authorName}
-            </span>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span aria-label={`${saveCount} ${saveCount === 1 ? 'favorite' : 'favorites'}`} className="text-[10px] text-[#8B6F4E] flex items-center gap-0.5">
-                <span aria-hidden="true">🤍</span> {saveCount}
-              </span>
-              {budget && budget > 0 && (
-                <span className="text-[10px] font-medium tracking-tight">
-                  {[1,2,3,4,5].map((n) => (
-                    <span key={n} className={n <= budget ? 'text-green-600' : 'text-gray-200'}>$</span>
-                  ))}
-                </span>
-              )}
-            </div>
-          </div>
         </Link>
+        <div className={`flex items-center gap-5 border-t border-[#dfd3c2] ${fullWidth ? 'mt-2 px-1 pt-2' : 'mt-3 pt-3'}`}>
+          <span aria-label={`${saveCount} likes`} className="text-xs text-[#59694f]">♡ {saveCount} {saveCount === 1 ? 'Like' : 'Likes'}</span>
+          <Link href={`/itinerary/${id}#comments`} className="inline-flex min-h-8 items-center gap-1.5 text-xs text-[#59694f] hover:text-[#2e4147]">
+            <MessageCircle size={15} />Comment{commentCount > 0 ? ` · ${commentCount}` : ''}
+          </Link>
+          {showBudget && budget && budget > 0 && <span className="ml-auto text-[10px] font-medium tracking-tight" aria-label={`Budget level ${budget} out of 5`}>
+            {[1,2,3,4,5].map((n) => <span key={n} className={n <= budget ? 'text-green-600' : 'text-gray-200'}>$</span>)}
+          </span>}
+        </div>
       </div>
     </article>
   )

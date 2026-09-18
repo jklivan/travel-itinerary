@@ -1,9 +1,8 @@
 import Link from 'next/link'
 import PostcardBrand from './PostcardBrand'
-import { auth, signOut } from '@/auth'
+import { auth } from '@/auth'
 import NotificationBell from './NotificationBell'
-import { unregisterPushDevice } from '@/actions/notifications'
-import { LogOut, User } from 'lucide-react'
+import { User } from 'lucide-react'
 
 export default async function Navbar() {
   const session = await auth()
@@ -19,26 +18,12 @@ export default async function Navbar() {
           {session?.user ? (
             <>
               <NotificationBell />
-              <span className="text-sm text-white/80 hidden sm:block font-medium truncate max-w-[100px]">
-                {session.user.name}
-              </span>
               <Link href="/settings"
                 className="text-xs text-white/70 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors hidden sm:block">
                 Settings
               </Link>
-              <form action={async () => {
-                'use server'
-                await unregisterPushDevice()
-                await signOut({ redirectTo: '/' })
-              }}>
-                <button type="submit" aria-label="Sign out"
-                  className="flex size-11 items-center justify-center text-xs text-white/70 hover:text-white bg-white/10 hover:bg-white/20 sm:w-auto sm:px-3 rounded-lg transition-colors">
-                  <LogOut size={18} className="sm:hidden" />
-                  <span className="hidden sm:inline">Sign out</span>
-                </button>
-              </form>
               <Link href={session.user.id ? `/user/${session.user.id}` : '/login'} aria-label="Profile"
-                className="hidden sm:flex size-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
+                className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors">
                 <User size={22} />
               </Link>
             </>

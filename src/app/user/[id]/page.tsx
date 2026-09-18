@@ -9,7 +9,7 @@ import SavedFolders from '@/components/SavedFolders'
 import SavedFolderPicker from '@/components/SavedFolderPicker'
 import { tripPhotoGallery } from '@/lib/eventPhotos'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
-import { MapPin, Users, ChevronRight } from 'lucide-react'
+import { MapPin, Users, ChevronRight, Settings } from 'lucide-react'
 
 function getInitials(name: string) {
   return name.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
@@ -136,6 +136,7 @@ export default async function UserProfilePage({
             </span>
           </div>
         </div>
+        {isOwn && <Link href="/settings" aria-label="Settings" className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#dfd3c2] text-[#59694f] hover:bg-[#e9e3d7]"><Settings size={18} /></Link>}
         {session?.user && !isOwn && (
           <form action={async () => {
             'use server'
@@ -247,6 +248,7 @@ export default async function UserProfilePage({
                   budget={it.budget}
                   tripRating={it.tripRating}
                   authorName={user.name}
+                  authorId={user.id}
                   destinations={it.destinations}
                   coverPhoto={it.photos[0]?.url ?? null}
                   photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items))}
@@ -292,6 +294,7 @@ export default async function UserProfilePage({
                     budget={item.itinerary.budget}
                     tripRating={item.itinerary.tripRating}
                     authorName={item.itinerary.user.name}
+                    authorId={item.itinerary.user.id}
                     destinations={item.itinerary.destinations}
                     coverPhoto={item.itinerary.photos[0]?.url ?? null}
                     photos={tripPhotoGallery(item.itinerary.photos, item.itinerary.destinations.flatMap(destination => destination.items))}

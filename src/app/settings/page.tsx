@@ -1,6 +1,8 @@
-import { auth } from '@/auth'
+import { auth, signOut } from '@/auth'
 import { redirect } from 'next/navigation'
 import { NotificationPreferences } from '@/components/NativeNotifications'
+import { unregisterPushDevice } from '@/actions/notifications'
+import { LogOut } from 'lucide-react'
 
 export default async function SettingsPage() {
   const session = await auth()
@@ -19,6 +21,13 @@ export default async function SettingsPage() {
           </p>
         </div>
       </section>
+      <form className="mt-6" action={async () => {
+        'use server'
+        await unregisterPushDevice()
+        await signOut({ redirectTo: '/' })
+      }}>
+        <button type="submit" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#c1ad93] px-4 py-2 text-sm text-[#485340] hover:bg-[#e9e3d7]"><LogOut size={16} />Sign out</button>
+      </form>
     </div>
   )
 }

@@ -5,20 +5,22 @@ import StoryFeed from '@/components/StoryFeed'
 import ItineraryCard from '@/components/ItineraryCard'
 import Link from 'next/link'
 import { Suspense } from 'react'
+import FeedTabs from '@/components/FeedTabs'
 
 export default async function FeedPage({
   searchParams,
 }: {
   searchParams: Promise<{ search?: string; feed?: string }>
 }) {
-  const { search } = await searchParams
+  const { search, feed: requestedFeed } = await searchParams
   const searchQuery = search?.trim() || ''
+  const feed = ['all', 'friends', 'expert'].includes(requestedFeed ?? '') ? requestedFeed! : 'all'
   return <Suspense key={searchQuery} fallback={<div role="status" className="max-w-5xl mx-auto px-4 py-6">{searchQuery ? `Searching for “${searchQuery}”…` : 'Loading trips…'}</div>}>
-    <FeedResults searchQuery={searchQuery} />
+    <FeedResults searchQuery={searchQuery} feed={feed} />
   </Suspense>
 }
 
-async function FeedResults({ searchQuery }: { searchQuery: string }) {
+async function FeedResults({ searchQuery, feed }: { searchQuery: string; feed: string }) {
   const session = await auth()
   const userId = session?.user?.id ?? null
 
@@ -47,7 +49,7 @@ async function FeedResults({ searchQuery }: { searchQuery: string }) {
         user: { select: { name: true, id: true } },
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
         photos: { orderBy: { isStock: 'asc' } },
-        _count: { select: { bucketedBy: true } },
+        _count: { select: { bucketedBy: true, comments: true } },
       },
     }),
     userId
@@ -58,15 +60,23 @@ async function FeedResults({ searchQuery }: { searchQuery: string }) {
   const bucketSet = new Set(bucketIds.map((b) => b.itineraryId))
 
   return (
-    <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
+    <div className="max-w-xl mx-auto px-4 py-3 sm:px-8 sm:py-5">
       <Suspense fallback={null}><StoryFeed userId={userId} following={false} /></Suspense>
-      <h1 className="mb-6 border-b border-[#c1ad93]/50 px-4 py-3 text-center text-base font-semibold text-[#242e25]">FOR YOU</h1>
+      <section className="mb-3 mt-3 flex items-center justify-between gap-2 px-1" aria-label="Trip recommendations">
+        <h1 className="shrink-0 font-[family-name:var(--font-playfair)] text-sm font-medium tracking-[0.2em] text-[#2e4147]">FOR YOU</h1>
+        <FeedTabs active={feed} search={searchQuery} />
+      </section>
       {searchQuery && <div className="mb-5">
         <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-[#242e25]">&quot;{searchQuery}&quot;</h1>
         <Link href="/" className="text-sm text-[#485340] hover:underline">Clear search</Link>
       </div>}
 
-      {itineraries.length === 0 ? (
+      {feed !== 'all' ? (
+        <div className="rounded-xl border border-dashed border-[#c9c4b7] bg-[#faf7f1] px-5 py-10 text-center">
+          <p className="font-[family-name:var(--font-playfair)] text-xl text-[#2e4147]">{feed === 'friends' ? 'Friends’ trips are coming soon.' : 'Expert recommendations are coming soon.'}</p>
+          <p className="mt-2 text-sm text-[#73786d]">For now, browse every trip in All.</p>
+        </div>
+      ) : itineraries.length === 0 ? (
         <div className="text-center py-20 bg-[#faf7f1] rounded-xl border border-[#dfd3c2]">
           <p className="text-4xl mb-4">🌍</p>
           <p className="text-base font-medium text-[#242e25]">
@@ -95,6 +105,7 @@ async function FeedResults({ searchQuery }: { searchQuery: string }) {
               budget={it.budget}
               tripRating={it.tripRating}
               authorName={it.user.name}
+              authorId={it.user.id}
               destinations={it.destinations}
               coverPhoto={it.photos[0]?.url ?? null}
               photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items))}
@@ -102,6 +113,8 @@ async function FeedResults({ searchQuery }: { searchQuery: string }) {
               isOwn={it.user.id === userId}
               isBucketed={bucketSet.has(it.id)}
               saveCount={it._count.bucketedBy}
+              commentCount={it._count.comments}
+              showBudget={false}
             />
           ))}
         </div>

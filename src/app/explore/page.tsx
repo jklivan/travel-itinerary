@@ -117,6 +117,7 @@ function ItineraryList({
           budget={it.budget}
           tripRating={it.tripRating}
           authorName={it.user.name}
+          authorId={it.user.id}
           destinations={it.destinations}
           coverPhoto={it.photos[0]?.url ?? null}
                   photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items))}
