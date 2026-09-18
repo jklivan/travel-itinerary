@@ -104,7 +104,7 @@ export default function ItineraryCard({
             {audience === 'romantic' && <span className="w-fit rounded-sm bg-[#fffdf2]/90 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-[#2e4147]">Romantic</span>}
           </div>
 
-          <div aria-hidden="true" className="pointer-events-none absolute right-2.5 top-2.5 z-20 grid size-14 place-items-center text-[#2e4147] drop-shadow-lg">
+          <div aria-hidden="true" className="pointer-events-none absolute right-2.5 top-2.5 z-20 flex size-14 items-center pl-3 text-[#2e4147] drop-shadow-lg">
             <svg viewBox="0 0 100 100" className="absolute inset-0 size-full" fill="none" aria-hidden="true">
               <defs>
                 <mask id="sm">
@@ -119,7 +119,7 @@ export default function ItineraryCard({
               <rect x="9" y="9" width="82" height="82" stroke="#c4b99a" strokeWidth="1.5"/>
             </svg>
             <span className="relative z-10 flex items-center gap-0.5 font-[family-name:var(--font-playfair)] text-[29px] leading-none">P
-              <svg viewBox="0 0 34 22" className="h-5 w-7 text-[#8b6f4e]" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M2 5c6-4 10 4 16 0s10 4 14 0M2 11c6-4 10 4 16 0s10 4 14 0M2 17c6-4 10 4 16 0s10 4 14 0" /></svg>
+              <svg viewBox="0 0 34 22" className="h-5 w-8 text-[#8b6f4e]" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M2 5c6-4 10 4 16 0s10 4 14 0M2 11c6-4 10 4 16 0s10 4 14 0M2 17c6-4 10 4 16 0s10 4 14 0" /></svg>
             </span>
           </div>
 
