@@ -42,21 +42,10 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     <p className="mt-2 flex items-center gap-2 text-sm text-[#73786d]"><CalendarDays size={16} />{trip.start ? `${trip.start} — ${trip.end}` : 'Dates are flexible'} · {places.length} places</p>
     {trip.isPlan && <details open={initialDetails || undefined} className="mt-3"><summary className="cursor-pointer py-2 text-sm text-[#59694f]">Edit trip name & dates</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
     <div className="mt-4 flex flex-wrap items-center gap-3">
-      {trip.isPlan && trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={async () => {
-        if (publishing) return
-        setPublishing(true); setPublishMessage('')
-        try {
-          const result = await sharePlan(trip.id)
-          if (result.error) setPublishMessage(result.error)
-          else { setPublishMessage('Your itinerary is now published.'); router.refresh() }
-        } catch { setPublishMessage('Could not publish your itinerary. Please try again.') }
-        finally { setPublishing(false) }
-      }} className="min-h-11 rounded-xl bg-[#355650] px-4 py-3 text-sm font-semibold text-white hover:bg-[#294640] disabled:opacity-60">{publishing ? 'Publishing…' : 'Publish itinerary'}</button>}
       <CopyTripButton itineraryId={trip.id} title={trip.title} isOwn />
       {!(trip.visibility === 'draft' && trip.isPlan) && <Link href={trip.visibility === 'draft' ? `/itinerary/${trip.id}/edit` : `/itinerary/${trip.id}`} className="min-h-11 rounded-xl border border-[#d7cebc] px-4 py-3 text-sm">{trip.visibility === 'draft' ? 'Edit & publish' : 'View shared trip'}</Link>}
       {trip.visibility !== 'draft' && <span className="text-xs text-[#73786d]">Saved changes appear on your shared trip.</span>}
     </div>
-    {publishMessage && <p role="status" className="mt-2 text-sm text-[#59694f]">{publishMessage}</p>}
     {!adding && !importing && <div className="sticky top-0 z-20 -mx-1 mt-5 bg-[#f3eee5] px-1 py-3">
       <button className={`${buttonClass} flex w-full items-center justify-center gap-2`} onClick={() => setAdding(true)}><Plus size={20} />Add a place</button>
       {trip.isPlan && <Link href={`/plan/${trip.id}/friends`} className="mt-2 flex min-h-11 items-center justify-center rounded-xl border border-[#8caaa3] bg-[#fffdf7] px-4 py-2 text-sm font-semibold text-[#59694f]">Browse friends’ places · Add several at once</Link>}
@@ -75,7 +64,20 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
         <section><h2 className="mb-3 text-lg font-semibold">Unscheduled</h2><div className="space-y-3">{places.filter(p => p.day === null).map(renderPlace)}</div>{places.every(p => p.day !== null) && <p className="text-sm text-[#73786d]">All your places have a day.</p>}</section>
       </>}
     </section>
-    <div className="mt-8 flex justify-end border-t border-[#d7cebc] pt-5"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div>
+    <div className="mt-8 flex items-center justify-between gap-3 border-t border-[#d7cebc] pt-5">
+      <DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" />
+      {trip.isPlan && trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={async () => {
+        if (publishing) return
+        setPublishing(true); setPublishMessage('')
+        try {
+          const result = await sharePlan(trip.id)
+          if (result.error) setPublishMessage(result.error)
+          else { setPublishMessage('Your itinerary is now published.'); router.refresh() }
+        } catch { setPublishMessage('Could not publish your itinerary. Please try again.') }
+        finally { setPublishing(false) }
+      }} className="min-h-11 rounded-xl bg-[#355650] px-4 py-3 text-sm font-semibold text-white hover:bg-[#294640] disabled:opacity-60">{publishing ? 'Publishing…' : 'Publish itinerary'}</button>}
+    </div>
+    {publishMessage && <p role="status" className="mt-2 text-right text-sm text-[#59694f]">{publishMessage}</p>}
   </div>
 }
 
