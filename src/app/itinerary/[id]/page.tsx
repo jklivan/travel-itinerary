@@ -488,7 +488,7 @@ export default async function ItineraryPage({
           </div>
 
           {/* Serif title */}
-          <h1 className="font-[family-name:var(--font-playfair)] text-4xl md:text-5xl text-[#242e25] leading-tight mb-3">
+          <h1 className="trip-title font-[family-name:var(--font-playfair)] text-4xl md:text-5xl text-[#242e25] leading-tight mb-3">
             {it.title}
           </h1>
 

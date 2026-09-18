@@ -154,7 +154,7 @@ export default function ItineraryCard({
 
         {/* Caption */}
         <Link href={`/itinerary/${id}`} className={fullWidth ? 'block px-1' : 'block'}>
-          <h2 className={`font-[family-name:var(--font-playfair)] text-[25px] text-[#242e25] leading-tight line-clamp-2 mb-2`}>
+          <h2 className={`trip-title font-[family-name:var(--font-playfair)] text-[25px] text-[#242e25] leading-tight line-clamp-2 mb-2`}>
             {title}
           </h2>
 

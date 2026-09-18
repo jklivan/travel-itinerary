@@ -36,7 +36,7 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
           </div>
           {items.length ? <div className="space-y-3">{items.map(trip => <article key={trip.id} aria-label={trip.title} className="rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4">
             <Link href={`/plan/${trip.id}`} className="block">
-              <h4 className="text-lg font-semibold">{trip.title}</h4>
+              <h4 className="trip-title text-lg font-semibold">{trip.title}</h4>
               <p className="mt-1 text-sm text-[#73786d]">{trip.destinations.reduce((sum, d) => sum + d._count.items, 0)} places · {group.private ? 'Keep planning' : 'Open trip'} →</p>
             </Link>
             <div className="mt-3"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" label="Delete trip" /></div>
