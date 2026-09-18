@@ -66,5 +66,7 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Postcard uses your location once to find day trips near you. It is never shared or saved.</string>
 </dict>
 </plist>
