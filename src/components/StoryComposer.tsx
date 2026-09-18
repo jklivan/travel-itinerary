@@ -68,7 +68,12 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
     <header className={styles.composerHeader}><div><h2 id={titleId}>Your polaroid story</h2><p>One trip moment. Here for 24 hours.</p></div><button type="button" className={styles.close} disabled={busy || uploading} aria-label="Close story composer" onClick={() => dialog.current?.close()}><X size={20} /></button></header>
     <form onSubmit={async event => {
       event.preventDefault()
-      if (saving.current || uploading || !photo || (mode === 'trip' && !place) || (mode === 'new' && (!newName.trim() || !newDestination.trim() || (activityPlan === 'new' && !newPlanTitle.trim())))) return
+      if (saving.current || uploading || !photo) return
+      if (mode === 'trip' && !place) { setError('Choose a place from your trip first.'); return }
+      if (mode === 'new') {
+        const missing = [!newPlanTitle.trim() && activityPlan === 'new' ? 'an itinerary title' : '', !newDestination.trim() ? 'a destination' : '', !newName.trim() ? 'an activity name' : ''].filter(Boolean)
+        if (missing.length) { setError(`Add ${missing.join(' and ')} before posting.`); return }
+      }
       saving.current = true; setBusy(true); setError('')
       if (!clientId.current) clientId.current = crypto.randomUUID()
       if (mode === 'new' && activityPlan === 'new' && !newPlanId.current) newPlanId.current = crypto.randomUUID()
@@ -111,7 +116,7 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
           </div></div>}
           <p className={styles.privacy}>{mode === 'trip' ? `This photo will also be saved to ${place?.name} in your trip.` : `This activity and photo will be added to ${activityPlan === 'new' ? newPlanTitle || 'your new private itinerary' : 'your itinerary'}.`}</p>
           <p className={styles.privacy}>{sources.isPrivate ? 'Visible to your accepted followers' : 'Visible to everyone'} for 24 hours. Only this place, photo, and caption are shown in the moment.</p>
-          <button type="submit" className={styles.post} disabled={!photo || (mode === 'trip' ? !place : !newName.trim() || !newDestination.trim() || (activityPlan === 'new' && !newPlanTitle.trim())) || busy || uploading}>{busy ? 'Posting…' : 'Post for 24 hours'}</button>
+          <button type="submit" className={styles.post} disabled={!photo || (mode === 'trip' && !place) || busy || uploading}>{busy ? 'Posting…' : 'Post for 24 hours'}</button>
         </>}
       </fieldset>}
       {error && <p role="alert" className={styles.error}>{error}</p>}
