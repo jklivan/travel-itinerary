@@ -1,3 +1,4 @@
+import Comments from '@/components/Comments'
 import { hasTripDates, tripDuration } from '@/lib/dayTrips'
 import TripBackButton from '@/components/TripBackButton'
 import CopyTripButton from '@/components/CopyTripButton'
@@ -139,6 +140,14 @@ export default async function ItineraryPage({
         include: { items: { orderBy: { order: 'asc' } } },
       },
       photos: { orderBy: { isStock: 'asc' } },
+      comments: {
+        where: { parentId: null },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, name: true } },
+          replies: { orderBy: { createdAt: 'asc' }, include: { user: { select: { id: true, name: true } } } },
+        },
+      },
     },
   })
 
@@ -796,6 +805,12 @@ export default async function ItineraryPage({
               </section>
             )}
 
+            {it.visibility !== 'draft' && <Comments
+              itineraryId={it.id}
+              initialComments={it.comments}
+              currentUserId={session?.user?.id}
+              isLoggedIn={!!session?.user}
+            />}
             {!isOwn && <div className="mt-6 border-t border-[#c1ad93] pt-6">
               <h2 className="font-semibold mb-2">Have a question about this trip?</h2>
               <Link href={`/messages/${it.user.id}?trip=${encodeURIComponent(it.id)}`} className="inline-block rounded-full bg-[#59694f] px-4 py-2 text-sm text-white">Message {it.user.name} privately</Link>
