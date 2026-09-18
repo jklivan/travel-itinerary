@@ -112,7 +112,11 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
           }} onPointerCancel={() => { touch.current = null; setHolding(false) }} onLostPointerCapture={() => { touch.current = null; setHolding(false) }}>
             <article className={styles.paper}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img key={story.id} src={story.photoUrl} alt={story.placeName} draggable={false} onLoad={() => setLoaded(story.id)} onError={() => setLoaded(story.id)} /><span className={styles.placeType}>{story.type === 'hotel' ? 'Stay' : story.type === 'food_drink' ? 'Eat & drink' : story.type === 'transport' ? 'Transport' : 'Experience'}</span><h3>{story.placeName}</h3><p>{story.destination}</p>{story.caption && <p className={styles.caption}>{story.caption}</p>}
+              <img key={story.id} src={story.photoUrl} alt={story.placeName} draggable={false} onLoad={() => setLoaded(story.id)} onError={() => setLoaded(story.id)} />
+              <span className={styles.placeType}>{story.type === 'hotel' ? 'Stay' : story.type === 'food_drink' ? 'Eat & drink' : story.type === 'transport' ? 'Transport' : 'Experience'}</span>
+              <h3>{story.placeName}</h3>
+              <p>{story.destination}</p>
+              <p className={styles.caption}>{story.caption || ' '}</p>
             </article>
           </div>
           <div className={styles.viewerActions}>
@@ -129,7 +133,7 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
             } catch { setError('Could not delete your story. Please try again.') } finally { setDeleting(false) }
           }}>{deleting ? 'Removing…' : 'Delete'}</button><button type="button" disabled={deleting} onClick={() => setConfirmDelete(false)}>Keep story</button></div>}
           {error && <p role="alert" className={styles.viewerError}>{error}</p>}
-          <nav className={styles.storyNav} aria-label="Story navigation"><button type="button" disabled={index <= 0 || deleting || saveOpen || confirmDelete} aria-label="Previous story" onClick={() => move(-1)}><ChevronLeft size={22} /></button><button type="button" className={styles.playback} aria-label={paused ? 'Play stories' : 'Pause stories'} onClick={() => setPaused(value => !value)}>{paused ? <Play size={18} /> : <Pause size={18} />}{paused ? 'Paused' : 'Hold to pause'}</button><button type="button" disabled={deleting || saveOpen || confirmDelete} aria-label="Next story" onClick={() => move(1)}><ChevronRight size={22} /></button></nav>
+          <nav className={styles.storyNav} aria-label="Story navigation"><button type="button" disabled={index <= 0 || deleting || saveOpen || confirmDelete} aria-label="Previous story" onClick={() => move(-1)}><ChevronLeft size={22} /></button><button type="button" className={styles.playback} aria-label={paused ? 'Resume stories' : 'Pause stories'} onClick={() => setPaused(value => !value)}>{paused ? <Play size={18} /> : <Pause size={18} />}</button><button type="button" disabled={deleting || saveOpen || confirmDelete} aria-label="Next story" onClick={() => move(1)}><ChevronRight size={22} /></button></nav>
         </> : <div className={styles.expired}><p>This polaroid is no longer available.</p><button type="button" onClick={() => dialog.current?.close()}>Back to feed</button></div>}
       </div>
     </dialog>
