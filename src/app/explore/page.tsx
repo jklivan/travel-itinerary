@@ -320,9 +320,9 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <BackButton fallback="/explore?view=tags" className="text-sm text-[#485340] hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="mb-5">
-          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#242e25]">
+          <h1 className="font-[family-name:var(--font-playfair)] text-2xl tracking-wide text-[#242e25]">
             {meta ? `${meta.emoji} ${meta.label}` : tag}
-          </h2>
+          </h1>
           {tag === DAY_TRIP_TAG && <p className="mt-2 mb-3 text-sm text-[#8B6F4E]">Ideas for 1–2 days away, including trips tagged by their authors.</p>}
           <p className="text-sm text-[#8B6F4E]">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>

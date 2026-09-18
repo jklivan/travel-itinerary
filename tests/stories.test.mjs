@@ -18,7 +18,8 @@ function harness(user = 'owner', itemType = 'hotel') {
     story: {
       findUnique: async ({ where }) => rows.find(row => row.id === where.id),
       create: async ({ data }) => { rows.push(data); return data },
-      findMany: async query => { queries.push(query); return rows },
+      findMany: async query => { queries.push(query); return query.where?.id?.in ? rows.filter(row => query.where.id.in.includes(row.id)) : rows },
+      createMany: async ({ data }) => { rows.push(...data); return { count: data.length } },
       findFirst: async query => { queries.push(query); return rows.find(row => row.id === query.where.id && row.expiresAt > query.where.expiresAt.gt) },
       deleteMany: async ({ where }) => { const index = rows.findIndex(row => row.id === where.id && row.userId === where.userId); if (index < 0) return { count: 0 }; rows.splice(index, 1); return { count: 1 } },
     },
@@ -66,6 +67,19 @@ test('posting expires exactly 24 hours later and retries do not extend expiry', 
   assert.ok((await h.actions.postStory(input)).error)
   assert.equal(h.rows.length, 1)
 })
+test('posting multiple selected photos creates ordered stories and saves every photo to the place', async () => {
+  const h = harness()
+  const result = await h.actions.postStories({ itemId: 'place', caption: 'A lovely stay', photos: [
+    { id, photoUrl: '/photo-1.jpg' },
+    { id: '22345678-1234-1234-1234-123456789012', photoUrl: '/photo-2.jpg' },
+    { id: '32345678-1234-1234-1234-123456789012', photoUrl: '/photo-3.jpg' },
+  ] })
+  assert.ok(result.success)
+  assert.deepEqual(h.rows.map(row => row.photoUrl), ['/photo-1.jpg', '/photo-2.jpg', '/photo-3.jpg'])
+  assert.deepEqual(Array.from(h.item.photoUrls), ['/old.jpg', '/photo-1.jpg', '/photo-2.jpg', '/photo-3.jpg'])
+  assert.ok(h.rows[0].createdAt < h.rows[1].createdAt && h.rows[1].createdAt < h.rows[2].createdAt)
+  assert.ok(h.rows.every(row => row.expiresAt - row.createdAt === 86400000))
+})
 test('only owners can post their place; anonymous posts rejected', async () => {
   for (const user of [null, 'stranger']) {
     const h = harness(user)
@@ -103,7 +117,7 @@ test('expired stories cannot be copied to a plan', async () => {
   await h.actions.postStory(input)
   h.rows[0].expiresAt = new Date(Date.now() - 1)
   assert.ok((await h.actions.copyStoryToPlan(id, 'plan', id)).error)
-  assert.ok(h.queries[0].where.expiresAt.gt instanceof Date)
+  assert.ok(h.queries.find(query => query.where?.expiresAt)?.where.expiresAt.gt instanceof Date)
 })
 test('deletion is scoped to current account', async () => {
   const h = harness()
@@ -135,7 +149,7 @@ test('story photos remain on the source place after story deletion and retries d
 })
 test('a failed story write rolls back its photo addition', async () => {
   const h = harness()
-  h.prisma.story.create = async () => { throw new Error('Unavailable') }
+  h.prisma.story.createMany = async () => { throw new Error('Unavailable') }
   assert.ok((await h.actions.postStory(input)).error)
   assert.deepEqual(h.item.photoUrls, ['/old.jpg'])
   assert.equal(h.rows.length, 0)

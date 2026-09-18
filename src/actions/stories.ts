@@ -37,12 +37,17 @@ export async function storySources() {
   })) }
 }
 
-export async function postStory(input: { id: string; itemId?: string; placeName?: string; destination?: string; country?: string; type?: string; placeId?: string; tripId?: string; newPlanId?: string; newPlanTitle?: string; photoUrl: string; caption: string }): Promise<Result> {
+type StoryPostDetails = { itemId?: string; placeName?: string; destination?: string; country?: string; type?: string; placeId?: string; tripId?: string; newPlanId?: string; newPlanTitle?: string; caption: string }
+type StoryPhotoPost = { id: string; photoUrl: string }
+
+export async function postStories(input: StoryPostDetails & { photos: StoryPhotoPost[] }): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in to post a story.' }
-  if (!input || typeof input.id !== 'string' || !/^[a-f0-9-]{36}$/.test(input.id)
+  if (!input || !Array.isArray(input.photos) || input.photos.length < 1 || input.photos.length > 10
     || typeof input.caption !== 'string' || input.caption.length > 500
-    || typeof input.photoUrl !== 'string' || input.photoUrl.length > 4096 || !/^(https:\/\/|\/(?!\/))/.test(input.photoUrl)) return { error: 'Choose a photo and a place, and keep your caption under 500 characters.' }
+    || input.photos.some(photo => !photo || typeof photo.id !== 'string' || !/^[a-f0-9-]{36}$/.test(photo.id) || typeof photo.photoUrl !== 'string' || photo.photoUrl.length > 4096 || !/^(https:\/\/|\/(?!\/))/.test(photo.photoUrl))
+    || new Set(input.photos.map(photo => photo.id)).size !== input.photos.length
+    || new Set(input.photos.map(photo => photo.photoUrl)).size !== input.photos.length) return { error: 'Choose 1–10 different photos and keep your caption under 500 characters.' }
   const standalone = !input.itemId
   const allowedTypes = ['hotel', 'food_drink', 'activity', 'transport']
   if (input.itemId && (typeof input.itemId !== 'string' || input.itemId.length > 200)) return { error: 'Choose a place, and keep your caption under 500 characters.' }
@@ -56,8 +61,11 @@ export async function postStory(input: { id: string; itemId?: string; placeName?
     || (input.newPlanTitle !== undefined && (typeof input.newPlanTitle !== 'string' || !input.newPlanTitle.trim() || input.newPlanTitle.trim().length > 160))
     || (!!input.tripId === !!input.newPlanId) || (!!input.newPlanId !== !!input.newPlanTitle))) return { error: 'Choose an itinerary and add an activity name, destination, and category.' }
   try {
-    const previous = await prisma.story.findUnique({ where: { id: input.id }, select: { userId: true, expiresAt: true } })
-    if (previous) return previous.userId === userId && previous.expiresAt > new Date() ? { success: true } : { error: 'This story is no longer available. Close the composer and start a new story.' }
+    const existing = await prisma.story.findMany({ where: { id: { in: input.photos.map(photo => photo.id) } }, select: { id: true, userId: true, expiresAt: true } })
+    if (existing.length) {
+      if (existing.length === input.photos.length && existing.every(story => story.userId === userId && story.expiresAt > new Date())) return { success: true }
+      return { error: 'Some photos from this story were already posted. Close the composer and start a new story.' }
+    }
     const tripId = await prisma.$transaction(async tx => {
       let storyPlace: { name: string; destination: string; country: string | null; type: string; placeId: string | null; lat: number | null; lng: number | null; tripId: string | null; itemId: string | null }
       if (input.itemId) {
@@ -65,12 +73,12 @@ export async function postStory(input: { id: string; itemId?: string; placeName?
         const item = await tx.destItem.findFirst({ where: owned, include: { destination: true } })
         if (!item) throw new Error('Place is not owned by this account')
         const photos = eventPhotos(item.photoUrls, item.photoUrl)
-        if (!photos.includes(input.photoUrl)) {
-          photos.push(input.photoUrl)
+        const mergedPhotos = [...new Set([...photos, ...input.photos.map(photo => photo.photoUrl)])]
+        if (mergedPhotos.length !== photos.length) {
           // A concurrent photo edit must never be overwritten by this story.
           const updated = await tx.destItem.updateMany({
             where: { ...owned, photoUrls: { equals: item.photoUrls }, photoUrl: item.photoUrl },
-            data: { photoUrls: photos, photoUrl: item.photoUrl || photos[0] },
+            data: { photoUrls: mergedPhotos, photoUrl: item.photoUrl || mergedPhotos[0] },
           })
           if (updated.count !== 1) throw new Error('Photos changed while posting; retry')
         }
@@ -94,25 +102,30 @@ export async function postStory(input: { id: string; itemId?: string; placeName?
           order: await tx.destination.count({ where: { itineraryId } }),
         } })
         const last = await tx.destItem.aggregate({ where: { destinationId: destination.id }, _max: { order: true, groupIndex: true } })
+        const photoUrls = input.photos.map(photo => photo.photoUrl)
         const item = await tx.destItem.create({ data: {
           destinationId: destination.id, name: input.placeName!.trim(), type: input.type!, placeId: input.placeId?.trim() || null,
-          photoUrl: input.photoUrl, photoUrls: [input.photoUrl], order: (last._max.order ?? -1) + 1,
+          photoUrl: photoUrls[0], photoUrls, order: (last._max.order ?? -1) + 1,
           groupIndex: input.type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0,
         } })
         storyPlace = { name: item.name, destination: destination.name, country: destination.country, type: item.type, placeId: item.placeId, lat: item.lat, lng: item.lng, tripId: itineraryId, itemId: item.id }
       }
       const now = new Date()
-      await tx.story.create({ data: {
-        id: input.id, userId, sourceItineraryId: storyPlace.tripId, sourceItemId: storyPlace.itemId,
+      await tx.story.createMany({ data: input.photos.map((photo, index) => ({
+        id: photo.id, userId, sourceItineraryId: storyPlace.tripId, sourceItemId: storyPlace.itemId,
         placeName: storyPlace.name, destination: storyPlace.destination, country: storyPlace.country, type: storyPlace.type,
-        placeId: storyPlace.placeId, lat: storyPlace.lat, lng: storyPlace.lng, photoUrl: input.photoUrl, caption: input.caption.trim(),
-        createdAt: now, expiresAt: new Date(now.getTime() + STORY_LIFETIME_MS),
-      } })
+        placeId: storyPlace.placeId, lat: storyPlace.lat, lng: storyPlace.lng, photoUrl: photo.photoUrl, caption: input.caption.trim(),
+        createdAt: new Date(now.getTime() + index), expiresAt: new Date(now.getTime() + index + STORY_LIFETIME_MS),
+      })) })
       return storyPlace.tripId
     })
     for (const path of ['/', '/explore', '/plan', ...(tripId ? [`/plan/${tripId}`, `/itinerary/${tripId}`] : []), `/user/${userId}`]) revalidatePath(path)
     return { success: true }
   } catch { return { error: 'Could not post your story. Your photo and caption are still here; please try again.' } }
+}
+
+export async function postStory(input: StoryPostDetails & { id: string; photoUrl: string }): Promise<Result> {
+  return postStories({ ...input, photos: [{ id: input.id, photoUrl: input.photoUrl }] })
 }
 
 export async function deleteStory(id: string): Promise<Result> {
