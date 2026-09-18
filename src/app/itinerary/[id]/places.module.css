@@ -125,6 +125,44 @@
   background: var(--place-tint);
 }
 
+.ownerPolaroid {
+  align-items: flex-start;
+  gap: 12px;
+  padding: 9px;
+  background: #fffdf7;
+  border: 1px solid #e3dfd2;
+  box-shadow: 0 4px 12px #403b2912;
+}
+
+.polaroidPhoto {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  aspect-ratio: 0.82;
+  min-height: 0;
+  height: auto;
+  padding: 5px 5px 20px;
+  align-self: flex-start;
+  overflow: hidden;
+  border: 1px solid #e5e0d5;
+  background: #fff;
+  box-shadow: 0 2px 5px #242e2518;
+}
+
+.polaroidImage {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  flex: 0 0 auto;
+  overflow: hidden;
+  background: var(--place-tint);
+}
+
+.polaroidPhoto .keepsake {
+  inset: 5px 5px 20px;
+}
+
 .keepsake {
   position: absolute;
   inset: 5px;

@@ -425,15 +425,18 @@ export default async function ItineraryPage({
 
     return (
       <div key={item.id} id={`place-${item.id}`} className="scroll-mt-24">
-      <PlaceDetailsCard messageHref={!isOwn ? `/messages/${it.user.id}?place=${encodeURIComponent(item.id)}` : undefined} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} className={`${styles.card} ${styles[type]} ${recommendation !== 'none' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
+      <PlaceDetailsCard messageHref={!isOwn ? `/messages/${it.user.id}?place=${encodeURIComponent(item.id)}` : undefined} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} className={`${styles.card} ${styles[type]} ${isOwn ? styles.ownerPolaroid : ''} ${recommendation !== 'none' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
         {recommendation === 'must' && type !== 'hotel' && <Image src="/must-do-stamp.png" alt="Must do" width={60} height={54} unoptimized className={styles.mustDoStamp} />}
         {recommendation === 'must' && type === 'hotel' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><BedDouble size={24} aria-hidden="true" /><span>Must stay</span></span>}
         {recommendation === 'avoid' && <span className={`${styles.mustDoStamp} ${styles.textStamp} ${styles.avoidStamp}`}><Ban size={24} aria-hidden="true" /><span>Avoid</span></span>}
         {recommendation === 'option' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><span>Alternative</span></span>}
         {tilePhoto ? (
-          <div className={styles.thumbnail}><Image src={tilePhoto} alt="" fill sizes="132px" className="object-cover" /></div>
+          <div className={`${styles.thumbnail} ${isOwn ? styles.polaroidPhoto : ''}`}>
+            {isOwn ? <span className={styles.polaroidImage}><Image src={tilePhoto} alt="" fill sizes="132px" className="object-cover" /></span> : <Image src={tilePhoto} alt="" fill sizes="132px" className="object-cover" />}
+          </div>
         ) : (
-          <div className={styles.thumbnail}>
+          <div className={`${styles.thumbnail} ${isOwn ? styles.polaroidPhoto : ''}`}>
+            {isOwn && <span className={styles.polaroidImage} />}
             <div className={styles.keepsake} aria-hidden="true">
               <span>{eyebrow}</span>
               <Icon size={25} strokeWidth={1} />
@@ -467,8 +470,8 @@ export default async function ItineraryPage({
 
   return (
     <div className="min-h-screen bg-[#f3eee5]">
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        <TripBackButton itineraryId={it.id} fallback={isOwn ? `/user/${it.user.id}` : "/"} />
+      <div className={`max-w-4xl mx-auto px-4 ${isOwn ? 'pt-2 pb-6' : 'py-6'}`}>
+        <TripBackButton itineraryId={it.id} fallback={isOwn ? `/user/${it.user.id}` : "/"} className={isOwn ? 'mb-1 min-h-9' : ''} />
 
         {it.visibility === 'draft' && (
           <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 font-medium">
@@ -477,20 +480,18 @@ export default async function ItineraryPage({
         )}
 
         {/* ── Editorial Header ── */}
-        <div className="mb-7">
-          {/* Location / type row */}
-          <div className="flex flex-wrap gap-x-3 gap-y-1 mb-2">
+        <div className={`${isOwn ? 'mb-4' : 'mb-7'}`}>
+          <h1 className={`trip-title font-[family-name:var(--font-playfair)] ${isOwn ? 'text-3xl sm:text-4xl' : 'text-4xl md:text-5xl'} text-[#242e25] leading-tight mb-2 uppercase`}>
+            {it.title}
+          </h1>
+
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3">
             {it.destinations.map((d, i) => (
               <span key={i} className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold">
                 {d.name}{d.country ? `, ${d.country}` : ''}
               </span>
             ))}
           </div>
-
-          {/* Serif title */}
-          <h1 className="trip-title font-[family-name:var(--font-playfair)] text-4xl md:text-5xl text-[#242e25] leading-tight mb-3">
-            {it.title}
-          </h1>
 
           <div aria-label="Trip tags" className="flex flex-wrap gap-2 items-center mb-4">
             {audienceLabel && (
@@ -546,16 +547,6 @@ export default async function ItineraryPage({
                   <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" />
                   {session?.user && <SavedFolderPicker itineraryId={it.id} />}
                 </>
-              )}
-              {isOwn && (
-                <div className="flex items-center gap-2">
-                  <Link href={`/itinerary/${it.id}/edit`}
-                    className="text-xs font-medium px-3 py-1.5 rounded-full border border-[#c1ad93] text-[#485340] hover:bg-[#dfd3c2] transition-colors">
-                    Edit
-                  </Link>
-                  <Link href={`/plan/${it.id}`} className="rounded-full bg-[#59694f] px-3 py-2 text-xs font-semibold text-white">Add a place</Link>
-                  <DeleteButton id={it.id} visibility={it.visibility} />
-                </div>
               )}
               {session?.user && !isOwn && (
                 <form action={async () => {
@@ -616,15 +607,15 @@ export default async function ItineraryPage({
         })()}
 
         <nav aria-label="Itinerary view" className="flex flex-wrap gap-1 bg-[#dfd3c2] rounded-xl p-1 text-sm font-medium mb-6 w-fit">
-          <Link href={`/itinerary/${it.id}`} aria-current={!showMap && !showDayByDay ? 'page' : undefined}
+          <Link href={`/itinerary/${it.id}`} scroll={false} aria-current={!showMap && !showDayByDay ? 'page' : undefined}
             className={`px-4 py-2 rounded-lg transition-colors ${!showMap && !showDayByDay ? 'bg-[#faf7f1] shadow-sm text-[#242e25]' : 'text-[#8B6F4E] hover:text-[#485340]'}`}>
             Trip Summary
           </Link>
-          {hasDailyPlan && <Link href={`/itinerary/${it.id}?view=day-by-day`} aria-current={showDayByDay ? 'page' : undefined}
+          {hasDailyPlan && <Link href={`/itinerary/${it.id}?view=day-by-day`} scroll={false} aria-current={showDayByDay ? 'page' : undefined}
             className={`px-4 py-2 rounded-lg transition-colors ${showDayByDay ? 'bg-[#faf7f1] shadow-sm text-[#242e25]' : 'text-[#8B6F4E] hover:text-[#485340]'}`}>
             Itinerary View
           </Link>}
-          {mapPins.length > 0 && <Link href={`/itinerary/${it.id}?view=map`} aria-current={showMap ? 'page' : undefined}
+          {mapPins.length > 0 && <Link href={`/itinerary/${it.id}?view=map`} scroll={false} aria-current={showMap ? 'page' : undefined}
             className={`px-4 py-2 rounded-lg transition-colors ${showMap ? 'bg-[#faf7f1] shadow-sm text-[#242e25]' : 'text-[#8B6F4E] hover:text-[#485340]'}`}>
             Map View
           </Link>}
@@ -817,6 +808,13 @@ export default async function ItineraryPage({
             </div>}
           </>
         )}
+        {isOwn && <section aria-label="Manage trip" className="mt-8 border-t border-[#c1ad93] pt-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={`/itinerary/${it.id}/edit`} className="inline-flex min-h-11 items-center rounded-full border border-[#c1ad93] px-4 py-2 text-sm font-medium text-[#485340] hover:bg-[#dfd3c2]">Edit</Link>
+            <Link href={`/plan/${it.id}`} className="inline-flex min-h-11 items-center rounded-full bg-[#59694f] px-4 py-2 text-sm font-semibold text-white">Add a place</Link>
+            <DeleteButton id={it.id} visibility={it.visibility} />
+          </div>
+        </section>}
       </div>
     </div>
   )
