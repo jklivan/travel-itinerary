@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { LocateFixed, MapPin } from 'lucide-react'
 import { distanceMiles, type Coordinates } from '@/lib/distance'
 
@@ -12,6 +12,7 @@ export default function NearbyDayTrips({ entries }: { entries: Entry[] }) {
   const [position, setPosition] = useState<Position | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const safetyTimer = useRef<ReturnType<typeof setTimeout>>()
 
   const nearby = useMemo(() => entries.map(entry => ({
     ...entry,
@@ -28,12 +29,21 @@ export default function NearbyDayTrips({ entries }: { entries: Entry[] }) {
       return
     }
     setLoading(true)
+    // The timeout option only starts after permission is granted, so a permission
+    // prompt that never appears (e.g. in WKWebView) would hang forever. This
+    // safety timer covers the entire request including the permission phase.
+    safetyTimer.current = setTimeout(() => {
+      setLoading(false)
+      setError('Location request timed out. Make sure location access is allowed and try again.')
+    }, 15000)
     navigator.geolocation.getCurrentPosition(
       result => {
+        clearTimeout(safetyTimer.current)
         setPosition({ lat: result.coords.latitude, lng: result.coords.longitude })
         setLoading(false)
       },
       result => {
+        clearTimeout(safetyTimer.current)
         setError(result.code === result.PERMISSION_DENIED
           ? 'Location permission was declined. You can still browse all day trips.'
           : 'Could not get your location. Please try again or browse all day trips.')
