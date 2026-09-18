@@ -12,7 +12,7 @@ export default function NearbyDayTrips({ entries }: { entries: Entry[] }) {
   const [position, setPosition] = useState<Position | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const safetyTimer = useRef<ReturnType<typeof setTimeout>>()
+  const safetyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const nearby = useMemo(() => entries.map(entry => ({
     ...entry,
