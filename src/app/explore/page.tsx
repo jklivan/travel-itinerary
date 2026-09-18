@@ -15,6 +15,7 @@ import { DAY_TRIP_TAG, isDayTrip } from '@/lib/dayTrips'
 import { MapPin } from 'lucide-react'
 import ExploreMap from '@/components/ExploreMap'
 import ExploreTripFilters from '@/components/ExploreTripFilters'
+import NearbyDayTrips from '@/components/NearbyDayTrips'
 import { parseExploreFilters, exploreFilterWhere } from '@/lib/exploreFilters'
 import { Suspense } from 'react'
 
@@ -84,11 +85,12 @@ async function fetchItineraries(where: ItineraryWhereInput, userId: string | nul
 }
 
 function ItineraryList({
-  itineraries, bucketSet, userId,
+  itineraries, bucketSet, userId, nearbyDayTrips = false,
 }: {
   itineraries: Awaited<ReturnType<typeof fetchItineraries>>['itineraries']
   bucketSet: Set<string>
   userId: string | null
+  nearbyDayTrips?: boolean
 }) {
   if (itineraries.length === 0) {
     return (
@@ -98,10 +100,8 @@ function ItineraryList({
       </div>
     )
   }
-  return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-3 sm:gap-5">
-      {itineraries.map((it) => (
-        <ItineraryCard
+  const cards = itineraries.map((it) => {
+    const card = <ItineraryCard
                   fullWidth
           key={it.id}
           id={it.id}
@@ -125,9 +125,16 @@ function ItineraryList({
           isBucketed={bucketSet.has(it.id)}
           saveCount={it._count.bucketedBy}
         />
-      ))}
-    </div>
-  )
+    return { id: it.id, locations: it.destinations.flatMap(destination => {
+      if (destination.lat !== null && destination.lng !== null) return [{ lat: destination.lat, lng: destination.lng }]
+      const locatedItems = destination.items.filter(item => item.lat !== null && item.lng !== null)
+      if (!locatedItems.length) return []
+      return [{ lat: locatedItems.reduce((sum, item) => sum + item.lat!, 0) / locatedItems.length, lng: locatedItems.reduce((sum, item) => sum + item.lng!, 0) / locatedItems.length }]
+    }), card }
+  })
+  return nearbyDayTrips
+    ? <NearbyDayTrips entries={cards} />
+    : <div className="mx-auto flex w-full max-w-xl flex-col gap-3 sm:gap-5">{cards.map(entry => <div key={entry.id}>{entry.card}</div>)}</div>
 }
 
 function SearchFiltersDisplay({ parsed }: { parsed: ParsedQuery }) {
@@ -318,7 +325,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
           {tag === DAY_TRIP_TAG && <p className="mt-2 mb-3 text-sm text-[#8B6F4E]">Ideas for 1–2 days away, including trips tagged by their authors.</p>}
           <p className="text-sm text-[#8B6F4E]">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
-        <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
+        <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} nearbyDayTrips={tag === DAY_TRIP_TAG} />
       </div>
     )
   }
