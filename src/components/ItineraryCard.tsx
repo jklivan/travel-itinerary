@@ -106,10 +106,11 @@ export default function ItineraryCard({
 
           <div aria-hidden="true" className="pointer-events-none absolute right-2.5 top-2.5 z-20 grid size-14 place-items-center bg-[#f6f1e7]/95 text-[#2e4147] shadow-md">
             <svg viewBox="0 0 100 100" className="absolute inset-0 size-full" fill="none" aria-hidden="true">
-              <rect x="5" y="5" width="90" height="90" fill="#f6f1e7" stroke="#9c917e" strokeWidth="9" strokeDasharray="0 11" strokeLinecap="round" />
-              <rect x="12" y="12" width="76" height="76" stroke="#ffffff" strokeWidth="2" />
+              <rect width="100" height="100" fill="#9c917e" />
+              <path d="M7 4h4l3 5 3-5h6l3 5 3-5h6l3 5 3-5h6l3 5 3-5h6l3 5 3-5h6l3 5 3-5h6l3 5 3-5h6l3 5 3-5h5v5l-5 3 5 3v6l-5 3 5 3v6l-5 3 5 3v6l-5 3 5 3v6l-5 3 5 3v6l-5 3 5 3v6l-5 3 5 3v6l-5 3 5 3v5h-5l-3-5-3 5h-6l-3-5-3 5h-6l-3-5-3 5h-6l-3-5-3 5h-6l-3-5-3 5h-6l-3-5-3 5h-6l-3-5-3 5h-6l-3-5-3 5h-6l-3-5-3 5H7v-5l5-3-5-3v-6l5-3-5-3v-6l5-3-5-3v-6l5-3-5-3v-6l5-3-5-3v-6l5-3-5-3v-6l5-3-5-3v-6l5-3-5-3z" fill="#f6f1e7" />
+              <rect x="15" y="15" width="70" height="70" stroke="#ffffff" strokeWidth="2" />
             </svg>
-            <span className="flex items-center gap-0.5 font-[family-name:var(--font-playfair)] text-[29px] leading-none">P
+            <span className="relative z-10 flex items-center gap-0.5 font-[family-name:var(--font-playfair)] text-[29px] leading-none">P
               <svg viewBox="0 0 34 22" className="h-5 w-7 text-[#8b6f4e]" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M2 5c6-4 10 4 16 0s10 4 14 0M2 11c6-4 10 4 16 0s10 4 14 0M2 17c6-4 10 4 16 0s10 4 14 0" /></svg>
             </span>
           </div>
