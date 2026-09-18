@@ -13,7 +13,7 @@ export default function ExploreLanding() {
   return <div className={styles.page}>
     <header className={styles.heading}>
       <p className={styles.eyebrow}>Explore</p>
-      <h1>Where to<br />next?</h1>
+      <h1>Where to next?</h1>
       <p className={styles.intro}>Find ideas, get inspired, and plan your next trip together.</p>
     </header>
     <form action="/explore" className={styles.search} role="search">
