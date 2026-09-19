@@ -11,7 +11,6 @@ import { useRouter } from 'next/navigation'
 import { Plus, MapPin, LockKeyhole, CalendarDays, Check, Hotel, Utensils, Camera, Plane } from 'lucide-react'
 import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace, sharePlan } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
-import CopyTripButton from '@/components/CopyTripButton'
 import PlaceEntryForm from '@/components/PlaceEntryForm'
 import DeleteButton from '@/components/DeleteButton'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
@@ -42,7 +41,6 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     <p className="mt-2 flex items-center gap-2 text-sm text-[#73786d]"><CalendarDays size={16} />{trip.start ? `${trip.start} — ${trip.end}` : 'Dates are flexible'} · {places.length} places</p>
     {trip.isPlan && <details open={initialDetails || undefined} className="mt-3"><summary className="cursor-pointer py-2 text-sm text-[#59694f]">Edit trip name & dates</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
     <div className="mt-4 flex flex-wrap items-center gap-3">
-      <CopyTripButton itineraryId={trip.id} title={trip.title} isOwn />
       {!(trip.visibility === 'draft' && trip.isPlan) && <Link href={trip.visibility === 'draft' ? `/itinerary/${trip.id}/edit` : `/itinerary/${trip.id}`} className="min-h-11 rounded-xl border border-[#d7cebc] px-4 py-3 text-sm">{trip.visibility === 'draft' ? 'Edit & publish' : 'View shared trip'}</Link>}
       {trip.visibility !== 'draft' && <span className="text-xs text-[#73786d]">Saved changes appear on your shared trip.</span>}
     </div>
