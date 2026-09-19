@@ -25,7 +25,8 @@ function harness(user = 'owner', itemType = 'hotel') {
     },
     destItem: { findFirst: async ({ where }) => where.destination.itinerary.userId === 'owner' ? item : null, updateMany: async ({data}) => { Object.assign(item, data); return { count: 1 } }, aggregate: async () => ({ _max: { order: -1, groupIndex: -1 } }), create: async ({ data }) => { const created = { ...data, id: 'new-place', lat: null, lng: null }; addedItems.push(created); return created } },
     destination: { findFirst: async ({ where }) => destinations.find(destination => destination.itineraryId === where.itineraryId && destination.name.toLowerCase() === where.name.equals.toLowerCase()) ?? null, create: async ({ data }) => { const created = { ...data, id: `destination-${destinations.length + 1}` }; destinations.push(created); return created }, count: async ({ where }) => destinations.filter(destination => destination.itineraryId === where.itineraryId).length },
-    itinerary: { create: async ({ data }) => { plans.push(data); return data }, findFirst: async () => ({ id: 'plan' }) },
+    user: { findUnique: async () => ({ isPrivate: false }) },
+    itinerary: { create: async ({ data }) => { plans.push(data); return data }, findFirst: async () => ({ id: 'plan' }), findMany: async query => { queries.push(query); return [] } },
   }
   prisma.$transaction = async callback => {
     const before = structuredClone(item), beforeRows = rows.length, beforePlans = plans.length, beforeDestinations = destinations.length, beforeItems = addedItems.length
@@ -54,6 +55,14 @@ test('posting a new activity creates an editable itinerary and adds the place to
   assert.equal(h.plans[0].isPlan, true)
   assert.equal(h.destinations[0].name, 'Lucerne')
   assert.equal(h.addedItems[0].photoUrl, '/walk.jpg')
+})
+test('posting a new activity from a story adds it to an existing itinerary', async () => {
+  const h = harness()
+  const result = await h.actions.postStory({ id, placeName: 'A new cafe', destination: 'Rome', country: 'Italy', type: 'food_drink', tripId: 'plan', photoUrl: '/cafe.jpg', caption: 'Great coffee' })
+  assert.ok(result.success)
+  assert.equal(h.plans.length, 0)
+  assert.equal(h.addedItems[0].name, 'A new cafe')
+  assert.equal(h.rows[0].sourceItineraryId, 'plan')
 })
 test('posting expires exactly 24 hours later and retries do not extend expiry', async () => {
   const h = harness()
@@ -111,6 +120,11 @@ test('story reads enforce expiry and accepted followers, including anonymous Fol
   assert.equal(where.OR[1].user.followers.some.followerId, 'viewer')
   assert.equal(lib.visibleStoriesWhere(null, true).OR.length, 0)
   assert.equal(lib.visibleStoriesWhere(null).OR[0].user.isPrivate, false)
+})
+test('story picker lists the newest itineraries first', async () => {
+  const h = harness()
+  await h.actions.storySources()
+  assert.equal(h.queries.at(-1).orderBy.createdAt, 'desc')
 })
 test('expired stories cannot be copied to a plan', async () => {
   const h = harness()
