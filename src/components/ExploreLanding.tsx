@@ -4,9 +4,9 @@ import styles from './ExploreLanding.module.css'
 
 const cards = [
   { href: '/explore?tag=day-trip', title: 'Day trips', description: 'Quick escapes nearby', position: '0% 0%', Icon: MapPin, color: '#979e87' },
-  { href: '/explore/questions', title: 'Ask your friends', description: 'Get recommendations & travel advice', position: '100% 0%', Icon: MessagesSquare, color: '#ad9072' },
   { href: '/explore?view=tags', title: 'Search by trip type', description: 'Family trips, couples getaways, and more', position: '0% 100%', Icon: Users, color: '#7e919c' },
   { href: '/explore?view=destinations', title: 'Search by destination', description: 'Explore places around the world', position: '100% 100%', Icon: Globe, color: '#979e87' },
+  { href: '/explore/questions', title: 'Ask your friends', description: 'Get recommendations & travel advice', position: '100% 0%', Icon: MessagesSquare, color: '#ad9072' },
 ]
 
 export default function ExploreLanding() {

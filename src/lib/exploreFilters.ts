@@ -11,16 +11,27 @@ function selection(value: string | undefined, allowed: readonly string[]) {
   return [...new Set((value ?? '').split(',').filter(id => allowed.includes(id)))]
 }
 
-export function parseExploreFilters(types?: string, tags?: string) {
+export function parseExploreFilters(types?: string, tags?: string, location?: string) {
   return {
     types: selection(types, TRIP_TYPES.map(type => type.id)),
     tags: selection(tags, TAGS.map(tag => tag.id)),
+    location: location?.trim() ?? '',
   }
 }
 
-export function exploreFilterWhere(filters: { types: string[]; tags: string[] }) {
+export function exploreFilterWhere(filters: { types: string[]; tags: string[]; location: string }) {
   return {
     ...(filters.types.length ? { audience: { in: filters.types } } : {}),
     ...(filters.tags.length ? { tags: { hasSome: filters.tags } } : {}),
+    ...(filters.location ? {
+      destinations: {
+        some: {
+          OR: [
+            { name: { contains: filters.location, mode: 'insensitive' as const } },
+            { country: { contains: filters.location, mode: 'insensitive' as const } },
+          ],
+        },
+      },
+    } : {}),
   }
 }

@@ -241,7 +241,7 @@ const REGION_GRADIENT: Record<string, string> = {
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────────
-type ExploreParams = { country?: string; city?: string; type?: string; q?: string; view?: string; tag?: string; tags?: string; types?: string; region?: string }
+type ExploreParams = { country?: string; city?: string; type?: string; q?: string; view?: string; tag?: string; tags?: string; types?: string; region?: string; location?: string }
 
 export default async function ExplorePage({
   searchParams,
@@ -259,7 +259,7 @@ export default async function ExplorePage({
 }
 
 async function ExploreResults({ params }: { params: ExploreParams }) {
-  const { country, city, type, q, view, tag, tags: tagsParam, region } = params
+  const { country, city, type, q, view, tag, tags: tagsParam, region, location: locationParam } = params
   const session = await auth()
   const userId = session?.user?.id ?? null
 
@@ -321,9 +321,8 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
         <BackButton fallback="/explore?view=tags" className="text-sm text-[#485340] hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="mb-5">
           <h1 className="font-[family-name:var(--font-playfair)] text-2xl tracking-wide text-[#242e25]">
-            {meta ? `${meta.emoji} ${meta.label}` : tag}
+            {meta?.label ?? tag}
           </h1>
-          {tag === DAY_TRIP_TAG && <p className="mt-2 mb-3 text-sm text-[#8B6F4E]">Ideas for 1–2 days away, including trips tagged by their authors.</p>}
           <p className="text-sm text-[#8B6F4E]">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} nearbyDayTrips={tag === DAY_TRIP_TAG} />
@@ -516,16 +515,15 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
   // ── view=tags ──────────────────────────────────────────────────────────────
   if (view === 'tags') {
-    const filters = parseExploreFilters(params.types, tagsParam)
+    const filters = parseExploreFilters(params.types, tagsParam, locationParam)
     const { itineraries, bucketSet } = await fetchItineraries(exploreFilterWhere(filters), userId)
 
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <BackButton fallback="/explore" className="text-sm text-[#485340] hover:underline mb-5 inline-block">← Back</BackButton>
         <h1 className="font-[family-name:var(--font-playfair)] text-2xl sm:text-3xl tracking-wide text-[#242e25] mb-5">SEARCH BY TRIP TYPE</h1>
-        <ExploreTripFilters key={`${filters.types.join(',')}|${filters.tags.join(',')}`} types={filters.types} tags={filters.tags} />
+        <ExploreTripFilters key={`${filters.types.join(',')}|${filters.tags.join(',')}|${filters.location}`} types={filters.types} tags={filters.tags} location={filters.location} />
         <div className="mt-7">
-          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#242e25] mb-2">Trips to inspire you</h2>
           <p role="status" className="text-sm text-[#8B6F4E] mb-4">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
           <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
         </div>

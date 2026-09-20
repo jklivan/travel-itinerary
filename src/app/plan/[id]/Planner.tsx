@@ -33,7 +33,8 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const [publishMessage, setPublishMessage] = useState('')
   const places = trip.destinations.flatMap(d => d.items.map(item => ({ ...item, destination: [d.name, d.country].filter(Boolean).join(', ') })))
   const scheduled = [...new Set(places.flatMap(p => p.day === null ? [] : [p.day]))].sort((a, b) => a - b)
-  function renderPlace(place: Place & { destination: string }) { return <PlaceRow key={place.id} place={place} /> }
+  const maxDay = Math.max(trip.durationDays ?? 0, ...scheduled, 1)
+  function renderPlace(place: Place & { destination: string }) { return <PlaceRow key={place.id} place={place} maxDay={maxDay} /> }
   return <div className="mx-auto max-w-2xl px-4 py-6 text-[#2e4147]">
     <BackButton fallback="/plan" className="text-sm text-[#59694f]">← Back</BackButton>
     <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#59694f]"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
@@ -48,7 +49,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       <button className={`${buttonClass} flex w-full items-center justify-center gap-2`} onClick={() => setAdding(true)}><Plus size={20} />Add a place</button>
       {trip.isPlan && <Link href={`/plan/${trip.id}/friends`} className="mt-2 flex min-h-11 items-center justify-center rounded-xl border border-[#8caaa3] bg-[#fffdf7] px-4 py-2 text-sm font-semibold text-[#59694f]">Browse friends’ places · Add several at once</Link>}
     </div>}
-    {adding && <AddPlace trip={trip} onClose={() => setAdding(false)} />}
+    {adding && <AddPlace trip={trip} maxDay={maxDay} onClose={() => setAdding(false)} />}
     {importing && <PlanImport tripId={trip.id} onClose={() => setImporting(false)} />}
     <div role="tablist" aria-label="Trip view" className="mb-5 mt-3 flex border-b border-[#d7cebc]">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className={`min-h-12 flex-1 border-b-2 p-3 font-semibold ${tab === value ? 'border-[#59694f] text-[#59694f]' : 'border-transparent text-[#73786d]'}`}>{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
     <section role="tabpanel" id="trip-panel" aria-labelledby={`${tab}-tab`}>
@@ -79,7 +80,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   </div>
 }
 
-function AddPlace({ trip, onClose }: { trip: Trip; onClose: () => void }) {
+function AddPlace({ trip, maxDay, onClose }: { trip: Trip; maxDay: number; onClose: () => void }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -122,16 +123,16 @@ function AddPlace({ trip, onClose }: { trip: Trip; onClose: () => void }) {
       } catch { setError('Could not save. Your place is still here; try again.'); return false }
       finally { saving.current = false; setBusy(false) }
     }}>
-      <label className="block text-sm">Day (optional)<input type="number" min={1} max={365} value={day} onChange={event => setDay(event.target.value)} placeholder="Add a day later" className={inputClass} /></label>
+      <label className="block text-sm">Day (optional)<select value={day} onChange={event => setDay(event.target.value)} className={inputClass}><option value="">Unscheduled</option>{Array.from({ length: maxDay }, (_, index) => index + 1).map(value => <option key={value} value={value}>Day {value}</option>)}</select></label>
     </PlaceEntryForm>
     {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
   </section>
 }
 
-function DayField({ day }: { day?: number | null }) {
-  return <label className="block text-sm">Day (optional)<input name="day" type="number" min={1} max={365} defaultValue={day ?? ''} placeholder="Add a day later" className={inputClass} /></label>
+function DayField({ day, maxDay }: { day?: number | null; maxDay: number }) {
+  return <label className="block text-sm">Day (optional)<select name="day" defaultValue={day ?? ''} className={inputClass}><option value="">Unscheduled</option>{Array.from({ length: maxDay }, (_, index) => index + 1).map(value => <option key={value} value={value}>Day {value}</option>)}</select></label>
 }
-function PlaceRow({ place }: { place: Place & { destination: string } }) {
+function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; maxDay: number }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -168,7 +169,7 @@ function PlaceRow({ place }: { place: Place & { destination: string } }) {
     }}><fieldset disabled={busy} className="space-y-3"><label className="block text-sm">{place.type === 'transport' ? 'Transport name' : 'Place name'}{place.type === 'transport' ? <input name="name" value={name} onChange={event => setName(event.target.value)} required maxLength={240} className={inputClass} /> : <PlacesAutocomplete name="name" value={name} onChange={value => { setName(value); setPlaceId('') }} onSelect={(_main, _secondary, id) => setPlaceId(id ?? '')} type={place.type === 'food_drink' ? 'restaurant' : place.type === 'hotel' ? 'hotel' : 'activity'} city={place.destination} required maxLength={240} className={inputClass} />}</label>
       <input type="hidden" name="placeId" value={placeId} />
       <input type="hidden" name="status" value={place.status} />
-      <label className="block text-sm">Notes<textarea name="notes" defaultValue={place.notes ?? ''} maxLength={8000} rows={3} className={inputClass} /></label><DayField day={place.day} />
+      <label className="block text-sm">Notes<textarea name="notes" defaultValue={place.notes ?? ''} maxLength={8000} rows={3} className={inputClass} /></label><DayField day={place.day} maxDay={maxDay} />
       <div className="flex gap-3"><button className={buttonClass}>{busy ? 'Saving…' : 'Save changes'}</button><button type="button" onClick={() => setEditing(false)} className="px-3 text-sm">Cancel</button></div>
     </fieldset>{error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}</form>}
     {saved && <p role="status" className="flex items-center gap-1 text-xs text-[#59694f]"><Check size={14} />Saved</p>}

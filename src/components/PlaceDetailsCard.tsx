@@ -25,9 +25,10 @@ type Place = {
   placeId?: string | null
 }
 
-export default function PlaceDetailsCard({ place, destination, category, recommendation = 'none', isHotel = false, messageHref, className, children }: {
+export default function PlaceDetailsCard({ place, destination, category, recommendation = 'none', isHotel = false, messageHref, editHref, className, children }: {
   place: Place
   messageHref?: string
+  editHref?: string
   destination: string
   category: string
   recommendation?: PlaceRecommendation
@@ -64,7 +65,7 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
       <article className={`${className} ${styles.tile} ${canSave ? styles.saveable : ''}`} style={canSave ? { '--place-save-space': '44px', '--place-stamp-gap': '40px', '--place-header-space': '36px' } as CSSProperties : undefined}>
         <button type="button" className={styles.openTile} onClick={() => setOpen(true)}
           aria-label={`View details for ${place.name}`} aria-haspopup="dialog">
-          <span className={styles.detailsHint}>View notes &amp; details →</span>
+          <span className={styles.detailsHint}>{editHref ? 'Edit notes & details →' : 'View notes & details →'}</span>
         </button>
         {children}
         {canSave && <button type="button" className={styles.savePlace} aria-label={`Save ${place.name} to a trip`} title="Save to a trip" aria-haspopup="dialog" onClick={() => setSaveOpen(true)}>{saved ? <Check size={19} /> : <Plus size={20} />}</button>}
@@ -94,6 +95,7 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
               : place.id && <PlacePhoto itemId={place.id} name={place.name} thumbnailClass={styles.providerPhoto} fallback={null} fullWidth />}
             {place.address && <section><h3 className={styles.sectionTitle}>Address</h3><p className={styles.address}><MapPin size={17} />{place.address}</p></section>}
             {place.alternative && <section><h3 className={styles.sectionTitle}>Suggested alternative</h3><p className={styles.text}>{place.alternative}</p></section>}
+            {editHref && <Link href={editHref} onClick={() => dialog.current?.close()} className={styles.editInline}>Edit notes &amp; details</Link>}
             {canSave && <button type="button" className={styles.saveInline} aria-haspopup="dialog" onClick={() => setSaveOpen(true)}><span>{saved ? <Check size={19} /> : <Plus size={20} />}</span>Save to a trip</button>}
             {messageHref && <Link href={messageHref} onClick={() => dialog.current?.close()} className="inline-block rounded-full bg-[#59694f] px-4 py-2 text-sm text-white">Message about this place</Link>}
             <div className={styles.actions}>

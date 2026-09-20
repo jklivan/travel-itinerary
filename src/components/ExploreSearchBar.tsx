@@ -32,7 +32,7 @@ export default function ExploreSearchBar() {
         type="text"
         defaultValue={current}
         placeholder={'Try \u201cfamily trip in Europe\u201d or \u201ccheap beach vacation\u201d\u2026'}
-        className="w-full pl-10 pr-24 py-3 rounded-xl border border-[#c1ad93] text-sm text-[#242e25] placeholder-[#8B6F4E] focus:outline-none focus:ring-2 focus:ring-[#59694f] focus:border-transparent bg-[#faf7f1] shadow-sm"
+        className="w-full pl-10 pr-24 py-3 rounded-xl border border-[#c1ad93] text-xs sm:text-sm tracking-[-0.01em] text-[#242e25] placeholder-[#8B6F4E] focus:outline-none focus:ring-2 focus:ring-[#59694f] focus:border-transparent bg-[#faf7f1] shadow-sm"
       />
       <button
         type="submit"

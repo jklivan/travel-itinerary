@@ -21,7 +21,6 @@ import ItineraryMap from '@/components/ItineraryMap'
 import type { ItemPin } from '@/components/ItineraryMapInner'
 import styles from './places.module.css'
 import PlaceDetailsCard from '@/components/PlaceDetailsCard'
-import PlaceQuickEdit from '@/components/PlaceQuickEdit'
 import { getRecommendation, partitionPlaces } from '@/lib/placeRecommendation'
 import { mapDayNumber } from '@/lib/mapDays'
 
@@ -424,7 +423,7 @@ export default async function ItineraryPage({
 
     return (
       <div key={item.id} id={`place-${item.id}`} className="scroll-mt-24">
-      <PlaceDetailsCard messageHref={!isOwn ? `/messages/${it.user.id}?place=${encodeURIComponent(item.id)}` : undefined} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} className={`${styles.card} ${styles[type]} ${isOwn ? styles.ownerPolaroid : ''} ${recommendation !== 'none' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
+      <PlaceDetailsCard messageHref={!isOwn ? `/messages/${it.user.id}?place=${encodeURIComponent(item.id)}` : undefined} editHref={isOwn ? `/itinerary/${it.id}/edit` : undefined} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} className={`${styles.card} ${styles[type]} ${isOwn ? styles.ownerPolaroid : ''} ${recommendation !== 'none' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
         {recommendation === 'must' && type !== 'hotel' && <Image src="/must-do-stamp.png" alt="Must do" width={60} height={54} unoptimized className={styles.mustDoStamp} />}
         {recommendation === 'must' && type === 'hotel' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><BedDouble size={24} aria-hidden="true" /><span>Must stay</span></span>}
         {recommendation === 'avoid' && <span className={`${styles.mustDoStamp} ${styles.textStamp} ${styles.avoidStamp}`}><Ban size={24} aria-hidden="true" /><span>Avoid</span></span>}
@@ -458,7 +457,6 @@ export default async function ItineraryPage({
           <FriendProof friends={friends} avg={avg} total={total} verb={type === 'hotel' ? 'stayed here' : type === 'activity' ? 'also did this' : 'also went'} />
         </div>
       </PlaceDetailsCard>
-      {isOwn && <PlaceQuickEdit itemId={item.id} name={item.name} rating={item.rating ?? null} photos={eventPhotos(item.photoUrls, item.photoUrl)} />}
       </div>
     )
   }
@@ -535,17 +533,6 @@ export default async function ItineraryPage({
               )}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              {session?.user && <CopyTripButton itineraryId={it.id} title={it.title} isOwn={isOwn} />}
-              {stamp && (
-                <span className={`-rotate-2 inline-block text-xs px-3 py-1 rounded-full font-bold text-white ${stamp.bg}`}>
-                  {stamp.label}
-                </span>
-              )}
-              {!isOwn && (
-                <>
-                  <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />
-                </>
-              )}
               {session?.user && !isOwn && (
                 <form action={async () => {
                   'use server'
@@ -592,17 +579,26 @@ export default async function ItineraryPage({
           const userPhotos = tripPhotoGallery(it.photos, it.destinations.flatMap(d => d.items))
           const stockPhoto = it.photos.find(p => p.isStock)
           if (userPhotos.length > 0) return (
-            <div className="mb-7 rounded-2xl overflow-hidden">
+            <div className="relative mb-7 rounded-2xl overflow-hidden">
               <PhotoStrip photos={userPhotos} title={it.title} />
+              {stamp && <span className={`absolute bottom-3 right-3 -rotate-2 rounded-full px-3 py-1 text-xs font-bold text-white shadow-sm ${stamp.bg}`}>{stamp.label}</span>}
             </div>
           )
           if (stockPhoto) return (
             <div className="relative h-64 w-full rounded-2xl overflow-hidden mb-7">
               <Image src={stockPhoto.url} alt={it.title} fill className="object-cover" priority />
+              {stamp && <span className={`absolute bottom-3 right-3 -rotate-2 rounded-full px-3 py-1 text-xs font-bold text-white shadow-sm ${stamp.bg}`}>{stamp.label}</span>}
             </div>
           )
           return null
         })()}
+
+        {!isOwn && (
+          <div className="mb-6 flex flex-wrap items-center gap-2 border-b border-[#c1ad93] pb-4">
+            {session?.user && <CopyTripButton itineraryId={it.id} title={it.title} isOwn={isOwn} />}
+            <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />
+          </div>
+        )}
 
         <nav aria-label="Itinerary view" className="flex flex-wrap gap-1 bg-[#dfd3c2] rounded-xl p-1 text-sm font-medium mb-6 w-fit">
           <Link href={`/itinerary/${it.id}`} scroll={false} aria-current={!showMap && !showDayByDay ? 'page' : undefined}

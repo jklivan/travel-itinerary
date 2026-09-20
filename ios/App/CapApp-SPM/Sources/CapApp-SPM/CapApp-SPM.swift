@@ -1,2 +1,2 @@
-import CapacitorPushNotifications
+import PushNotificationsPlugin
 public let isCapacitorApp = true

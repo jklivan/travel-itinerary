@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo, useRef, useState, type ReactNode } from 'react'
-import { LocateFixed, MapPin } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { LocateFixed } from 'lucide-react'
 import { distanceMiles, type Coordinates } from '@/lib/distance'
 
 type Entry = { id: string; locations: Coordinates[]; card: ReactNode }
@@ -29,37 +29,44 @@ export default function NearbyDayTrips({ entries }: { entries: Entry[] }) {
       return
     }
     setLoading(true)
+    clearTimeout(safetyTimer.current)
     // The timeout option only starts after permission is granted, so a permission
     // prompt that never appears (e.g. in WKWebView) would hang forever. This
     // safety timer covers the entire request including the permission phase.
     safetyTimer.current = setTimeout(() => {
       setLoading(false)
       setError('Location request timed out. Make sure location access is allowed and try again.')
-    }, 15000)
-    navigator.geolocation.getCurrentPosition(
-      result => {
-        clearTimeout(safetyTimer.current)
-        setPosition({ lat: result.coords.latitude, lng: result.coords.longitude })
-        setLoading(false)
-      },
-      result => {
-        clearTimeout(safetyTimer.current)
-        setError(result.code === result.PERMISSION_DENIED
-          ? 'Location permission was declined. You can still browse all day trips.'
-          : 'Could not get your location. Please try again or browse all day trips.')
-        setLoading(false)
-      },
-      { enableHighAccuracy: false, maximumAge: 5 * 60 * 1000, timeout: 10000 },
-    )
+    }, 8000)
+    try {
+      navigator.geolocation.getCurrentPosition(
+        result => {
+          clearTimeout(safetyTimer.current)
+          setPosition({ lat: result.coords.latitude, lng: result.coords.longitude })
+          setLoading(false)
+        },
+        result => {
+          clearTimeout(safetyTimer.current)
+          setError(result.code === result.PERMISSION_DENIED
+            ? 'Location permission was declined. You can still browse all day trips.'
+            : 'Could not get your location. Please try again or browse all day trips.')
+          setLoading(false)
+        },
+        { enableHighAccuracy: false, maximumAge: 5 * 60 * 1000, timeout: 6000 },
+      )
+    } catch {
+      clearTimeout(safetyTimer.current)
+      setLoading(false)
+      setError('Could not access your location. You can still browse all day trips.')
+    }
   }
+
+  useEffect(() => () => clearTimeout(safetyTimer.current), [])
 
   return <section aria-label="Nearby day trips">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dfd3c2] bg-[#faf7f1] p-4">
       <div className="flex items-start gap-3">
-        <MapPin size={19} className="mt-0.5 shrink-0 text-[#59694f]" />
         <div>
           <p className="text-sm font-semibold text-[#242e25]">Find day trips near you</p>
-          <p className="mt-1 text-xs text-[#8B6F4E]">Use your location once to find trips within 50 miles by straight-line distance. It isn’t shared or saved.</p>
         </div>
       </div>
       {position

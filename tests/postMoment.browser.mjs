@@ -17,7 +17,7 @@ const storyCss = await readFile(path.join(root,'src/components/Stories.module.cs
 const styleClasses = [...new Set([...storyCss.matchAll(/\.([A-Za-z][\w-]*)/g)].map(match=>match[1]))]
 await source('stubs', `export const useRouter=()=>({refresh(){}});export const Camera=()=>null;export const Star=Camera;export const Plus=Camera;export const X=Camera;export const Check=Camera;export async function updatePlace(){return {success:true}};export async function storySources(){return {isPrivate:false,trips:[{id:'ct',title:'Newest trip',isPlan:true,photos:[],places:[{id:'casa',name:'Casa Me',type:'food_drink',destination:'Westport, CT',photos:window.withPhoto?['/casa.jpg']:[]}]},{id:'unrelated',title:'Older trip',isPlan:false,photos:[],places:[]}]}};export async function postStories(input){window.posted=input;return window.failPost?{error:'Try again'}:{success:true}};export default function Field(props){if(Object.hasOwn(props,'value')){const {value,onChange,...inputProps}=props;return <input {...inputProps} value={value} onChange={event=>onChange(event.target.value)}/>};return <button type="button" onClick={()=>props.onChange(['/uploaded.jpg'])}>Upload photo</button>}`)
 await source('styles', `export default ${JSON.stringify(Object.fromEntries(styleClasses.map(name=>[name,name])))}`)
-await source('entry', `import {createRoot} from 'react-dom/client';import QuickEdit from './PlaceQuickEdit';createRoot(document.getElementById('root')).render(<QuickEdit itemId="casa" name="Casa Me" rating={5} photos={[]}/>);`)
+await source('entry', `import {createRoot} from 'react-dom/client';import StoryComposer from './StoryComposer';createRoot(document.getElementById('root')).render(<StoryComposer initialItemId="casa" onClose={()=>{}} onPosted={()=>{document.body.insertAdjacentHTML('beforeend','<div role="status">Posted to Little moments for 24 hours.</div>')}}/>);`)
 await source('standalone-entry', `import {createRoot} from 'react-dom/client';import StoryComposer from './StoryComposer';createRoot(document.getElementById('root')).render(<StoryComposer onClose={()=>{}} onPosted={()=>{document.body.dataset.posted='true';document.body.insertAdjacentHTML('beforeend','<div role="status">Posted to Little moments for 24 hours.</div>')}}/>);`)
 await new Promise((resolve,reject)=>{
  const compiler=webpack({mode:'development',devtool:false,entry:{bundle:path.join(temp,'entry.js'),standalone:path.join(temp,'standalone-entry.js')},output:{path:temp,filename:'[name].js'},resolve:{modules:[path.join(root,'node_modules'),'node_modules'],alias:Object.fromEntries([['./Stories.module.css','styles'],...['./EventPhotoInput','./PlacesAutocomplete','next/link','next/navigation','lucide-react','@/actions/stories','@/actions/placeQuickEdit'].map(x=>[x,'stubs'])].map(([a,b])=>[a,path.join(temp,b+'.js')]))}})
@@ -31,7 +31,6 @@ try {
   await page.goto('https://moment.test/')
   await page.evaluate(value=>{window.withPhoto=value;window.failPost=true},withPhoto)
   await page.addScriptTag({path:path.join(temp,'bundle.js')})
-  await page.getByRole('button',{name:'Post this moment at Casa Me'}).click()
   await page.getByLabel('Your trip').waitFor()
   assert.equal(await page.getByLabel('Your trip').inputValue(),'ct')
   assert.equal(await page.getByLabel('Choose a place or transport').inputValue(),'casa')

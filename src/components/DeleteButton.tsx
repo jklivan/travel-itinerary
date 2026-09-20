@@ -6,7 +6,7 @@ import { deleteItinerary } from '@/actions/itinerary'
 import { keepTripPrivate } from '@/actions/keepTripPrivate'
 import { LockKeyhole, Trash2 } from 'lucide-react'
 
-export default function DeleteButton({ id, visibility, returnTo = '/', label = 'Delete entire post' }: { id: string; visibility: string; returnTo?: '/' | '/plan'; label?: string }) {
+export default function DeleteButton({ id, visibility, returnTo = '/', label = 'Delete entire post' }: { id: string; visibility: string; returnTo?: string; label?: string }) {
   const router = useRouter()
   const [confirming, setConfirming] = useState<'delete' | 'unpublish' | null>(null)
   const [pending, setPending] = useState(false)

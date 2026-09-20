@@ -108,7 +108,7 @@ function NavSearchForm({ initialQuery }: { initialQuery: string }) {
           onFocus={() => suggestions.length > 0 && setOpen(true)}
           placeholder="Search destinations…"
           autoComplete="off"
-          className="w-full min-h-12 pl-9 pr-3 py-3 text-base text-white placeholder-white/60 rounded-lg bg-white/10 border border-white/20 focus:outline-none focus:ring-2 focus:ring-white/40 focus:bg-white/20 transition-all"
+          className="w-full min-h-12 pl-9 pr-3 py-3 text-sm text-white placeholder-white/60 rounded-lg bg-white/10 border border-white/20 focus:outline-none focus:ring-2 focus:ring-white/40 focus:bg-white/20 transition-all"
         />
         {open && suggestions.length > 0 && (
           <ul className="absolute z-50 mt-1 w-full bg-[#faf7f1] rounded-xl border border-[#dfd3c2] shadow-lg overflow-hidden">

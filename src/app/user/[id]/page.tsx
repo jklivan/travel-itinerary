@@ -4,9 +4,11 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import ItineraryCard from '@/components/ItineraryCard'
 import SavedFolders from '@/components/SavedFolders'
 import SavedFolderPicker from '@/components/SavedFolderPicker'
+import DeleteButton from '@/components/DeleteButton'
 import { tripPhotoGallery } from '@/lib/eventPhotos'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
 import { MapPin, Users, ChevronRight, Settings } from 'lucide-react'
@@ -165,53 +167,23 @@ export default async function UserProfilePage({
         <ChevronRight size={20} className="shrink-0 text-[#59694f] transition-transform group-hover:translate-x-0.5" />
       </Link>}
 
-      {/* Tabs */}
-      {isOwn && (
-        <div className="flex flex-wrap gap-1 bg-[#faf7f1] rounded-xl p-1 text-sm font-medium border border-[#dfd3c2] mb-5 w-fit">
-          <Link
-            href={`/user/${id}`}
-            className={`px-4 py-1.5 rounded-lg transition-colors ${
-              !showBucket && !showDrafts ? 'bg-[#242e25] text-white shadow-sm' : 'text-[#8B6F4E] hover:text-[#242e25]'
-            }`}
-          >
-            My Posts
-          </Link>
-          <Link
-            href={`/user/${id}?tab=bucket`}
-            className={`px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              showBucket ? 'bg-red-500 text-white shadow-sm' : 'text-[#8B6F4E] hover:text-[#242e25]'
-            }`}
-          >
-            <span>❤️</span> Saved
-            {bucketItems.length > 0 && (
-              <span className={`text-xs rounded-full px-1.5 py-0.5 font-bold ${
-                showBucket ? 'bg-red-400 text-white' : 'bg-[#dfd3c2] text-[#485340]'
-              }`}>
-                {bucketItems.length}
-              </span>
-            )}
-          </Link>
-          <Link
-            href={`/user/${id}?tab=in-progress`}
-            className={`px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              showDrafts ? 'bg-amber-500 text-white shadow-sm' : 'text-[#8B6F4E] hover:text-[#242e25]'
-            }`}
-          >
-            In progress
-            {drafts.length > 0 && (
-              <span className={`text-xs rounded-full px-1.5 py-0.5 font-bold ${
-                showDrafts ? 'bg-amber-400 text-white' : 'bg-[#dfd3c2] text-[#485340]'
-              }`}>
-                {drafts.length}
-              </span>
-            )}
-          </Link>
-        </div>
-      )}
-
       {!isOwn && <Link href={`/messages/${id}`} className="mb-5 inline-block rounded-full bg-[#59694f] px-4 py-2 text-sm text-white">Send private message</Link>}
 
-      {showDrafts ? (
+      {isOwn ? (
+        <>
+          <section aria-labelledby="your-trips-heading">
+            <h1 id="your-trips-heading" className="font-[family-name:var(--font-playfair)] text-3xl text-[#242e25]">Your trips</h1>
+            <section className="mt-5" aria-labelledby="private-plans-heading">
+              <div className="mb-3 flex items-end justify-between"><div><h2 id="private-plans-heading" className="font-[family-name:var(--font-playfair)] text-xl uppercase tracking-wide text-[#8B6F4E]">Private plans <span className="font-sans text-sm">({drafts.length})</span></h2><p className="mt-1 text-sm text-[#73786d]">Only you can see these. Keep planning or publish whenever you’re ready.</p></div><Link href="/plan" className="text-sm font-semibold text-[#59694f] underline">Start planning</Link></div>
+              {drafts.length === 0 ? <div className="rounded-2xl border border-dashed border-[#d7cebc] p-6 text-center text-sm text-[#73786d]">No private plans yet.</div> : <div className="space-y-3">{drafts.map(trip => <div key={trip.id} className="flex items-center gap-3 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)]"><Link href={trip.isPlan ? `/plan/${trip.id}` : `/itinerary/${trip.id}/edit`} className="flex min-w-0 flex-1 items-center gap-3"><span className="relative size-20 shrink-0 rotate-[-3deg] overflow-hidden border-4 border-white bg-[#e8eee8] shadow-sm">{trip.photos[0]?.url ? <Image src={trip.photos[0].url} alt="" fill sizes="80px" className="object-cover" /> : <span className="grid h-full place-items-center text-center text-[9px] uppercase tracking-wider text-[#59694f]">Postcard</span>}</span><span className="min-w-0"><span className="block break-words font-[family-name:var(--font-playfair)] text-lg text-[#2e4147]">{trip.title || 'Untitled trip'}</span><span className="mt-1 block text-sm text-[#73786d]">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places · Keep planning →</span></span></Link><DeleteButton id={trip.id} visibility={trip.visibility} returnTo={`/user/${id}`} label="Delete trip" /></div>)}</div>}
+            </section>
+            <section className="mt-8" aria-labelledby="shared-trips-heading">
+              <div className="mb-3"><h2 id="shared-trips-heading" className="font-[family-name:var(--font-playfair)] text-xl uppercase tracking-wide text-[#8B6F4E]">Shared trips <span className="font-sans text-sm">({itineraries.length})</span></h2><p className="mt-1 text-sm text-[#73786d]">Trips you’ve published for others to explore.</p></div>
+              {itineraries.length === 0 ? <div className="rounded-2xl border border-dashed border-[#d7cebc] p-6 text-center text-sm text-[#73786d]">No shared trips yet.</div> : <div className="space-y-4">{itineraries.map(it => <ItineraryCard fullWidth key={it.id} id={it.id} postType={it.postType} tags={it.tags} durationDays={it.durationDays} title={it.title} bestMonths={it.bestMonths} datesFlexible={it.datesFlexible} startDate={it.startDate} endDate={it.endDate} audience={it.audience} budget={it.budget} tripRating={it.tripRating} authorName={user.name} authorId={user.id} destinations={it.destinations} coverPhoto={it.photos[0]?.url ?? null} photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items))} currentUserId={viewerId} isOwn isBucketed={ownBucketSet.has(it.id)} saveCount={it._count.bucketedBy} />)}</div>}
+            </section>
+          </section>
+        </>
+      ) : showDrafts ? (
         <>
           <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="font-semibold text-[#242e25]">In progress</h2><p className="mt-1 text-sm text-[#8B6F4E]">All your unpublished trips, ready to pick up anytime.</p></div></div>
           {drafts.length === 0 ? <div className="rounded-xl border border-[#dfd3c2] bg-[#faf7f1] p-8 text-center"><p className="text-sm text-[#8B6F4E]">No trips in progress yet.</p><Link href="/plan" className="mt-4 inline-flex min-h-11 items-center rounded-full bg-[#242e25] px-5 text-sm font-semibold text-white">Start planning</Link></div> : <div className="space-y-3">
