@@ -3,7 +3,6 @@
 import BackButton from '@/components/BackButton'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import styles from '../../itinerary/[id]/places.module.css'
 import planningStyles from './Planner.module.css'
 import { useRef, useState } from 'react'
@@ -16,14 +15,13 @@ import DeleteButton from '@/components/DeleteButton'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import PlanningMap from '@/components/PlanningMap'
 import PlacePeople from '@/components/PlacePeople'
-import PlaceQuickEdit from '@/components/PlaceQuickEdit'
 import { DateFields, inputClass, buttonClass } from '../NewPlanForm'
 
 type Place = { lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[] }
 type Trip = { durationDays?: number | null; id: string; title: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; items: Place[] }[] }
 const categories = [{ value: 'hotel', label: 'Hotels', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
 
-export default function Planner({ trip, initialImport = false, initialDetails = false, postMode = false }: { trip: Trip; initialImport?: boolean; initialDetails?: boolean; postMode?: boolean }) {
+export default function Planner({ trip, initialImport = false, initialDetails = false }: { trip: Trip; initialImport?: boolean; initialDetails?: boolean }) {
   const router = useRouter()
   const [tab, setTab] = useState<'places' | 'itinerary' | 'map'>('places')
   const [mapOpened, setMapOpened] = useState(false)
@@ -34,7 +32,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const places = trip.destinations.flatMap(d => d.items.map(item => ({ ...item, destination: [d.name, d.country].filter(Boolean).join(', ') })))
   const scheduled = [...new Set(places.flatMap(p => p.day === null ? [] : [p.day]))].sort((a, b) => a - b)
   const maxDay = Math.max(trip.durationDays ?? 0, ...scheduled, 1)
-  function renderPlace(place: Place & { destination: string }) { return <PlaceRow key={place.id} place={place} maxDay={maxDay} postMode={postMode} /> }
+  function renderPlace(place: Place & { destination: string }) { return <PlaceRow key={place.id} place={place} maxDay={maxDay} /> }
   return <div className="mx-auto max-w-2xl px-4 py-6 text-[#2e4147]">
     <BackButton fallback="/plan" className="text-sm text-[#59694f]">← Back</BackButton>
     <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#59694f]"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
@@ -49,7 +47,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       <button className={`${buttonClass} flex w-full items-center justify-center gap-2`} onClick={() => setAdding(true)}><Plus size={20} />Add a place</button>
       {trip.isPlan && <Link href={`/plan/${trip.id}/friends`} className="mt-2 flex min-h-11 items-center justify-center rounded-xl border border-[#8caaa3] bg-[#fffdf7] px-4 py-2 text-sm font-semibold text-[#59694f]">Browse friends’ places · Add several at once</Link>}
     </div>}
-    {adding && <AddPlace trip={trip} maxDay={maxDay} enhanced={postMode} onClose={() => setAdding(false)} />}
+    {adding && <AddPlace trip={trip} maxDay={maxDay} onClose={() => setAdding(false)} />}
     {importing && <PlanImport tripId={trip.id} onClose={() => setImporting(false)} />}
     <div role="tablist" aria-label="Trip view" className="mb-5 mt-3 flex border-b border-[#d7cebc]">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className={`min-h-12 flex-1 border-b-2 p-3 font-semibold ${tab === value ? 'border-[#59694f] text-[#59694f]' : 'border-transparent text-[#73786d]'}`}>{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
     <section role="tabpanel" id="trip-panel" aria-labelledby={`${tab}-tab`}>
@@ -80,7 +78,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   </div>
 }
 
-function AddPlace({ trip, maxDay, enhanced, onClose }: { trip: Trip; maxDay: number; enhanced: boolean; onClose: () => void }) {
+function AddPlace({ trip, maxDay, onClose }: { trip: Trip; maxDay: number; onClose: () => void }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -109,7 +107,7 @@ function AddPlace({ trip, maxDay, enhanced, onClose }: { trip: Trip; maxDay: num
       </label>)}
     </div></fieldset>
     </fieldset>
-    <PlaceEntryForm enhanced={enhanced} type={category} city={city || undefined} onPhotoBusyChange={setUploading} onClose={onClose} onAdd={async item => {
+    <PlaceEntryForm type={category} city={city || undefined} onPhotoBusyChange={setUploading} onClose={onClose} onAdd={async item => {
       if (saving.current) return false
       if (!destination.trim()) { setError('Choose a destination first.'); return false }
       saving.current = true; setBusy(true); setError('')
@@ -132,7 +130,7 @@ function AddPlace({ trip, maxDay, enhanced, onClose }: { trip: Trip; maxDay: num
 function DayField({ day, maxDay }: { day?: number | null; maxDay: number }) {
   return <label className="block text-sm">Day (optional)<select name="day" defaultValue={day ?? ''} className={inputClass}><option value="">Unscheduled</option>{Array.from({ length: maxDay }, (_, index) => index + 1).map(value => <option key={value} value={value}>Day {value}</option>)}</select></label>
 }
-function PlaceRow({ place, maxDay, postMode }: { place: Place & { destination: string }; maxDay: number; postMode: boolean }) {
+function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; maxDay: number }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -147,16 +145,14 @@ function PlaceRow({ place, maxDay, postMode }: { place: Place & { destination: s
   return <article className={`${planningStyles.place} ${styles[category.value]}`}>
     <div className={`${styles.card} ${planningStyles.card}`}>
       <div className={styles.thumbnail}>
-        {postMode && place.photos[0] ? <Image src={place.photos[0]} alt={place.name} fill sizes="132px" className="object-cover" /> : <div className={styles.keepsake} aria-hidden="true"><span>{category.eyebrow}</span><Icon size={25} strokeWidth={1} /><span>{place.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span></div>}
+        <div className={styles.keepsake} aria-hidden="true"><span>{category.eyebrow}</span><Icon size={25} strokeWidth={1} /><span>{place.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span></div>
       </div>
       <div className={styles.cardBody}>
         <p className={styles.eyebrow}>{category.eyebrow}</p>
         <h3 className={styles.placeName}>{place.name}</h3>
-        {postMode && !!place.rating && <p className={planningStyles.rating} aria-label={`Your rating: ${place.rating} out of 5`}>{'★'.repeat(place.rating)}<span>Your rating</span></p>}
         <p className={planningStyles.location}>{place.destination}</p>
         {place.notes && <p className={styles.note}>{place.notes}</p>}
       </div>
-    {postMode && <PlaceQuickEdit compact itemId={place.id} name={place.name} rating={place.rating} photos={place.photos} />}
     </div>
     {place.type !== 'transport' && <PlacePeople key={`${place.placeId}:${place.name}:${place.destination}`} compact placeId={place.placeId ?? ''} name={place.name} location={place.destination} />}
     <div className={planningStyles.controls}>

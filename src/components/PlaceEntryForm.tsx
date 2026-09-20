@@ -45,14 +45,13 @@ export function StarRating({ value, onChange }: { value: number; onChange: (v: n
   )
 }
 
-export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange, city, children, enhanced = true }: {
+export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange, city, children }: {
   type: ItemType
   onAdd: (item: PlaceEntry) => void | boolean | Promise<void | boolean>
   onClose: () => void
   onPhotoBusyChange: (busy: boolean) => void
   city?: string
   children?: ReactNode
-  enhanced?: boolean
 }) {
   const saving = useRef(false)
   const [busy, setBusy] = useState(false)
@@ -119,12 +118,12 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
           })}
         </div>
       )}
-      {enhanced && <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-3 flex-wrap">
         <div className="space-y-1">
           <p className="text-xs text-gray-500">Rate it</p>
           <StarRating value={rating} onChange={setRating} />
         </div>
-      </div>}
+      </div>
       <div className="space-y-1">
         <p className="text-xs text-gray-500">Notes</p>
         <textarea aria-label="Notes" maxLength={8000} rows={4} value={notes} onChange={e => setNotes(e.target.value)}
@@ -132,16 +131,16 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
       </div>
 
       {/* More details toggle */}
-      {enhanced && <RecommendationPicker type={type} value={recommendation} onChange={setRecommendation} />}
-      {enhanced && <button type="button" onClick={() => setShowMore(s => !s)}
+      <RecommendationPicker type={type} value={recommendation} onChange={setRecommendation} />
+      <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
         {tags.length > 0 && !showMore && (
           <span className="ml-1 bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{tags.length}</span>
         )}
-      </button>}
+      </button>
 
-      {enhanced && showMore && (
+      {showMore && (
         <div className="space-y-2 pt-1">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Tags</p>
           <div className="flex flex-wrap gap-1.5">
@@ -155,7 +154,7 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
         </div>
       )}
 
-      {enhanced && <EventPhotoInput photos={photos} name={name || 'new event'} onChange={setPhotos} onBusyChange={busy => { setPhotoUploading(busy); onPhotoBusyChange(busy) }} />}
+      <EventPhotoInput photos={photos} name={name || 'new event'} onChange={setPhotos} onBusyChange={busy => { setPhotoUploading(busy); onPhotoBusyChange(busy) }} />
       {children}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <button type="button" onClick={() => void submit()} disabled={!name.trim() || photoUploading}
@@ -165,3 +164,4 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
     </fieldset>
   )
 }
+

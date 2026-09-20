@@ -4,7 +4,6 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { scheduleTripPublishedNotifications } from '@/lib/tripPublishedNotifications'
-import { TAGS } from '@/lib/tags'
 
 type Result = { error?: string; success?: boolean; id?: string }
 class InputError extends Error {}
@@ -48,24 +47,13 @@ export async function startPlan(form: FormData): Promise<Result> {
     if (!/^[a-f0-9-]{36}$/.test(id)) return { error: 'Please reload and try again.' }
     if (!title && !destination) return { error: 'Enter a trip name or destination to get started.' }
     const dateFields = dates(form)
-    let tags: string[] = []
-    if (form.has('tags')) {
-      try {
-        const parsed = JSON.parse(text(form, 'tags', 10000))
-        if (!Array.isArray(parsed) || parsed.some(tag => typeof tag !== 'string' || !TAGS.some(option => option.id === tag))) throw new InputError('Please check trip tags.')
-        tags = [...new Set(parsed)]
-      } catch (error) {
-        if (error instanceof InputError) throw error
-        throw new InputError('Please check trip tags.')
-      }
-    }
     // Reusing this ID makes a retry safe even if the first response was lost.
     const existing = await prisma.itinerary.findUnique({ where: { id }, select: { userId: true } })
     if (existing) return existing.userId === userId ? { id } : { error: unavailable }
     await prisma.itinerary.create({ data: {
       id, userId, title: title || `Trip to ${destination}`, visibility: 'draft', isPlan: true, ...dateFields,
       durationDays: form.get('format') === 'day-trip' ? 1 : duration(form),
-      tags: form.get('format') === 'day-trip' ? [...new Set(['day-trip', ...tags])] : tags,
+      tags: form.get('format') === 'day-trip' ? ['day-trip'] : [],
       destinations: { create: { name: destination || 'Destination to decide', order: 0 } },
     } })
     refresh(id, userId)
