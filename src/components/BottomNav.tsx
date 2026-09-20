@@ -25,7 +25,7 @@ function BottomNavInner({ pendingCount, userId }: { pendingCount: number; userId
   }
 
   return (
-    <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav relative fixed bottom-0 left-0 right-0 bg-[#faf7f1] border-t border-[#dfd3c2] shadow-lg z-50">
+    <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#faf7f1] border-t border-[#dfd3c2] shadow-lg z-50">
       <Link href="/create" aria-label="Post a full itinerary" className="absolute bottom-[calc(100%+0.75rem)] right-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#59694f] text-white shadow-xl ring-4 ring-[#faf7f1] transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#59694f]">
         <Send className="h-6 w-6 -rotate-12" />
       </Link>
