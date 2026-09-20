@@ -22,7 +22,7 @@ export default async function Navbar() {
                 className="text-xs text-white/70 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors hidden sm:block">
                 Settings
               </Link>
-              <Link href={session.user.id ? `/user/${session.user.id}` : '/login'} aria-label="Profile"
+              <Link href="/profile" aria-label="Profile"
                 className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors">
                 <User size={22} />
               </Link>

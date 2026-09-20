@@ -114,8 +114,8 @@ export default async function UserProfilePage({
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
       {!isOwn && <BackButton fallback="/friends" className="text-sm text-[#8B6F4E] hover:underline mb-5 inline-block">← Back</BackButton>}
 
-      {/* Profile header */}
-      <div className="bg-[#faf7f1] rounded-xl border border-[#dfd3c2] p-5 mb-5 flex items-center gap-4">
+      {/* Public profile header */}
+      {!isOwn && <div className="bg-[#faf7f1] rounded-xl border border-[#dfd3c2] p-5 mb-5 flex items-center gap-4">
         <div
           className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold shrink-0"
           style={{ backgroundColor: avatarColor }}
@@ -156,9 +156,9 @@ export default async function UserProfilePage({
             </button>
           </form>
         )}
-      </div>
+      </div>}
 
-      {isOwn && <Link href="/friends" className="group mb-5 flex min-h-20 items-center gap-4 rounded-2xl border border-[#c7d7cf] bg-[#edf1e9] p-4 text-[#2e4147] transition-colors hover:bg-[#e3ebe0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#59694f]">
+      {!isOwn && <Link href="/friends" className="group mb-5 flex min-h-20 items-center gap-4 rounded-2xl border border-[#c7d7cf] bg-[#edf1e9] p-4 text-[#2e4147] transition-colors hover:bg-[#e3ebe0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#59694f]">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#59694f]/10 text-[#59694f]"><Users size={23} /></span>
         <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-xl">Friends</span><span className="mt-0.5 block text-sm text-[#59694f]">{pendingCount ? `${pendingCount} friend request${pendingCount === 1 ? '' : 's'} waiting` : 'Find friends & see who you follow'}</span></span>
         {pendingCount > 0 && <span className="rounded-full bg-[#59694f] px-2 py-1 text-xs font-semibold text-white">{pendingCount}</span>}
