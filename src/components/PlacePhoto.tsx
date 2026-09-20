@@ -24,7 +24,7 @@ export default function PlacePhoto({ itemId, name, thumbnailClass, fallback, ful
     if (element.current) observer.observe(element.current)
     return () => { observer.disconnect(); controller.abort() }
   }, [itemId])
-  return <div ref={element} className="shrink-0" style={photo && !failed ? { width: fullWidth ? '100%' : 88 } : fullWidth ? { minHeight: 1 } : undefined}>
+  return <div ref={element} className="shrink-0" style={photo && !failed && fullWidth ? { width: '100%' } : fullWidth ? { minHeight: 1 } : undefined}>
     <div className={thumbnailClass} style={photo && !failed ? { width: '100%' } : fullWidth ? { display: 'none' } : undefined}>
       {photo && !failed ? <>
         {/* Provider photos must not pass through the image optimizer/cache. */}

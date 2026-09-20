@@ -15,6 +15,7 @@ import DeleteButton from '@/components/DeleteButton'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import PlanningMap from '@/components/PlanningMap'
 import PlacePeople from '@/components/PlacePeople'
+import PlacePhoto from '@/components/PlacePhoto'
 import { DateFields, inputClass, buttonClass } from '../NewPlanForm'
 
 type Place = { lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[] }
@@ -143,10 +144,8 @@ function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; m
   const category = categories.find(category => category.value === place.type) ?? categories[2]
   const Icon = category.Icon
   return <article className={`${planningStyles.place} ${styles[category.value]}`}>
-    <div className={`${styles.card} ${planningStyles.card}`}>
-      <div className={styles.thumbnail}>
-        <div className={styles.keepsake} aria-hidden="true"><span>{category.eyebrow}</span><Icon size={25} strokeWidth={1} /><span>{place.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span></div>
-      </div>
+      <div className={`${styles.card} ${planningStyles.card}`}>
+      <PlacePhoto itemId={place.id} name={place.name} thumbnailClass={styles.thumbnail} fallback={<div className={styles.keepsake} aria-hidden="true"><span>{category.eyebrow}</span><Icon size={25} strokeWidth={1} /><span>{place.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span></div>} />
       <div className={styles.cardBody}>
         <p className={styles.eyebrow}>{category.eyebrow}</p>
         <h3 className={styles.placeName}>{place.name}</h3>
