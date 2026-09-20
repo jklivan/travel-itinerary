@@ -69,10 +69,10 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
         try {
           const result = await sharePlan(trip.id)
           if (result.error) setPublishMessage(result.error)
-          else { setPublishMessage('Your itinerary is now published.'); router.refresh() }
+          else { setPublishMessage('Your trip is now posted.'); router.refresh() }
         } catch { setPublishMessage('Could not publish your itinerary. Please try again.') }
         finally { setPublishing(false) }
-      }} className="min-h-11 rounded-xl bg-[#355650] px-4 py-3 text-sm font-semibold text-white hover:bg-[#294640] disabled:opacity-60">{publishing ? 'Publishing…' : 'Publish itinerary'}</button>}
+      }} className="min-h-11 rounded-xl bg-[#355650] px-4 py-3 text-sm font-semibold text-white hover:bg-[#294640] disabled:opacity-60">{publishing ? 'Posting…' : 'Post'}</button>}
     </div>
     {publishMessage && <p role="status" className="mt-2 text-right text-sm text-[#59694f]">{publishMessage}</p>}
   </div>
