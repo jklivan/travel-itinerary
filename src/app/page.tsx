@@ -64,10 +64,7 @@ async function FeedResults({ searchQuery, feed }: { searchQuery: string; feed: s
       <Suspense fallback={null}><StoryFeed userId={userId} following={false} /></Suspense>
       <section className="mb-3 mt-3 flex items-center justify-between gap-2 px-1" aria-label="Trip recommendations">
         <h1 className="shrink-0 font-[family-name:var(--font-playfair)] text-sm font-medium tracking-[0.2em] text-[#2e4147]">FOR YOU</h1>
-        <div className="flex items-center gap-3">
-          {userId && <Link href="/create" className="rounded-full bg-[#242e25] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">Post a trip</Link>}
-          <FeedTabs active={feed} search={searchQuery} />
-        </div>
+        <FeedTabs active={feed} search={searchQuery} />
       </section>
       {searchQuery && <div className="mb-5">
         <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-[#242e25]">&quot;{searchQuery}&quot;</h1>
