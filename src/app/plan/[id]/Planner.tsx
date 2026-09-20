@@ -57,9 +57,9 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
         <p className="mb-5 text-sm text-[#73786d]">Everything you’re considering, all in one place. Days are optional.</p>
         {categories.map(category => { const items = places.filter(p => p.type === category.value); return items.length > 0 && <section key={category.value} className="mb-7"><div className={`${styles.categoryHeading} ${styles[category.value]}`}><h3><span className={styles.categoryIcon}><category.Icon size={17} /></span>{category.label}</h3><span className={styles.count}>{items.length} {items.length === 1 ? 'place' : 'places'}</span></div><div className="space-y-3">{items.map(renderPlace)}</div></section> })}
       </> : <>
-        <p className="mb-5 text-sm text-[#73786d]">Give a place a day whenever you’re ready. Everything else stays in Unscheduled.</p>
+        <p className="mb-5 text-sm text-[#73786d]">Give a place a day whenever you’re ready. Other places remain flexible.</p>
         {scheduled.map(day => <section key={day} className="mb-6"><h2 className="mb-3 text-lg font-semibold">Day {day}</h2><div className="space-y-3">{places.filter(p => p.day === day).map(renderPlace)}</div></section>)}
-        <section><h2 className="mb-3 text-lg font-semibold">Unscheduled</h2><div className="space-y-3">{places.filter(p => p.day === null).map(renderPlace)}</div>{places.every(p => p.day !== null) && <p className="text-sm text-[#73786d]">All your places have a day.</p>}</section>
+        <section><h2 className="mb-3 text-lg font-semibold">Other places</h2><div className="space-y-3">{places.filter(p => p.day === null).map(renderPlace)}</div>{places.every(p => p.day !== null) && <p className="text-sm text-[#73786d]">All your places have a day.</p>}</section>
       </>}
     </section>
     <div className="mt-8 flex items-center justify-between gap-3 border-t border-[#d7cebc] pt-5">
@@ -122,14 +122,14 @@ function AddPlace({ trip, onClose }: { trip: Trip; onClose: () => void }) {
       } catch { setError('Could not save. Your place is still here; try again.'); return false }
       finally { saving.current = false; setBusy(false) }
     }}>
-      <label className="block text-sm">Day (optional)<input type="number" min={1} max={365} value={day} onChange={event => setDay(event.target.value)} placeholder="Unscheduled" className={inputClass} /></label>
+      <label className="block text-sm">Day (optional)<input type="number" min={1} max={365} value={day} onChange={event => setDay(event.target.value)} placeholder="Add a day later" className={inputClass} /></label>
     </PlaceEntryForm>
     {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
   </section>
 }
 
 function DayField({ day }: { day?: number | null }) {
-  return <label className="block text-sm">Day (optional)<input name="day" type="number" min={1} max={365} defaultValue={day ?? ''} placeholder="Unscheduled" className={inputClass} /></label>
+  return <label className="block text-sm">Day (optional)<input name="day" type="number" min={1} max={365} defaultValue={day ?? ''} placeholder="Add a day later" className={inputClass} /></label>
 }
 function PlaceRow({ place }: { place: Place & { destination: string } }) {
   const router = useRouter()
@@ -154,7 +154,6 @@ function PlaceRow({ place }: { place: Place & { destination: string } }) {
         {!!place.rating && <p className={planningStyles.rating} aria-label={`Your rating: ${place.rating} out of 5`}>{'★'.repeat(place.rating)}<span>Your rating</span></p>}
         <p className={planningStyles.location}>{place.destination}</p>
         {place.notes && <p className={styles.note}>{place.notes}</p>}
-        <div className={planningStyles.meta}><span>{place.status === 'visited' ? 'Visited' : place.status === 'booked' ? 'Booked' : 'Considering'}</span><span>{place.day === null ? 'Unscheduled' : `Day ${place.day}`}</span></div>
       </div>
     </div>
     {place.type !== 'transport' && <PlacePeople key={`${place.placeId}:${place.name}:${place.destination}`} compact placeId={place.placeId ?? ''} name={place.name} location={place.destination} />}
