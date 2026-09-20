@@ -7,11 +7,12 @@ import { useRouter } from 'next/navigation'
 import { copyStoryToPlan } from '@/actions/stories'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import { startPlan, copyPlaceToPlan } from '@/actions/planning'
+import TagPicker from '@/components/TagPicker'
 
 export const inputClass = 'mt-1 w-full min-w-0 rounded-xl border border-[#d7cebc] bg-white px-3 py-3 text-base text-[#2e4147]'
 export const buttonClass = 'min-h-11 rounded-xl bg-[#242e25] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50'
 
-export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: string; saveStory?: string }) {
+export default function NewPlanForm({ savePlace, saveStory, mode = 'plan' }: { savePlace?: string; saveStory?: string; mode?: 'plan' | 'post' }) {
   const router = useRouter()
   const clientId = useRef('')
   const placeCopyId = useRef('')
@@ -21,6 +22,7 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
   const [error, setError] = useState('')
   const [format, setFormat] = useState<TripFormat>('guide')
   const [destination, setDestination] = useState('')
+  const [tags, setTags] = useState<string[]>([])
   return <form onSubmit={async event => {
     event.preventDefault()
     if (busy.current) return
@@ -30,6 +32,7 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
     const data = new FormData(event.currentTarget)
     if (importing && !String(data.get('title') ?? '').trim() && !String(data.get('destination') ?? '').trim()) data.set('title', 'My trip')
     data.set('clientId', clientId.current)
+    if (mode === 'post') data.set('tags', JSON.stringify(tags))
     try {
       const result = await startPlan(data)
       if (result.error) setError(result.error)
@@ -40,23 +43,24 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
           const copied = saveStory ? await copyStoryToPlan(saveStory, result.id, placeCopyId.current) : await copyPlaceToPlan(savePlace!, result.id, placeCopyId.current)
           if (copied.error) { setError(`Your plan was saved, but the place couldn’t be added. ${copied.error}`); return }
         }
-        router.push(`/plan/${result.id}${importing ? '?import=1' : ''}`); router.refresh()
+        router.push(`/plan/${result.id}${mode === 'post' ? '?post=1' : importing ? '?import=1' : ''}`); router.refresh()
       }
     } catch { setError('Could not save. Your details are still here; please try again.') }
     finally { busy.current = false; setSaving(false) }
   }} className="space-y-4">
     {(savePlace || saveStory) && <p className="text-sm text-[#59694f]">We’ll add the place you selected to this new plan.</p>}
     <fieldset disabled={saving} className="space-y-4">
-      <TripFormatPicker value={format} onChange={setFormat} />
+      <TripFormatPicker value={format} onChange={setFormat} heading={mode === 'post' ? 'What are you sharing?' : 'What are you planning?'} />
       <input type="hidden" name="format" value={format} />
       {format === 'day-trip' && <input type="hidden" name="durationDays" value="1" />}
       {format === 'itinerary' && <label className="block text-sm font-medium">Number of days (optional)<input name="durationDays" type="number" min="2" step="1" className={inputClass} placeholder="Or add a daily schedule later" /></label>}
       <label className="block text-sm font-medium">Where are you thinking?<PlacesAutocomplete name="destination" value={destination} onChange={setDestination} onSelect={(main, secondary) => setDestination([main, secondary].filter(Boolean).join(', '))} type="destination" maxLength={160} placeholder="e.g. Italy, Japan, a weekend away…" className={inputClass} /></label>
       <label className="block text-sm font-medium">Trip name <span className="font-normal">(optional)</span><input name="title" maxLength={160} placeholder="Summer in Italy" className={inputClass} /></label>
+      {mode === 'post' && <div><p className="mb-2 text-sm font-medium">Trip tags</p><TagPicker selected={tags} onChange={setTags} theme="paper" /></div>}
       <details><summary className="cursor-pointer py-2 text-sm text-[#59694f]">Add dates (optional)</summary><DateFields /></details>
       <p className="text-sm text-[#73786d]">Start with an idea. Save hotels, restaurants, and things to do as you find them. Your plan stays private until you share it.</p>
-      <button type="submit" value="plan" className={`${buttonClass} w-full`}>{saving ? 'Saving your plan…' : 'Start planning'}</button>
-      <button type="submit" value="import" className="min-h-11 w-full rounded-xl border border-[#d7cebc] px-5 py-3 text-sm font-semibold text-[#59694f] disabled:opacity-50">Import notes or a file</button>
+      <button type="submit" value="plan" className={`${buttonClass} w-full`}>{saving ? (mode === 'post' ? 'Starting your post…' : 'Saving your plan…') : mode === 'post' ? 'Start your post' : 'Start planning'}</button>
+      {mode === 'plan' && <button type="submit" value="import" className="min-h-11 w-full rounded-xl border border-[#d7cebc] px-5 py-3 text-sm font-semibold text-[#59694f] disabled:opacity-50">Import notes or a file</button>}
     </fieldset>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
     {error && createdPlan && <Link href={`/plan/${createdPlan}`} className="block text-sm text-[#59694f] underline">Open your saved plan →</Link>}
