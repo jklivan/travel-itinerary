@@ -153,13 +153,16 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
   } catch (error) { return message(error) }
 }
 
-export async function sharePlan(id: string, format: 'guide' | 'day-trip' | 'itinerary' = 'itinerary'): Promise<Result> {
+export async function sharePlan(id: string, format: 'guide' | 'day-trip' | 'itinerary' = 'itinerary', details: { budget?: number; tripRating?: number; tags?: string[] } = {}): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
   try {
     const trip = await prisma.itinerary.findFirst({ where: { id, userId, isPlan: true, destinations: { some: { items: { some: {} } } } }, select: { id: true, durationDays: true } })
     if (!trip) return { error: 'Add at least one place before sharing your trip.' }
-    const result = await prisma.itinerary.updateMany({ where: { id, userId, visibility: 'draft' }, data: { visibility: 'public', postType: format, durationDays: format === 'day-trip' ? 1 : format === 'guide' ? null : trip.durationDays, tags: format === 'day-trip' ? ['day-trip'] : [] } })
+    const budget = details.budget && details.budget >= 1 && details.budget <= 5 ? Math.floor(details.budget) : null
+    const tripRating = details.tripRating && details.tripRating >= 1 && details.tripRating <= 5 ? Math.floor(details.tripRating) : null
+    const tags = Array.isArray(details.tags) ? [...new Set(details.tags.filter(tag => typeof tag === 'string').slice(0, 20))] : []
+    const result = await prisma.itinerary.updateMany({ where: { id, userId, visibility: 'draft' }, data: { visibility: 'public', postType: format, durationDays: format === 'day-trip' ? 1 : format === 'guide' ? null : trip.durationDays, budget, tripRating, tags: format === 'day-trip' ? [...new Set(['day-trip', ...tags])] : tags } })
     if (result.count) scheduleTripPublishedNotifications(id)
     refresh(id, userId)
     return { success: true }

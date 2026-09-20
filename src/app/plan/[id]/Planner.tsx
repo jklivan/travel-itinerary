@@ -18,6 +18,7 @@ import PlanningMap from '@/components/PlanningMap'
 import PlacePeople from '@/components/PlacePeople'
 import PlacePhoto from '@/components/PlacePhoto'
 import { DateFields, inputClass, buttonClass } from '../NewPlanForm'
+import { TAGS } from '@/lib/tags'
 
 type Place = { lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[] }
 type Trip = { durationDays?: number | null; id: string; title: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; items: Place[] }[] }
@@ -31,11 +32,24 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const [importing, setImporting] = useState(initialImport)
   const [publishing, setPublishing] = useState(false)
   const [publishFormat, setPublishFormat] = useState<'guide' | 'day-trip' | 'itinerary' | null>(null)
+  const [publishBudget, setPublishBudget] = useState(0)
+  const [publishRating, setPublishRating] = useState(0)
+  const [publishTags, setPublishTags] = useState<string[]>([])
   const [publishMessage, setPublishMessage] = useState('')
   const places = trip.destinations.flatMap(d => d.items.map(item => ({ ...item, destination: [d.name, d.country].filter(Boolean).join(', ') })))
   const scheduled = [...new Set(places.flatMap(p => p.day === null ? [] : [p.day]))].sort((a, b) => a - b)
   const maxDay = Math.max(trip.durationDays ?? 0, ...scheduled, 1)
   function renderPlace(place: Place & { destination: string }) { return <PlaceRow key={place.id} place={place} maxDay={maxDay} /> }
+  async function publishTrip(format: 'guide' | 'day-trip' | 'itinerary') {
+    if (publishing) return
+    setPublishing(true); setPublishMessage('')
+    try {
+      const result = await sharePlan(trip.id, format, { budget: publishBudget, tripRating: publishRating, tags: publishTags })
+      if (result.error) setPublishMessage(result.error)
+      else { setPublishMessage('Your trip is now posted.'); setPublishFormat(null); router.refresh() }
+    } catch { setPublishMessage('Could not publish your itinerary. Please try again.') }
+    finally { setPublishing(false) }
+  }
   return <div className="mx-auto max-w-2xl px-4 py-6 text-[#2e4147]">
     <BackButton fallback="/plan" className="text-sm text-[#59694f]">← Back</BackButton>
     <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#59694f]"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
@@ -69,25 +83,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       {trip.isPlan && trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={() => setPublishFormat('itinerary')}
         aria-label="Post trip" title="Post trip" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#355650] px-3 py-2 text-sm font-semibold text-white hover:bg-[#294640] disabled:opacity-60"><Image src="/brand/postcard-icon.svg" alt="" width={30} height={30} className="rounded-md" /><span className="sr-only">Post</span></button>}
     </div>
-    {trip.isPlan && trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-50 grid place-items-center bg-[#242e25]/50 px-5" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="w-full max-w-md rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-5 shadow-xl"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-[#2e4147]">What are you posting?</h2><p className="mt-1 text-sm text-[#73786d]">Choose a format for your shared trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-2xl leading-none text-[#73786d]" aria-label="Close">×</button></div><div className="mt-5 grid gap-2"><button type="button" onClick={async () => {
-          if (publishing) return
-          setPublishing(true); setPublishMessage('')
-          try { const result = await sharePlan(trip.id, 'guide'); if (result.error) setPublishMessage(result.error); else { setPublishMessage('Your trip is now posted.'); setPublishFormat(null); router.refresh() } }
-          catch { setPublishMessage('Could not publish your itinerary. Please try again.') }
-          finally { setPublishing(false) }
-        }} className="rounded-xl border border-[#d7cebc] p-3 text-left"><span className="block font-semibold text-[#2e4147]">Guide</span><span className="text-sm text-[#73786d]">Places and ideas without a set schedule</span></button><button type="button" onClick={async () => {
-          if (publishing) return
-          setPublishing(true); setPublishMessage('')
-          try { const result = await sharePlan(trip.id, 'day-trip'); if (result.error) setPublishMessage(result.error); else { setPublishMessage('Your trip is now posted.'); setPublishFormat(null); router.refresh() } }
-          catch { setPublishMessage('Could not publish your itinerary. Please try again.') }
-          finally { setPublishing(false) }
-        }} className="rounded-xl border border-[#d7cebc] p-3 text-left"><span className="block font-semibold text-[#2e4147]">Day trip</span><span className="text-sm text-[#73786d]">A short one-day getaway</span></button><button type="button" onClick={async () => {
-          if (publishing) return
-          setPublishing(true); setPublishMessage('')
-          try { const result = await sharePlan(trip.id, 'itinerary'); if (result.error) setPublishMessage(result.error); else { setPublishMessage('Your trip is now posted.'); setPublishFormat(null); router.refresh() } }
-          catch { setPublishMessage('Could not publish your itinerary. Please try again.') }
-          finally { setPublishing(false) }
-        }} className="rounded-xl border border-[#d7cebc] p-3 text-left"><span className="block font-semibold text-[#2e4147]">Multi-day trip</span><span className="text-sm text-[#73786d]">A longer journey with an itinerary</span></button></div></div></div>}
+    {trip.isPlan && trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-[#242e25]/50 px-5 py-6" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="w-full max-w-md rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-5 shadow-xl"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-[#2e4147]">What are you posting?</h2><p className="mt-1 text-sm text-[#73786d]">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-2xl leading-none text-[#73786d]" aria-label="Close">×</button></div><div className="mt-5 space-y-5"><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Trip type</legend><div className="grid grid-cols-3 gap-2">{([['guide', 'Guide'], ['day-trip', 'Day trip'], ['itinerary', 'Multi-day']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setPublishFormat(value)} className={`rounded-xl border px-2 py-2 text-xs font-semibold ${publishFormat === value ? 'border-[#59694f] bg-[#e8eee8] text-[#355650]' : 'border-[#d7cebc] text-[#73786d]'}`}>{label}</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Budget</legend><div className="flex gap-2">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => setPublishBudget(publishBudget === value ? 0 : value)} className={`text-xl ${value <= publishBudget ? 'text-[#a27e3b]' : 'text-[#c3bcad]'}`} aria-label={`${value} dollar signs`}>$</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Overall trip rating</legend><div className="flex gap-1">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => setPublishRating(publishRating === value ? 0 : value)} className={`text-2xl ${value <= publishRating ? 'text-[#a27e3b]' : 'text-[#c3bcad]'}`} aria-label={`Rate trip ${value} out of 5`}>★</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Tags</legend><div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">{TAGS.slice(0, 16).map(tag => <button key={tag.id} type="button" onClick={() => setPublishTags(current => current.includes(tag.id) ? current.filter(value => value !== tag.id) : [...current, tag.id])} className={`rounded-full border px-3 py-1.5 text-xs ${publishTags.includes(tag.id) ? 'border-[#59694f] bg-[#e8eee8] text-[#355650]' : 'border-[#d7cebc] text-[#73786d]'}`}>{tag.label}</button>)}</div></fieldset><button type="button" disabled={publishing} onClick={() => void publishTrip(publishFormat)} className="w-full rounded-xl bg-[#355650] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{publishing ? 'Posting…' : 'Post trip'}</button></div></div></div>}
     {publishMessage && <p role="status" className="mt-2 text-right text-sm text-[#59694f]">{publishMessage}</p>}
   </div>
 }
