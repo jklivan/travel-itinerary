@@ -28,6 +28,18 @@ function hashPick(str: string, arr: string[]) {
   return arr[Math.abs(h) % arr.length]
 }
 
+function destinationStockFallback(destination: string, country: string | null) {
+  const query = `${destination} ${country ?? ''}`.toLowerCase()
+  const photo = query.includes('paris') || query.includes('france')
+    ? 'photo-1502602898657-3e91760cbb34'
+    : query.includes('london') || query.includes('england') || query.includes('uk')
+    ? 'photo-1513635269975-59663e0ac1ad'
+    : query.includes('japan') || query.includes('kyoto')
+    ? 'photo-1493976040374-85c8e12f0c0e'
+    : 'photo-1500530855697-b586d89ba3ee'
+  return `https://images.unsplash.com/${photo}?auto=format&fit=crop&w=640&q=80`
+}
+
 export default async function UserProfilePage({
   params,
   searchParams,
@@ -124,8 +136,8 @@ export default async function UserProfilePage({
     }
     const destination = trip.destinations[0]
     if (!destination) return
-    const url = await fetchStockPhoto(`${trip.title || destination.name} ${destination.name}${destination.country ? ` ${destination.country}` : ''} travel`).catch(() => null)
-    if (!url) return
+    const fetched = await fetchStockPhoto(`${trip.title || destination.name} ${destination.name}${destination.country ? ` ${destination.country}` : ''} travel`).catch(() => null)
+    const url = fetched ?? destinationStockFallback(destination.name, destination.country)
     draftCoverPhotos.set(trip.id, url)
     await prisma.photo.create({ data: { itineraryId: trip.id, url, isStock: true } }).catch(() => null)
   }))
