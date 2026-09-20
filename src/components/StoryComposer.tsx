@@ -125,7 +125,7 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
           </button>)}</div>}
           </div>
           <EventPhotoInput photos={uploaded} name="your story" onBusyChange={setUploading} onChange={values => { setUploaded(values); setSelectedPhotos(values.slice(0, 10)); clientIds.current = null; setError(values.length > 10 ? 'You can post up to 10 photos at a time.' : '') }} />
-          <label>Caption <span>(optional)</span><textarea value={caption} onChange={event => setCaption(event.target.value)} maxLength={500} rows={3} placeholder="A little moment worth sharing…" /></label>
+          <label>Caption <span>(optional)</span><textarea value={caption} onChange={event => setCaption(event.target.value)} maxLength={500} rows={3} placeholder="A snapshot worth sharing…" /></label>
           {selectedPhotos[0] && <div className={styles.preview}><div className={styles.paper}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={selectedPhotos[0]} alt={`Story preview for ${mode === 'trip' && place ? place.name : newName}`} /><h3>{mode === 'trip' && place ? place.name : newName}</h3><p>{mode === 'trip' && place ? place.destination : [newDestination, newCountry].filter(Boolean).join(', ')}</p>{caption && <p className={styles.caption}>{caption}</p>}{selectedPhotos.length > 1 && <p className={styles.caption}>+ {selectedPhotos.length - 1} more story photos</p>}
