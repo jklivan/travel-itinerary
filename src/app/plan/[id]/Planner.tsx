@@ -3,6 +3,7 @@
 import BackButton from '@/components/BackButton'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import styles from '../../itinerary/[id]/places.module.css'
 import planningStyles from './Planner.module.css'
 import { useRef, useState } from 'react'
@@ -73,7 +74,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
           else { setPublishMessage('Your trip is now posted.'); router.refresh() }
         } catch { setPublishMessage('Could not publish your itinerary. Please try again.') }
         finally { setPublishing(false) }
-      }} className="min-h-11 rounded-xl bg-[#355650] px-4 py-3 text-sm font-semibold text-white hover:bg-[#294640] disabled:opacity-60">{publishing ? 'Posting…' : 'Post'}</button>}
+      }} aria-label={publishing ? 'Posting trip' : 'Post trip'} title={publishing ? 'Posting trip' : 'Post trip'} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#355650] px-3 py-2 text-sm font-semibold text-white hover:bg-[#294640] disabled:opacity-60"><Image src="/brand/postcard-icon.svg" alt="" width={30} height={30} className="rounded-md" /><span className="sr-only">{publishing ? 'Posting…' : 'Post'}</span></button>}
     </div>
     {publishMessage && <p role="status" className="mt-2 text-right text-sm text-[#59694f]">{publishMessage}</p>}
   </div>
