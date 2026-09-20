@@ -21,15 +21,15 @@ function BottomNavInner({ pendingCount, userId }: { pendingCount: number; userId
   const isMessages = pathname === '/messages' || pathname.startsWith('/messages/')
 
   function cls(active: boolean) {
-    return `flex min-w-0 flex-col items-center gap-0.5 px-1 py-2 transition-colors ${active ? 'text-[#242e25]' : 'text-[#8B6F4E] hover:text-[#485340]'}`
+    return `flex h-14 min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-2 transition-colors ${active ? 'text-[#242e25]' : 'text-[#8B6F4E] hover:text-[#485340]'}`
   }
 
   return (
     <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#faf7f1] border-t border-[#dfd3c2] shadow-lg z-50">
-      <Link href="/create" aria-label="Post a full itinerary" style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }} className="fixed right-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-[#59694f] text-white shadow-xl ring-4 ring-[#faf7f1] transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#59694f]">
+      <Link href="/create" aria-label="Post a full itinerary" style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }} className="fixed left-1/2 z-[60] flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[#59694f] text-white shadow-xl ring-4 ring-[#faf7f1] transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#59694f]">
         <Send className="h-6 w-6 -rotate-12" />
       </Link>
-      <div className="mx-auto grid max-w-3xl grid-cols-6 items-end py-2">
+      <div className="mx-auto grid max-w-3xl grid-cols-6 items-center py-2">
         <Link href="/" className={cls(isFeed)}>
           <Home className="w-6 h-6" />
           <span className="text-xs font-medium">Feed</span>
@@ -40,7 +40,7 @@ function BottomNavInner({ pendingCount, userId }: { pendingCount: number; userId
           <span className="text-xs font-medium">Explore</span>
         </Link>
 
-        <Link href="/create" aria-current={isPost ? 'page' : undefined} aria-label="Post a full itinerary" className={`flex min-w-0 flex-col items-center justify-center gap-0.5 py-2 ${isPost ? 'text-[#242e25]' : 'text-[#8B6F4E] hover:text-[#485340]'}`}>
+        <Link href="/create" aria-current={isPost ? 'page' : undefined} aria-label="Post a full itinerary" className={`flex h-14 min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-2 ${isPost ? 'text-[#242e25]' : 'text-[#8B6F4E] hover:text-[#485340]'}`}>
           <FileText className="h-6 w-6" />
           <span className="text-center text-[9px] font-semibold">Post</span>
         </Link>
