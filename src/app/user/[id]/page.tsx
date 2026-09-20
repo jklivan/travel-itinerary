@@ -10,6 +10,7 @@ import SavedFolders from '@/components/SavedFolders'
 import SavedFolderPicker from '@/components/SavedFolderPicker'
 import DeleteButton from '@/components/DeleteButton'
 import { tripPhotoGallery } from '@/lib/eventPhotos'
+import { fetchStockPhoto } from '@/lib/stockPhoto'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
 import { MapPin, Users, ChevronRight, Settings } from 'lucide-react'
 
@@ -112,6 +113,23 @@ export default async function UserProfilePage({
   const viewerBucketSet = new Set(viewerBucketIds.map((b) => b.itineraryId))
   const ownBucketSet = new Set(bucketItems.map((b) => b.itineraryId))
 
+  // Older private plans may predate automatic stock-cover generation. Fill in
+  // a related cover on demand so the My Trips cards never look unfinished.
+  const draftCoverPhotos = new Map<string, string>()
+  await Promise.all(drafts.map(async (trip) => {
+    const existing = trip.photos[0]?.url ?? trip.destinations.flatMap(destination => destination.items).flatMap(item => item.photoUrls ?? (item.photoUrl ? [item.photoUrl] : [])).find(Boolean)
+    if (existing) {
+      draftCoverPhotos.set(trip.id, existing)
+      return
+    }
+    const destination = trip.destinations[0]
+    if (!destination) return
+    const url = await fetchStockPhoto(`${trip.title || destination.name} ${destination.name}${destination.country ? ` ${destination.country}` : ''} travel`).catch(() => null)
+    if (!url) return
+    draftCoverPhotos.set(trip.id, url)
+    await prisma.photo.create({ data: { itineraryId: trip.id, url, isStock: true } }).catch(() => null)
+  }))
+
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
       {!isOwn && <BackButton fallback="/friends" className="text-sm text-[#8B6F4E] hover:underline mb-5 inline-block">← Back</BackButton>}
@@ -175,7 +193,7 @@ export default async function UserProfilePage({
             <h1 id="your-trips-heading" className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-[#2e4147]">Your trips</h1>
             <section className="mt-5" aria-labelledby="private-plans-heading">
               <div className="mb-4"><h2 id="private-plans-heading" className="font-[family-name:var(--font-playfair)] text-xl uppercase tracking-[0.1em] text-[#9a7358]">Private plans <span className="font-sans text-sm tracking-normal">({drafts.length})</span></h2><p className="mt-1 max-w-sm text-sm leading-snug text-[#73786d]">Only you can see these. Keep planning or publish whenever you’re ready.</p></div>
-              {drafts.length === 0 ? <div className="rounded-2xl border border-dashed border-[#d7cebc] p-6 text-center text-sm text-[#73786d]">No private plans yet.</div> : <div className="space-y-4">{drafts.map(trip => <div key={trip.id} className="flex items-center gap-3 rounded-2xl border border-[#e1d8c9] bg-[#fffdf7] p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)]"><Link href={trip.isPlan ? `/plan/${trip.id}` : `/itinerary/${trip.id}/edit`} className="flex min-w-0 flex-1 items-center gap-4"><span className="relative size-[6.4rem] shrink-0 rotate-[-4deg] overflow-hidden border-[5px] border-white bg-[#e8eee8] shadow-[0_2px_4px_rgba(45,38,27,0.18)]">{trip.photos[0]?.url ? <Image src={trip.photos[0].url} alt="" fill sizes="102px" className="object-cover" /> : <span className="grid h-full place-items-center text-center text-[9px] uppercase tracking-wider text-[#59694f]">Postcard</span>}</span><span className="min-w-0"><span className="block break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-[#2e4147]">{trip.title || 'Untitled trip'}</span><span className="mt-2 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#73786d]">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places</span><span className="mt-1 block text-sm text-[#73786d]">Keep planning →</span></span></Link><DeleteButton id={trip.id} visibility={trip.visibility} returnTo={`/user/${id}`} label="Delete trip" /></div>)}</div>}
+              {drafts.length === 0 ? <div className="rounded-2xl border border-dashed border-[#d7cebc] p-6 text-center text-sm text-[#73786d]">No private plans yet.</div> : <div className="space-y-4">{drafts.map(trip => <div key={trip.id} className="flex items-center gap-3 rounded-2xl border border-[#e1d8c9] bg-[#fffdf7] p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)]"><Link href={trip.isPlan ? `/plan/${trip.id}` : `/itinerary/${trip.id}/edit`} className="flex min-w-0 flex-1 items-center gap-4"><span className="relative size-[6.4rem] shrink-0 rotate-[-4deg] overflow-hidden border-[5px] border-white bg-[#e8eee8] shadow-[0_2px_4px_rgba(45,38,27,0.18)]">{draftCoverPhotos.get(trip.id) ? <Image src={draftCoverPhotos.get(trip.id)!} alt="" fill sizes="102px" className="object-cover" /> : <span className="grid h-full place-items-center text-center text-[9px] uppercase tracking-wider text-[#59694f]">Postcard</span>}</span><span className="min-w-0"><span className="block break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-[#2e4147]">{trip.title || 'Untitled trip'}</span><span className="mt-2 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#73786d]">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places</span><span className="mt-1 block text-sm text-[#73786d]">Keep planning →</span></span></Link><DeleteButton id={trip.id} visibility={trip.visibility} returnTo={`/user/${id}`} label="Delete trip" /></div>)}</div>}
             </section>
             <section className="mt-8" aria-labelledby="shared-trips-heading">
               <div className="mb-3"><h2 id="shared-trips-heading" className="font-[family-name:var(--font-playfair)] text-xl uppercase tracking-wide text-[#8B6F4E]">Shared trips <span className="font-sans text-sm">({itineraries.length})</span></h2><p className="mt-1 text-sm text-[#73786d]">Trips you’ve published for others to explore.</p></div>
