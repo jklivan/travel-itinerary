@@ -3,7 +3,6 @@
 import BackButton from '@/components/BackButton'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import styles from '../../itinerary/[id]/places.module.css'
 import planningStyles from './Planner.module.css'
 import { useRef, useState } from 'react'
@@ -16,7 +15,6 @@ import DeleteButton from '@/components/DeleteButton'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import PlanningMap from '@/components/PlanningMap'
 import PlacePeople from '@/components/PlacePeople'
-import PlaceQuickEdit from '@/components/PlaceQuickEdit'
 import { DateFields, inputClass, buttonClass } from '../NewPlanForm'
 
 type Place = { lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[] }
@@ -147,12 +145,11 @@ function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; m
   return <article className={`${planningStyles.place} ${styles[category.value]}`}>
     <div className={`${styles.card} ${planningStyles.card}`}>
       <div className={styles.thumbnail}>
-        {place.photos[0] ? <Image src={place.photos[0]} alt={place.name} fill sizes="132px" className="object-cover" /> : <div className={styles.keepsake} aria-hidden="true"><span>{category.eyebrow}</span><Icon size={25} strokeWidth={1} /><span>{place.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span></div>}
+        <div className={styles.keepsake} aria-hidden="true"><span>{category.eyebrow}</span><Icon size={25} strokeWidth={1} /><span>{place.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span></div>
       </div>
       <div className={styles.cardBody}>
         <p className={styles.eyebrow}>{category.eyebrow}</p>
         <h3 className={styles.placeName}>{place.name}</h3>
-        {!!place.rating && <p className={planningStyles.rating} aria-label={`Your rating: ${place.rating} out of 5`}>{'★'.repeat(place.rating)}<span>Your rating</span></p>}
         <p className={planningStyles.location}>{place.destination}</p>
         {place.notes && <p className={styles.note}>{place.notes}</p>}
       </div>
@@ -179,7 +176,6 @@ function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; m
       try { const result = await removePlanPlace(place.id); if (result.error) setError(result.error); else router.refresh() }
       catch { setError('Could not remove. Please try again.') } finally { saving.current = false; setBusy(false) }
     }}>{busy ? 'Deleting…' : 'Delete this place'}</button><button type="button" disabled={busy} className="min-h-11" onClick={() => setRemoving(false)}>Keep place</button></div>}{error && <p role="alert" className="text-sm text-red-700">{error}</p>}</div>}
-    <PlaceQuickEdit compact itemId={place.id} name={place.name} rating={place.rating} photos={place.photos} />
     </div>
   </article>
 }
