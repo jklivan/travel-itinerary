@@ -36,7 +36,7 @@ export default function DeleteButton({ id, visibility, returnTo = '/', label = '
     finally { deleting.current = false; setPending(false); setKeeping(false) }
   }
 
-  return <div className="min-w-0 max-w-full">
+  return <div className="min-w-0 max-w-full flex-[0_0_auto]">
     {confirming ? <div className="space-y-3">
       {visibility !== 'draft' && <div className="rounded-xl border border-[#c4d3c8] bg-[#edf1e9] p-4">
         <p className="text-sm font-semibold text-[#2e4147]">Unpublish this trip?</p>

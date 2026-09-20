@@ -8,8 +8,8 @@ import { copyStoryToPlan } from '@/actions/stories'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import { startPlan, copyPlaceToPlan } from '@/actions/planning'
 
-export const inputClass = 'mt-1 w-full min-w-0 rounded-xl border border-[#d7cebc] bg-white px-3 py-3 text-base text-[#2e4147]'
-export const buttonClass = 'min-h-11 rounded-xl bg-[#242e25] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50'
+export const inputClass = 'mt-1 w-full min-w-0 rounded-xl border border-[#d7cebc] bg-[#fffdf7] px-3 py-3 text-sm text-[#2e4147]'
+export const buttonClass = 'min-h-11 rounded-xl bg-[#2e4147] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50'
 
 export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: string; saveStory?: string }) {
   const router = useRouter()
@@ -51,10 +51,10 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
       <input type="hidden" name="format" value={format} />
       {format === 'day-trip' && <input type="hidden" name="durationDays" value="1" />}
       {format === 'itinerary' && <label className="block text-sm font-medium">Number of days (optional)<input name="durationDays" type="number" min="2" step="1" className={inputClass} placeholder="Or add a daily schedule later" /></label>}
-      <label className="block text-sm font-medium">Where are you thinking?<PlacesAutocomplete name="destination" value={destination} onChange={setDestination} onSelect={(main, secondary) => setDestination([main, secondary].filter(Boolean).join(', '))} type="destination" maxLength={160} placeholder="e.g. Italy, Japan, a weekend away…" className={inputClass} /></label>
-      <label className="block text-sm font-medium">Trip name <span className="font-normal">(optional)</span><input name="title" maxLength={160} placeholder="Summer in Italy" className={inputClass} /></label>
-      <details><summary className="cursor-pointer py-2 text-sm text-[#59694f]">Add dates (optional)</summary><DateFields /></details>
-      <p className="text-sm text-[#73786d]">Start with an idea. Save hotels, restaurants, and things to do as you find them. Your plan stays private until you share it.</p>
+      <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-[#59694f]">Where are you thinking?<PlacesAutocomplete name="destination" value={destination} onChange={setDestination} onSelect={(main, secondary) => setDestination([main, secondary].filter(Boolean).join(', '))} type="destination" maxLength={160} placeholder="e.g. Italy, Japan, a weekend away…" className={inputClass} /></label>
+      <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-[#59694f]">Trip name <span className="font-normal normal-case tracking-normal">(optional)</span><input name="title" maxLength={160} placeholder="Summer in Italy" className={inputClass} /></label>
+      <details><summary className="cursor-pointer py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#59694f]">Add dates (optional)</summary><DateFields /></details>
+      <p className="rounded-xl bg-[#f0f1eb] p-3 text-sm leading-snug text-[#59694f]">Start with an idea. Save hotels, restaurants, and things to do as you find them. Your plan stays private until you share it.</p>
       <button type="submit" value="plan" className={`${buttonClass} w-full`}>{saving ? 'Saving your plan…' : 'Start planning'}</button>
       <button type="submit" value="import" className="min-h-11 w-full rounded-xl border border-[#d7cebc] px-5 py-3 text-sm font-semibold text-[#59694f] disabled:opacity-50">Import notes or a file</button>
     </fieldset>

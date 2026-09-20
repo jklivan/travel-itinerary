@@ -18,10 +18,10 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
     { createdAt: { gte: recentCutoff } },
   ] }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, visibility: true, isPlan: true, destinations: { select: { name: true, _count: { select: { items: true } } } } } })
   return <div className="mx-auto max-w-2xl px-4 py-7 text-[#2e4147]">
-    <section aria-labelledby="start-planning-heading" className="rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4 sm:p-5">
-      <header className="mb-4">
-        <h1 id="start-planning-heading" className="font-[family-name:var(--font-playfair)] text-2xl tracking-wide text-[#242e25]">Start planning</h1>
-        <p className="mt-1 text-sm text-[#73786d]">Collect places now. Work out the days later.</p>
+    <section aria-labelledby="start-planning-heading" className="bg-transparent">
+      <header className="mb-5 px-1">
+        <h1 id="start-planning-heading" className="max-w-sm font-[family-name:var(--font-playfair)] text-4xl uppercase leading-[0.98] tracking-[0.03em] text-[#2e4147]">Your next trip starts here</h1>
+        <p className="mt-2 text-sm text-[#73786d]">Collect places now. Work out the details later.</p>
       </header>
       <NewPlanForm saveStory={typeof saveStory === 'string' && saveStory.length <= 200 ? saveStory : undefined} savePlace={typeof savePlace === 'string' && savePlace.length <= 200 ? savePlace : undefined} />
     </section>
