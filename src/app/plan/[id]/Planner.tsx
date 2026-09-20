@@ -30,6 +30,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const [adding, setAdding] = useState(false)
   const [importing, setImporting] = useState(initialImport)
   const [publishing, setPublishing] = useState(false)
+  const [publishFormat, setPublishFormat] = useState<'guide' | 'day-trip' | 'itinerary' | null>(null)
   const [publishMessage, setPublishMessage] = useState('')
   const places = trip.destinations.flatMap(d => d.items.map(item => ({ ...item, destination: [d.name, d.country].filter(Boolean).join(', ') })))
   const scheduled = [...new Set(places.flatMap(p => p.day === null ? [] : [p.day]))].sort((a, b) => a - b)
@@ -65,17 +66,28 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     </section>
     <div className="mt-8 flex items-center justify-between gap-3 border-t border-[#d7cebc] pt-5">
       <DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" />
-      {trip.isPlan && trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={async () => {
-        if (publishing) return
-        setPublishing(true); setPublishMessage('')
-        try {
-          const result = await sharePlan(trip.id)
-          if (result.error) setPublishMessage(result.error)
-          else { setPublishMessage('Your trip is now posted.'); router.refresh() }
-        } catch { setPublishMessage('Could not publish your itinerary. Please try again.') }
-        finally { setPublishing(false) }
-      }} aria-label={publishing ? 'Posting trip' : 'Post trip'} title={publishing ? 'Posting trip' : 'Post trip'} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#355650] px-3 py-2 text-sm font-semibold text-white hover:bg-[#294640] disabled:opacity-60"><Image src="/brand/postcard-icon.svg" alt="" width={30} height={30} className="rounded-md" /><span className="sr-only">{publishing ? 'Posting…' : 'Post'}</span></button>}
+      {trip.isPlan && trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={() => setPublishFormat('itinerary')}
+        aria-label="Post trip" title="Post trip" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#355650] px-3 py-2 text-sm font-semibold text-white hover:bg-[#294640] disabled:opacity-60"><Image src="/brand/postcard-icon.svg" alt="" width={30} height={30} className="rounded-md" /><span className="sr-only">Post</span></button>}
     </div>
+    {trip.isPlan && trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-50 grid place-items-center bg-[#242e25]/50 px-5" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="w-full max-w-md rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-5 shadow-xl"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-[#2e4147]">What are you posting?</h2><p className="mt-1 text-sm text-[#73786d]">Choose a format for your shared trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-2xl leading-none text-[#73786d]" aria-label="Close">×</button></div><div className="mt-5 grid gap-2"><button type="button" onClick={async () => {
+          if (publishing) return
+          setPublishing(true); setPublishMessage('')
+          try { const result = await sharePlan(trip.id, 'guide'); if (result.error) setPublishMessage(result.error); else { setPublishMessage('Your trip is now posted.'); setPublishFormat(null); router.refresh() } }
+          catch { setPublishMessage('Could not publish your itinerary. Please try again.') }
+          finally { setPublishing(false) }
+        }} className="rounded-xl border border-[#d7cebc] p-3 text-left"><span className="block font-semibold text-[#2e4147]">Guide</span><span className="text-sm text-[#73786d]">Places and ideas without a set schedule</span></button><button type="button" onClick={async () => {
+          if (publishing) return
+          setPublishing(true); setPublishMessage('')
+          try { const result = await sharePlan(trip.id, 'day-trip'); if (result.error) setPublishMessage(result.error); else { setPublishMessage('Your trip is now posted.'); setPublishFormat(null); router.refresh() } }
+          catch { setPublishMessage('Could not publish your itinerary. Please try again.') }
+          finally { setPublishing(false) }
+        }} className="rounded-xl border border-[#d7cebc] p-3 text-left"><span className="block font-semibold text-[#2e4147]">Day trip</span><span className="text-sm text-[#73786d]">A short one-day getaway</span></button><button type="button" onClick={async () => {
+          if (publishing) return
+          setPublishing(true); setPublishMessage('')
+          try { const result = await sharePlan(trip.id, 'itinerary'); if (result.error) setPublishMessage(result.error); else { setPublishMessage('Your trip is now posted.'); setPublishFormat(null); router.refresh() } }
+          catch { setPublishMessage('Could not publish your itinerary. Please try again.') }
+          finally { setPublishing(false) }
+        }} className="rounded-xl border border-[#d7cebc] p-3 text-left"><span className="block font-semibold text-[#2e4147]">Multi-day trip</span><span className="text-sm text-[#73786d]">A longer journey with an itinerary</span></button></div></div></div>}
     {publishMessage && <p role="status" className="mt-2 text-right text-sm text-[#59694f]">{publishMessage}</p>}
   </div>
 }

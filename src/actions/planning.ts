@@ -153,13 +153,13 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
   } catch (error) { return message(error) }
 }
 
-export async function sharePlan(id: string): Promise<Result> {
+export async function sharePlan(id: string, format: 'guide' | 'day-trip' | 'itinerary' = 'itinerary'): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
   try {
-    const trip = await prisma.itinerary.findFirst({ where: { id, userId, isPlan: true, destinations: { some: { items: { some: {} } } } }, select: { id: true } })
+    const trip = await prisma.itinerary.findFirst({ where: { id, userId, isPlan: true, destinations: { some: { items: { some: {} } } } }, select: { id: true, durationDays: true } })
     if (!trip) return { error: 'Add at least one place before sharing your trip.' }
-    const result = await prisma.itinerary.updateMany({ where: { id, userId, visibility: 'draft' }, data: { visibility: 'public' } })
+    const result = await prisma.itinerary.updateMany({ where: { id, userId, visibility: 'draft' }, data: { visibility: 'public', postType: format, durationDays: format === 'day-trip' ? 1 : format === 'guide' ? null : trip.durationDays, tags: format === 'day-trip' ? ['day-trip'] : [] } })
     if (result.count) scheduleTripPublishedNotifications(id)
     refresh(id, userId)
     return { success: true }
