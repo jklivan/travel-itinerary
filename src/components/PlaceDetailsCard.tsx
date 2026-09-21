@@ -90,7 +90,7 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
             </header>
             {place.notes && <section><h3 className={styles.sectionTitle}>Poster’s notes</h3><p className={styles.text}>{place.notes}</p></section>}
             {!place.notes && <p className={styles.muted}>The trip author hasn’t added notes for this place.</p>}
-            {place.description && <p className={styles.text}>{place.description}</p>}
+            {place.description && <section><h3 className={styles.sectionTitle}>Description</h3><p className={styles.text}>{place.description}</p></section>}
             {photos.length > 0 ? <PhotoStrip photos={photos.map((url, index) => ({ id: String(index), url, caption: null }))} title={place.name} contain />
               : place.id && <PlacePhoto itemId={place.id} name={place.name} thumbnailClass={styles.providerPhoto} fallback={null} fullWidth />}
             {place.address && <section><h3 className={styles.sectionTitle}>Address</h3><p className={styles.address}><MapPin size={17} />{place.address}</p></section>}
