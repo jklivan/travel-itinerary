@@ -62,9 +62,10 @@ export async function GET(req: NextRequest) {
 
   // Never drop an explicit destination and silently search worldwide.
   const area = city && type !== 'destination' ? await resolveDestination(city) : null
-  if (city && type !== 'destination' && !area) {
-    return Response.json({ error: 'Could not locate this destination. Try a city or country, or enter the place manually.' }, { status: 503 })
-  }
+  // If the destination resolver is temporarily unavailable, keep the location
+  // context in Google's query instead of failing or searching the whole world.
+  // A resolved area still takes precedence and provides the strict geographic
+  // restriction when available.
 
   type RawSuggestion = {
     placePrediction?: {
@@ -107,7 +108,7 @@ export async function GET(req: NextRequest) {
 
   let rawResults: RawSuggestion[]
 
-  const base = { input: q, languageCode: 'en', ...area }
+  const base = { input: city && type !== 'destination' && !area ? `${q}, ${city}` : q, languageCode: 'en', ...(area ?? {}) }
 
   if (type === 'hotel') {
     // Run both queries in parallel: named lodging + free-text addresses
