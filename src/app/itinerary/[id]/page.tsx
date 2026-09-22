@@ -23,6 +23,7 @@ import styles from './places.module.css'
 import PlaceDetailsCard from '@/components/PlaceDetailsCard'
 import { getRecommendation, partitionPlaces } from '@/lib/placeRecommendation'
 import { mapDayNumber } from '@/lib/mapDays'
+import { distanceMiles } from '@/lib/distance'
 
 function FriendProof({
   friends,
@@ -70,6 +71,59 @@ function FriendProof({
 }
 
 type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number; dayIndex?: number | null; tags?: string[]; alternative?: string | null; photoUrl?: string | null; photoUrls?: string[]; lat?: number | null; lng?: number | null; placeId?: string | null }
+
+type DestinationGroup = {
+  id: string
+  name: string
+  country: string | null
+  notes: string | null
+  lat: number | null
+  lng: number | null
+  items: DestItemRow[]
+}
+
+function localityKey(name: string, country?: string | null) {
+  const parts = name.split(',').map(part => part.trim()).filter(Boolean)
+  // A destination selected as a street or venue often ends with the useful
+  // locality (city, state, country). Use that suffix when it is available.
+  if (parts.length >= 2) return parts.slice(-2).join('|').toLowerCase() + `|${(country ?? '').toLowerCase()}`
+  return null
+}
+
+function representativeCoordinates(destination: DestinationGroup) {
+  if (destination.lat != null && destination.lng != null) return { lat: destination.lat, lng: destination.lng }
+  const located = destination.items.find(item => item.lat != null && item.lng != null)
+  return located?.lat != null && located.lng != null ? { lat: located.lat, lng: located.lng } : null
+}
+
+function mergeNearbyDestinations<T extends DestinationGroup>(destinations: T[]): DestinationGroup[] {
+  const groups: DestinationGroup[] = []
+  for (const destination of destinations) {
+    const coords = representativeCoordinates(destination)
+    const key = localityKey(destination.name, destination.country)
+    const existing = groups.find(group => {
+      const sameLocality = key && localityKey(group.name, group.country) === key
+      const groupCoords = representativeCoordinates(group)
+      const nearby = coords && groupCoords && distanceMiles(coords, groupCoords) <= 15
+      return sameLocality || nearby
+    })
+    if (!existing) {
+      groups.push({
+        id: destination.id,
+        name: destination.name,
+        country: destination.country,
+        notes: destination.notes,
+        lat: destination.lat,
+        lng: destination.lng,
+        items: [...destination.items],
+      })
+    } else {
+      existing.items.push(...destination.items)
+      if (!existing.notes && destination.notes) existing.notes = destination.notes
+    }
+  }
+  return groups
+}
 
 function groupItems(items: DestItemRow[]) {
   const stays = new Map<number, { hotel: DestItemRow | null; days: Map<number, DestItemRow[]> }>()
@@ -152,8 +206,12 @@ export default async function ItineraryPage({
   if (!it) notFound()
 
   const isOwn = session?.user?.id === it.user.id
-  const mainDestinations = it.destinations.map(dest => ({ ...dest, items: partitionPlaces(dest.items).main })).filter(dest => dest.items.length > 0)
-  const alternativeDestinations = it.destinations.map(dest => ({ ...dest, items: partitionPlaces(dest.items).alternatives })).filter(dest => dest.items.length > 0)
+  // A venue name can be stored as a destination when it was added from a story.
+  // Merge nearby destination buckets for display so one local trip does not
+  // produce a separate heading for every venue.
+  const groupedDestinations = mergeNearbyDestinations(it.destinations as unknown as DestinationGroup[])
+  const mainDestinations = groupedDestinations.map(dest => ({ ...dest, items: partitionPlaces(dest.items).main })).filter(dest => dest.items.length > 0)
+  const alternativeDestinations = groupedDestinations.map(dest => ({ ...dest, items: partitionPlaces(dest.items).alternatives })).filter(dest => dest.items.length > 0)
   const days = tripDuration(it)
   const isGuide = days === null
   const hasDailyPlan = !isGuide && mainDestinations.some(dest => dest.items.some(item => (it.isPlan || item.type !== 'hotel') && item.dayIndex != null))
@@ -402,7 +460,7 @@ export default async function ItineraryPage({
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
 
-  const placeDestinations = new Map(it.destinations.flatMap(destination =>
+  const placeDestinations = new Map(groupedDestinations.flatMap(destination =>
     destination.items.map(item => [item.id, [destination.name, destination.country].filter(Boolean).join(', ')] as const)
   ))
 
@@ -624,7 +682,7 @@ export default async function ItineraryPage({
         {!showMap && (
           <>
             {showDayByDay && it.isPlan && <div className="space-y-6 mb-10">
-              {[...new Set(mainDestinations.flatMap(d => d.items.flatMap(i => i.dayIndex === null ? [] : [i.dayIndex])))].sort((a, b) => a - b).concat([-1]).map(day => {
+              {[...new Set(mainDestinations.flatMap(d => d.items.flatMap(i => i.dayIndex === null ? [] : [i.dayIndex])))].sort((a, b) => (a ?? 0) - (b ?? 0)).concat([-1]).map(day => {
                 const items = mainDestinations.flatMap(d => d.items).filter(i => day === -1 ? i.dayIndex === null : i.dayIndex === day)
                 return items.length > 0 && <section key={day}><h2 className="mb-3 text-xl font-semibold">{day === -1 ? 'Unscheduled' : `Day ${day}`}</h2><div className={styles.placeGrid}>{items.map(item => renderPlaceCard(item, item.type === 'hotel' ? 'hotel' : item.type === 'food_drink' ? 'food_drink' : item.type === 'transport' ? 'transport' : 'activity'))}</div></section>
               })}
