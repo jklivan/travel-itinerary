@@ -67,7 +67,9 @@ export async function savePlanDetails(id: string, form: FormData): Promise<Resul
   try {
     const title = text(form, 'title', 160)
     if (!title) return { error: 'Give your trip a name.' }
-    const result = await prisma.itinerary.updateMany({ where: { id, userId, isPlan: true }, data: { title, ...dates(form), ...(form.has('durationDays') ? { durationDays: duration(form) } : {}) } })
+    const audience = text(form, 'audience', 20)
+    if (!['family', 'friends', 'romantic', 'adult'].includes(audience)) return { error: 'Choose a trip type.' }
+    const result = await prisma.itinerary.updateMany({ where: { id, userId, isPlan: true }, data: { title, audience, ...dates(form), ...(form.has('durationDays') ? { durationDays: duration(form) } : {}) } })
     if (!result.count) return { error: unavailable }
     refresh(id, userId)
     return { success: true }
