@@ -2,6 +2,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import DeleteButton from '@/components/DeleteButton'
 import NewPlanForm from './NewPlanForm'
 
@@ -40,11 +41,12 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
             <h3 className="font-[family-name:var(--font-playfair)] text-xl text-[#59694f]">{group.title} <span className="ml-1 font-sans text-sm text-[#73786d]">{items.length}</span></h3>
             <p className="mt-1 text-sm text-[#73786d]">{group.description}</p>
           </div>
-          {items.length ? <div className="space-y-3">{items.map(trip => <article key={trip.id} aria-label={trip.title} className="rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4">
-            <Link href={`/plan/${trip.id}`} className="block">
+          {items.length ? <div className="space-y-3">{items.map(trip => <article key={trip.id} aria-label={trip.title} className="relative rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4">
+            <Link href={`/plan/${trip.id}`} className="block pr-24">
               <h4 className="trip-title text-lg font-semibold">{trip.title}</h4>
               <p className="mt-1 text-sm text-[#73786d]">{trip.destinations.reduce((sum, d) => sum + d._count.items, 0)} places · {group.private ? 'Keep planning' : 'Open trip'} →</p>
             </Link>
+            {group.private && <Link href={`/plan/${trip.id}`} aria-label={`Post ${trip.title}`} title="Post trip" className="absolute right-4 top-1/2 inline-flex h-14 w-20 -translate-y-1/2 items-center justify-center bg-[#355650] shadow-md transition-transform hover:scale-105 [clip-path:polygon(8%_0,92%_0,100%_12%,100%_88%,92%_100%,8%_100%,0_88%,0_12%)]"><span className="flex h-11 w-16 items-center justify-center border-2 border-dashed border-[#355650] bg-[#f1e7d8]"><Image src="/brand/postcard-icon.svg" alt="" width={38} height={38} /></span><span className="sr-only">Post</span></Link>}
             <div className="mt-3"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" label="Delete trip" /></div>
           </article>)}</div> : <p className="py-3 text-sm text-[#73786d]">{group.empty}</p>}
         </section>
