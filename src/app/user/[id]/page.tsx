@@ -125,13 +125,22 @@ export default async function UserProfilePage({
   const viewerBucketSet = new Set(viewerBucketIds.map((b) => b.itineraryId))
   const ownBucketSet = new Set(bucketItems.map((b) => b.itineraryId))
 
-  // Only show user-uploaded or item photos in the stamp — not stock covers.
+  // Prefer posted/item photos, then an existing stock cover, then fetch a
+  // destination image so every private-plan card has a useful visual.
   const draftCoverPhotos = new Map<string, string>()
-  for (const trip of drafts) {
-    const userPhoto = trip.photos.find(p => !p.isStock)?.url
-      ?? trip.destinations.flatMap(destination => destination.items).flatMap(item => item.photoUrls ?? (item.photoUrl ? [item.photoUrl] : [])).find(Boolean)
-    if (userPhoto) draftCoverPhotos.set(trip.id, userPhoto)
-  }
+  await Promise.all(drafts.map(async trip => {
+    const itemPhoto = trip.destinations.flatMap(destination => destination.items).flatMap(item => item.photoUrls ?? (item.photoUrl ? [item.photoUrl] : [])).find(Boolean)
+    const userPhoto = trip.photos.find(photo => !photo.isStock)?.url
+    const existingStock = trip.photos.find(photo => photo.isStock)?.url
+    if (userPhoto || itemPhoto || existingStock) {
+      draftCoverPhotos.set(trip.id, userPhoto ?? itemPhoto ?? existingStock!)
+      return
+    }
+    const destination = trip.destinations[0]
+    if (!destination) return
+    const fetched = await fetchStockPhoto(`${trip.title || destination.name} ${destination.name}${destination.country ? ` ${destination.country}` : ''} travel`).catch(() => null)
+    draftCoverPhotos.set(trip.id, fetched ?? destinationStockFallback(destination.name, destination.country))
+  }))
 
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
