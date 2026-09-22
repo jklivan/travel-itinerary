@@ -202,7 +202,7 @@ export default async function UserProfilePage({
       {isOwn ? (
         <>
           <section aria-labelledby="your-trips-heading">
-            <h1 id="your-trips-heading" className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-[#2e4147]">Your trips</h1>
+            <div className="flex items-center justify-between gap-3"><h1 id="your-trips-heading" className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-[#2e4147]">Your trips</h1><Link href="/plan" className="inline-flex min-h-10 items-center rounded-full bg-[#355650] px-4 py-2 text-sm font-semibold text-white">Start planning!</Link></div>
             <section className="mt-5" aria-labelledby="private-plans-heading">
               <div className="mb-4"><h2 id="private-plans-heading" className="font-[family-name:var(--font-playfair)] text-xl uppercase tracking-[0.1em] text-[#9a7358]">Private plans <span className="font-sans text-sm tracking-normal">({drafts.length})</span></h2><p className="mt-1 max-w-sm text-sm leading-snug text-[#73786d]">Only you can see these. Keep planning or publish whenever you’re ready.</p></div>
               {drafts.length === 0 ? <div className="rounded-2xl border border-dashed border-[#d7cebc] p-6 text-center text-sm text-[#73786d]">No private plans yet.</div> : <div className="space-y-4">{drafts.map(trip => <div key={trip.id} className="overflow-hidden rounded-2xl border border-[#e1d8c9] bg-[#fffdf7] p-4 shadow-[0_2px_8px_rgba(45,38,27,0.08)]">

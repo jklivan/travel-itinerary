@@ -24,14 +24,14 @@ type Place = { lat: number | null; lng: number | null; placeId: string | null; i
 type Trip = { durationDays?: number | null; id: string; title: string; audience: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; items: Place[] }[] }
 const categories = [{ value: 'hotel', label: 'Hotels', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
 
-export default function Planner({ trip, initialImport = false, initialDetails = false }: { trip: Trip; initialImport?: boolean; initialDetails?: boolean }) {
+export default function Planner({ trip, initialImport = false, initialDetails = false, initialPost = false }: { trip: Trip; initialImport?: boolean; initialDetails?: boolean; initialPost?: boolean }) {
   const router = useRouter()
   const [tab, setTab] = useState<'places' | 'itinerary' | 'map'>('places')
   const [mapOpened, setMapOpened] = useState(false)
   const [adding, setAdding] = useState(false)
   const [importing, setImporting] = useState(initialImport)
   const [publishing, setPublishing] = useState(false)
-  const [publishFormat, setPublishFormat] = useState<'guide' | 'day-trip' | 'itinerary' | null>(null)
+  const [publishFormat, setPublishFormat] = useState<'guide' | 'day-trip' | 'itinerary' | null>(initialPost ? 'itinerary' : null)
   const [publishBudget, setPublishBudget] = useState(0)
   const [publishRating, setPublishRating] = useState(0)
   const [publishTags, setPublishTags] = useState<string[]>([])

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import DeleteButton from '@/components/DeleteButton'
 import NewPlanForm from './NewPlanForm'
+import { fetchStockPhoto } from '@/lib/stockPhoto'
 
 export default async function PlansPage({ searchParams }: { searchParams: Promise<{ savePlace?: string; saveStory?: string }> }) {
   const { savePlace, saveStory } = await searchParams
@@ -17,7 +18,18 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
     { visibility: 'draft' },
     { isPlan: true, datesFlexible: false, endDate: { gte: today } },
     { createdAt: { gte: recentCutoff } },
-  ] }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, visibility: true, isPlan: true, destinations: { select: { name: true, _count: { select: { items: true } } } } } })
+  ] }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, visibility: true, isPlan: true, photos: { where: { isStock: false }, select: { url: true } }, destinations: { select: { name: true, country: true, _count: { select: { items: true } }, items: { select: { photoUrls: true, photoUrl: true } } } } } })
+  const coverPhotos = new Map<string, string>()
+  await Promise.all(trips.map(async trip => {
+    const itemPhoto = trip.destinations.flatMap(destination => destination.items).flatMap(item => item.photoUrls ?? (item.photoUrl ? [item.photoUrl] : [])).find(Boolean)
+    const photo = trip.photos[0]?.url ?? itemPhoto
+    if (photo) { coverPhotos.set(trip.id, photo); return }
+    const destination = trip.destinations[0]
+    if (destination) {
+      const fetched = await fetchStockPhoto(`${trip.title} ${destination.name} ${destination.country ?? ''} travel`).catch(() => null)
+      if (fetched) coverPhotos.set(trip.id, fetched)
+    }
+  }))
   return <div className="mx-auto max-w-2xl px-4 py-7 text-[#2e4147]">
     <section aria-labelledby="start-planning-heading" className="bg-transparent">
       <header className="mb-5 px-1">
@@ -41,13 +53,13 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
             <h3 className="font-[family-name:var(--font-playfair)] text-xl text-[#59694f]">{group.title} <span className="ml-1 font-sans text-sm text-[#73786d]">{items.length}</span></h3>
             <p className="mt-1 text-sm text-[#73786d]">{group.description}</p>
           </div>
-          {items.length ? <div className="space-y-3">{items.map(trip => <article key={trip.id} aria-label={trip.title} className="relative rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4">
-            <Link href={`/plan/${trip.id}`} className="block pr-24">
-              <h4 className="trip-title text-lg font-semibold">{trip.title}</h4>
-              <p className="mt-1 text-sm text-[#73786d]">{trip.destinations.reduce((sum, d) => sum + d._count.items, 0)} places · {group.private ? 'Keep planning' : 'Open trip'} →</p>
+          {items.length ? <div className="space-y-3">{items.map(trip => <article key={trip.id} aria-label={trip.title} className="relative min-h-[190px] overflow-hidden rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-3">
+            <Link href={`/plan/${trip.id}`} className="flex min-h-[164px] items-stretch gap-4 pr-3">
+              <span className="relative aspect-[3/4] w-32 shrink-0 rotate-[-3deg] overflow-hidden border-[5px] border-white bg-[#e8eee8] shadow-[0_2px_5px_rgba(45,38,27,0.18)]">{coverPhotos.get(trip.id) ? <Image src={coverPhotos.get(trip.id)!} alt="" fill sizes="128px" className="object-cover" /> : <span className="grid h-full place-items-center text-center text-[9px] uppercase tracking-wider text-[#59694f]">Postcard</span>}</span>
+              <span className="min-w-0 flex-1 pt-2"><h4 className="trip-title break-words text-lg font-semibold">{trip.title}</h4><p className="mt-2 text-sm text-[#73786d]">{trip.destinations.reduce((sum, d) => sum + d._count.items, 0)} places · {group.private ? 'Keep planning' : 'Open trip'} →</p></span>
             </Link>
-            {group.private && <Link href={`/plan/${trip.id}`} aria-label={`Post ${trip.title}`} title="Post trip" className="absolute right-4 top-1/2 inline-flex h-14 w-20 -translate-y-1/2 items-center justify-center bg-[#355650] shadow-md transition-transform hover:scale-105 [clip-path:polygon(8%_0,92%_0,100%_12%,100%_88%,92%_100%,8%_100%,0_88%,0_12%)]"><span className="flex h-11 w-16 items-center justify-center border-2 border-dashed border-[#355650] bg-[#f1e7d8]"><Image src="/brand/postcard-icon.svg" alt="" width={38} height={38} /></span><span className="sr-only">Post</span></Link>}
-            <div className="mt-3"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" label="Delete trip" /></div>
+            {group.private && <div className="absolute right-3 top-3"><DeleteButton compact id={trip.id} visibility={trip.visibility} returnTo="/plan" label="Delete trip" /></div>}
+            {group.private && <Link href={`/plan/${trip.id}?post=1`} aria-label={`Post ${trip.title}`} title="Post trip" className="absolute bottom-3 right-3 inline-flex h-14 w-20 items-center justify-center rounded-md bg-[#355650] shadow-md transition-transform hover:scale-105 [clip-path:polygon(8%_0,92%_0,100%_12%,100%_88%,92%_100%,8%_100%,0_88%,0_12%)]"><span className="flex h-11 w-16 items-center justify-center border-2 border-dashed border-[#355650] bg-[#f1e7d8]"><Image src="/brand/postcard-icon.svg" alt="" width={38} height={38} /></span><span className="sr-only">Post</span></Link>}
           </article>)}</div> : <p className="py-3 text-sm text-[#73786d]">{group.empty}</p>}
         </section>
       })}
