@@ -6,6 +6,7 @@ import ItineraryCard from '@/components/ItineraryCard'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import FeedTabs from '@/components/FeedTabs'
+import Image from 'next/image'
 
 export default async function FeedPage({
   searchParams,
@@ -121,6 +122,7 @@ async function FeedResults({ searchQuery, feed }: { searchQuery: string; feed: s
       )}
 
 
+      {userId && <Link href="/create" aria-label="Post a trip" title="Post a trip" className="fixed bottom-24 left-1/2 z-40 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-[#355650] p-2 shadow-lg ring-4 ring-[#faf7f1] transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#355650]"><Image src="/brand/postcard-icon.svg" alt="" width={38} height={38} className="rounded-md" /></Link>}
     </div>
   )
 }
