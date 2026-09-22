@@ -233,6 +233,7 @@ export async function createItinerary(
       datesFlexible: postType === 'guide' || !startDateStr || !endDateStr,
       audience,
       visibility,
+      publishedAt: isDraft ? null : new Date(),
       notes,
       highlights,
       tags,
@@ -324,6 +325,7 @@ export async function createItineraryDirect(input: {
     data: {
       postType, durationDays: postType === 'guide' ? null : durationDays, title: resolvedTitle, description: description?.trim() || null,
       startDate, endDate, audience, visibility,
+      publishedAt: isDraft ? null : new Date(),
       datesFlexible: postType === 'guide' || !startDateStr || !endDateStr,
       notes: notes?.trim() || null, highlights: highlights?.trim() || null, tags, budget: null,
       tripRating: tripRating ?? null,
@@ -415,6 +417,7 @@ export async function updateItinerary(
           datesFlexible: postType === 'guide' || !startDateStr || !endDateStr,
           audience,
           visibility,
+          ...(existing.visibility === 'draft' && visibility === 'public' ? { publishedAt: new Date() } : {}),
           notes,
           highlights,
           tags,
@@ -458,7 +461,7 @@ export async function updateItinerary(
 
   revalidatePath('/')
   revalidatePath(`/itinerary/${id}`)
-  redirect(`/itinerary/${id}`)
+  redirect(existing.visibility === 'draft' && visibility === 'public' ? `/?posted=${encodeURIComponent(id)}` : `/itinerary/${id}`)
 }
 
 export async function deleteItinerary(id: string): Promise<{ error?: string; success?: boolean }> {

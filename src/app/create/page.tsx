@@ -345,7 +345,7 @@ export default function CreatePage() {
         isDraft,
       })
       if (result?.error) setFormError(result.error)
-      else if (result?.itineraryId) window.location.assign(`/itinerary/${result.itineraryId}`)
+      else if (result?.itineraryId) window.location.assign(isDraft ? `/itinerary/${result.itineraryId}` : `/?posted=${encodeURIComponent(result.itineraryId)}`)
     } catch {
       setFormError("Could not save your trip. Your entries are still here. Check your connection and try again.")
     } finally {

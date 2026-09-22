@@ -50,7 +50,7 @@ export default function DeleteButton({ id, visibility, returnTo = '/', label = '
       </div>
     </div> : <div className="flex flex-wrap items-center gap-2">
       {visibility !== 'draft' && <button type="button" onClick={() => setConfirming('unpublish')} className="flex min-h-11 items-center gap-2 rounded-full border border-[#8caaa3] bg-[#edf1e9] px-4 py-2 text-sm font-medium text-[#365e58] hover:bg-[#dde8de]"><LockKeyhole size={16} />Unpublish</button>}
-      <button type="button" onClick={() => setConfirming('delete')} aria-label={label} title={label} className={compact ? 'flex size-11 items-center justify-center rounded-full border border-red-200 text-red-700 hover:bg-red-50' : 'flex min-h-11 items-center gap-2 rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50'}><Trash2 size={compact ? 18 : 16} />{!compact && label}</button></div>}
+      <button type="button" onClick={() => setConfirming('delete')} aria-label={label} title={label} className={compact ? 'flex h-11 w-14 items-center justify-center rounded-full border border-red-200 text-red-700 hover:bg-red-50' : 'flex min-h-11 items-center gap-2 rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50'}><Trash2 size={compact ? 18 : 16} />{!compact && label}</button></div>}
     {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
   </div>
 }

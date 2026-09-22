@@ -354,7 +354,7 @@ export default function GuidedCreatePage() {
       const result = await createItinerary(state, data)
       if (result?.itineraryId) {
         try { sessionStorage.removeItem(SESSION_KEY) } catch {}
-        window.location.assign(`/itinerary/${result.itineraryId}`)
+        window.location.assign(data.get('isDraft') === '1' ? `/itinerary/${result.itineraryId}` : `/?posted=${encodeURIComponent(result.itineraryId)}`)
       }
       return result
     } catch {

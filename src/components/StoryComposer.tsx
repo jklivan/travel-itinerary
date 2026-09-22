@@ -124,14 +124,14 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
             <img src={url} alt="" />{selectedPhotos.includes(url) && <span><Check size={14} /></span>}
           </button>)}</div>}
           </div>
-          <EventPhotoInput photos={uploaded} name="your story" onBusyChange={setUploading} onChange={values => { setUploaded(values); setSelectedPhotos(values.slice(0, 10)); clientIds.current = null; setError(values.length > 10 ? 'You can post up to 10 photos at a time.' : '') }} />
+          <EventPhotoInput showThumbnails={false} photos={uploaded} name="your story" onBusyChange={setUploading} onChange={values => { setUploaded(values); setSelectedPhotos(values.slice(0, 10)); clientIds.current = null; setError(values.length > 10 ? 'You can post up to 10 photos at a time.' : '') }} />
           <label>Caption <span>(optional)</span><textarea value={caption} onChange={event => setCaption(event.target.value)} maxLength={500} rows={3} placeholder="A snapshot worth sharing…" /></label>
           {selectedPhotos[0] && <div className={styles.preview}><div className={styles.paper}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={selectedPhotos[0]} alt={`Story preview for ${mode === 'trip' && place ? place.name : newName}`} /><h3>{mode === 'trip' && place ? place.name : newName}</h3><p>{mode === 'trip' && place ? place.destination : [newDestination, newCountry].filter(Boolean).join(', ')}</p>{caption && <p className={styles.caption}>{caption}</p>}{selectedPhotos.length > 1 && <p className={styles.caption}>+ {selectedPhotos.length - 1} more story photos</p>}
           </div></div>}
           <p className={styles.privacy}>{mode === 'trip' && place ? `${selectedPhotos.length} photo${selectedPhotos.length === 1 ? '' : 's'} will also be saved to ${place.name} in your trip.` : `This activity and ${selectedPhotos.length} photo${selectedPhotos.length === 1 ? '' : 's'} will be added to ${mode === 'new' && activityPlan === 'new' ? newPlanTitle || 'your new private itinerary' : 'your itinerary'}.`}</p>
-          <p className={styles.privacy}>{sources.isPrivate ? 'Visible to your accepted followers' : 'Visible to everyone'} for 24 hours. Only this place, photos, and caption are shown in the moments.</p>
+          <p className={styles.privacy}>{sources.isPrivate ? 'Visible to your accepted followers' : 'Visible to everyone'} for 24 hours.</p>
           <button type="submit" className={styles.post} disabled={!selectedPhotos.length || selectedPhotos.length > 10 || !canCompose || busy || uploading}>{busy ? 'Posting…' : `Post ${selectedPhotos.length > 1 ? `${selectedPhotos.length} photos` : 'for 24 hours'}`}</button>
         </>}
       </fieldset>}

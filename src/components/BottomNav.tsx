@@ -3,20 +3,23 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import useBottomToolbar from './useBottomToolbar'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { Home, Compass, Map, MessageCircle } from 'lucide-react'
 import useNotificationCounts from './useNotificationCounts'
 import { Suspense } from 'react'
 
-function BottomNavInner({ pendingCount, userId }: { pendingCount: number; userId: string | null }) {
+function BottomNavInner({ userId }: { userId: string | null }) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { unreadMessages } = useNotificationCounts()
   const toolbarRef = useBottomToolbar()
 
   const isFeed = pathname === '/'
   const isExplore = pathname.startsWith('/explore')
   const profileHref = userId ? `/user/${userId}` : '/login'
+  const bucketHref = userId ? `${profileHref}?tab=bucket` : '/login'
   const isProfile = !!userId && pathname === profileHref
+  const isBucket = isProfile && searchParams.get('tab') === 'bucket'
   const isMessages = pathname === '/messages' || pathname.startsWith('/messages/')
 
   function cls(active: boolean) {
@@ -40,19 +43,14 @@ function BottomNavInner({ pendingCount, userId }: { pendingCount: number; userId
           <span className="text-[10px] font-medium uppercase tracking-[0.12em]">Explore</span>
         </Link>
 
-        <Link href={profileHref} aria-label="Post" className="flex min-w-0 flex-col items-center gap-1 text-[#242e25]">
+        <Link href={profileHref} aria-current={isProfile && !isBucket ? 'page' : undefined} aria-label="Post" className="flex min-w-0 flex-col items-center gap-1 text-[#242e25]">
           <span className="-mt-5 relative inline-flex h-12 w-14 items-center justify-center rounded-md bg-[#355650] shadow-lg [clip-path:polygon(9%_0,91%_0,100%_10%,100%_90%,91%_100%,9%_100%,0_90%,0_10%)]"><span className="flex h-9 w-11 items-center justify-center border-2 border-dashed border-[#355650] bg-[#f1e7d8]"><Image src="/brand/postcard-icon.svg" alt="" width={30} height={30} /></span></span>
           <span className="text-center text-[10px] uppercase leading-tight font-semibold tracking-[0.12em] min-[393px]:text-xs">Post</span>
         </Link>
 
-        <Link href={profileHref} aria-current={isProfile ? 'page' : undefined} aria-label={`Plan${pendingCount ? `, ${pendingCount} pending friend requests` : ''}`} className={`relative ${cls(isProfile)}`}>
+        <Link href={bucketHref} aria-current={isBucket ? 'page' : undefined} aria-label="Bucket list" className={cls(isBucket)}>
           <span className={iconClass(false)}><Map className="w-6 h-6" /></span>
-          {pendingCount > 0 && (
-            <span className="absolute top-1 right-2 inline-flex items-center justify-center w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold leading-none">
-              {pendingCount > 9 ? '9+' : pendingCount}
-            </span>
-          )}
-          <span className="text-[10px] min-[375px]:text-xs font-medium uppercase tracking-[0.12em]">Plan</span>
+          <span className="text-center text-[9px] min-[375px]:text-[10px] font-medium uppercase tracking-[0.08em]">Bucket list</span>
         </Link>
 
         <Link href="/messages" aria-current={isMessages ? 'page' : undefined} aria-label={`Messages${unreadMessages ? `, ${unreadMessages} unread` : ''}`} className={`relative ${cls(isMessages)}`}>
@@ -66,10 +64,10 @@ function BottomNavInner({ pendingCount, userId }: { pendingCount: number; userId
   )
 }
 
-export default function BottomNav({ pendingCount, userId }: { pendingCount: number; userId: string | null }) {
+export default function BottomNav({ userId }: { pendingCount: number; userId: string | null }) {
   return (
     <Suspense fallback={null}>
-      <BottomNavInner pendingCount={pendingCount} userId={userId} />
+      <BottomNavInner userId={userId} />
     </Suspense>
   )
 }

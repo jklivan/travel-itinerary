@@ -6,7 +6,7 @@ import ts from 'typescript'
 
 const code = ts.transpileModule(readFileSync(new URL('../src/actions/planning.ts', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText
 const clientId = '12345678-1234-1234-1234-123456789012'
-function form(values = {}) { const data = new FormData(); for (const [key, value] of Object.entries({ clientId, title: 'Italy', destination: 'Rome', startDate: '', endDate: '', name: 'A lovely cafe', type: 'food_drink', notes: 'Reservation at 7', day: '', status: 'considering', ...values })) data.set(key, value); return data }
+function form(values = {}) { const data = new FormData(); for (const [key, value] of Object.entries({ clientId, audience: 'family', title: 'Italy', destination: 'Rome', startDate: '', endDate: '', name: 'A lovely cafe', type: 'food_drink', notes: 'Reservation at 7', day: '', status: 'considering', ...values })) data.set(key, value); return data }
 function harness({ user = 'owner', fail = false, zeroBased = false, empty = false, sourceVisibility = 'public' } = {}) {
   const trips = [{ id: 'trip', userId: 'owner', isPlan: true, visibility: 'draft', title: 'Italy' }]
   const destinations = [{ id: 'dest', itineraryId: 'trip', name: 'Rome' }]
@@ -87,7 +87,11 @@ test('invalid day/status/category cannot mutate saved data', async () => {
 test('sharing publishes the existing trip and notifies followers only once', async () => {
   const h = harness(); const before = structuredClone(h.items)
   assert.ok((await h.actions.sharePlan('trip')).success); assert.equal(h.trips[0].visibility, 'public'); assert.deepEqual(h.items, before)
+  const publishedAt = h.trips[0].publishedAt
+  assert.ok(Number.isFinite(publishedAt?.getTime()))
   assert.ok((await h.actions.sharePlan('trip')).success); assert.deepEqual(h.notifications, ['trip'])
+  assert.equal(h.trips[0].publishedAt, publishedAt, 'Retries must not change publication time')
+  assert.ok(h.paths.includes('/'), 'Publishing invalidates the feed')
   assert.ok((await harness({ empty: true }).actions.sharePlan('trip')).error)
 })
 test('copying places excludes personal notes/photos/ratings and rejects private sources', async () => {

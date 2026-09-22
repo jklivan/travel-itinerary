@@ -5,7 +5,8 @@ import { upload } from '@vercel/blob/client'
 import { ImageIcon, X } from 'lucide-react'
 import { eventPhotos } from '@/lib/eventPhotos'
 
-export default function EventPhotoInput({ photos, name, onChange, onBusyChange }: {
+export default function EventPhotoInput({ photos, name, onChange, onBusyChange, showThumbnails = true }: {
+  showThumbnails?: boolean
   photos: string[]
   name: string
   onChange: (photos: string[]) => void
@@ -39,7 +40,7 @@ export default function EventPhotoInput({ photos, name, onChange, onBusyChange }
     }
   }
   return <div className="px-3 pb-2 pt-1 space-y-2">
-    {photos.length > 0 && <div className="flex flex-wrap gap-2">
+    {showThumbnails && photos.length > 0 && <div className="flex flex-wrap gap-2">
       {photos.map((url, index) => <div key={url} className="relative">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={url} alt={`${name}, photo ${index + 1}`} className="h-16 w-16 rounded-lg object-cover" />

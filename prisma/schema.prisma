@@ -82,6 +82,7 @@ model Itinerary {
   notifications Notification[]
   stories Story[]
   createdAt    DateTime         @default(now())
+  publishedAt  DateTime?
 }
 
 model BucketListItem {

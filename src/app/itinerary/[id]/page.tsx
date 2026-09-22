@@ -7,13 +7,13 @@ import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
 import { auth } from '@/auth'
 import Image from 'next/image'
+import PhotoStrip from '@/components/PhotoStrip'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
 import { Plane, Hotel, Utensils, Camera, MapPin, Check, Ban, BedDouble } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import { eventPhotos, pickEventPhoto, tripPhotoGallery } from '@/lib/eventPhotos'
-import PhotoStrip from '@/components/PhotoStrip'
 import { tagMeta } from '@/lib/tags'
 import DeleteButton from '@/components/DeleteButton'
 import { TRIP_STAMPS } from '@/lib/tripStamps'
@@ -549,6 +549,7 @@ export default async function ItineraryPage({
           </div>
 
           <div aria-label="Trip tags" className="flex flex-wrap gap-2 items-center mb-4">
+            {stamp && <span className={`-rotate-2 rounded-full px-3 py-1 text-xs font-bold text-white shadow-sm ${stamp.bg}`}>{stamp.label}</span>}
             {audienceLabel && (
               <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-800">
                 {audienceLabel}
@@ -631,25 +632,6 @@ export default async function ItineraryPage({
             )}
           </div>
         </div>
-
-        {/* Photo strip */}
-        {(() => {
-          const userPhotos = tripPhotoGallery(it.photos, it.destinations.flatMap(d => d.items))
-          const stockPhoto = it.photos.find(p => p.isStock)
-          if (userPhotos.length > 0) return (
-            <div className="relative mb-7 rounded-2xl overflow-hidden">
-              <PhotoStrip photos={userPhotos} title={it.title} />
-              {stamp && <span className={`absolute bottom-3 right-3 -rotate-2 rounded-full px-3 py-1 text-xs font-bold text-white shadow-sm ${stamp.bg}`}>{stamp.label}</span>}
-            </div>
-          )
-          if (stockPhoto) return (
-            <div className="relative h-64 w-full rounded-2xl overflow-hidden mb-7">
-              <Image src={stockPhoto.url} alt={it.title} fill className="object-cover" priority />
-              {stamp && <span className={`absolute bottom-3 right-3 -rotate-2 rounded-full px-3 py-1 text-xs font-bold text-white shadow-sm ${stamp.bg}`}>{stamp.label}</span>}
-            </div>
-          )
-          return null
-        })()}
 
         {!isOwn && (
           <div className="mb-6 flex flex-wrap items-center gap-2 border-b border-[#c1ad93] pb-4">
@@ -860,6 +842,18 @@ export default async function ItineraryPage({
             </div>}
           </>
         )}
+        {(() => {
+          const photos = tripPhotoGallery(it.photos, it.destinations.flatMap(d => d.items))
+          const stockPhoto = it.photos.find(photo => photo.isStock)
+          const gallery = photos.length ? photos : stockPhoto ? [stockPhoto] : []
+          if (!gallery.length) return null
+          return <section aria-labelledby="trip-photos-heading" className="mt-8 border-t border-[#c1ad93] pt-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 id="trip-photos-heading" className="font-[family-name:var(--font-playfair)] text-2xl uppercase text-[#242e25]">Trip photos</h2>
+            </div>
+            <PhotoStrip photos={gallery} title={it.title} gallery />
+          </section>
+        })()}
         {isOwn && <section aria-label="Manage trip" className="mt-8 border-t border-[#c1ad93] pt-5">
           <div className="flex flex-wrap items-center gap-2">
             <Link href={`/itinerary/${it.id}/edit`} className="inline-flex min-h-11 items-center rounded-full border border-[#c1ad93] px-4 py-2 text-sm font-medium text-[#485340] hover:bg-[#dfd3c2]">Edit</Link>

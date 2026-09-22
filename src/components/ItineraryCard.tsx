@@ -92,7 +92,7 @@ export default function ItineraryCard({
     <article className={`block ${fullWidth ? 'w-full' : 'w-[clamp(200px,44vw,320px)]'} relative`}>
       <div className="rounded-[4px] border border-[#e7e0d3] bg-[#fffdf8] p-2 shadow-[2px_4px_14px_rgba(45,38,27,0.16)] sm:p-2.5">
         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[2px]" style={{ backgroundColor: coverColor }}>
-          {fullWidth && photos.length > 0 ? <PhotoStrip photos={photos.map(photo => ({ ...photo, caption: null }))} title={title} fillContainer counterPosition="left" /> : <Link href={`/itinerary/${id}`} aria-label={`Open ${title}`} className="absolute inset-0">
+          {fullWidth && photos.length > 0 ? <PhotoStrip href={`/itinerary/${id}`} photos={photos.map(photo => ({ ...photo, caption: null }))} title={title} fillContainer counterPosition="left" /> : <Link href={`/itinerary/${id}`} aria-label={`Open ${title}`} className="absolute inset-0">
             {coverPhoto && <Image src={coverPhoto} alt="" fill sizes={fullWidth ? '(max-width: 575px) calc(100vw - 44px), 516px' : '(max-width: 727px) 44vw, 320px'} className="object-cover" />}
           </Link>}
 

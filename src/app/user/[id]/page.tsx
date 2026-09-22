@@ -59,7 +59,7 @@ export default async function UserProfilePage({
 
   const isOwn = session?.user?.id === user.id
   const viewerId = session?.user?.id ?? null
-  const showBucket = tab === 'bucket'
+  const showBucket = isOwn && tab === 'bucket'
   const showDrafts = (tab === 'in-progress' || tab === 'drafts') && isOwn
 
   const [itineraries, drafts, bucketItems, followRecord, followerCount, followingCount, viewerBucketIds, folders, pendingCount] = await Promise.all([
@@ -128,7 +128,7 @@ export default async function UserProfilePage({
   // Prefer posted/item photos, then an existing stock cover, then fetch a
   // destination image so every private-plan card has a useful visual.
   const draftCoverPhotos = new Map<string, string>()
-  await Promise.all(drafts.map(async trip => {
+  await Promise.all((showBucket ? [] : drafts).map(async trip => {
     const itemPhoto = trip.destinations.flatMap(destination => destination.items).flatMap(item => item.photoUrls ?? (item.photoUrl ? [item.photoUrl] : [])).find(Boolean)
     const userPhoto = trip.photos.find(photo => !photo.isStock)?.url
     const existingStock = trip.photos.find(photo => photo.isStock)?.url
@@ -199,25 +199,25 @@ export default async function UserProfilePage({
 
       {!isOwn && <Link href={`/messages/${id}`} className="mb-5 inline-block rounded-full bg-[#59694f] px-4 py-2 text-sm text-white">Send private message</Link>}
 
-      {isOwn ? (
+      {isOwn && !showBucket ? (
         <>
           <section aria-labelledby="your-trips-heading">
-            <div className="flex items-center justify-between gap-3"><h1 id="your-trips-heading" className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-[#2e4147]">Your trips</h1><Link href="/plan" className="inline-flex min-h-10 items-center rounded-full bg-[#355650] px-4 py-2 text-sm font-semibold text-white">Start planning!</Link></div>
+            <div><h1 id="your-trips-heading" className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-[#2e4147]">Your trips</h1><Link href="/plan" className="mt-4 inline-flex min-h-10 items-center rounded-full bg-[#355650] px-4 py-2 text-sm font-semibold text-white">Start planning!</Link></div>
             <section className="mt-5" aria-labelledby="private-plans-heading">
               <div className="mb-4"><h2 id="private-plans-heading" className="font-[family-name:var(--font-playfair)] text-xl uppercase tracking-[0.1em] text-[#9a7358]">Private plans <span className="font-sans text-sm tracking-normal">({drafts.length})</span></h2><p className="mt-1 max-w-sm text-sm leading-snug text-[#73786d]">Only you can see these. Keep planning or publish whenever you’re ready.</p></div>
-              {drafts.length === 0 ? <div className="rounded-2xl border border-dashed border-[#d7cebc] p-6 text-center text-sm text-[#73786d]">No private plans yet.</div> : <div className="space-y-4">{drafts.map(trip => <div key={trip.id} className="relative min-h-[220px] overflow-hidden rounded-2xl border border-[#e1d8c9] bg-[#fffdf7] p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)]">
-                <Link href={trip.isPlan ? `/plan/${trip.id}` : `/itinerary/${trip.id}/edit`} className="flex min-h-[194px] items-stretch gap-4 pr-3">
-                  <span className="relative aspect-[3/4] w-36 shrink-0 rotate-[-3deg] overflow-hidden border-[5px] border-white bg-[#e8eee8] shadow-[0_2px_5px_rgba(45,38,27,0.18)]">{draftCoverPhotos.get(trip.id) ? <Image src={draftCoverPhotos.get(trip.id)!} alt="" fill sizes="144px" className="object-cover" /> : <span className="grid h-full place-items-center text-center text-[9px] uppercase tracking-wider text-[#59694f]">Postcard</span>}</span>
-                  <span className="min-w-0 flex-1 pt-2"><span className="block break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-[#2e4147]">{trip.title || 'Untitled trip'}</span><span className="mt-2 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#73786d]">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places</span><span className="mt-1 block text-sm text-[#73786d]">Keep planning →</span></span>
-                </Link>
-                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-3"><DeleteButton compact id={trip.id} visibility={trip.visibility} returnTo={`/user/${id}`} label="Delete trip" /><Link href={`/plan/${trip.id}?post=1`} aria-label="Post trip" title="Post trip" className="relative inline-flex h-14 w-20 items-center justify-center rounded-md bg-[#355650] shadow-sm [clip-path:polygon(7%_0,93%_0,100%_10%,100%_90%,93%_100%,7%_100%,0_90%,0_10%)]"><span className="flex h-11 w-16 items-center justify-center border-2 border-dashed border-[#355650] bg-[#f1e7d8]"><Image src="/brand/postcard-icon.svg" alt="" width={34} height={34} /></span></Link></div>
-              </div>)}</div>}
+              {drafts.length === 0 ? <div className="rounded-2xl border border-dashed border-[#d7cebc] p-6 text-center text-sm text-[#73786d]">No private plans yet.</div> : <div className="space-y-4">{drafts.map(trip => {
+                const tripHref = trip.isPlan ? `/plan/${trip.id}` : `/itinerary/${trip.id}/edit`
+                return <article key={trip.id} className="grid grid-cols-[minmax(0,38%)_minmax(0,1fr)] gap-x-4 gap-y-3 rounded-2xl border border-[#e1d8c9] bg-[#fffdf7] p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)]">
+                  <Link href={tripHref} aria-label={`Open ${trip.title}`} className="relative row-span-2 min-h-[210px] rotate-[-3deg] overflow-hidden border-[5px] border-white bg-[#e8eee8] shadow-[0_2px_5px_rgba(45,38,27,0.18)]">{draftCoverPhotos.get(trip.id) ? <Image src={draftCoverPhotos.get(trip.id)!} alt="" fill sizes="(max-width: 640px) 34vw, 180px" className="object-cover" /> : <span className="grid h-full place-items-center text-center text-[9px] uppercase tracking-wider text-[#59694f]">Postcard</span>}</Link>
+                  <Link href={tripHref} className="min-w-0 pt-2"><h3 className="break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-[#2e4147]">{trip.title || 'Untitled trip'}</h3><p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#73786d]">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places</p><p className="mt-1 text-sm text-[#73786d]">Keep planning →</p></Link>
+                  <div className="flex min-w-0 flex-wrap items-end justify-between gap-2 self-end">
+                    <DeleteButton compact id={trip.id} visibility={trip.visibility} returnTo={`/user/${id}`} label={`Delete ${trip.title}`} />
+                    <Link href={trip.isPlan ? `${tripHref}?post=1` : tripHref} aria-label={`Post ${trip.title}`} title="Post trip" className="inline-flex h-12 w-[66px] shrink-0 items-center justify-center transition-transform hover:-rotate-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#355650]"><Image src="/brand/postcard-stamp.svg" alt="" width={66} height={48} className="drop-shadow-sm" /></Link>
+                  </div>
+                </article>
+              })}</div>}
             </section>
-            <section className="mt-8" aria-labelledby="saved-trips-heading">
-              <div className="mb-3"><h2 id="saved-trips-heading" className="font-[family-name:var(--font-playfair)] text-xl uppercase tracking-wide text-[#8B6F4E]">Saved trips <span className="font-sans text-sm">({bucketItems.length})</span></h2><p className="mt-1 text-sm text-[#73786d]">Trips you’ve liked and folders you’ve organized.</p></div>
-              <SavedFolders folders={folders.map(f => ({ ...f, count: bucketItems.filter(item => item.folderId === f.id).length }))} selected={selectedFolder} total={bucketItems.length} userId={id} />
-              {visibleBucketItems.length === 0 ? <div className="mt-4 rounded-2xl border border-dashed border-[#d7cebc] p-6 text-center text-sm text-[#73786d]">Nothing saved yet. Like a trip to keep it here.</div> : <div className="mt-4 space-y-4">{visibleBucketItems.map(item => <ItineraryCard fullWidth key={item.id} id={item.itinerary.id} postType={item.itinerary.postType} tags={item.itinerary.tags} durationDays={item.itinerary.durationDays} title={item.itinerary.title} bestMonths={item.itinerary.bestMonths} datesFlexible={item.itinerary.datesFlexible} startDate={item.itinerary.startDate} endDate={item.itinerary.endDate} audience={item.itinerary.audience} budget={item.itinerary.budget} tripRating={item.itinerary.tripRating} authorName={item.itinerary.user.name} authorId={item.itinerary.user.id} destinations={item.itinerary.destinations} coverPhoto={item.itinerary.photos[0]?.url ?? null} photos={tripPhotoGallery(item.itinerary.photos, item.itinerary.destinations.flatMap(destination => destination.items))} currentUserId={viewerId} isOwn={item.itinerary.user.id === viewerId} isBucketed saveCount={item.itinerary._count.bucketedBy} />)}</div>}
-            </section>
+
           </section>
         </>
       ) : showDrafts ? (
@@ -272,9 +272,8 @@ export default async function UserProfilePage({
         </>
       ) : (
         <>
-          <h2 className="font-semibold text-[#242e25] text-sm mb-3 flex items-center gap-2">
-            <span>❤️</span> {folders.find(f => f.id === selectedFolder)?.name ?? 'Saved'}
-          </h2>
+          <h1 className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-[#2e4147]">Bucket list</h1>
+          <p className="mb-5 mt-2 text-sm text-[#73786d]">All your saved trips and folders, ready for your next adventure.</p>
           {isOwn && <SavedFolders key={selectedFolder} userId={id} folders={folders.map(f => ({ ...f, count: bucketItems.filter(item => item.folderId === f.id).length }))} selected={selectedFolder} total={bucketItems.length} />}
           {visibleBucketItems.length === 0 ? (
             <div className="bg-[#faf7f1] rounded-xl border border-[#dfd3c2] p-8 text-center">

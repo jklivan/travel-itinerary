@@ -11,17 +11,17 @@ import Image from 'next/image'
 export default async function FeedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; feed?: string }>
+  searchParams: Promise<{ search?: string; feed?: string; posted?: string }>
 }) {
-  const { search, feed: requestedFeed } = await searchParams
+  const { search, feed: requestedFeed, posted } = await searchParams
   const searchQuery = search?.trim() || ''
   const feed = ['all', 'friends', 'expert'].includes(requestedFeed ?? '') ? requestedFeed! : 'all'
   return <Suspense key={searchQuery} fallback={<div role="status" className="max-w-5xl mx-auto px-4 py-6">{searchQuery ? `Searching for “${searchQuery}”…` : 'Loading trips…'}</div>}>
-    <FeedResults searchQuery={searchQuery} feed={feed} />
+    <FeedResults searchQuery={searchQuery} feed={feed} posted={posted} />
   </Suspense>
 }
 
-async function FeedResults({ searchQuery, feed }: { searchQuery: string; feed: string }) {
+async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string; feed: string; posted?: string }) {
   const session = await auth()
   const userId = session?.user?.id ?? null
 
@@ -43,6 +43,7 @@ async function FeedResults({ searchQuery, feed }: { searchQuery: string; feed: s
         } : {}),
       },
       orderBy: [
+        { publishedAt: { sort: 'desc', nulls: 'last' } },
         { createdAt: 'desc' },
         { id: 'desc' },
       ],
@@ -58,6 +59,9 @@ async function FeedResults({ searchQuery, feed }: { searchQuery: string; feed: s
       : Promise.resolve([]),
   ])
 
+  const justPosted = posted && userId ? itineraries.find(trip => trip.id === posted && trip.userId === userId) : undefined
+  const feedTrips = justPosted ? [justPosted, ...itineraries.filter(trip => trip.id !== justPosted.id)] : itineraries
+
   const bucketSet = new Set(bucketIds.map((b) => b.itineraryId))
 
   return (
@@ -72,6 +76,7 @@ async function FeedResults({ searchQuery, feed }: { searchQuery: string; feed: s
         <Link href="/" className="text-sm text-[#485340] hover:underline">Clear search</Link>
       </div>}
 
+      {justPosted && feed === 'all' && <p role="status" className="mb-3 rounded-xl bg-[#e8eee8] px-4 py-3 text-sm text-[#355650]">Your postcard is posted.</p>}
       {feed !== 'all' ? (
         <div className="rounded-xl border border-dashed border-[#c9c4b7] bg-[#faf7f1] px-5 py-10 text-center">
           <p className="font-[family-name:var(--font-playfair)] text-xl text-[#2e4147]">{feed === 'friends' ? 'Friends’ trips are coming soon.' : 'Expert recommendations are coming soon.'}</p>
@@ -89,7 +94,7 @@ async function FeedResults({ searchQuery, feed }: { searchQuery: string; feed: s
         </div>
       ) : (
         <div className="flex flex-col gap-3 sm:gap-5" aria-label="For You trips">
-          {itineraries.map((it) => (
+          {feedTrips.map((it) => (
             <ItineraryCard
               key={it.id}
               fullWidth

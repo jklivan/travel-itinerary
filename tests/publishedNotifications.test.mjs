@@ -41,13 +41,22 @@ async function save(name, {draft=false,previous='draft',fail=false}={}) {
   const fn=source.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text===name)
   const scheduled=[]
   const input={title:'Trip',description:'',postType:'itinerary',isDraft:draft,visibility:draft?'draft':'public',startDate:'2026-09-01',endDate:'2026-09-02',startDateStr:'2026-09-01',endDateStr:'2026-09-02',destinations:[{name:'Paris',groups:[]}],photos:[{url:'photo'}],tags:['city']}
-  const itinerary={create:async()=>{if(fail)throw Error('save failed');return {id:'trip'}},findUnique:async()=>({userId:'author',visibility:previous}),update:async()=>{if(fail)throw Error('save failed')}}
+  const writes=[]
+  const redirects=[]
+  const itinerary={create:async({data})=>{writes.push(data);if(fail)throw Error('save failed');return {id:'trip'}},findUnique:async()=>({userId:'author',visibility:previous}),update:async({data})=>{writes.push(data);if(fail)throw Error('save failed')}}
   const tx={itinerary,destination:{deleteMany:async()=>{}},photo:{deleteMany:async()=>{}}}
   const noop=async()=>{}
-  const ctx={input,form:new FormData(),auth:async()=>({user:{id:'author'}}),prisma:{...tx,$transaction:async fn=>fn(tx)},parseFormData:()=>input,flattenGroups:()=>[{name:'place'}],scheduleTripPublishedNotifications:id=>scheduled.push(id),withTimeout:promise=>promise,geocodeItineraryDests:noop,geocodeItineraryItems:noop,inferMissingAttributes:noop,generateMissingDescriptions:noop,revalidatePath(){},redirect(){}}
+  const ctx={input,form:new FormData(),auth:async()=>({user:{id:'author'}}),prisma:{...tx,$transaction:async fn=>fn(tx)},parseFormData:()=>input,flattenGroups:()=>[{name:'place'}],scheduleTripPublishedNotifications:id=>scheduled.push(id),withTimeout:promise=>promise,geocodeItineraryDests:noop,geocodeItineraryItems:noop,inferMissingAttributes:noop,generateMissingDescriptions:noop,revalidatePath(){},redirect(path){redirects.push(path)}}
   const call=name==='createItineraryDirect'?`${name}(input)`:name==='updateItinerary'?`${name}('trip',undefined,form)`:`${name}(undefined,form)`
   const code=ts.transpileModule(fn.getText(source).replace('export ','')+'\n'+call,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText
   try {await vm.runInNewContext(code,ctx)}catch(error){if(!fail)throw error}
+  if (!fail) {
+    const publishing = !draft && (name !== 'updateItinerary' || previous === 'draft')
+    if (publishing) assert.ok(Number.isFinite(writes[0].publishedAt?.getTime()), 'Publishing records a fresh feed timestamp')
+    else if (name === 'updateItinerary') assert.equal('publishedAt' in writes[0], false, 'Editing does not bump a published trip')
+    else assert.equal(writes[0].publishedAt, null, 'Drafts have no publication timestamp')
+    if (name === 'updateItinerary') assert.equal(redirects[0], publishing ? '/?posted=trip' : '/itinerary/trip')
+  }
   return scheduled
 }
 for(const name of ['createItinerary','createItineraryDirect']) {

@@ -48,13 +48,16 @@ export async function startPlan(form: FormData): Promise<Result> {
     const id = text(form, 'clientId', 50)
     if (!/^[a-f0-9-]{36}$/.test(id)) return { error: 'Please reload and try again.' }
     if (!title && !destination) return { error: 'Enter a trip name or destination to get started.' }
+    const format = form.get('format') ?? 'itinerary'
+    if (!['guide', 'day-trip', 'itinerary'].includes(String(format))) throw new InputError('Choose a trip format.')
     const dateFields = dates(form)
     // Reusing this ID makes a retry safe even if the first response was lost.
     const existing = await prisma.itinerary.findUnique({ where: { id }, select: { userId: true } })
     if (existing) return existing.userId === userId ? { id } : { error: unavailable }
     await prisma.itinerary.create({ data: {
       id, userId, title: title || `Trip to ${destination}`, audience, visibility: 'draft', isPlan: true, ...dateFields,
-      durationDays: form.get('format') === 'day-trip' ? 1 : duration(form),
+      postType: String(format),
+      durationDays: format === 'guide' ? null : format === 'day-trip' ? 1 : duration(form),
       tags: form.get('format') === 'day-trip' ? ['day-trip'] : [],
       destinations: { create: { name: destination || 'Destination to decide', order: 0 } },
     } })
@@ -166,7 +169,7 @@ export async function sharePlan(id: string, format: 'guide' | 'day-trip' | 'itin
     const budget = details.budget && details.budget >= 1 && details.budget <= 5 ? Math.floor(details.budget) : null
     const tripRating = details.tripRating && details.tripRating >= 1 && details.tripRating <= 5 ? Math.floor(details.tripRating) : null
     const tags = Array.isArray(details.tags) ? [...new Set(details.tags.filter(tag => typeof tag === 'string').slice(0, 20))] : []
-    const result = await prisma.itinerary.updateMany({ where: { id, userId, visibility: 'draft' }, data: { visibility: 'public', postType: format, durationDays: format === 'day-trip' ? 1 : format === 'guide' ? null : trip.durationDays, budget, tripRating, tags: format === 'day-trip' ? [...new Set(['day-trip', ...tags])] : tags } })
+    const result = await prisma.itinerary.updateMany({ where: { id, userId, visibility: 'draft' }, data: { visibility: 'public', publishedAt: new Date(), postType: format, durationDays: format === 'day-trip' ? 1 : format === 'guide' ? null : trip.durationDays, budget, tripRating, tags: format === 'day-trip' ? [...new Set(['day-trip', ...tags])] : tags } })
     if (result.count) scheduleTripPublishedNotifications(id)
     refresh(id, userId)
     return { success: true }
