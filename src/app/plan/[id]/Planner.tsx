@@ -150,7 +150,7 @@ function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; m
   const Icon = category.Icon
   return <article className={`${planningStyles.place} ${styles[category.value]}`}>
       <div className={`${styles.card} ${planningStyles.card}`}>
-      <PlacePhoto itemId={place.id} name={place.name} thumbnailClass={styles.thumbnail} fallback={<div className={styles.keepsake} aria-hidden="true"><span>{category.eyebrow}</span><Icon size={25} strokeWidth={1} /><span>{place.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span></div>} />
+      <PlacePhoto itemId={place.id} name={place.name} photos={place.photos} thumbnailClass={styles.thumbnail} fallback={<div className={styles.keepsake} aria-hidden="true"><span>{category.eyebrow}</span><Icon size={25} strokeWidth={1} /><span>{place.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span></div>} />
       <div className={styles.cardBody}>
         <p className={styles.eyebrow}>{category.eyebrow}</p>
         <h3 className={styles.placeName}>{place.name}</h3>
