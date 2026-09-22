@@ -43,6 +43,8 @@ export async function startPlan(form: FormData): Promise<Result> {
   try {
     const title = text(form, 'title', 160)
     const destination = text(form, 'destination', 160)
+    const audience = text(form, 'audience', 20) || 'family'
+    if (!['family', 'friends', 'romantic', 'adult'].includes(audience)) throw new InputError('Choose who the trip is for.')
     const id = text(form, 'clientId', 50)
     if (!/^[a-f0-9-]{36}$/.test(id)) return { error: 'Please reload and try again.' }
     if (!title && !destination) return { error: 'Enter a trip name or destination to get started.' }
@@ -51,7 +53,7 @@ export async function startPlan(form: FormData): Promise<Result> {
     const existing = await prisma.itinerary.findUnique({ where: { id }, select: { userId: true } })
     if (existing) return existing.userId === userId ? { id } : { error: unavailable }
     await prisma.itinerary.create({ data: {
-      id, userId, title: title || `Trip to ${destination}`, visibility: 'draft', isPlan: true, ...dateFields,
+      id, userId, title: title || `Trip to ${destination}`, audience, visibility: 'draft', isPlan: true, ...dateFields,
       durationDays: form.get('format') === 'day-trip' ? 1 : duration(form),
       tags: form.get('format') === 'day-trip' ? ['day-trip'] : [],
       destinations: { create: { name: destination || 'Destination to decide', order: 0 } },

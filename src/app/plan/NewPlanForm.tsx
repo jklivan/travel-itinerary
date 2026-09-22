@@ -19,6 +19,7 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [destination, setDestination] = useState('')
+  const [audience, setAudience] = useState('family')
   return <form onSubmit={async event => {
     event.preventDefault()
     if (busy.current) return
@@ -47,6 +48,7 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
     <fieldset disabled={saving} className="space-y-4">
       <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-[#59694f]">Where are you thinking?<PlacesAutocomplete name="destination" value={destination} onChange={setDestination} onSelect={(main, secondary) => setDestination([main, secondary].filter(Boolean).join(', '))} type="destination" maxLength={160} placeholder="e.g. Italy, Japan, a weekend away…" className={inputClass} /></label>
       <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-[#59694f]">Trip name <span className="font-normal normal-case tracking-normal">(optional)</span><input name="title" maxLength={160} placeholder="Summer in Italy" className={inputClass} /></label>
+      <fieldset><legend className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#59694f]">Who is this trip for?</legend><input type="hidden" name="audience" value={audience} /><div className="flex flex-wrap gap-2">{([{ value: 'family', label: 'Family' }, { value: 'friends', label: 'Friends' }, { value: 'romantic', label: 'Couples' }, { value: 'adult', label: 'Adults' }] as const).map(option => <button key={option.value} type="button" onClick={() => setAudience(option.value)} className={`min-h-10 rounded-full border px-4 text-sm text-[#59694f] ${audience === option.value ? 'border-[#59694f] bg-[#e8eee8] font-semibold' : 'border-[#d7cebc]'}`}>{option.label}</button>)}</div></fieldset>
       <details><summary className="cursor-pointer py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#59694f]">Add dates (optional)</summary><DateFields /></details>
       <p className="rounded-xl bg-[#f0f1eb] p-3 text-sm leading-snug text-[#59694f]">Start with an idea. Save hotels, restaurants, and things to do as you find them. Your plan stays private until you share it.</p>
       <button type="submit" value="plan" className={`${buttonClass} w-full`}>{saving ? 'Saving your plan…' : 'Start planning'}</button>
