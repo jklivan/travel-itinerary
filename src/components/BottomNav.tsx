@@ -42,17 +42,17 @@ function BottomNavInner({ pendingCount, userId }: { pendingCount: number; userId
 
         <Link href="/plan" aria-label="Plan" className="flex min-w-0 flex-col items-center gap-1 text-[#242e25]">
           <span className="-mt-5 relative inline-flex h-12 w-14 items-center justify-center rounded-md bg-[#355650] shadow-lg [clip-path:polygon(9%_0,91%_0,100%_10%,100%_90%,91%_100%,9%_100%,0_90%,0_10%)]"><span className="flex h-9 w-11 items-center justify-center border-2 border-dashed border-[#355650] bg-[#f1e7d8]"><Image src="/brand/postcard-icon.svg" alt="" width={30} height={30} /></span></span>
-          <span className="text-center text-[10px] uppercase leading-tight font-semibold tracking-[0.12em] min-[393px]:text-xs">Plan</span>
+          <span className="text-center text-[10px] uppercase leading-tight font-semibold tracking-[0.12em] min-[393px]:text-xs">Post</span>
         </Link>
 
-        <Link href={profileHref} aria-current={isProfile ? 'page' : undefined} aria-label={`My trips${pendingCount ? `, ${pendingCount} pending friend requests` : ''}`} className={`relative ${cls(isProfile)}`}>
+        <Link href={profileHref} aria-current={isProfile ? 'page' : undefined} aria-label={`Plan${pendingCount ? `, ${pendingCount} pending friend requests` : ''}`} className={`relative ${cls(isProfile)}`}>
           <span className={iconClass(false)}><Map className="w-6 h-6" /></span>
           {pendingCount > 0 && (
             <span className="absolute top-1 right-2 inline-flex items-center justify-center w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold leading-none">
               {pendingCount > 9 ? '9+' : pendingCount}
             </span>
           )}
-          <span className="text-[10px] min-[375px]:text-xs font-medium uppercase tracking-[0.12em]">My trips</span>
+          <span className="text-[10px] min-[375px]:text-xs font-medium uppercase tracking-[0.12em]">Plan</span>
         </Link>
 
         <Link href="/messages" aria-current={isMessages ? 'page' : undefined} aria-label={`Messages${unreadMessages ? `, ${unreadMessages} unread` : ''}`} className={`relative ${cls(isMessages)}`}>
