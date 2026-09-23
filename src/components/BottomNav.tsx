@@ -43,9 +43,9 @@ function BottomNavInner({ userId }: { userId: string | null }) {
           <span className="text-[10px] font-medium uppercase tracking-[0.12em]">Explore</span>
         </Link>
 
-        <Link href={profileHref} aria-current={isProfile && !isBucket ? 'page' : undefined} aria-label="Post" className="flex min-w-0 flex-col items-center gap-1 text-[#242e25]">
+        <Link href={profileHref} aria-current={isProfile && !isBucket ? 'page' : undefined} aria-label="Plan & Share" className="flex min-w-0 flex-col items-center gap-1 text-[#242e25]">
           <span className="-mt-5 relative inline-flex h-12 w-14 items-center justify-center rounded-md bg-[#355650] shadow-lg [clip-path:polygon(9%_0,91%_0,100%_10%,100%_90%,91%_100%,9%_100%,0_90%,0_10%)]"><span className="flex h-9 w-11 items-center justify-center border-2 border-dashed border-[#355650] bg-[#f1e7d8]"><Image src="/brand/postcard-icon.svg" alt="" width={30} height={30} /></span></span>
-          <span className="text-center text-[10px] uppercase leading-tight font-semibold tracking-[0.12em] min-[393px]:text-xs">Post</span>
+          <span className="text-center text-[10px] uppercase leading-tight font-semibold tracking-[0.12em] min-[393px]:text-xs">Plan &amp; Share</span>
         </Link>
 
         <Link href={bucketHref} aria-current={isBucket ? 'page' : undefined} aria-label="Saved Trips" className={cls(isBucket)}>

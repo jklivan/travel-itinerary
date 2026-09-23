@@ -162,3 +162,32 @@ test('starting a day trip records its category and duration without calendar dat
   assert.ok(h.writes[0].tags.includes('day-trip'))
   assert.equal(h.writes[0].datesFlexible, true)
 })
+
+test('copied places can receive and clear your own rating without replacing photos or notes', async () => {
+  const h = harness()
+  await h.actions.copyPlaceToPlan('source', 'trip', clientId)
+  const copied = h.items.find(item => item.id === clientId)
+  assert.equal(copied.rating, undefined)
+  assert.ok((await h.actions.editPlanPlace(clientId, form({ name: 'Museum', rating: '5' }))).success)
+  assert.equal(copied.rating, 5)
+  assert.equal(h.items[0].rating, 4)
+  assert.ok((await h.actions.editPlanPlace(clientId, form({ name: 'Museum', rating: '0' }))).success)
+  assert.equal(copied.rating, null)
+})
+
+test('invalid ratings cannot change a saved place', async () => {
+  for (const rating of ['-1', '6', '2.5', 'bad']) {
+    const h = harness()
+    assert.ok((await h.actions.editPlanPlace('place', form({ rating }))).error)
+    assert.equal(h.items[0].rating, 4)
+    assert.equal(h.writes.length, 0)
+  }
+})
+
+test('new places retain the selected planning status', async () => {
+  for (const status of ['considering', 'booked', 'visited']) {
+    const h = harness()
+    assert.ok((await h.actions.addPlanPlace('trip', form({ status }))).success)
+    assert.equal(h.items[1].planningStatus, status)
+  }
+})

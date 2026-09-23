@@ -45,7 +45,8 @@ export function StarRating({ value, onChange }: { value: number; onChange: (v: n
   )
 }
 
-export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange, city, children }: {
+export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange, city, children, planning = false }: {
+  planning?: boolean
   type: ItemType
   onAdd: (item: PlaceEntry) => void | boolean | Promise<void | boolean>
   onClose: () => void
@@ -93,16 +94,16 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
   }
 
   return (
-    <fieldset disabled={busy} className={`min-w-0 rounded-2xl border ${cfg.color} p-4 space-y-3`}>
+    <fieldset disabled={busy} className={`min-w-0 rounded-2xl border ${planning ? 'border-[#d7cebc] bg-[#faf7f1]' : cfg.color} p-4 space-y-3`}>
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{cfg.label}</p>
         <button type="button" aria-label="Close place form" disabled={photoUploading || busy} onClick={onClose} className="text-gray-400 hover:text-gray-600">
           <X size={16} />
         </button>
       </div>
-      {type === 'transport' ? <input aria-label="Transport name" maxLength={240} value={name} onChange={event => setName(event.target.value)} placeholder={cfg.placeholder} className={inputCls} /> : <PlacesAutocomplete value={name} onChange={v => { setName(v); setPlaceId('') }}
+      {type === 'transport' ? <input aria-label="Transport name" maxLength={240} value={name} onChange={event => setName(event.target.value)} placeholder={cfg.placeholder} className={planning ? `${inputCls} !border-[#d7cebc] focus:!ring-[#59694f]` : inputCls} /> : <PlacesAutocomplete value={name} onChange={v => { setName(v); setPlaceId('') }}
         onSelect={(_m, _s, pid) => { setPlaceId(pid ?? ''); setPlaceLocation(_s); setPlaceContext(JSON.stringify([city, type])) }}
-        aria-label="Place name" maxLength={240} type={cfg.placeType} placeholder={cfg.placeholder} className={inputCls} city={city} />}
+        aria-label="Place name" maxLength={240} type={cfg.placeType} placeholder={cfg.placeholder} className={planning ? `${inputCls} !border-[#d7cebc] focus:!ring-[#59694f]` : inputCls} city={city} />}
       {type !== 'transport' && placeId && placeContext === JSON.stringify([city, type]) && <PlacePeople key={placeId} placeId={placeId} name={name} location={[city, placeLocation].filter(Boolean).join(', ')} />}
       {type === 'food_drink' && (
         <div className="flex flex-wrap gap-1.5">
@@ -118,19 +119,20 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
           })}
         </div>
       )}
-      <div className="flex items-center gap-3 flex-wrap">
+      {!planning && <div className="flex items-center gap-3 flex-wrap">
         <div className="space-y-1">
           <p className="text-xs text-gray-500">Rate it</p>
           <StarRating value={rating} onChange={setRating} />
         </div>
-      </div>
+      </div>}
       <div className="space-y-1">
         <p className="text-xs text-gray-500">Notes</p>
         <textarea aria-label="Notes" maxLength={8000} rows={4} value={notes} onChange={e => setNotes(e.target.value)}
-          placeholder={cfg.notesPh} className={inputCls} />
+          placeholder={cfg.notesPh} className={planning ? `${inputCls} !border-[#d7cebc] focus:!ring-[#59694f]` : inputCls} />
       </div>
 
       {/* More details toggle */}
+      {!planning && <>
       <RecommendationPicker type={type} value={recommendation} onChange={setRecommendation} />
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
@@ -155,11 +157,12 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
       )}
 
       <EventPhotoInput photos={photos} name={name || 'new event'} onChange={setPhotos} onBusyChange={busy => { setPhotoUploading(busy); onPhotoBusyChange(busy) }} />
+      </>}
       {children}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <button type="button" onClick={() => void submit()} disabled={!name.trim() || photoUploading}
-        className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
-        <Check size={14} /> {busy ? 'Saving…' : 'Add'}
+        className="w-full py-2.5 rounded-xl bg-[#242e25] text-white text-sm font-semibold hover:bg-[#485340] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+        <Check size={14} /> {busy ? 'Saving…' : planning ? 'Save Place' : 'Add'}
       </button>
     </fieldset>
   )

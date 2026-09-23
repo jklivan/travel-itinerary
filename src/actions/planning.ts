@@ -91,6 +91,8 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
     const destinationName = text(form, 'destination', 160)
     const notes = text(form, 'notes', 8000)
     const clientId = text(form, 'clientId', 50)
+    const status = form.has('status') ? text(form, 'status', 20) : 'considering'
+    if (!['considering', 'booked', 'visited'].includes(status)) throw new InputError('Choose a valid place status.')
     const rating = Number(form.get('rating') ?? 0)
     if (!Number.isInteger(rating) || rating < 0 || rating > 5) throw new InputError('Choose a rating from 1 to 5, or leave it blank.')
     const mealType = form.has('mealType') ? text(form, 'mealType', 100) : ''
@@ -123,7 +125,7 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
       const zeroBased = await tx.destItem.count({ where: { destinationId: dest.id, dayIndex: 0, type: { not: 'hotel' } } })
       if (zeroBased) await tx.destItem.updateMany({ where: { destinationId: dest.id, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
       await tx.destItem.create({ data: { id: clientId, destinationId: dest.id, name, type, placeId: placeId ?? null, notes: notes || null,
-        rating: rating || null, mealType: type === 'food_drink' ? mealType || null : null, tags, photoUrls, photoUrl: photoUrls[0] ?? null,
+        rating: rating || null, planningStatus: status, mealType: type === 'food_drink' ? mealType || null : null, tags, photoUrls, photoUrl: photoUrls[0] ?? null,
         dayIndex: day ? Number(day) : null,
         order: (last._max.order ?? -1) + 1, groupIndex: type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0,
       } })
@@ -141,6 +143,8 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     const placeId = form.has('placeId') ? text(form, 'placeId', 512) || null : undefined
     const notes = text(form, 'notes', 8000)
     const status = text(form, 'status', 20)
+    const rating = form.has('rating') ? Number(form.get('rating')) : undefined
+    if (rating !== undefined && (!Number.isInteger(rating) || rating < 0 || rating > 5)) throw new InputError('Choose a rating from 1 to 5, or leave it blank.')
     const day = text(form, 'day', 4)
     if (!name || !['considering', 'booked', 'visited'].includes(status)) return { error: 'Enter a place name and choose a status.' }
     if (day && (!/^\d+$/.test(day) || Number(day) < 1 || Number(day) > 365)) return { error: 'Choose a day from 1 to 365, or leave it unscheduled.' }
@@ -152,7 +156,7 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     await prisma.$transaction(async tx => {
       const zeroBased = await tx.destItem.count({ where: { destinationId: item.destinationId, dayIndex: 0, type: { not: 'hotel' } } })
       if (zeroBased) await tx.destItem.updateMany({ where: { destinationId: item.destinationId, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
-      const result = await tx.destItem.updateMany({ where: owned, data: { name, placeId: nextPlaceId, ...(identityChanged ? { lat: null, lng: null, address: null, link: null, description: null } : {}), notes: notes || null, planningStatus: status, dayIndex: day ? Number(day) : null } })
+      const result = await tx.destItem.updateMany({ where: owned, data: { name, placeId: nextPlaceId, ...(identityChanged ? { lat: null, lng: null, address: null, link: null, description: null } : {}), notes: notes || null, ...(rating === undefined ? {} : { rating: rating || null }), planningStatus: status, dayIndex: day ? Number(day) : null } })
       if (!result.count) throw new InputError(unavailable)
     })
     refresh(item.destination.itineraryId, userId)

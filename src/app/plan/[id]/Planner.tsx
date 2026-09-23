@@ -8,10 +8,10 @@ import styles from '../../itinerary/[id]/places.module.css'
 import planningStyles from './Planner.module.css'
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, MapPin, LockKeyhole, CalendarDays, Check, Hotel, Utensils, Camera, Plane } from 'lucide-react'
+import { Plus, MapPin, LockKeyhole, CalendarDays, Check, Hotel, Utensils, Camera, Plane, Upload } from 'lucide-react'
 import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace, sharePlan } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
-import PlaceEntryForm from '@/components/PlaceEntryForm'
+import PlaceEntryForm, { StarRating } from '@/components/PlaceEntryForm'
 import DeleteButton from '@/components/DeleteButton'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import PlanningMap from '@/components/PlanningMap'
@@ -51,7 +51,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     } catch { setPublishMessage('Could not publish your itinerary. Please try again.') }
     finally { setPublishing(false) }
   }
-  return <div className="mx-auto max-w-2xl px-4 pt-6 pb-32 text-[#2e4147]">
+  return <div className="mx-auto max-w-2xl px-4 py-6 text-[#2e4147]">
     <BackButton fallback="/plan" className="text-sm text-[#59694f]">← Back</BackButton>
     <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#59694f]"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
     <h1 className="trip-title mt-2 break-words font-[family-name:var(--font-playfair)] text-3xl sm:text-4xl">{trip.title}</h1>
@@ -61,12 +61,15 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       {!(trip.visibility === 'draft' && trip.isPlan) && <Link href={trip.visibility === 'draft' ? `/itinerary/${trip.id}/edit` : `/itinerary/${trip.id}`} className="min-h-11 rounded-xl border border-[#d7cebc] px-4 py-3 text-sm">{trip.visibility === 'draft' ? 'Edit & publish' : 'View shared trip'}</Link>}
       {trip.visibility !== 'draft' && <span className="text-xs text-[#73786d]">Saved changes appear on your shared trip.</span>}
     </div>
-    {!adding && !importing && <div className="sticky top-0 z-20 -mx-1 mt-5 bg-[#f3eee5] px-1 py-3">
+    <div className="sticky top-0 z-20 -mx-1 mt-5 space-y-2 bg-[#f3eee5] px-1 py-3">
+      {!adding && !importing && <>
       <button className={`${buttonClass} flex w-full items-center justify-center gap-2`} onClick={() => setAdding(true)}><Plus size={20} />Add a place</button>
       {trip.isPlan && <Link href={`/plan/${trip.id}/friends`} className="mt-2 flex min-h-11 items-center justify-center rounded-xl border border-[#8caaa3] bg-[#fffdf7] px-4 py-2 text-sm font-semibold text-[#59694f]">Browse friends’ places · Add several at once</Link>}
-    </div>}
-    {adding && <AddPlace trip={trip} maxDay={maxDay} onClose={() => setAdding(false)} />}
-    {importing && <PlanImport tripId={trip.id} onClose={() => setImporting(false)} />}
+      </>}
+      <button type="button" onClick={() => setImporting(true)} disabled={importing} aria-expanded={importing} aria-controls="plan-import-panel" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#8caaa3] bg-[#fffdf7] px-4 py-2 text-sm font-semibold text-[#59694f] disabled:opacity-60"><Upload size={17} />Import notes or files</button>
+    </div>
+    {adding && <div hidden={importing}><AddPlace trip={trip} maxDay={maxDay} onClose={() => setAdding(false)} /></div>}
+    {importing && <div id="plan-import-panel"><PlanImport tripId={trip.id} onClose={() => setImporting(false)} /></div>}
     <div role="tablist" aria-label="Trip view" className="mb-5 mt-3 flex border-b border-[#d7cebc]">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className={`min-h-12 flex-1 border-b-2 p-3 font-semibold ${tab === value ? 'border-[#59694f] text-[#59694f]' : 'border-transparent text-[#73786d]'}`}>{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
     <section role="tabpanel" id="trip-panel" aria-labelledby={`${tab}-tab`}>
       {mapOpened && <div hidden={tab !== 'map'}><PlanningMap places={places.filter(place => place.type !== 'transport' || place.placeId || (place.lat !== null && place.lng !== null)).map(place => ({ id: place.id, name: place.name, city: place.destination, type: place.type === 'hotel' ? 'hotel' : place.type === 'food_drink' ? 'food_drink' : place.type === 'transport' ? 'transport' : 'activity', day: place.day, placeId: place.placeId ?? undefined, lat: place.lat, lng: place.lng }))} /></div>}
@@ -79,7 +82,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
         <section><h2 className="mb-3 text-lg font-semibold">Other places</h2><div className="space-y-3">{places.filter(p => p.day === null).map(renderPlace)}</div>{places.every(p => p.day !== null) && <p className="text-sm text-[#73786d]">All your places have a day.</p>}</section>
       </>}
     </section>
-    <div className="pointer-events-none fixed bottom-[var(--app-bottom-clearance)] left-0 right-0 z-40 px-4 pb-2"><div className="mx-auto flex max-w-2xl items-center justify-between gap-3"><div className="pointer-events-auto"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div>{trip.isPlan && trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={() => setPublishFormat(trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary')} aria-label="Post trip" title="Post trip" className="pointer-events-auto relative inline-flex h-16 w-24 items-center justify-center bg-[#355650] text-sm font-semibold text-white shadow-lg transition-transform hover:scale-105 disabled:opacity-60 [clip-path:polygon(7%_0,93%_0,100%_10%,100%_90%,93%_100%,7%_100%,0_90%,0_10%)]"><span className="flex h-12 w-20 items-center justify-center border-2 border-dashed border-[#355650] bg-[#f1e7d8]"><Image src="/brand/postcard-icon.svg" alt="" width={42} height={42} /></span><span className="sr-only">Post</span></button>}</div></div>
+    <div className="mt-8 border-t border-[#d7cebc] pt-5"><div className="flex flex-wrap items-center justify-between gap-3"><div className="pointer-events-auto"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div>{trip.isPlan && trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={() => setPublishFormat(trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary')} aria-label="Post trip" title="Post trip" className="pointer-events-auto relative inline-flex h-16 w-24 items-center justify-center bg-[#355650] text-sm font-semibold text-white shadow-lg transition-transform hover:scale-105 disabled:opacity-60 [clip-path:polygon(7%_0,93%_0,100%_10%,100%_90%,93%_100%,7%_100%,0_90%,0_10%)]"><span className="flex h-12 w-20 items-center justify-center border-2 border-dashed border-[#355650] bg-[#f1e7d8]"><Image src="/brand/postcard-icon.svg" alt="" width={42} height={42} /></span><span className="sr-only">Post</span></button>}</div></div>
     {trip.isPlan && trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-[#242e25]/50 px-5 py-6" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="w-full max-w-md rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-5 shadow-xl"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-[#2e4147]">A few more details</h2><p className="mt-1 text-sm text-[#73786d]">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-2xl leading-none text-[#73786d]" aria-label="Close">×</button></div><div className="mt-5 space-y-5"><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Trip type</legend><div className="grid grid-cols-3 gap-2">{([['guide', 'Guide'], ['day-trip', 'Day trip'], ['itinerary', 'Multi-day']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setPublishFormat(value)} className={`rounded-xl border px-2 py-2 text-xs font-semibold ${publishFormat === value ? 'border-[#59694f] bg-[#e8eee8] text-[#355650]' : 'border-[#d7cebc] text-[#73786d]'}`}>{label}</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Budget</legend><div className="flex gap-2">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => setPublishBudget(publishBudget === value ? 0 : value)} className={`text-xl ${value <= publishBudget ? 'text-[#a27e3b]' : 'text-[#c3bcad]'}`} aria-label={`${value} dollar signs`}>$</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Overall trip rating</legend><div className="flex gap-1">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => setPublishRating(publishRating === value ? 0 : value)} className={`text-2xl ${value <= publishRating ? 'text-[#a27e3b]' : 'text-[#c3bcad]'}`} aria-label={`Rate trip ${value} out of 5`}>★</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Tags</legend><div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">{TAGS.slice(0, 16).map(tag => <button key={tag.id} type="button" onClick={() => setPublishTags(current => current.includes(tag.id) ? current.filter(value => value !== tag.id) : [...current, tag.id])} className={`rounded-full border px-3 py-1.5 text-xs ${publishTags.includes(tag.id) ? 'border-[#59694f] bg-[#e8eee8] text-[#355650]' : 'border-[#d7cebc] text-[#73786d]'}`}>{tag.label}</button>)}</div></fieldset><button type="button" disabled={publishing} onClick={() => void publishTrip(publishFormat)} className="w-full rounded-xl bg-[#355650] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{publishing ? 'Posting…' : 'Post trip'}</button></div></div></div>}
     {publishMessage && <p role="status" className="mt-2 text-right text-sm text-[#59694f]">{publishMessage}</p>}
   </div>
@@ -94,33 +97,34 @@ function AddPlace({ trip, maxDay, onClose }: { trip: Trip; maxDay: number; onClo
   const [category, setCategory] = useState<'hotel' | 'food_drink' | 'activity' | 'transport'>('hotel')
   const [uploading, setUploading] = useState(false)
   const [day, setDay] = useState('')
+  const [status, setStatus] = useState('considering')
   const [destination, setDestination] = useState(trip.destinations[0]?.name === 'Destination to decide' ? '' : trip.destinations[0]?.name ?? '')
   const selectedDestination = trip.destinations.find(d => d.name === destination)
   const city = [destination, selectedDestination?.country].filter(Boolean).join(', ')
   function changeDestination(value: string) { setDestination(value) }
 
-  return <section className="mb-4 space-y-3 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4" aria-label="Add a place"><h2 className="text-lg font-semibold">Add a place</h2><fieldset disabled={busy || uploading} className="space-y-3">
+  return <section className="mb-4 space-y-3 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4" aria-label="Add a place"><button type="button" onClick={onClose} className="text-sm text-[#59694f]">← Back</button><h2 className="font-[family-name:var(--font-playfair)] text-2xl uppercase">Add a place</h2><p className="text-sm text-[#73786d]">Save places to your trip. Add notes now and a rating after your visit.</p><fieldset disabled={busy || uploading} className="space-y-3">
     <label className="block text-sm">Destination<PlacesAutocomplete name="destination" required maxLength={160} value={destination} onChange={changeDestination} onSelect={(main, secondary) => changeDestination([main, secondary].filter(Boolean).join(', '))} type="destination" placeholder="City or area" className={inputClass} /></label>
     {trip.destinations.length > 1 && <div className="flex flex-wrap gap-2">{trip.destinations.filter(d => d.name !== 'Destination to decide').map(d => <button type="button" key={d.id} onClick={() => changeDestination(d.name)} className="min-h-11 rounded-lg border border-[#d7cebc] px-3 text-xs">{d.name}</button>)}</div>}
     <fieldset><legend className="mb-2 text-sm">Category</legend><div className="flex flex-wrap gap-2">
       {[
-        { value: 'hotel', label: 'Hotel / Airbnb', Icon: Hotel, color: 'peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:text-blue-700' },
-        { value: 'food_drink', label: 'Food / Drink', Icon: Utensils, color: 'peer-checked:border-orange-500 peer-checked:bg-orange-50 peer-checked:text-orange-700' },
-        { value: 'activity', label: 'Activity', Icon: Camera, color: 'peer-checked:border-green-600 peer-checked:bg-green-50 peer-checked:text-green-700' },
-        { value: 'transport', label: 'Transport', Icon: Plane, color: 'peer-checked:border-[#687e9b] peer-checked:bg-[#edf1f5] peer-checked:text-[#465e7a]' },
+        { value: 'hotel', label: 'Hotel / Airbnb', Icon: Hotel, color: 'peer-checked:border-[#242e25] peer-checked:bg-[#242e25] peer-checked:text-white' },
+        { value: 'food_drink', label: 'Food / Drink', Icon: Utensils, color: 'peer-checked:border-[#242e25] peer-checked:bg-[#242e25] peer-checked:text-white' },
+        { value: 'activity', label: 'Activity', Icon: Camera, color: 'peer-checked:border-[#242e25] peer-checked:bg-[#242e25] peer-checked:text-white' },
+        { value: 'transport', label: 'Transport', Icon: Plane, color: 'peer-checked:border-[#242e25] peer-checked:bg-[#242e25] peer-checked:text-white' },
       ].map(({ value, label, Icon, color }) => <label key={value} className="cursor-pointer">
         <input type="radio" name="type" value={value} checked={category === value} onChange={() => setCategory(value as 'hotel' | 'food_drink' | 'activity' | 'transport')} className="peer sr-only" />
         <span className={`flex min-h-11 items-center gap-2 rounded-full border border-[#d7cebc] bg-white px-3 py-2 text-sm font-medium text-[#73786d] transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#59694f] peer-disabled:opacity-50 ${color}`}><Icon size={16} />{label}</span>
       </label>)}
     </div></fieldset>
     </fieldset>
-    <PlaceEntryForm type={category} city={city || undefined} onPhotoBusyChange={setUploading} onClose={onClose} onAdd={async item => {
+    <PlaceEntryForm planning type={category} city={city || undefined} onPhotoBusyChange={setUploading} onClose={onClose} onAdd={async item => {
       if (saving.current) return false
       if (!destination.trim()) { setError('Choose a destination first.'); return false }
       saving.current = true; setBusy(true); setError('')
       if (!clientId.current) clientId.current = crypto.randomUUID()
       const data = new FormData()
-      for (const [key, value] of Object.entries({ ...item, destination, day, clientId: clientId.current })) data.set(key, Array.isArray(value) ? JSON.stringify(value) : String(value))
+      for (const [key, value] of Object.entries({ ...item, destination, day, status, clientId: clientId.current })) data.set(key, Array.isArray(value) ? JSON.stringify(value) : String(value))
       try {
         const result = await addPlanPlace(trip.id, data)
         if (result.error) { setError(result.error); return false }
@@ -128,7 +132,10 @@ function AddPlace({ trip, maxDay, onClose }: { trip: Trip; maxDay: number; onClo
       } catch { setError('Could not save. Your place is still here; try again.'); return false }
       finally { saving.current = false; setBusy(false) }
     }}>
+      <fieldset><legend className="mb-2 text-xs uppercase tracking-wide text-[#59694f]">Place status (optional)</legend><div className="flex flex-wrap gap-2">{[['considering', 'Want to go'], ['booked', 'Booked'], ['visited', 'Visited']].map(([value, label]) => <button key={value} type="button" aria-pressed={status === value} onClick={() => setStatus(value)} className={`min-h-10 rounded-full border px-3 text-xs ${status === value ? 'border-[#59694f] bg-[#e8eee8] text-[#355650]' : 'border-[#d7cebc] text-[#73786d]'}`}>{label}</button>)}</div></fieldset>
+      <details><summary className="text-sm text-[#59694f]">Add a day (optional)</summary>
       <label className="block text-sm">Day (optional)<select value={day} onChange={event => setDay(event.target.value)} className={inputClass}><option value="">Unscheduled</option>{Array.from({ length: maxDay }, (_, index) => index + 1).map(value => <option key={value} value={value}>Day {value}</option>)}</select></label>
+      </details>
     </PlaceEntryForm>
     {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
   </section>
@@ -146,6 +153,7 @@ function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; m
   const [removing, setRemoving] = useState(false)
   const saving = useRef(false)
   const [name, setName] = useState(place.name)
+  const [rating, setRating] = useState(place.rating ?? 0)
   const [placeId, setPlaceId] = useState(place.placeId ?? '')
   const category = categories.find(category => category.value === place.type) ?? categories[2]
   const Icon = category.Icon
@@ -159,12 +167,13 @@ function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; m
         </div>
         <h3 className={styles.placeName}>{place.name}</h3>
         <p className={planningStyles.location}>{place.destination}</p>
+        {!!place.rating && <p className="text-sm text-[#a27e3b]" aria-label={`Your rating: ${place.rating} out of 5`}>{'★'.repeat(place.rating)}{'☆'.repeat(5 - place.rating)}</p>}
         {place.notes && <p className={styles.note}>{place.notes}</p>}
       </div>
     </div>
     {place.type !== 'transport' && <PlacePeople key={`${place.placeId}:${place.name}:${place.destination}`} compact placeId={place.placeId ?? ''} name={place.name} location={place.destination} />}
     <div className={planningStyles.controls}>
-    {!editing ? <button onClick={() => { setName(place.name); setPlaceId(place.placeId ?? ''); setEditing(true); setError(''); setSaved(false) }} type="button" className="min-h-11 text-sm font-semibold text-[#59694f]">Edit details →</button> : <form className="w-full" onSubmit={async event => {
+    {!editing ? <button onClick={() => { setName(place.name); setRating(place.rating ?? 0); setPlaceId(place.placeId ?? ''); setEditing(true); setError(''); setSaved(false) }} type="button" className="min-h-11 text-sm font-semibold text-[#59694f]">Edit details →</button> : <form className="w-full" onSubmit={async event => {
       event.preventDefault(); if (saving.current) return
       saving.current = true; setBusy(true); setError('')
       const data = new FormData(event.currentTarget)
@@ -174,6 +183,7 @@ function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; m
     }}><fieldset disabled={busy} className="space-y-3"><label className="block text-sm">{place.type === 'transport' ? 'Transport name' : 'Place name'}{place.type === 'transport' ? <input name="name" value={name} onChange={event => setName(event.target.value)} required maxLength={240} className={inputClass} /> : <PlacesAutocomplete name="name" value={name} onChange={value => { setName(value); setPlaceId('') }} onSelect={(_main, _secondary, id) => setPlaceId(id ?? '')} type={place.type === 'food_drink' ? 'restaurant' : place.type === 'hotel' ? 'hotel' : 'activity'} city={place.destination} required maxLength={240} className={inputClass} />}</label>
       <input type="hidden" name="placeId" value={placeId} />
       <input type="hidden" name="status" value={place.status} />
+      <input type="hidden" name="rating" value={rating} /><div><p className="mb-1 text-sm">Your rating (optional)</p><StarRating value={rating} onChange={setRating} /></div>
       <label className="block text-sm">Notes<textarea name="notes" defaultValue={place.notes ?? ''} maxLength={8000} rows={3} className={inputClass} /></label><DayField day={place.day} maxDay={maxDay} />
       <div className="flex gap-3"><button className={buttonClass}>{busy ? 'Saving…' : 'Save changes'}</button><button type="button" onClick={() => setEditing(false)} className="px-3 text-sm">Cancel</button></div>
     </fieldset>{error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}</form>}
