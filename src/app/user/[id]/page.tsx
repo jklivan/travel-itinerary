@@ -272,7 +272,7 @@ export default async function UserProfilePage({
         </>
       ) : (
         <>
-          <h1 className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-[#2e4147]">Bucket list</h1>
+          <h1 className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-[#2e4147]">Saved Trips</h1>
           <p className="mb-5 mt-2 text-sm text-[#73786d]">All your saved trips and folders, ready for your next adventure.</p>
           {isOwn && <SavedFolders key={selectedFolder} userId={id} folders={folders.map(f => ({ ...f, count: bucketItems.filter(item => item.folderId === f.id).length }))} selected={selectedFolder} total={bucketItems.length} />}
           {visibleBucketItems.length === 0 ? (

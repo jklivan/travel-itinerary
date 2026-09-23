@@ -48,9 +48,9 @@ function BottomNavInner({ userId }: { userId: string | null }) {
           <span className="text-center text-[10px] uppercase leading-tight font-semibold tracking-[0.12em] min-[393px]:text-xs">Post</span>
         </Link>
 
-        <Link href={bucketHref} aria-current={isBucket ? 'page' : undefined} aria-label="Bucket list" className={cls(isBucket)}>
+        <Link href={bucketHref} aria-current={isBucket ? 'page' : undefined} aria-label="Saved Trips" className={cls(isBucket)}>
           <span className={iconClass(false)}><Map className="w-6 h-6" /></span>
-          <span className="text-center text-[9px] min-[375px]:text-[10px] font-medium uppercase tracking-[0.08em]">Bucket list</span>
+          <span className="text-center text-[9px] min-[375px]:text-[10px] font-medium uppercase tracking-[0.08em]">Saved Trips</span>
         </Link>
 
         <Link href="/messages" aria-current={isMessages ? 'page' : undefined} aria-label={`Messages${unreadMessages ? `, ${unreadMessages} unread` : ''}`} className={`relative ${cls(isMessages)}`}>

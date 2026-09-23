@@ -535,7 +535,7 @@ export default async function ItineraryPage({
         )}
 
         {/* ── Editorial Header ── */}
-        <div className={`${isOwn ? 'mb-4' : 'mb-7'}`}>
+        <div className="mb-2">
           <h1 className={`trip-title font-[family-name:var(--font-playfair)] ${isOwn ? 'text-3xl sm:text-4xl' : 'text-4xl md:text-5xl'} text-[#242e25] leading-tight mb-2 uppercase`}>
             {it.title}
           </h1>
@@ -549,6 +549,7 @@ export default async function ItineraryPage({
           </div>
 
           <div aria-label="Trip tags" className="flex flex-wrap gap-2 items-center mb-4">
+            {!isOwn && <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />}
             {stamp && <span className={`-rotate-2 rounded-full px-3 py-1 text-xs font-bold text-white shadow-sm ${stamp.bg}`}>{stamp.label}</span>}
             {audienceLabel && (
               <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-800">
@@ -576,7 +577,7 @@ export default async function ItineraryPage({
           )}
 
           {/* Author / meta / actions row */}
-          <div className="flex items-center justify-between flex-wrap gap-3 border-t border-b border-[#c1ad93] py-3 mb-3">
+          <div className="flex items-center justify-between flex-wrap gap-3 border-t border-b border-[#c1ad93] py-3 mb-2">
             <div className="flex items-center gap-3 flex-wrap">
               <Link href={`/user/${it.user.id}`} className="flex items-center gap-2 hover:opacity-80">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold shrink-0">
@@ -633,14 +634,7 @@ export default async function ItineraryPage({
           </div>
         </div>
 
-        {!isOwn && (
-          <div className="mb-6 flex flex-wrap items-center gap-2 border-b border-[#c1ad93] pb-4">
-            {session?.user && <CopyTripButton itineraryId={it.id} title={it.title} isOwn={isOwn} />}
-            <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />
-          </div>
-        )}
-
-        <nav aria-label="Itinerary view" className="flex flex-wrap gap-1 bg-[#dfd3c2] rounded-xl p-1 text-sm font-medium mb-6 w-fit">
+        <nav aria-label="Itinerary view" className="flex flex-wrap gap-1 bg-[#dfd3c2] rounded-xl p-1 text-sm font-medium mb-3 w-fit">
           <Link href={`/itinerary/${it.id}`} scroll={false} aria-current={!showMap && !showDayByDay ? 'page' : undefined}
             className={`px-4 py-2 rounded-lg transition-colors ${!showMap && !showDayByDay ? 'bg-[#faf7f1] shadow-sm text-[#242e25]' : 'text-[#8B6F4E] hover:text-[#485340]'}`}>
             Trip Summary
@@ -854,6 +848,9 @@ export default async function ItineraryPage({
             <PhotoStrip photos={gallery} title={it.title} gallery />
           </section>
         })()}
+        {!isOwn && session?.user && <div className="mt-8 border-t border-[#c1ad93] pt-5">
+          <CopyTripButton itineraryId={it.id} title={it.title} isOwn={isOwn} />
+        </div>}
         {isOwn && <section aria-label="Manage trip" className="mt-8 border-t border-[#c1ad93] pt-5">
           <div className="flex flex-wrap items-center gap-2">
             <Link href={`/itinerary/${it.id}/edit`} className="inline-flex min-h-11 items-center rounded-full border border-[#c1ad93] px-4 py-2 text-sm font-medium text-[#485340] hover:bg-[#dfd3c2]">Edit</Link>

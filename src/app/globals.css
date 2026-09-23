@@ -33,6 +33,11 @@ input, textarea, select {
   color: #111111;
 }
 
+/* Includes the raised center stamp and iPhone home-indicator safe area. */
+:root {
+  --app-bottom-clearance: calc(7rem + env(safe-area-inset-bottom, 0px));
+}
+
 /* Keep navigation clear of the iPhone status bar and home indicator. */
 .app-header {
   padding-top: env(safe-area-inset-top, 0px);
@@ -48,7 +53,7 @@ input, textarea, select {
 }
 
 .app-main {
-  padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: var(--app-bottom-clearance);
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
 }
