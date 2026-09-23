@@ -28,6 +28,7 @@ model User {
   stories Story[]
   questions FriendQuestion[]
   questionReplies FriendQuestionReply[]
+  planChats PlanChat[]
   createdAt      DateTime         @default(now())
 }
 
@@ -81,6 +82,7 @@ model Itinerary {
   comments     Comment[]
   notifications Notification[]
   stories Story[]
+  planChats PlanChat[]
   createdAt    DateTime         @default(now())
   publishedAt  DateTime?
 }
@@ -293,4 +295,20 @@ model Story {
 
   @@index([expiresAt])
   @@index([userId, createdAt])
+}
+
+// Conversation with Claude on the /testplan page. `history` is the raw Messages API history (resent verbatim);
+// `turns` is the display version with recommendation cards.
+model PlanChat {
+  id String @id @default(cuid())
+  userId String
+  tripId String?
+  history Json @default("[]")
+  turns Json @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trip Itinerary? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  @@index([userId, tripId, updatedAt])
 }

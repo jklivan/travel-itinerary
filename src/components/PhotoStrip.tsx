@@ -12,6 +12,9 @@ export default function PhotoStrip({ photos, title, contain = false, fillContain
   const pointerStart = useRef<{ x: number; y: number } | null>(null)
   const dragged = useRef(false)
   const [current, setCurrent] = useState(0)
+  // Highest slide index whose image is rendered. Later slides stay empty until the viewer swipes
+  // toward them, so a feed of carousels doesn't put every photo into the page up front.
+  const [revealed, setRevealed] = useState(1)
   const [failed, setFailed] = useState<Set<string>>(new Set())
 
   const scrollTo = useCallback((index: number) => {
@@ -26,6 +29,7 @@ export default function PhotoStrip({ photos, title, contain = false, fillContain
     const onScroll = () => {
       const index = Math.round(el.scrollLeft / el.clientWidth)
       setCurrent(index)
+      setRevealed(previous => Math.max(previous, index + 1))
     }
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => el.removeEventListener('scroll', onScroll)
@@ -45,7 +49,7 @@ export default function PhotoStrip({ photos, title, contain = false, fillContain
       }} className={`flex overflow-x-auto snap-x snap-mandatory scrollbar-hide ${heightClass}`} style={{ overscrollBehaviorX: 'contain' }}>
         {photos.map((photo, index) => (
           <div key={photo.id} className={`relative flex-none w-full snap-center ${heightClass}`}>
-            {failed.has(photo.id) ? <p className="flex h-full items-center justify-center p-4 text-sm text-gray-500">This photo could not be loaded.</p> :
+            {index > revealed ? null : failed.has(photo.id) ? <p className="flex h-full items-center justify-center p-4 text-sm text-gray-500">This photo could not be loaded.</p> :
               <Image src={photo.url} alt={photo.caption ?? title} fill sizes="(max-width: 768px) 100vw, 900px" className={contain || gallery ? 'object-contain' : 'object-cover'} loading={index === 0 ? 'eager' : 'lazy'} onError={() => setFailed(previous => new Set([...previous, photo.id]))} />}
             {href && <Link href={href} aria-label={`Open ${title}`} className="absolute inset-0 focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white" draggable={false}
               onPointerDown={event => { pointerStart.current = { x: event.clientX, y: event.clientY }; dragged.current = false }}

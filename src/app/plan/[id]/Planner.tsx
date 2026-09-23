@@ -47,7 +47,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     try {
       const result = await sharePlan(trip.id, format, { budget: publishBudget, tripRating: publishRating, tags: publishTags })
       if (result.error) setPublishMessage(result.error)
-      else { setPublishFormat(null); router.push(`/?posted=${encodeURIComponent(trip.id)}`); router.refresh() }
+      else { setPublishFormat(null); router.push(`/?posted=${encodeURIComponent(trip.id)}`) }
     } catch { setPublishMessage('Could not publish your itinerary. Please try again.') }
     finally { setPublishing(false) }
   }

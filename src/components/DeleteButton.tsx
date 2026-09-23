@@ -20,7 +20,7 @@ export default function DeleteButton({ id, visibility, returnTo = '/', label = '
     try {
       const result = await deleteItinerary(id)
       if (result.error) setError(result.error)
-      else { router.push(returnTo); router.refresh() }
+      else { router.push(returnTo) }
     } catch { setError('Could not delete this post. Please try again.') }
     finally { deleting.current = false; setPending(false) }
   }
@@ -31,7 +31,7 @@ export default function DeleteButton({ id, visibility, returnTo = '/', label = '
     try {
       const result = await keepTripPrivate(id)
       if (result.error) setError(result.error)
-      else { router.push(`/plan/${id}`); router.refresh(); setConfirming(null) }
+      else { router.push(`/plan/${id}`); setConfirming(null) }
     } catch { setError('Could not make this trip private. Your trip is still saved; please try again.') }
     finally { deleting.current = false; setPending(false); setKeeping(false) }
   }

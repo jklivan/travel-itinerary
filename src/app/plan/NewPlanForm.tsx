@@ -41,7 +41,7 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
           const copied = saveStory ? await copyStoryToPlan(saveStory, result.id, placeCopyId.current) : await copyPlaceToPlan(savePlace!, result.id, placeCopyId.current)
           if (copied.error) { setError(`Your plan was saved, but the place couldn’t be added. ${copied.error}`); return }
         }
-        router.push(`/plan/${result.id}${importing ? '?import=1' : ''}`); router.refresh()
+        router.push(`/plan/${result.id}${importing ? '?import=1' : ''}`)
       }
     } catch { setError('Could not save. Your details are still here; please try again.') }
     finally { busy.current = false; setSaving(false) }
