@@ -8,7 +8,7 @@ import { Bookmark, Compass, Home, NotebookPen, Sparkles } from 'lucide-react'
 import useBottomToolbar from './useBottomToolbar'
 import PostTripDialog from './PostTripDialog'
 
-// Feed · Post · Explore · Plan · My Trips · Saved. Messages lives in the header.
+// Feed · Post · Explore · Plan · My Trips · Saved. Plan starts a new trip; Messages lives in the header.
 export default function BottomNav({ userId }: { pendingCount: number; userId: string | null }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -19,7 +19,8 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
   const isExplore = pathname.startsWith('/explore')
   const isTrips = pathname === '/trips'
   const isSaved = pathname === '/saved'
-  const isPlanner = pathname === '/testplan'
+  // Starting a trip (/plan) and the AI planner it links to both count as Plan.
+  const isPlanner = pathname === '/plan' || pathname === '/testplan'
 
   function cls(active: boolean) {
     return `flex min-w-0 flex-col items-center gap-0.5 px-1 py-2 transition-colors ${active ? 'text-[#242e25]' : 'text-[#8B6F4E] hover:text-[#485340]'}`
@@ -47,7 +48,7 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
           <span className={label}>Explore</span>
         </Link>
 
-        <Link href={userId ? '/testplan' : '/login'} aria-current={isPlanner ? 'page' : undefined} className={cls(isPlanner)}>
+        <Link href={userId ? '/plan' : '/login'} aria-current={isPlanner ? 'page' : undefined} className={cls(isPlanner)}>
           <span className={iconClass(isPlanner)}><Sparkles className="w-5 h-5" /></span>
           <span className={label}>Plan</span>
         </Link>

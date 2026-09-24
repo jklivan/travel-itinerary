@@ -6,6 +6,7 @@ import Image from 'next/image'
 import DeleteButton from '@/components/DeleteButton'
 import NewPlanForm from './NewPlanForm'
 import { fetchStockPhoto } from '@/lib/stockPhoto'
+import { ChevronRight, Sparkles } from 'lucide-react'
 
 export default async function PlansPage({ searchParams }: { searchParams: Promise<{ savePlace?: string; saveStory?: string }> }) {
   const { savePlace, saveStory } = await searchParams
@@ -37,6 +38,11 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
         <Image src="/brand/postcard-icon.svg" alt="" width={76} height={76} className="absolute right-1 top-1 rotate-[8deg] border-4 border-dashed border-[#c1ad93] shadow-sm" />
         <p className="mt-2 text-sm text-[#73786d]">Collect places now. Work out the details later.</p>
       </header>
+      <Link href="/testplan" className="group mb-5 flex items-center gap-3 rounded-2xl border border-[#c7d7cf] bg-[#edf1e9] p-4 text-[#2e4147] transition-colors hover:bg-[#e3ebe0]">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#59694f]/10 text-[#59694f]"><Sparkles size={20} /></span>
+        <span className="min-w-0 flex-1"><span className="block font-semibold">Plan with AI</span><span className="block text-sm text-[#59694f]">Ask where to go, using what you and your friends loved.</span></span>
+        <ChevronRight size={20} className="shrink-0 text-[#59694f] transition-transform group-hover:translate-x-0.5" />
+      </Link>
       <NewPlanForm saveStory={typeof saveStory === 'string' && saveStory.length <= 200 ? saveStory : undefined} savePlace={typeof savePlace === 'string' && savePlace.length <= 200 ? savePlace : undefined} />
     </section>
     <section className="mt-8" aria-labelledby="your-trips-heading">
