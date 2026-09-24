@@ -11,7 +11,9 @@ import { useRouter } from 'next/navigation'
 import { Plus, MapPin, LockKeyhole, CalendarDays, Check, Hotel, Utensils, Camera, Plane, Upload } from 'lucide-react'
 import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace, sharePlan } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
-import PlaceEntryForm, { StarRating } from '@/components/PlaceEntryForm'
+import PlaceEntryForm from '@/components/PlaceEntryForm'
+import PlaceEditForm, { type PlaceEditValues, type PlaceType } from '@/components/PlaceEditForm'
+import EventPhotoInput from '@/components/EventPhotoInput'
 import DeleteButton from '@/components/DeleteButton'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import PlanningMap from '@/components/PlanningMap'
@@ -21,7 +23,7 @@ import { DateFields, inputClass, buttonClass } from '../NewPlanForm'
 import { TAGS } from '@/lib/tags'
 import { getRecommendation } from '@/lib/placeRecommendation'
 
-type Place = { tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[] }
+type Place = { tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[]; mealType: string | null; alternative: string | null; description: string | null; link: string | null; address: string | null }
 type Trip = { postType: string; durationDays?: number | null; id: string; title: string; audience: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; items: Place[] }[] }
 const categories = [{ value: 'hotel', label: 'Hotels', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
 
@@ -141,9 +143,6 @@ function AddPlace({ trip, maxDay, onClose }: { trip: Trip; maxDay: number; onClo
   </section>
 }
 
-function DayField({ day, maxDay }: { day?: number | null; maxDay: number }) {
-  return <label className="block text-sm">Day (optional)<select name="day" defaultValue={day ?? ''} className={inputClass}><option value="">Unscheduled</option>{Array.from({ length: maxDay }, (_, index) => index + 1).map(value => <option key={value} value={value}>Day {value}</option>)}</select></label>
-}
 function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; maxDay: number }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
@@ -152,10 +151,21 @@ function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; m
   const [saved, setSaved] = useState(false)
   const [removing, setRemoving] = useState(false)
   const saving = useRef(false)
-  const [name, setName] = useState(place.name)
-  const [rating, setRating] = useState(place.rating ?? 0)
   const [placeId, setPlaceId] = useState(place.placeId ?? '')
+  const [photos, setPhotos] = useState(place.photos)
+  const [day, setDay] = useState(place.day === null ? '' : String(place.day))
+  const [uploading, setUploading] = useState(false)
   const category = categories.find(category => category.value === place.type) ?? categories[2]
+  async function save(values: PlaceEditValues) {
+    if (saving.current || uploading) return
+    saving.current = true; setBusy(true); setError('')
+    const data = new FormData()
+    for (const [key, value] of Object.entries({ name: values.name, placeId, status: place.status, rating: String(values.rating), notes: values.notes, day, mealType: values.mealType,
+      tags: JSON.stringify(values.tags), alternative: values.alternative, description: values.description, link: values.link, address: values.address, photos: JSON.stringify(photos) })) data.set(key, value)
+    try { const result = await editPlanPlace(place.id, data); if (result.error) setError(result.error); else { setEditing(false); setSaved(true); router.refresh() } }
+    catch { setError('Could not save. Your changes are still here; try again.') }
+    finally { saving.current = false; setBusy(false) }
+  }
   const Icon = category.Icon
   return <article className={`${planningStyles.place} ${styles[category.value]}`}>
       <div className={`${styles.card} ${planningStyles.card}`}>
@@ -173,20 +183,16 @@ function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; m
     </div>
     {place.type !== 'transport' && <PlacePeople key={`${place.placeId}:${place.name}:${place.destination}`} compact placeId={place.placeId ?? ''} name={place.name} location={place.destination} />}
     <div className={planningStyles.controls}>
-    {!editing ? <button onClick={() => { setName(place.name); setRating(place.rating ?? 0); setPlaceId(place.placeId ?? ''); setEditing(true); setError(''); setSaved(false) }} type="button" className="min-h-11 text-sm font-semibold text-[#59694f]">Edit details →</button> : <form className="w-full" onSubmit={async event => {
-      event.preventDefault(); if (saving.current) return
-      saving.current = true; setBusy(true); setError('')
-      const data = new FormData(event.currentTarget)
-      try { const result = await editPlanPlace(place.id, data); if (result.error) setError(result.error); else { setEditing(false); setSaved(true); router.refresh() } }
-      catch { setError('Could not save. Your changes are still here; try again.') }
-      finally { saving.current = false; setBusy(false) }
-    }}><fieldset disabled={busy} className="space-y-3"><label className="block text-sm">{place.type === 'transport' ? 'Transport name' : 'Place name'}{place.type === 'transport' ? <input name="name" value={name} onChange={event => setName(event.target.value)} required maxLength={240} className={inputClass} /> : <PlacesAutocomplete name="name" value={name} onChange={value => { setName(value); setPlaceId('') }} onSelect={(_main, _secondary, id) => setPlaceId(id ?? '')} type={place.type === 'food_drink' ? 'restaurant' : place.type === 'hotel' ? 'hotel' : 'activity'} city={place.destination} required maxLength={240} className={inputClass} />}</label>
-      <input type="hidden" name="placeId" value={placeId} />
-      <input type="hidden" name="status" value={place.status} />
-      <input type="hidden" name="rating" value={rating} /><div><p className="mb-1 text-sm">Your rating (optional)</p><StarRating value={rating} onChange={setRating} /></div>
-      <label className="block text-sm">Notes<textarea name="notes" defaultValue={place.notes ?? ''} maxLength={8000} rows={3} className={inputClass} /></label><DayField day={place.day} maxDay={maxDay} />
-      <div className="flex gap-3"><button className={buttonClass}>{busy ? 'Saving…' : 'Save changes'}</button><button type="button" onClick={() => setEditing(false)} className="px-3 text-sm">Cancel</button></div>
-    </fieldset>{error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}</form>}
+    {!editing ? <button onClick={() => { setPlaceId(place.placeId ?? ''); setPhotos(place.photos); setDay(place.day === null ? '' : String(place.day)); setEditing(true); setError(''); setSaved(false) }} type="button" className="min-h-11 text-sm font-semibold text-[#59694f]">Edit details →</button>
+      : <div className="w-full">
+        {/* Same fields as the trip editor, plus photos and the day for this plan. */}
+        <PlaceEditForm type={category.value as PlaceType} city={place.destination} busy={busy || uploading} saveLabel="Save changes" onPlaceIdChange={setPlaceId} onClose={() => setEditing(false)} onSave={values => void save(values)}
+          initial={{ name: place.name, mealType: place.mealType ?? '', rating: place.rating ?? 0, notes: place.notes ?? '', tags: place.tags, isHighlight: false, alternative: place.alternative ?? '', description: place.description ?? '', link: place.link ?? '', address: place.address ?? '' }}>
+          <div className="space-y-1"><p className="text-xs text-[#7a7b70]">Photos</p><EventPhotoInput photos={photos} name={place.name} onChange={setPhotos} onBusyChange={setUploading} /></div>
+          <label className="block text-xs text-[#7a7b70]">Day (optional)<select value={day} onChange={event => setDay(event.target.value)} className={inputClass}><option value="">Unscheduled</option>{Array.from({ length: maxDay }, (_, index) => index + 1).map(value => <option key={value} value={value}>Day {value}</option>)}</select></label>
+        </PlaceEditForm>
+        {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+      </div>}
     {saved && <p role="status" className="flex items-center gap-1 text-xs text-[#59694f]"><Check size={14} />Saved</p>}
     {editing && <div className="w-full">{!removing ? <button type="button" aria-label={`Delete ${place.name}`} className="min-h-11 text-xs text-red-700" onClick={() => setRemoving(true)}>Delete place</button> : <div className="text-sm"><p>Delete this place and its notes? The rest of your trip will stay.</p><button type="button" disabled={busy} className="min-h-11 pr-4 text-red-700" onClick={async () => {
       if (saving.current) return

@@ -78,6 +78,22 @@ test('editing status and schedule preserves photos and rating; legacy day zero n
   assert.equal(h.items[0].planningStatus, 'visited'); assert.equal(h.items[0].rating, 4); assert.deepEqual(h.items[0].photoUrls, ['/photo.jpg'])
   assert.ok((await h.actions.editPlanPlace('place', form())).success); assert.equal(h.items[0].dayIndex, null)
 })
+test('plan edits save the same fields as the trip editor, including photos', async () => {
+  const h = harness()
+  const result = await h.actions.editPlanPlace('place', form({ name: 'Cafe', mealType: 'lunch,drinks', tags: JSON.stringify(['Hidden Gem', '__must']), alternative: 'Bar Nuovo', description: 'Tiny espresso bar', link: 'https://cafe.example', address: 'Via Roma 1', photos: JSON.stringify(['/new-1.jpg', 'https://blob.example/new-2.jpg']) }))
+  assert.ok(result.success)
+  const item = h.items[0]
+  assert.equal(item.mealType, 'lunch,drinks'); assert.deepEqual([...item.tags], ['Hidden Gem', '__must']); assert.equal(item.alternative, 'Bar Nuovo')
+  assert.equal(item.description, 'Tiny espresso bar'); assert.equal(item.link, 'https://cafe.example'); assert.equal(item.address, 'Via Roma 1')
+  assert.deepEqual([...item.photoUrls], ['/new-1.jpg', 'https://blob.example/new-2.jpg']); assert.equal(item.photoUrl, '/new-1.jpg')
+  assert.ok((await h.actions.editPlanPlace('place', form({ name: 'Cafe', photos: '[]' }))).success)
+  assert.deepEqual([...h.items[0].photoUrls], []); assert.equal(h.items[0].photoUrl, null)
+})
+test('plan edits reject unsafe links, photos, and meal types without saving', async () => {
+  for (const values of [{ link: 'javascript:alert(1)' }, { photos: JSON.stringify(['//evil.example/x.jpg']) }, { mealType: 'brunch' }, { tags: 'not json' }]) {
+    const h = harness(); assert.ok((await h.actions.editPlanPlace('place', form(values))).error); assert.equal(h.writes.length, 0)
+  }
+})
 test('invalid day/status/category cannot mutate saved data', async () => {
   for (const values of [{ day: '0' }, { day: '366' }, { day: '1.5' }, { status: 'bad' }]) {
     const h = harness(); assert.ok((await h.actions.editPlanPlace('place', form(values))).error); assert.equal(h.writes.length, 0)

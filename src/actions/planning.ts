@@ -33,6 +33,14 @@ function duration(form: FormData) {
 function refresh(id: string, userId: string) {
   for (const path of ['/', '/plan', `/plan/${id}`, `/itinerary/${id}`, `/user/${userId}`, '/explore']) revalidatePath(path)
 }
+function stringList(form: FormData, key: string, limit: number, maxLength: number) {
+  if (!form.has(key)) return [] as string[]
+  let values: unknown
+  try { values = JSON.parse(text(form, key, 100000)) } catch { throw new InputError(`Please check ${key}.`) }
+  if (!Array.isArray(values) || values.length > limit || values.some(value => typeof value !== 'string' || value.length > maxLength)) throw new InputError(`Please check ${key}.`)
+  return values as string[]
+}
+const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery']
 function message(error: unknown) {
   return { error: error instanceof InputError ? error.message : 'Could not save. Your changes are still here; please try again.' }
 }
@@ -96,16 +104,9 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
     const rating = Number(form.get('rating') ?? 0)
     if (!Number.isInteger(rating) || rating < 0 || rating > 5) throw new InputError('Choose a rating from 1 to 5, or leave it blank.')
     const mealType = form.has('mealType') ? text(form, 'mealType', 100) : ''
-    if (mealType && mealType.split(',').some(value => !['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'].includes(value))) throw new InputError('Choose a meal type from the available tags.')
-    function stringList(key: string, limit: number, maxLength: number) {
-      if (!form.has(key)) return [] as string[]
-      let values: unknown
-      try { values = JSON.parse(text(form, key, 100000)) } catch { throw new InputError(`Please check ${key}.`) }
-      if (!Array.isArray(values) || values.length > limit || values.some(value => typeof value !== 'string' || value.length > maxLength)) throw new InputError(`Please check ${key}.`)
-      return values as string[]
-    }
-    const tags = stringList('tags', 40, 100)
-    const photoUrls = stringList('photos', 20, 4096)
+    if (mealType && mealType.split(',').some(value => !MEAL_TYPES.includes(value))) throw new InputError('Choose a meal type from the available tags.')
+    const tags = stringList(form, 'tags', 40, 100)
+    const photoUrls = stringList(form, 'photos', 20, 4096)
     if (photoUrls.some(url => !/^(https:\/\/|\/(?!\/))/.test(url))) throw new InputError('Please choose valid photos.')
 
     if (!name || !destinationName || !['hotel', 'food_drink', 'activity', 'transport'].includes(type) || !/^[a-f0-9-]{36}$/.test(clientId)) return { error: 'Enter a place name and destination.' }
@@ -146,6 +147,27 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     const rating = form.has('rating') ? Number(form.get('rating')) : undefined
     if (rating !== undefined && (!Number.isInteger(rating) || rating < 0 || rating > 5)) throw new InputError('Choose a rating from 1 to 5, or leave it blank.')
     const day = text(form, 'day', 4)
+    // The rest match the trip editor's fields; each is only changed when the form sends it.
+    const extra: { mealType?: string | null; tags?: string[]; alternative?: string | null; description?: string | null; link?: string | null; address?: string | null; photoUrls?: string[]; photoUrl?: string | null } = {}
+    if (form.has('mealType')) {
+      const mealType = text(form, 'mealType', 100)
+      if (mealType && mealType.split(',').some(value => !MEAL_TYPES.includes(value))) throw new InputError('Choose a meal type from the available tags.')
+      extra.mealType = mealType || null
+    }
+    if (form.has('tags')) extra.tags = stringList(form, 'tags', 40, 100)
+    if (form.has('alternative')) extra.alternative = text(form, 'alternative', 240) || null
+    if (form.has('description')) extra.description = text(form, 'description', 8000) || null
+    if (form.has('address')) extra.address = text(form, 'address', 500) || null
+    if (form.has('link')) {
+      const link = text(form, 'link', 2048)
+      if (link && !/^https?:\/\//i.test(link)) throw new InputError('Enter a website link starting with http:// or https://.')
+      extra.link = link || null
+    }
+    if (form.has('photos')) {
+      const photoUrls = stringList(form, 'photos', 20, 4096)
+      if (photoUrls.some(url => !/^(https:\/\/|\/(?!\/))/.test(url))) throw new InputError('Please choose valid photos.')
+      extra.photoUrls = photoUrls; extra.photoUrl = photoUrls[0] ?? null
+    }
     if (!name || !['considering', 'booked', 'visited'].includes(status)) return { error: 'Enter a place name and choose a status.' }
     if (day && (!/^\d+$/.test(day) || Number(day) < 1 || Number(day) > 365)) return { error: 'Choose a day from 1 to 365, or leave it unscheduled.' }
     const owned = { id: itemId, destination: { itinerary: { userId } } }
@@ -156,7 +178,7 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     await prisma.$transaction(async tx => {
       const zeroBased = await tx.destItem.count({ where: { destinationId: item.destinationId, dayIndex: 0, type: { not: 'hotel' } } })
       if (zeroBased) await tx.destItem.updateMany({ where: { destinationId: item.destinationId, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
-      const result = await tx.destItem.updateMany({ where: owned, data: { name, placeId: nextPlaceId, ...(identityChanged ? { lat: null, lng: null, address: null, link: null, description: null } : {}), notes: notes || null, ...(rating === undefined ? {} : { rating: rating || null }), planningStatus: status, dayIndex: day ? Number(day) : null } })
+      const result = await tx.destItem.updateMany({ where: owned, data: { name, placeId: nextPlaceId, ...(identityChanged ? { lat: null, lng: null, address: null, link: null, description: null } : {}), ...extra, notes: notes || null, ...(rating === undefined ? {} : { rating: rating || null }), planningStatus: status, dayIndex: day ? Number(day) : null } })
       if (!result.count) throw new InputError(unavailable)
     })
     refresh(item.destination.itineraryId, userId)

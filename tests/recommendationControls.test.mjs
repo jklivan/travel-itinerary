@@ -30,9 +30,10 @@ function editor(path) {
     return name.startsWith('@/') ? {} : require(name)
   } }
   const source = readFileSync(new URL(path, import.meta.url), 'utf8')
-  const code = ts.transpileModule(source + '\nexport { ItemEditForm };', { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
+  // The trip editor's per-place form now lives in the shared PlaceEditForm (default export).
+  const code = ts.transpileModule(source + (path.includes('PlaceEditForm') ? '' : '\nexport { ItemEditForm };'), { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
   vm.runInNewContext(code, context)
-  return { picker, render(props) { cursor = 0; return context.exports.ItemEditForm(props) } }
+  return { picker, render(props) { cursor = 0; return (context.exports.ItemEditForm ?? context.exports.default)(props) } }
 }
 function find(node, predicate) {
   if (!node || typeof node !== 'object') return
@@ -40,7 +41,7 @@ function find(node, predicate) {
   const children = Array.isArray(node) ? node : [node.props?.children]
   for (const child of children) { const found = find(child, predicate); if (found) return found }
 }
-for (const path of ['../src/app/itinerary/[id]/edit/EditForm.tsx', '../src/app/create/guided/page.tsx']) {
+for (const path of ['../src/components/PlaceEditForm.tsx', '../src/app/create/guided/page.tsx']) {
   test(`${path}: stamp click updates parent immediately; Cancel restores previous recommendation`, () => {
     const ui = editor(path)
     let item = { type: 'activity', name: 'Museum', mealType: '', rating: 5, notes: 'Original notes', tags: ['Cultural', '__avoid'], isHighlight: false, description: '', link: '', address: '', alternative: '', photo: '', placeId: '' }
@@ -59,7 +60,7 @@ for (const path of ['../src/app/itinerary/[id]/edit/EditForm.tsx', '../src/app/c
   })
 }
 
-for (const path of ['../src/app/itinerary/[id]/edit/EditForm.tsx', '../src/app/create/guided/page.tsx']) {
+for (const path of ['../src/components/PlaceEditForm.tsx', '../src/app/create/guided/page.tsx']) {
   test(`${path}: restaurant notes accept and save multiple lines`, () => {
     const ui = editor(path)
     let saved
@@ -69,14 +70,14 @@ for (const path of ['../src/app/itinerary/[id]/edit/EditForm.tsx', '../src/app/c
     assert.ok(notes, 'Notes must use a multiline textarea')
     notes.props.onChange({ target: { value: 'Great pasta\nBook ahead' } })
     tree = ui.render(props)
-    const save = find(tree, node => node.type === 'button' && JSON.stringify(node.props.children).includes(' Save'))
+    const save = find(tree, node => node.type === 'button' && /\bSave\b/.test(JSON.stringify(node.props.children)))
     assert.ok(save)
     save.props.onClick()
     assert.equal(saved.notes, 'Great pasta\nBook ahead')
   })
 }
 
-for (const path of ['../src/app/itinerary/[id]/edit/EditForm.tsx', '../src/app/create/guided/page.tsx']) {
+for (const path of ['../src/components/PlaceEditForm.tsx', '../src/app/create/guided/page.tsx']) {
   test(`${path}: open event edits reach trip draft immediately and Cancel restores original`, () => {
     const ui = editor(path)
     let item = { type: 'food_drink', name: 'Cafe', mealType: '', rating: 4, notes: 'Original', tags: [], isHighlight: false, description: '', link: '', address: '', alternative: '', photos: [], photo: '', placeId: '' }

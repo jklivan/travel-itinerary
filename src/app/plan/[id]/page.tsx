@@ -20,6 +20,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
     destinations: trip.destinations.map(d => ({ id: d.id, name: d.name, country: d.country, items: d.items.map(item => ({ id: item.id, name: item.name, placeId: item.placeId, lat: item.lat, lng: item.lng, type: item.type, notes: item.notes, tags: item.tags, status: item.planningStatus,
       day: item.dayIndex === null ? null : item.dayIndex + (d.items.some(i => i.type !== 'hotel' && i.dayIndex === 0) ? 1 : 0),
       photos: item.photoUrls.length ? item.photoUrls : item.photoUrl ? [item.photoUrl] : [], rating: item.rating,
+      mealType: item.mealType, alternative: item.alternative, description: item.description, link: item.link, address: item.address,
     })) })),
   }} />
 }

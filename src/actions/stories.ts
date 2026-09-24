@@ -31,6 +31,8 @@ export async function storySources() {
     }),
   ])
   return { isPrivate: user?.isPrivate ?? true, trips: trips.map(trip => ({ id: trip.id, title: trip.title, isPlan: trip.isPlan, photos: trip.photos.map(photo => photo.url),
+    // Name and country kept apart so a new place lands in the existing destination rather than a near-duplicate.
+    destinations: trip.destinations.filter(destination => destination.name !== 'Destination to decide').map(destination => ({ name: destination.name, country: destination.country })),
     places: trip.destinations.flatMap(destination => destination.items.map(item => ({ id: item.id, name: item.name, type: item.type,
       destination: [destination.name, destination.country].filter(Boolean).join(', '), photos: eventPhotos(item.photoUrls, item.photoUrl),
     }))),
