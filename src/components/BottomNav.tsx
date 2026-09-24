@@ -8,7 +8,7 @@ import { Bookmark, Compass, Home, NotebookPen } from 'lucide-react'
 import useBottomToolbar from './useBottomToolbar'
 import PostTripDialog from './PostTripDialog'
 
-// Feed · Explore · Post · My Trips · Saved. Messages lives in the header.
+// Feed · Post · Explore · My Trips · Saved. Messages lives in the header.
 export default function BottomNav({ userId }: { pendingCount: number; userId: string | null }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -36,15 +36,15 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
           <span className={label}>Feed</span>
         </Link>
 
-        <Link href="/explore" aria-current={isExplore ? 'page' : undefined} className={cls(isExplore)}>
-          <span className={iconClass(isExplore)}><Compass className="w-5 h-5" /></span>
-          <span className={label}>Explore</span>
-        </Link>
-
         <button type="button" aria-haspopup="dialog" onClick={() => userId ? setPosting(true) : router.push('/login')} className={cls(posting)}>
           <span className={iconClass(false)}><Image src="/brand/postcard-icon.svg" alt="" width={24} height={24} /></span>
           <span className={label}>Post</span>
         </button>
+
+        <Link href="/explore" aria-current={isExplore ? 'page' : undefined} className={cls(isExplore)}>
+          <span className={iconClass(isExplore)}><Compass className="w-5 h-5" /></span>
+          <span className={label}>Explore</span>
+        </Link>
 
         <Link href={userId ? '/trips' : '/login'} aria-current={isTrips ? 'page' : undefined} className={cls(isTrips)}>
           <span className={iconClass(isTrips)}><NotebookPen className="w-5 h-5" /></span>
