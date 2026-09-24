@@ -220,6 +220,9 @@ export default async function ItineraryPage({
 
   if (it.visibility === 'draft' && !isOwn) notFound()
   if (it.visibility === 'draft' && isOwn && it.isPlan) redirect(`/plan/${it.id}`)
+  // Plan-based trips are edited in the planner. Link there directly: the editor's server redirect
+  // to /plan fails during in-app navigation and leaves a blank page.
+  const editHref = it.isPlan ? `/plan/${it.id}` : `/itinerary/${it.id}/edit`
 
 
   const [followRecord, bucketItem] = await Promise.all([
@@ -481,7 +484,7 @@ export default async function ItineraryPage({
 
     return (
       <div key={item.id} id={`place-${item.id}`} className="scroll-mt-24">
-      <PlaceDetailsCard messageHref={!isOwn ? `/messages/${it.user.id}?place=${encodeURIComponent(item.id)}` : undefined} editHref={isOwn ? `/itinerary/${it.id}/edit` : undefined} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} className={`${styles.card} ${styles[type]} ${isOwn ? styles.ownerPolaroid : ''} ${recommendation !== 'none' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
+      <PlaceDetailsCard messageHref={!isOwn ? `/messages/${it.user.id}?place=${encodeURIComponent(item.id)}` : undefined} editHref={isOwn ? editHref : undefined} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} className={`${styles.card} ${styles[type]} ${isOwn ? styles.ownerPolaroid : ''} ${recommendation !== 'none' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
         {recommendation === 'must' && type !== 'hotel' && <Image src="/must-do-stamp.png" alt="Must do" width={60} height={54} unoptimized className={styles.mustDoStamp} />}
         {recommendation === 'must' && type === 'hotel' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><BedDouble size={24} aria-hidden="true" /><span>Must stay</span></span>}
         {recommendation === 'avoid' && <span className={`${styles.mustDoStamp} ${styles.textStamp} ${styles.avoidStamp}`}><Ban size={24} aria-hidden="true" /><span>Avoid</span></span>}
@@ -530,7 +533,7 @@ export default async function ItineraryPage({
 
         {it.visibility === 'draft' && (
           <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 font-medium">
-            Draft — only visible to you. <Link href={`/itinerary/${it.id}/edit`} className="underline">Edit &amp; publish</Link>
+            Draft — only visible to you. <Link href={editHref} className="underline">Edit &amp; publish</Link>
           </div>
         )}
 
@@ -853,7 +856,7 @@ export default async function ItineraryPage({
         </div>}
         {isOwn && <section aria-label="Manage trip" className="mt-8 border-t border-[#c1ad93] pt-5">
           <div className="flex flex-wrap items-center gap-2">
-            <Link href={`/itinerary/${it.id}/edit`} className="inline-flex min-h-11 items-center rounded-full border border-[#c1ad93] px-4 py-2 text-sm font-medium text-[#485340] hover:bg-[#dfd3c2]">Edit</Link>
+            <Link href={editHref} className="inline-flex min-h-11 items-center rounded-full border border-[#c1ad93] px-4 py-2 text-sm font-medium text-[#485340] hover:bg-[#dfd3c2]">Edit</Link>
             <Link href={`/plan/${it.id}`} className="inline-flex min-h-11 items-center rounded-full bg-[#59694f] px-4 py-2 text-sm font-semibold text-white">Add a place</Link>
             <DeleteButton id={it.id} visibility={it.visibility} />
           </div>
