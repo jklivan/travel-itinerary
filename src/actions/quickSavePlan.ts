@@ -32,7 +32,7 @@ export async function savePlaceToNewPlan(input: { itemId?: string; storyId?: str
         dayIndex: null, planningStatus: 'considering',
       } } } },
     }, select: { id: true, title: true } })
-    for (const path of ['/plan', `/plan/${id}`, `/user/${userId}`]) revalidatePath(path)
+    for (const path of ['/plan', `/plan/${id}`, `/user/${userId}`, '/trips']) revalidatePath(path)
     return { trip }
   } catch (error) {
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {

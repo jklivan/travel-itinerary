@@ -287,6 +287,8 @@ model Story {
   lng Float?
   photoUrl String
   caption String @db.VarChar(500)
+  // True when posting this snapshot put its photo onto the place, so deleting the snapshot removes it again.
+  photoAddedToPlace Boolean @default(false)
   createdAt DateTime @default(now())
   expiresAt DateTime
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

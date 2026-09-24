@@ -475,5 +475,6 @@ export async function deleteItinerary(id: string): Promise<{ error?: string; suc
   revalidatePath('/')
   revalidatePath('/plan')
   revalidatePath(`/user/${session.user.id}`)
+  revalidatePath('/trips')
   return { success: true }
 }

@@ -124,7 +124,7 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
             {(story.authorId !== userId || !story.hasTrip) && <button type="button" onClick={() => setSaveOpen(true)} aria-haspopup="dialog"><span>{saved.includes(story.id) ? <Check size={18} /> : <Plus size={19} />}</span>Save to a trip</button>}
             {story.authorId === userId && <button type="button" onClick={() => setConfirmDelete(true)}><Trash2 size={16} />Delete story</button>}
           </div>
-          {confirmDelete && <div className={styles.deletePrompt}><p>Remove this story now?</p><button type="button" disabled={deleting} onClick={async () => {
+          {confirmDelete && <div className={styles.deletePrompt}><p>{story.removesTripPhoto ? `Remove this story now? Its photo will also come off ${story.placeName} in your trip.` : 'Remove this story now?'}</p><button type="button" disabled={deleting} onClick={async () => {
             setDeleting(true); setError('')
             try {
               const result = await deleteStory(story.id)

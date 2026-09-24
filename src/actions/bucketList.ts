@@ -36,6 +36,7 @@ export async function addToBucketList(itineraryId: string, folderId?: string | n
   })
   revalidatePath(`/itinerary/${itineraryId}`)
   revalidatePath(`/user/${session.user.id}`)
+  revalidatePath('/saved')
 }
 
 export async function removeFromBucketList(itineraryId: string) {
@@ -47,4 +48,5 @@ export async function removeFromBucketList(itineraryId: string) {
   })
   revalidatePath(`/itinerary/${itineraryId}`)
   revalidatePath(`/user/${session.user.id}`)
+  revalidatePath('/saved')
 }

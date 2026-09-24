@@ -26,6 +26,7 @@ export async function saveFolder(name: string, folderId?: string) {
       ? await prisma.savedFolder.update({ where: { id: folderId, userId }, data: { name: name.trim() }, select: { id: true, name: true } })
       : await prisma.savedFolder.create({ data: { userId, name: name.trim() }, select: { id: true, name: true } })
     revalidatePath(`/user/${userId}`)
+    revalidatePath('/saved')
     return { folder }
   } catch (error) {
     if ((error as { code?: string }).code === 'P2002') return { error: 'You already have a folder with that name.' }
@@ -39,5 +40,6 @@ export async function deleteSavedFolder(folderId: string) {
   if (typeof folderId !== 'string' || !folderId) return { error: 'Folder not found.' }
   await prisma.savedFolder.deleteMany({ where: { id: folderId, userId: session.user.id } })
   revalidatePath(`/user/${session.user.id}`)
+  revalidatePath('/saved')
   return { success: true }
 }

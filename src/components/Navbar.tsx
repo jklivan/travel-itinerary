@@ -2,6 +2,7 @@ import Link from 'next/link'
 import PostcardBrand from './PostcardBrand'
 import { auth } from '@/auth'
 import NotificationBell from './NotificationBell'
+import HeaderMessagesLink from './HeaderMessagesLink'
 import { User } from 'lucide-react'
 
 export default async function Navbar() {
@@ -17,6 +18,7 @@ export default async function Navbar() {
         <div className="flex items-center gap-2 shrink-0">
           {session?.user ? (
             <>
+              <HeaderMessagesLink />
               <NotificationBell />
               <Link href="/settings"
                 className="text-xs text-white/70 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors hidden sm:block">

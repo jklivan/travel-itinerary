@@ -8,8 +8,10 @@ import { deleteSavedFolder, saveFolder } from '@/actions/savedFolders'
 
 type FolderSummary = { id: string; name: string; count: number }
 
-export default function SavedFolders({ userId, folders, selected, total }: {
+export default function SavedFolders({ userId, folders, selected, total, basePath }: {
   userId: string; folders: FolderSummary[]; selected: string; total: number
+  // Page the folder links point at. Defaults to the profile's Saved tab.
+  basePath?: string
 }) {
   const router = useRouter()
   const [editing, setEditing] = useState<string | null>(null)
@@ -18,7 +20,8 @@ export default function SavedFolders({ userId, folders, selected, total }: {
   const [deleting, setDeleting] = useState(false)
   const [pending, startTransition] = useTransition()
   const active = folders.find(folder => folder.id === selected)
-  const base = `/user/${userId}?tab=bucket`
+  const base = basePath ?? `/user/${userId}?tab=bucket`
+  const folderHref = (id: string) => `${base}${base.includes('?') ? '&' : '?'}folder=${encodeURIComponent(id)}`
   const options = [{ id: '', name: 'All saved', count: total }, ...folders]
 
   return (
@@ -28,7 +31,7 @@ export default function SavedFolders({ userId, folders, selected, total }: {
         <button type="button" disabled={pending} onClick={() => { setEditing('new'); setName(''); setError(''); setDeleting(false) }} className="flex items-center gap-1 text-sm text-[#485340]"><Plus size={16} />New folder</button>
       </div>
       <nav aria-label="Saved folders" className="flex flex-wrap gap-2">
-        {options.map(folder => <Link key={folder.id} href={folder.id ? `${base}&folder=${encodeURIComponent(folder.id)}` : base} aria-current={selected === folder.id ? 'page' : undefined}
+        {options.map(folder => <Link key={folder.id} href={folder.id ? folderHref(folder.id) : base} aria-current={selected === folder.id ? 'page' : undefined}
           className={`max-w-full rounded-lg border px-3 py-2 text-sm break-words ${selected === folder.id ? 'border-[#242e25] bg-[#242e25] text-white' : 'border-[#dfd3c2] text-[#485340] hover:bg-[#dfd3c2]'}`}>
           {folder.name} <span className="opacity-70">({folder.count})</span>
         </Link>)}
@@ -45,7 +48,7 @@ export default function SavedFolders({ userId, folders, selected, total }: {
             const result = await saveFolder(name, editing === 'new' ? undefined : editing)
             if (result.error) { setError(result.error); return }
             setEditing(null)
-            router.push(`${base}&folder=${encodeURIComponent(result.folder!.id)}`)
+            router.push(folderHref(result.folder!.id))
           } catch { setError('Could not save your folder. Please try again.') }
         })
       }}>

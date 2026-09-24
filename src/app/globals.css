@@ -82,5 +82,5 @@ input, textarea, select {
 @media(max-width:350px) { .postcard-wordmark { font-size:28px; } .postcard-waves { width:26px; } }
 
 /* One clear typographic hierarchy across Postcard navigation and trip cards. */
-.app-bottom-nav a > span:not(.absolute) { text-transform:uppercase; letter-spacing:.12em; font-size:9px; line-height:1.25; }
+.app-bottom-nav a > span:not(.absolute), .app-bottom-nav button > span:not(.absolute) { text-transform:uppercase; letter-spacing:.12em; font-size:9px; line-height:1.25; }
 .postcard-wordmark { white-space:nowrap; }

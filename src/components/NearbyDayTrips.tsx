@@ -12,6 +12,9 @@ export default function NearbyDayTrips({ entries }: { entries: Entry[] }) {
   const [position, setPosition] = useState<Position | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // After a failed location request the full list would look like "near me" results (e.g. Italy),
+  // so it stays hidden until the viewer chooses to browse everything.
+  const [browseAll, setBrowseAll] = useState(false)
   const safetyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const nearby = useMemo(() => entries.map(entry => ({
@@ -23,7 +26,7 @@ export default function NearbyDayTrips({ entries }: { entries: Entry[] }) {
     .sort((a, b) => position ? (a.miles ?? Infinity) - (b.miles ?? Infinity) : 0), [entries, position])
 
   function useLocation() {
-    setError('')
+    setError(''); setBrowseAll(false)
     if (!navigator.geolocation) {
       setError('Location is unavailable in this browser. You can still browse all day trips.')
       return
@@ -35,7 +38,7 @@ export default function NearbyDayTrips({ entries }: { entries: Entry[] }) {
     // safety timer covers the entire request including the permission phase.
     safetyTimer.current = setTimeout(() => {
       setLoading(false)
-      setError('Location request timed out. Make sure location access is allowed and try again.')
+      setError('We couldn’t get your location in time. Check that location access is allowed for Postcard, then tap Near me again.')
     }, 8000)
     try {
       navigator.geolocation.getCurrentPosition(
@@ -47,8 +50,8 @@ export default function NearbyDayTrips({ entries }: { entries: Entry[] }) {
         result => {
           clearTimeout(safetyTimer.current)
           setError(result.code === result.PERMISSION_DENIED
-            ? 'Location permission was declined. You can still browse all day trips.'
-            : 'Could not get your location. Please try again or browse all day trips.')
+            ? 'Location is turned off for Postcard, so we can’t tell which trips are near you. On iPhone: Settings → Postcard (or Safari) → Location → While Using, then tap Near me again.'
+            : 'We couldn’t get your location. Check that Location Services is on, then tap Near me again.')
           setLoading(false)
         },
         { enableHighAccuracy: false, maximumAge: 5 * 60 * 1000, timeout: 6000 },
@@ -56,7 +59,7 @@ export default function NearbyDayTrips({ entries }: { entries: Entry[] }) {
     } catch {
       clearTimeout(safetyTimer.current)
       setLoading(false)
-      setError('Could not access your location. You can still browse all day trips.')
+      setError('We couldn’t access your location. Check that location access is allowed for Postcard, then tap Near me again.')
     }
   }
 
@@ -73,10 +76,11 @@ export default function NearbyDayTrips({ entries }: { entries: Entry[] }) {
         ? <button type="button" onClick={() => setPosition(null)} className="min-h-10 rounded-full border border-[#cbbda8] px-4 text-sm font-medium text-[#485340]">Show all trips</button>
         : <button type="button" onClick={useLocation} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#355650] px-4 text-sm font-semibold text-white disabled:opacity-60"><LocateFixed size={16} />{loading ? 'Finding you…' : 'Near me'}</button>}
     </div>
-    {error && <p role="status" className="mb-4 text-sm text-[#8B6F4E]">{error}</p>}
+    {position && nearby.length > 0 && <p role="status" className="mb-3 text-sm font-medium text-[#59694f]">Showing day trips within 50 miles of you</p>}
+    {error && !browseAll && <div role="alert" className="mb-4 rounded-2xl border border-[#e0c9a6] bg-[#fdf6ea] p-4 text-sm text-[#6b4f2e]"><p>{error}</p><button type="button" onClick={() => setBrowseAll(true)} className="mt-3 min-h-10 rounded-full border border-[#cbbda8] px-4 font-medium text-[#485340]">Show all day trips instead</button></div>}
     {position && nearby.length === 0 && <p role="status" className="rounded-xl border border-dashed border-[#dfd3c2] p-6 text-center text-sm text-[#73786d]">No day trips within 50 miles yet. Try all trips to explore farther away.</p>}
     <div className="mx-auto flex w-full max-w-xl flex-col gap-3 sm:gap-5">
-      {nearby.map(entry => <div key={entry.id}>
+      {(!error || browseAll) && nearby.map(entry => <div key={entry.id}>
         {entry.miles !== null && <p className="mb-1 px-1 text-xs font-medium text-[#59694f]">{Math.round(entry.miles)} miles from you</p>}
         {entry.card}
       </div>)}

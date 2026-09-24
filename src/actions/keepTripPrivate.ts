@@ -9,6 +9,6 @@ export async function keepTripPrivate(id: string): Promise<{ error?: string; suc
   if (!userId) return { error: 'Please sign in to manage your trip.' }
   const result = await prisma.itinerary.updateMany({ where: { id, userId }, data: { visibility: 'draft' } })
   if (!result.count) return { error: 'This trip is unavailable or belongs to another account.' }
-  for (const path of ['/', '/explore', '/plan', `/plan/${id}`, `/itinerary/${id}`, `/user/${userId}`, '/notifications']) revalidatePath(path)
+  for (const path of ['/', '/explore', '/plan', `/plan/${id}`, `/itinerary/${id}`, `/user/${userId}`, '/trips', '/notifications']) revalidatePath(path)
   return { success: true }
 }

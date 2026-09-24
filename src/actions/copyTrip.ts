@@ -43,7 +43,7 @@ export async function copyTripToPlan(input: CopyInput): Promise<{ id?: string; e
         }
       }) },
     } })
-    for (const path of ['/plan', `/plan/${id}`, `/user/${userId}`]) revalidatePath(path)
+    for (const path of ['/plan', `/plan/${id}`, `/user/${userId}`, '/trips']) revalidatePath(path)
     return { id }
   } catch (error) {
     // Concurrent retries can race the preflight read; the unique ID still deduplicates them.

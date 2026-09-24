@@ -21,7 +21,8 @@ function harness(user = 'owner', itemType = 'hotel') {
       create: async ({ data }) => { rows.push(data); return data },
       findMany: async query => { queries.push(query); return query.where?.id?.in ? rows.filter(row => query.where.id.in.includes(row.id)) : rows },
       createMany: async ({ data }) => { rows.push(...data); return { count: data.length } },
-      findFirst: async query => { queries.push(query); return rows.find(row => row.id === query.where.id && row.expiresAt > query.where.expiresAt.gt) },
+      findFirst: async query => { queries.push(query); return rows.find(row => row.id === query.where.id && (!query.where.expiresAt || row.expiresAt > query.where.expiresAt.gt) && (!query.where.userId || row.userId === query.where.userId)) },
+      count: async ({ where }) => rows.filter(row => row.sourceItemId === where.sourceItemId && row.photoUrl === where.photoUrl && row.photoAddedToPlace === where.photoAddedToPlace).length,
       deleteMany: async ({ where }) => { const index = rows.findIndex(row => row.id === where.id && row.userId === where.userId); if (index < 0) return { count: 0 }; rows.splice(index, 1); return { count: 1 } },
     },
     destItem: { findFirst: async ({ where }) => where.destination.itinerary.userId === 'owner' ? item : null, updateMany: async ({data}) => { Object.assign(item, data); return { count: 1 } }, aggregate: async () => ({ _max: { order: -1, groupIndex: -1 } }), create: async ({ data }) => { const created = { ...data, id: 'new-place', lat: null, lng: null }; addedItems.push(created); return created } },
@@ -165,14 +166,22 @@ test('deletion is scoped to current account', async () => {
   assert.equal(h.rows[0].expiresAt - h.rows[0].createdAt, 24 * 60 * 60 * 1000)
 })
 
-test('story photos remain on the source place after story deletion and retries do not duplicate them', async () => {
+test('deleting a story takes the photo it added off the place; retries do not duplicate it', async () => {
   const h = harness()
   await h.actions.postStory(input)
   await h.actions.postStory(input)
   assert.deepEqual(Array.from(h.item.photoUrls), ['/old.jpg', '/photo.jpg'])
   assert.equal(h.item.photoUrl, '/old.jpg')
-  await h.actions.deleteStory(id)
-  assert.deepEqual(Array.from(h.item.photoUrls), ['/old.jpg', '/photo.jpg'])
+  assert.ok((await h.actions.deleteStory(id)).success)
+  assert.deepEqual(Array.from(h.item.photoUrls), ['/old.jpg'])
+  assert.equal(h.item.photoUrl, '/old.jpg')
+})
+test('deleting a story keeps a photo the place already had before posting', async () => {
+  const h = harness()
+  assert.ok((await h.actions.postStory({ ...input, photoUrl: '/old.jpg' })).success)
+  assert.equal(h.rows[0].photoAddedToPlace, false)
+  assert.ok((await h.actions.deleteStory(id)).success)
+  assert.deepEqual(Array.from(h.item.photoUrls), ['/old.jpg'])
 })
 test('a failed story write rolls back its photo addition', async () => {
   const h = harness()

@@ -32,7 +32,7 @@ function duration(form: FormData) {
   return value
 }
 function refresh(id: string, userId: string) {
-  for (const path of ['/', '/plan', `/plan/${id}`, `/itinerary/${id}`, `/user/${userId}`, '/explore']) revalidatePath(path)
+  for (const path of ['/', '/plan', `/plan/${id}`, `/itinerary/${id}`, `/user/${userId}`, '/trips', '/explore']) revalidatePath(path)
 }
 function stringList(form: FormData, key: string, limit: number, maxLength: number) {
   if (!form.has(key)) return [] as string[]
@@ -214,6 +214,15 @@ export async function removePlanPlace(itemId: string): Promise<Result> {
     refresh(item.destination.itineraryId, userId)
     return { success: true }
   } catch { return { error: 'Could not remove this place. Please try again.' } }
+}
+
+// Private plans offered by the Post button, newest first, with how many places each has.
+export async function plansForPosting() {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in to post a trip.', plans: [] }
+  const trips = await prisma.itinerary.findMany({ where: { userId, visibility: 'draft' }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    select: { id: true, title: true, isPlan: true, destinations: { select: { _count: { select: { items: true } } } } } })
+  return { plans: trips.map(trip => ({ id: trip.id, title: trip.title || 'Untitled trip', isPlan: trip.isPlan, places: trip.destinations.reduce((sum, destination) => sum + destination._count.items, 0) })) }
 }
 
 export async function plansForSaving() {

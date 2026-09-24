@@ -19,6 +19,7 @@ export async function activeStories(following = false): Promise<StoryCard[]> {
     destination: [row.destination, row.country].filter(Boolean).join(', '), hasTrip: !!row.sourceItinerary, type: row.type, photoUrl: row.photoUrl, caption: row.caption,
     createdAt: row.createdAt.toISOString(), expiresAt: row.expiresAt.toISOString(),
     tripHref: row.sourceItinerary?.visibility === 'public' ? `/itinerary/${row.sourceItinerary.id}` : row.user.id === userId && row.sourceItinerary?.isPlan ? `/plan/${row.sourceItinerary.id}` : null,
+    removesTripPhoto: row.user.id === userId && row.photoAddedToPlace && !!row.sourceItemId,
   }))
 }
 
@@ -70,6 +71,8 @@ export async function postStories(input: StoryPostDetails & { photos: StoryPhoto
       return { error: 'Some photos from this story were already posted. Close the composer and start a new story.' }
     }
     const tripId = await prisma.$transaction(async tx => {
+      // Photos this post puts onto the place; ones it already had stay put if the snapshot is deleted.
+      let addedPhotos = new Set<string>()
       let storyPlace: { name: string; destination: string; country: string | null; type: string; placeId: string | null; lat: number | null; lng: number | null; tripId: string | null; itemId: string | null }
       if (input.itemId) {
         const owned = { id: input.itemId, destination: { itinerary: { userId } } }
@@ -77,6 +80,7 @@ export async function postStories(input: StoryPostDetails & { photos: StoryPhoto
         if (!item) throw new Error('Place is not owned by this account')
         const photos = eventPhotos(item.photoUrls, item.photoUrl)
         const mergedPhotos = [...new Set([...photos, ...input.photos.map(photo => photo.photoUrl)])]
+        addedPhotos = new Set(mergedPhotos.filter(url => !photos.includes(url)))
         if (mergedPhotos.length !== photos.length) {
           // A concurrent photo edit must never be overwritten by this story.
           const updated = await tx.destItem.updateMany({
@@ -107,6 +111,7 @@ export async function postStories(input: StoryPostDetails & { photos: StoryPhoto
         } })
         const last = await tx.destItem.aggregate({ where: { destinationId: destination.id }, _max: { order: true, groupIndex: true } })
         const photoUrls = input.photos.map(photo => photo.photoUrl)
+        addedPhotos = new Set(photoUrls)
         const item = await tx.destItem.create({ data: {
           destinationId: destination.id, name: input.placeName!.trim(), type: input.type!, placeId: input.placeId?.trim() || null,
           photoUrl: photoUrls[0], photoUrls, order: (last._max.order ?? -1) + 1,
@@ -118,12 +123,12 @@ export async function postStories(input: StoryPostDetails & { photos: StoryPhoto
       await tx.story.createMany({ data: input.photos.map((photo, index) => ({
         id: photo.id, userId, sourceItineraryId: storyPlace.tripId, sourceItemId: storyPlace.itemId,
         placeName: storyPlace.name, destination: storyPlace.destination, country: storyPlace.country, type: storyPlace.type,
-        placeId: storyPlace.placeId, lat: storyPlace.lat, lng: storyPlace.lng, photoUrl: photo.photoUrl, caption: input.caption.trim(),
+        placeId: storyPlace.placeId, lat: storyPlace.lat, lng: storyPlace.lng, photoUrl: photo.photoUrl, caption: input.caption.trim(), photoAddedToPlace: addedPhotos.has(photo.photoUrl),
         createdAt: new Date(now.getTime() + index), expiresAt: new Date(now.getTime() + index + STORY_LIFETIME_MS),
       })) })
       return storyPlace.tripId
     })
-    for (const path of ['/', '/explore', '/plan', ...(tripId ? [`/plan/${tripId}`, `/itinerary/${tripId}`] : []), `/user/${userId}`]) revalidatePath(path)
+    for (const path of ['/', '/explore', '/plan', ...(tripId ? [`/plan/${tripId}`, `/itinerary/${tripId}`] : []), `/user/${userId}`, '/trips']) revalidatePath(path)
     return { success: true }
   } catch { return { error: 'Could not post your story. Your photo and caption are still here; please try again.' } }
 }
@@ -136,9 +141,23 @@ export async function deleteStory(id: string): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
   try {
-    const result = await prisma.story.deleteMany({ where: { id, userId } })
-    if (!result.count) return { error: 'This story is no longer available.' }
-    revalidatePath('/')
+    const story = await prisma.story.findFirst({ where: { id, userId }, select: { photoUrl: true, photoAddedToPlace: true, sourceItemId: true, sourceItineraryId: true } })
+    if (!story) return { error: 'This story is no longer available.' }
+    await prisma.$transaction(async tx => {
+      await tx.story.deleteMany({ where: { id, userId } })
+      if (!story.photoAddedToPlace || !story.sourceItemId) return
+      // Another snapshot that also put this photo on the place keeps it there.
+      if (await tx.story.count({ where: { sourceItemId: story.sourceItemId, photoUrl: story.photoUrl, photoAddedToPlace: true } })) return
+      const owned = { id: story.sourceItemId, destination: { itinerary: { userId } } }
+      const item = await tx.destItem.findFirst({ where: owned, select: { photoUrls: true, photoUrl: true } })
+      if (!item || (!item.photoUrls.includes(story.photoUrl) && item.photoUrl !== story.photoUrl)) return
+      const photoUrls = item.photoUrls.filter(url => url !== story.photoUrl)
+      // Guarded like posting: a concurrent photo edit is never overwritten.
+      const updated = await tx.destItem.updateMany({ where: { ...owned, photoUrls: { equals: item.photoUrls }, photoUrl: item.photoUrl },
+        data: { photoUrls, photoUrl: item.photoUrl === story.photoUrl ? photoUrls[0] ?? null : item.photoUrl } })
+      if (updated.count !== 1) throw new Error('Photos changed while deleting; retry')
+    })
+    for (const path of ['/', '/explore', `/user/${userId}`, ...(story.sourceItineraryId ? [`/plan/${story.sourceItineraryId}`, `/itinerary/${story.sourceItineraryId}`] : [])]) revalidatePath(path)
     return { success: true }
   } catch { return { error: 'Could not remove your story. Please try again.' } }
 }
