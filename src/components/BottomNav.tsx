@@ -4,11 +4,11 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Bookmark, Compass, Home, NotebookPen } from 'lucide-react'
+import { Bookmark, Compass, Home, NotebookPen, Sparkles } from 'lucide-react'
 import useBottomToolbar from './useBottomToolbar'
 import PostTripDialog from './PostTripDialog'
 
-// Feed · Post · Explore · My Trips · Saved. Messages lives in the header.
+// Feed · Post · Explore · Plan · My Trips · Saved. Messages lives in the header.
 export default function BottomNav({ userId }: { pendingCount: number; userId: string | null }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -19,6 +19,7 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
   const isExplore = pathname.startsWith('/explore')
   const isTrips = pathname === '/trips'
   const isSaved = pathname === '/saved'
+  const isPlanner = pathname === '/testplan'
 
   function cls(active: boolean) {
     return `flex min-w-0 flex-col items-center gap-0.5 px-1 py-2 transition-colors ${active ? 'text-[#242e25]' : 'text-[#8B6F4E] hover:text-[#485340]'}`
@@ -30,7 +31,7 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
 
   return (
     <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#faf7f1] border-t border-[#dfd3c2] shadow-lg z-50">
-      <div className="max-w-2xl mx-auto grid grid-cols-5 items-center py-2">
+      <div className="max-w-2xl mx-auto grid grid-cols-6 items-center py-2">
         <Link href="/" aria-current={isFeed ? 'page' : undefined} className={cls(isFeed)}>
           <span className={iconClass(isFeed)}><Home className="w-6 h-6" /></span>
           <span className={label}>Feed</span>
@@ -44,6 +45,11 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
         <Link href="/explore" aria-current={isExplore ? 'page' : undefined} className={cls(isExplore)}>
           <span className={iconClass(isExplore)}><Compass className="w-5 h-5" /></span>
           <span className={label}>Explore</span>
+        </Link>
+
+        <Link href={userId ? '/testplan' : '/login'} aria-current={isPlanner ? 'page' : undefined} className={cls(isPlanner)}>
+          <span className={iconClass(isPlanner)}><Sparkles className="w-5 h-5" /></span>
+          <span className={label}>Plan</span>
         </Link>
 
         <Link href={userId ? '/trips' : '/login'} aria-current={isTrips ? 'page' : undefined} className={cls(isTrips)}>

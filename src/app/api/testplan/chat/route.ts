@@ -8,22 +8,25 @@ export const maxDuration = 300
 
 const client = new Anthropic()
 
-const INSTRUCTIONS = `You are the trip-planning assistant inside Postcard, a travel app where friends share the places they've been.
+const INSTRUCTIONS = `You are Postcard's trip planner, inside Postcard, a travel app where friends share the places they've been. If you refer to yourself, you are Postcard, not Claude.
 You're helping the user plan a new trip. Below is everything they and their friends have logged: trips, places, star ratings (1-5) and personal notes.
 
 How to help:
 - Lead with what their friends (and the user themselves) actually loved. Name the friend, and quote or paraphrase their note when it helps. High ratings and enthusiastic notes are the strongest signal; low ratings are warnings worth mentioning.
-- When the data has little or nothing for a destination, say so plainly, then add your own well-known suggestions and mark them as source "claude".
+- Always mix in new places that are not in the travel data, marked as source "claude" — even when friends have logged plenty. For every destination you suggest, include at least one place to stay, two things to do and two places to eat that nobody in the data has been to, alongside the friends' picks. When the data has little or nothing for a destination, say so plainly and make the whole suggestion from your own picks.
 - Only recommend real, specific places (a named hotel, restaurant, sight), not generic advice. Keep "why" to one or two sentences.
 - Don't re-recommend places already in the user's current trip.
 - Keep the reply conversational and brief (a few short paragraphs at most). The recommendations list renders as cards next to your reply, so don't repeat every detail in the reply text.
+- When you suggest a destination, cover it as a whole trip: a place or two to stay, a few things to do, and a few places to eat. When you offer alternative destinations, do this for each one.
 - Recommendations are optional: return an empty list when the user is just chatting or asking a question that doesn't call for places.
 
 For each recommendation:
 - source "friend" = from a friend's trip, "you" = from the user's own past trip, "claude" = your own suggestion.
 - sourceItemId = the bracketed id of the place in the data below when source is "friend" or "you"; otherwise "".
 - friendName = the friend's name when source is "friend"; otherwise "".
-- destination = the city or area; country = the country.`
+- destination = the city or area; country = the country.
+- description = 2-3 sentences describing the place itself (what it is, what it's like, what to order or see). This is separate from "why", which says why it suits this user.
+- tripOption = a short name (2-4 words) for the trip idea this place belongs to, e.g. "Amalfi Coast" or "Greek islands". When you suggest alternative trips, give each its own name and use exactly the same name for every place in it. Reuse a name from earlier in the conversation when adding to that idea.`
 
 const schema = {
   type: 'object',
@@ -34,12 +37,14 @@ const schema = {
     recommendations: { type: 'array', items: {
       type: 'object',
       additionalProperties: false,
-      required: ['name', 'type', 'destination', 'country', 'why', 'source', 'sourceItemId', 'friendName'],
+      required: ['name', 'type', 'destination', 'country', 'tripOption', 'description', 'why', 'source', 'sourceItemId', 'friendName'],
       properties: {
         name: { type: 'string' },
         type: { type: 'string', enum: ['hotel', 'food_drink', 'activity'] },
         destination: { type: 'string' },
         country: { type: 'string' },
+        tripOption: { type: 'string' },
+        description: { type: 'string' },
         why: { type: 'string' },
         source: { type: 'string', enum: ['friend', 'you', 'claude'] },
         sourceItemId: { type: 'string' },
@@ -49,7 +54,7 @@ const schema = {
   },
 }
 
-type RawRecommendation = { name: string; type: 'hotel' | 'food_drink' | 'activity'; destination: string; country: string; why: string; source: 'friend' | 'you' | 'claude'; sourceItemId: string; friendName: string }
+type RawRecommendation = { name: string; type: 'hotel' | 'food_drink' | 'activity'; destination: string; country: string; tripOption: string; description: string; why: string; source: 'friend' | 'you' | 'claude'; sourceItemId: string; friendName: string }
 
 export async function POST(request: Request) {
   const userId = (await auth())?.user?.id
@@ -87,15 +92,15 @@ export async function POST(request: Request) {
       messages: [...history, userMessage],
     }).finalMessage()
 
-    if (response.stop_reason === 'refusal') return Response.json({ error: 'Claude declined to answer that one. Try rephrasing.' }, { status: 422 })
+    if (response.stop_reason === 'refusal') return Response.json({ error: 'Postcard couldn’t answer that one. Try rephrasing.' }, { status: 422 })
     const text = response.content.find(block => block.type === 'text')?.text
     let parsed: { reply: string; recommendations: RawRecommendation[] }
-    try { parsed = JSON.parse(text ?? '') } catch { return Response.json({ error: 'Claude’s answer was cut off. Please try again.' }, { status: 502 }) }
+    try { parsed = JSON.parse(text ?? '') } catch { return Response.json({ error: 'The answer was cut off. Please try again.' }, { status: 502 }) }
 
     const recommendations = parsed.recommendations.map((rec, index) => {
       const source = context.items.get(rec.sourceItemId)
       return {
-        key: `${response.id}:${index}`, name: rec.name, type: rec.type, why: rec.why,
+        key: `${response.id}:${index}`, name: rec.name, type: rec.type, why: rec.why, tripOption: rec.tripOption.trim(), description: rec.description.trim(),
         destination: source?.destination ?? rec.destination, country: source?.country ?? (rec.country || null),
         source: source ? (source.mine ? 'you' : 'friend') : 'claude' as const,
         friendName: source && !source.mine ? source.owner : '',
@@ -109,8 +114,8 @@ export async function POST(request: Request) {
       : await prisma.planChat.create({ data: { userId, tripId: trip ? tripId : null, history: nextHistory, turns: newTurns as Prisma.InputJsonValue }, select: { id: true } })
     return Response.json({ chatId: saved.id, reply: parsed.reply, recommendations })
   } catch (error) {
-    if (error instanceof Anthropic.RateLimitError) return Response.json({ error: 'Claude is busy. Try again in a moment.' }, { status: 429 })
-    if (error instanceof Anthropic.APIError) return Response.json({ error: `Claude API error (${error.status}): ${error.message}` }, { status: 502 })
+    if (error instanceof Anthropic.RateLimitError) return Response.json({ error: 'Postcard is busy. Try again in a moment.' }, { status: 429 })
+    if (error instanceof Anthropic.APIError) { console.error('[testplan] Claude API error', error.status, error.message); return Response.json({ error: 'Postcard couldn’t answer right now. Please try again.' }, { status: 502 }) }
     throw error
   }
 }

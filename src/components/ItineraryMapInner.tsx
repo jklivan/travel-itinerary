@@ -14,6 +14,9 @@ export type ItemPin = {
   lng: number
   day: number | null
   recommendation: PlaceRecommendation
+  // Overrides the day color and the day line in the popup (e.g. to group suggestions by trip idea).
+  color?: string
+  label?: string
 }
 
 const TYPE_STYLE: Record<string, { emoji: string }> = {
@@ -23,13 +26,13 @@ const TYPE_STYLE: Record<string, { emoji: string }> = {
   transport: { emoji: '✈️' },
 }
 
-function itemIcon(type: string, day: number | null) {
+function itemIcon(type: string, day: number | null, color?: string) {
   const s = TYPE_STYLE[type] ?? TYPE_STYLE.activity
   return L.divIcon({
     className: '',
     html: `<div style="
       width:36px;height:36px;
-      background:${mapDayColor(day)};
+      background:${color ?? mapDayColor(day)};
       border-radius:50%;
       border:2px solid white;
       box-shadow:0 2px 6px rgba(0,0,0,0.35);
@@ -78,17 +81,19 @@ export default function ItineraryMapInner({ pins }: { pins: ItemPin[] }) {
     pins.reduce((s, p) => s + p.lng, 0) / pins.length,
   ]
   const positions: [number, number][] = pins.map(p => [p.lat, p.lng])
-  const days = [...new Set(pins.flatMap(pin => pin.day === null ? [] : [pin.day]))].sort((a, b) => a - b)
-  const hasHotels = pins.some(pin => pin.type === 'hotel' && pin.day === null)
-  const hasUndatedPlaces = pins.some(pin => pin.type !== 'hotel' && pin.day === null)
+  // Pins with their own color are explained by the caller, not by the day legend.
+  const dayPins = pins.filter(pin => !pin.color)
+  const days = [...new Set(dayPins.flatMap(pin => pin.day === null ? [] : [pin.day]))].sort((a, b) => a - b)
+  const hasHotels = dayPins.some(pin => pin.type === 'hotel' && pin.day === null)
+  const hasUndatedPlaces = dayPins.some(pin => pin.type !== 'hotel' && pin.day === null)
 
   return (
     <div className="flex h-full flex-col">
-      <div aria-label="Map day legend" className="flex max-h-28 shrink-0 flex-wrap gap-x-4 gap-y-2 overflow-y-auto border-b border-[#d7cebc] bg-[#faf7ee] px-4 py-3 text-xs text-[#2e4147]">
+      {dayPins.length > 0 && <div aria-label="Map day legend" className="flex max-h-28 shrink-0 flex-wrap gap-x-4 gap-y-2 overflow-y-auto border-b border-[#d7cebc] bg-[#faf7ee] px-4 py-3 text-xs text-[#2e4147]">
         {days.map(day => <span key={day} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ background: mapDayColor(day) }} />Day {day}</span>)}
         {hasHotels && <span className="inline-flex items-center gap-1.5"><span aria-hidden="true">🏨</span>Hotels</span>}
         {hasUndatedPlaces && <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ background: mapDayColor(null) }} />No day assigned</span>}
-      </div>
+      </div>}
       <div className="min-h-0 flex-1">
       <MapContainer
       center={center}
@@ -102,9 +107,9 @@ export default function ItineraryMapInner({ pins }: { pins: ItemPin[] }) {
       />
       <FitBounds positions={positions} />
       {pins.map(pin => (
-        <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={itemIcon(pin.type, pin.day)}
-          title={`${pin.name} · ${pin.day === null ? pin.type === 'hotel' ? 'Hotel' : 'No day assigned' : `Day ${pin.day}`}`}
-          alt={`${pin.name} · ${pin.day === null ? pin.type === 'hotel' ? 'Hotel' : 'No day assigned' : `Day ${pin.day}`}`}>
+        <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={itemIcon(pin.type, pin.day, pin.color)}
+          title={`${pin.name} · ${pin.label ?? (pin.day === null ? pin.type === 'hotel' ? 'Hotel' : 'No day assigned' : `Day ${pin.day}`)}`}
+          alt={`${pin.name} · ${pin.label ?? (pin.day === null ? pin.type === 'hotel' ? 'Hotel' : 'No day assigned' : `Day ${pin.day}`)}`}>
           <Popup maxWidth={200} minWidth={140}>
             <div style={{ fontFamily: 'inherit' }}>
               <p style={{ fontWeight: 700, fontSize: 13, color: '#111', margin: 0 }}>
@@ -113,8 +118,8 @@ export default function ItineraryMapInner({ pins }: { pins: ItemPin[] }) {
               {pin.recommendation !== 'none' && <p style={{ margin: '6px 0 0', color: pin.recommendation === 'avoid' ? '#a44138' : '#59694f', fontWeight: 700 }}>
                 {pin.recommendation === 'option' ? 'Alternative' : pin.recommendation === 'avoid' ? 'Avoid' : pin.type === 'hotel' ? 'Must stay' : 'Must do'} · {pin.recommendation === 'option' ? 'Saved as an alternative' : 'Poster’s recommendation'}
               </p>}
-              <p style={{ margin: '6px 0 0', color: mapDayColor(pin.day), fontWeight: 600 }}>
-                {pin.day === null ? pin.type === 'hotel' ? 'Hotel' : 'No day assigned' : `Day ${pin.day}`}
+              <p style={{ margin: '6px 0 0', color: pin.color ?? mapDayColor(pin.day), fontWeight: 600 }}>
+                {pin.label ?? (pin.day === null ? pin.type === 'hotel' ? 'Hotel' : 'No day assigned' : `Day ${pin.day}`)}
               </p>
             </div>
           </Popup>

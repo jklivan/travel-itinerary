@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import TestPlanner, { type Turn } from './TestPlanner'
 
-export const metadata: Metadata = { title: 'Plan with Claude — Postcard', robots: { index: false, follow: false } }
+export const metadata: Metadata = { title: 'Plan with Postcard', robots: { index: false, follow: false } }
 export const maxDuration = 300
 
 // Unlinked test page: chat with Claude over your and your friends' trips, add picks to a new plan.
