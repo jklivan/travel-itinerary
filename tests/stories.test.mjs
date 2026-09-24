@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
+import * as placeIdentity from '../src/lib/planPlaceIdentity.ts'
 function module(path, deps = {}) {
   const exports = {}
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, { exports, Date, require: name => deps[name] })
@@ -24,7 +25,7 @@ function harness(user = 'owner', itemType = 'hotel') {
       deleteMany: async ({ where }) => { const index = rows.findIndex(row => row.id === where.id && row.userId === where.userId); if (index < 0) return { count: 0 }; rows.splice(index, 1); return { count: 1 } },
     },
     destItem: { findFirst: async ({ where }) => where.destination.itinerary.userId === 'owner' ? item : null, updateMany: async ({data}) => { Object.assign(item, data); return { count: 1 } }, aggregate: async () => ({ _max: { order: -1, groupIndex: -1 } }), create: async ({ data }) => { const created = { ...data, id: 'new-place', lat: null, lng: null }; addedItems.push(created); return created } },
-    destination: { findFirst: async ({ where }) => destinations.find(destination => destination.itineraryId === where.itineraryId && destination.name.toLowerCase() === where.name.equals.toLowerCase()) ?? null, create: async ({ data }) => { const created = { ...data, id: `destination-${destinations.length + 1}` }; destinations.push(created); return created }, count: async ({ where }) => destinations.filter(destination => destination.itineraryId === where.itineraryId).length },
+    destination: { findMany: async ({ where }) => destinations.filter(destination => destination.itineraryId === where.itineraryId), findFirst: async ({ where }) => destinations.find(destination => destination.itineraryId === where.itineraryId && destination.name.toLowerCase() === where.name.equals.toLowerCase()) ?? null, create: async ({ data }) => { const created = { ...data, id: `destination-${destinations.length + 1}` }; destinations.push(created); return created }, count: async ({ where }) => destinations.filter(destination => destination.itineraryId === where.itineraryId).length },
     user: { findUnique: async () => ({ isPrivate: false }) },
     itinerary: { create: async ({ data }) => { plans.push(data); return data }, findFirst: async () => ({ id: 'plan' }), findMany: async query => { queries.push(query); return [] } },
   }
@@ -33,7 +34,7 @@ function harness(user = 'owner', itemType = 'hotel') {
     try { return await callback(prisma) }
     catch (error) { Object.assign(item, before); rows.splice(beforeRows); plans.splice(beforePlans); destinations.splice(beforeDestinations); addedItems.splice(beforeItems); throw error }
   }
-  const actions = module('../src/actions/stories.ts', { '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} }, '@/lib/eventPhotos': photos, '@/lib/stories': lib })
+  const actions = module('../src/actions/stories.ts', { '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} }, '@/lib/eventPhotos': photos, '@/lib/stories': lib, '@/lib/planPlaceIdentity': placeIdentity })
   return { actions, rows, queries, item, prisma, plans, destinations, addedItems }
 }
 const input = { id, itemId: 'place', photoUrl: '/photo.jpg', caption: 'Great stay' }
@@ -55,6 +56,18 @@ test('posting a new activity creates an editable itinerary and adds the place to
   assert.equal(h.plans[0].isPlan, true)
   assert.equal(h.destinations[0].name, 'Lucerne')
   assert.equal(h.addedItems[0].photoUrl, '/walk.jpg')
+})
+test('a snapshot place typed with Google region text joins the trip\'s existing destination', async () => {
+  const h = harness(); h.destinations.push({ id: 'capri', itineraryId: 'plan', name: 'Capri', country: 'Italy', order: 0 })
+  const result = await h.actions.postStory({ id, placeName: 'Taverna Anema e Core', destination: 'Capri', country: 'Metropolitan City of Naples, Italy', type: 'food_drink', tripId: 'plan', photoUrl: '/taverna.jpg', caption: '' })
+  assert.ok(result.success)
+  assert.equal(h.destinations.length, 1, 'no second Capri section')
+  assert.equal(h.addedItems[0].destinationId, 'capri')
+})
+test('a snapshot place in a different city still starts its own destination', async () => {
+  const h = harness(); h.destinations.push({ id: 'capri', itineraryId: 'plan', name: 'Capri', country: 'Italy', order: 0 })
+  assert.ok((await h.actions.postStory({ id, placeName: 'Da Michele', destination: 'Naples', country: 'Italy', type: 'food_drink', tripId: 'plan', photoUrl: '/pizza.jpg', caption: '' })).success)
+  assert.equal(h.destinations.length, 2)
 })
 test('posting a new activity from a story adds it to an existing itinerary', async () => {
   const h = harness()

@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
+import * as placeIdentity from '../src/lib/planPlaceIdentity.ts'
 
 const code = ts.transpileModule(readFileSync(new URL('../src/actions/planning.ts', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText
 const clientId = '12345678-1234-1234-1234-123456789012'
@@ -22,7 +23,7 @@ function harness({ user = 'owner', fail = false, zeroBased = false, empty = fals
       create: async ({ data }) => { if (fail) throw Error('connection contains secret'); writes.push(data); trips.push(data); return data },
       updateMany: async ({ where, data }) => { const t = tripMatch(where); if (!t) return { count: 0 }; writes.push(data); Object.assign(t, data); return { count: 1 } },
     },
-    destination: { findFirst: async () => destinations[0], count: async () => 1 },
+    destination: { findFirst: async () => destinations[0], findMany: async ({ where }) => destinations.filter(d => d.itineraryId === where.itineraryId), count: async () => 1, create: async ({ data }) => { const created = { ...data, id: `dest-${destinations.length + 1}` }; destinations.push(created); return created } },
     destItem: {
       findUnique: async ({ where }) => enrich(items.find(i => i.id === where.id)),
       findFirst: async ({ where }) => where.id === 'source' ? sourceVisibility === where.destination.itinerary.visibility ? source : null : enrich(itemMatch(where)),
@@ -37,7 +38,7 @@ function harness({ user = 'owner', fail = false, zeroBased = false, empty = fals
   }
   prisma.$transaction = async callback => callback(prisma)
   const exports = {}
-  vm.runInNewContext(code, { exports, require: name => ({ '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath: path => paths.push(path) }, '@/lib/tripPublishedNotifications': { scheduleTripPublishedNotifications: id => notifications.push(id) } })[name] })
+  vm.runInNewContext(code, { exports, require: name => ({ '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath: path => paths.push(path) }, '@/lib/tripPublishedNotifications': { scheduleTripPublishedNotifications: id => notifications.push(id) }, '@/lib/planPlaceIdentity': placeIdentity })[name] })
   return { actions: exports, trips, items, writes, paths, notifications }
 }
 test('new plans are private, dates optional, and retry returns the same trip', async () => {
@@ -77,6 +78,11 @@ test('editing status and schedule preserves photos and rating; legacy day zero n
   assert.equal(h.items[0].dayIndex, 3); assert.equal(h.items[1].dayIndex, 2)
   assert.equal(h.items[0].planningStatus, 'visited'); assert.equal(h.items[0].rating, 4); assert.deepEqual(h.items[0].photoUrls, ['/photo.jpg'])
   assert.ok((await h.actions.editPlanPlace('place', form())).success); assert.equal(h.items[0].dayIndex, null)
+})
+test('adding a place with a Google-style destination joins the matching destination', async () => {
+  const h = harness()
+  assert.ok((await h.actions.addPlanPlace('trip', form({ destination: 'Rome, Metropolitan City of Rome Capital, Italy', clientId: '22345678-1234-1234-1234-123456789012' }))).success)
+  assert.equal(h.items.at(-1).destinationId, 'dest')
 })
 test('plan edits save the same fields as the trip editor, including photos', async () => {
   const h = harness()

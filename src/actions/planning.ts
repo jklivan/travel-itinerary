@@ -3,6 +3,7 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { samePlanDestination } from '@/lib/planPlaceIdentity'
 import { scheduleTripPublishedNotifications } from '@/lib/tripPublishedNotifications'
 
 type Result = { error?: string; success?: boolean; id?: string }
@@ -120,7 +121,7 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
         if (existing.destination.itineraryId !== id) throw new InputError(unavailable)
         return
       }
-      let dest = await tx.destination.findFirst({ where: { itineraryId: id, name: { equals: destinationName, mode: 'insensitive' } } })
+      let dest = (await tx.destination.findMany({ where: { itineraryId: id }, orderBy: { order: 'asc' } })).find(existing => samePlanDestination(existing, { name: destinationName })) ?? null
       if (!dest) dest = await tx.destination.create({ data: { itineraryId: id, name: destinationName, order: await tx.destination.count({ where: { itineraryId: id } }) } })
       const last = await tx.destItem.aggregate({ where: { destinationId: dest.id }, _max: { order: true, groupIndex: true } })
       const zeroBased = await tx.destItem.count({ where: { destinationId: dest.id, dayIndex: 0, type: { not: 'hotel' } } })
@@ -237,7 +238,7 @@ export async function copyPlaceToPlan(sourceId: string, planId: string, clientId
         if (existing.destination.itineraryId !== planId) throw new InputError(unavailable)
         return
       }
-      let destination = await tx.destination.findFirst({ where: { itineraryId: planId, name: { equals: source.destination.name, mode: 'insensitive' } } })
+      let destination = (await tx.destination.findMany({ where: { itineraryId: planId }, orderBy: { order: 'asc' } })).find(existing => samePlanDestination(existing, source.destination)) ?? null
       if (!destination) destination = await tx.destination.create({ data: { itineraryId: planId, name: source.destination.name, country: source.destination.country, order: await tx.destination.count({ where: { itineraryId: planId } }) } })
       const last = await tx.destItem.aggregate({ where: { destinationId: destination.id }, _max: { order: true, groupIndex: true } })
       await tx.destItem.create({ data: { id: clientId, destinationId: destination.id, name: source.name, type: source.type,

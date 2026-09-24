@@ -3,6 +3,7 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { samePlanDestination } from '@/lib/planPlaceIdentity'
 import { eventPhotos } from '@/lib/eventPhotos'
 import { STORY_LIFETIME_MS, visibleStoriesWhere, type StoryCard } from '@/lib/stories'
 
@@ -98,7 +99,8 @@ export async function postStories(input: StoryPostDetails & { photos: StoryPhoto
           if (!existingTrip) throw new Error('Itinerary is not owned by this account')
           itineraryId = existingTrip.id
         }
-        let destination = await tx.destination.findFirst({ where: { itineraryId, name: { equals: input.destination!.trim(), mode: 'insensitive' }, country: input.country?.trim() || null } })
+        // Same city (and country, when both have one) joins the existing destination instead of starting a second one.
+        let destination = (await tx.destination.findMany({ where: { itineraryId }, orderBy: { order: 'asc' } })).find(existing => samePlanDestination(existing, { name: input.destination!.trim(), country: input.country?.trim() || null })) ?? null
         if (!destination) destination = await tx.destination.create({ data: {
           itineraryId, name: input.destination!.trim(), country: input.country?.trim() || null,
           order: await tx.destination.count({ where: { itineraryId } }),
@@ -152,7 +154,7 @@ export async function copyStoryToPlan(storyId: string, planId: string, clientId:
       if (!plan || !story) return { error: 'This story has expired or is unavailable, or the plan belongs to another account.' }
       const existing = await tx.destItem.findUnique({ where: { id: clientId }, select: { destination: { select: { itineraryId: true } } } })
       if (existing) return existing.destination.itineraryId === planId ? { success: true } : { error: 'Please reopen the trip picker and try again.' }
-      let destination = await tx.destination.findFirst({ where: { itineraryId: planId, name: { equals: story.destination, mode: 'insensitive' } } })
+      let destination = (await tx.destination.findMany({ where: { itineraryId: planId }, orderBy: { order: 'asc' } })).find(existing => samePlanDestination(existing, { name: story.destination, country: story.country })) ?? null
       if (!destination) destination = await tx.destination.create({ data: { itineraryId: planId, name: story.destination, country: story.country, order: await tx.destination.count({ where: { itineraryId: planId } }) } })
       const last = await tx.destItem.aggregate({ where: { destinationId: destination.id }, _max: { order: true, groupIndex: true } })
       await tx.destItem.create({ data: { id: clientId, destinationId: destination.id, name: story.placeName, type: story.type,
