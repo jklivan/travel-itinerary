@@ -66,6 +66,12 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Postcard uses the camera so you can take photos of places for your trips and snapshots.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Postcard lets you choose photos from your library to add to your trips and snapshots.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Postcard uses your location once to find day trips near you. It is never shared or saved.</string>
 </dict>
