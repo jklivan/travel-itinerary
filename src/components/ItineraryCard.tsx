@@ -146,7 +146,7 @@ export default function ItineraryCard({
           </div>}
           <div className="flex shrink-0 items-center gap-2.5 text-[#667069]">
             {season && <span className="hidden text-[8px] font-medium uppercase tracking-[0.12em] text-[#8B6F4E] min-[390px]:inline">{season}</span>}
-            {showBucket && <BucketButton itineraryId={id} initialBucketed={isBucketed} isLoggedIn={!!currentUserId} />}
+            {showBucket && <BucketButton itineraryId={id} initialBucketed={isBucketed} isLoggedIn={!!currentUserId} withFolders={!!currentUserId} />}
             <span aria-label={`${saveCount} likes`} className="flex items-center gap-0.5 text-[10px]"><Heart size={13} />{saveCount}</span>
             <Link href={`/itinerary/${id}#comments`} aria-label={`${commentCount} comments`} className="flex min-h-8 items-center gap-0.5 text-[10px] hover:text-[#2e4147]">
               <MessageCircle size={13} />{commentCount}

@@ -1,5 +1,5 @@
 export type PhotoAttribution = { displayName: string; uri?: string }
-export type PlacePhoto = { url: string; authors: PhotoAttribution[]; mapsUrl: string }
+export type PlacePhoto = { url: string; authors: PhotoAttribution[]; mapsUrl: string; placeId: string }
 type Candidate = { id?: string; displayName?: { text?: string }; formattedAddress?: string; photos?: { name?: string; authorAttributions?: PhotoAttribution[] }[] }
 const words = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 
@@ -13,7 +13,19 @@ export function matchesPlace(name: string, city: string, candidate: Candidate) {
     && cityNames.some(cityName => words(candidate.formattedAddress ?? '').includes(cityName))
 }
 
-export async function findPlacePhoto(place: { name: string; city: string; country?: string | null; placeId?: string | null }, apiKey: string): Promise<PlacePhoto | null> {
+// Looser check for places in the viewer's own trip that have no Google ID yet: every word of the name must
+// be in Google's name (so "Hotel Romazzino" finds "Romazzino, A Belmond Hotel"), and the address must be in
+// the destination's city or country. Only the top result is considered.
+export function loosePlaceMatch(name: string, city: string, country: string | null | undefined, candidate: Candidate) {
+  const wanted = words(name).split(' ').filter(word => word && !['the', 'hotel', 'restaurant'].includes(word))
+  const found = words(candidate.displayName?.text ?? '').split(' ')
+  const address = words(candidate.formattedAddress ?? '')
+  // Destinations are sometimes one string ("Costa Smeralda, Italy"), so every part counts.
+  const places = [...city.split(','), country ?? ''].map(words).filter(Boolean)
+  return wanted.length > 0 && wanted.every(word => found.includes(word)) && places.some(place => address.includes(place))
+}
+
+export async function findPlacePhoto(place: { name: string; city: string; country?: string | null; placeId?: string | null; loose?: boolean }, apiKey: string): Promise<PlacePhoto | null> {
   const headers = { 'Content-Type': 'application/json', 'X-Goog-Api-Key': apiKey }
   const signal = AbortSignal.timeout(8000)
   try {
@@ -32,8 +44,10 @@ export async function findPlacePhoto(place: { name: string; city: string; countr
       if (!response.ok) return null
       const data = await response.json() as { places?: Candidate[] }
       const matches = (data.places ?? []).filter(candidate => matchesPlace(place.name, place.city, candidate))
-      if (matches.length !== 1) return null
-      candidate = matches[0]
+      const top = data.places?.[0]
+      if (matches.length === 1) candidate = matches[0]
+      else if (place.loose && !matches.length && top && loosePlaceMatch(place.name, place.city, place.country, top)) candidate = top
+      else return null
     }
     const photo = candidate?.photos?.[0]
     if (!photo?.name || !/^places\/[^/]+\/photos\/[^/]+$/.test(photo.name) || !candidate?.id) return null
@@ -41,6 +55,6 @@ export async function findPlacePhoto(place: { name: string; city: string; countr
     if (!response.ok) return null
     const data = await response.json() as { photoUri?: string }
     if (!data.photoUri || !data.photoUri.startsWith('https://')) return null
-    return { url: data.photoUri, authors: (photo.authorAttributions ?? []).map(author => ({ displayName: author.displayName, uri: author.uri?.startsWith('https://') ? author.uri : undefined })), mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${encodeURIComponent(candidate.id)}` }
+    return { url: data.photoUri, authors: (photo.authorAttributions ?? []).map(author => ({ displayName: author.displayName, uri: author.uri?.startsWith('https://') ? author.uri : undefined })), mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${encodeURIComponent(candidate.id)}`, placeId: candidate.id }
   } catch { return null }
 }

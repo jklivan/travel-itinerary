@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { findPlacePhoto, matchesPlace } from '../src/lib/placePhoto.ts'
+import { findPlacePhoto, loosePlaceMatch, matchesPlace } from '../src/lib/placePhoto.ts'
 const candidate = { id: 'nobu', displayName: { text: 'Nobu Hotel Ibiza Bay' }, formattedAddress: 'Ibiza, Spain', photos: [{ name: 'places/nobu/photos/image', authorAttributions: [{ displayName: 'Photographer', uri: 'https://example.com/author' }] }] }
 
 test('matching rejects wrong cities, mismatched names and vague partial matches', () => {
@@ -66,4 +66,14 @@ test('photo endpoint skips uploads and denies another user’s unpublished trip'
     assert.equal(lookups, scenario === 'public' ? 1 : 0)
     assert.equal(response.headers.get('Cache-Control'), 'private, no-store')
   }
+})
+
+test('loose matching (own trips only) accepts a longer Google name in the right country', () => {
+  const romazzino = { displayName: { text: 'Romazzino, A Belmond Hotel, Costa Smeralda' }, formattedAddress: 'Località Romazzino, 07021 Porto Cervo SS, Italy' }
+  assert.equal(matchesPlace('Hotel Romazzino', 'Costa Smeralda', romazzino), false, 'strict match stays strict')
+  assert.equal(loosePlaceMatch('Hotel Romazzino', 'Costa Smeralda', 'Italy', romazzino), true)
+  assert.equal(loosePlaceMatch('Hotel Romazzino', 'Costa Smeralda', 'Greece', romazzino), false, 'wrong country')
+  assert.equal(loosePlaceMatch('Hotel Romazzino', 'Costa Smeralda, Italy', null, romazzino), true, 'country inside the destination name')
+  assert.equal(loosePlaceMatch('Hotel Cala di Volpe', 'Costa Smeralda', 'Italy', romazzino), false, 'different name')
+  assert.equal(loosePlaceMatch('Romazzino Beach Club', 'Costa Smeralda', 'Italy', romazzino), false, 'every word must match')
 })

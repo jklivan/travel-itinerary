@@ -13,7 +13,8 @@ import { preventImplicitSubmit } from '@/lib/preventImplicitSubmit'
 import RecommendationPicker from '@/components/RecommendationPicker'
 import { getRecommendation, recommendationTags, type PlaceRecommendation } from '@/lib/placeRecommendation'
 
-import { useRef, useState } from 'react'
+import { use, useRef, useState } from 'react'
+import { inputClass as planInputClass } from '@/app/plan/NewPlanForm'
 import { upload } from '@vercel/blob/client'
 import { createItineraryDirect } from '@/actions/itinerary'
 import { saveImportNotes } from '@/actions/importNotes'
@@ -94,9 +95,8 @@ const FOOD_TAGS = ['Worth the Hype', 'Great Food', 'Hidden Gem', 'Local Favorite
 const HOTEL_TAGS = ['Great Service', 'Worth the Splurge', 'Great Value', 'Hidden Gem', 'Boutique', 'Luxury', 'Romantic', 'Family-Friendly', 'Great Location', 'Great Views', 'Amazing Spa']
 const emptyDest     = (): Destination  => ({ name: '', country: '', notes: '', groups: [emptyGroup()] })
 
-const inputClass = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-const labelClass = 'block text-sm font-medium text-gray-900 mb-1'
-const subInputClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400'
+const inputClass = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#59694f] focus:border-transparent'
+const subInputClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#59694f]'
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] as const
 const MEAL_TYPE_META: Record<string, { emoji: string; active: string }> = {
@@ -232,13 +232,16 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating, onRecommenda
 }
 
 // ── Steps ─────────────────────────────────────────────────────────────────────
+const detailsLabel = 'block text-[10px] font-semibold uppercase tracking-[0.16em] text-[#59694f]'
 const STEPS = ['start', 'basics', 'places', 'photos', 'details'] as const
 type Step = typeof STEPS[number] | 'review'
 
-export default function CreatePage() {
+export default function CreatePage({ searchParams }: { searchParams: Promise<{ start?: string }> }) {
+  // Post → "New trip from scratch" skips the import screen and opens on trip details.
+  const fromScratch = use(searchParams).start === 'scratch'
   const [formError, setFormError] = useState<string | undefined>()
   const [pending, setPending] = useState(false)
-  const [step, setStep] = useState<Step>('start')
+  const [step, setStep] = useState<Step>(fromScratch ? 'basics' : 'start')
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -313,7 +316,11 @@ export default function CreatePage() {
     setFormError(undefined)
     setStep(STEPS[stepIndex + 1])
   }
-  function goBack() { setStep(STEPS[stepIndex - 1]) }
+  function goBack() {
+    // From scratch there is no import screen to go back to: leave the way you came.
+    if (fromScratch && step === 'basics') { if (history.length > 1) history.back(); else location.assign('/'); return }
+    setStep(STEPS[stepIndex - 1])
+  }
 
   // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubmit(isDraft: boolean) {
@@ -578,8 +585,8 @@ export default function CreatePage() {
             const isCurrent = step === stepName
             return (
               <div key={stepName} className="min-w-0">
-                <div className={`h-1.5 rounded-full transition-colors ${isComplete || isCurrent ? 'bg-blue-600' : 'bg-gray-200'}`} />
-                <p className={`mt-1.5 text-center text-[11px] font-medium truncate ${isCurrent ? 'text-blue-700' : isComplete ? 'text-blue-600' : 'text-gray-400'}`}>
+                <div className={`h-1.5 rounded-full transition-colors ${isComplete || isCurrent ? 'bg-[#355650]' : 'bg-gray-200'}`} />
+                <p className={`mt-1.5 text-center text-[11px] font-medium truncate ${isCurrent ? 'text-[#355650]' : isComplete ? 'text-[#59694f]' : 'text-gray-400'}`}>
                   {index + 1} {label}
                 </p>
               </div>
@@ -597,7 +604,7 @@ export default function CreatePage() {
         {step === 'start' && (
           <div className="space-y-5">
             <div className="flex items-center justify-between mb-1">
-              <BackButton fallback="/" className="text-sm text-blue-600 hover:underline">← Back</BackButton>
+              <BackButton fallback="/" className="text-sm text-[#59694f] hover:underline">← Back</BackButton>
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900 mb-1">New post</h1>
@@ -630,7 +637,7 @@ export default function CreatePage() {
                         className="sr-only" onChange={handleAddFiles} disabled={extracting} />
                     </label>
                     <button type="button" onClick={handleExtractAll} disabled={extracting}
-                      className="flex-1 bg-blue-600 text-white text-sm font-semibold rounded-xl px-4 py-2.5 hover:bg-blue-700 transition-colors disabled:opacity-60">
+                      className="flex-1 bg-[#355650] text-white text-sm font-semibold rounded-xl px-4 py-2.5 hover:bg-[#2e4a45] transition-colors disabled:opacity-60">
                       {extracting
                         ? extractProgress
                           ? `Reading ${extractProgress.current} of ${extractProgress.total}…`
@@ -642,7 +649,7 @@ export default function CreatePage() {
               ) : (
                 <div className="flex gap-2">
                   <label className={`flex-1 text-center cursor-pointer rounded-xl px-4 py-3 text-sm font-medium transition-colors border ${
-                    extracting ? 'bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-blue-600 hover:text-white hover:border-blue-600'
+                    extracting ? 'bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-[#355650] hover:text-white hover:border-[#355650]'
                   }`}>
                     📎 Upload file
                     <input type="file" multiple
@@ -652,9 +659,9 @@ export default function CreatePage() {
                   <button type="button" disabled={extracting}
                     onClick={() => { setPasteMode(v => !v); setExtractError(null) }}
                     className={`flex-1 rounded-xl px-4 py-3 text-sm font-medium transition-colors border ${
-                      pasteMode ? 'bg-blue-600 text-white border-blue-600' :
+                      pasteMode ? 'bg-[#355650] text-white border-[#355650]' :
                       extracting ? 'bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed' :
-                      'bg-gray-50 text-gray-700 border-gray-200 hover:bg-blue-600 hover:text-white hover:border-blue-600'
+                      'bg-gray-50 text-gray-700 border-gray-200 hover:bg-[#355650] hover:text-white hover:border-[#355650]'
                     }`}>
                     📋 Paste text
                   </button>
@@ -666,10 +673,10 @@ export default function CreatePage() {
                   <textarea value={pasteText} disabled={extracting} onChange={e => setPasteText(e.target.value)}
                     placeholder="Paste your itinerary — email confirmation, notes, booking details…"
                     rows={6}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#59694f] resize-none" />
                   <div className="flex gap-2">
                     <button type="button" onClick={handlePasteExtract} disabled={extracting || !pasteText.trim()}
-                      className="flex-1 bg-blue-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
+                      className="flex-1 bg-[#355650] text-white text-sm font-medium py-2 rounded-lg hover:bg-[#2e4a45] transition-colors disabled:opacity-50">
                       {extracting ? importStage === 'saving' ? 'Saving notes…' : 'Extracting…' : 'Save & extract itinerary'}
                     </button>
                     <button type="button" onClick={() => {
@@ -687,22 +694,22 @@ export default function CreatePage() {
                 <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{extractError}</p>
               )}
               {extracting && (
-                <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5 space-y-2">
-                  <p className="text-xs font-medium text-blue-800">
+                <div className="rounded-lg bg-[#edf1e9] border border-[#c7d7cf] px-3 py-2.5 space-y-2">
+                  <p className="text-xs font-medium text-[#2e4147]">
                     {importStage === 'saving' ? 'Saving your notes to your account…' : importStage === 'uploading' ? 'Uploading securely…' :
                       importStage === 'reading' ? 'Reading your file…' :
                       'Organizing your trip…'}
                   </p>
-                  <p className="text-xs text-blue-600">
+                  <p className="text-xs text-[#59694f]">
                     {pasteMode ? importStage === 'saving' ? 'Processing starts after your notes are saved.' : 'Your notes are saved. If interrupted, return here and choose Recover saved notes.' : extractProgress ? `File ${extractProgress.current} of ${extractProgress.total}` : 'Large PDFs can take a few minutes.'}
                   </p>
-                  {!pasteMode && <div className="flex items-center gap-1.5 text-[11px] text-blue-700">
+                  {!pasteMode && <div className="flex items-center gap-1.5 text-[11px] text-[#355650]">
                     <span className={importStage === 'uploading' ? 'font-semibold' : ''}>1 Upload</span><span>→</span>
                     <span className={importStage === 'reading' || importStage === 'organizing' ? 'font-semibold' : ''}>2 Read</span><span>→</span>
                     <span className={importStage === 'organizing' ? 'font-semibold' : ''}>3 Organize</span><span>→</span>
                     <span>4 Review</span>
                   </div>}
-                  <button type="button" onClick={cancelImport} className="text-xs font-medium text-blue-700 underline hover:text-blue-900">Cancel import</button>
+                  <button type="button" onClick={cancelImport} className="text-xs font-medium text-[#355650] underline hover:text-[#242e25]">Cancel import</button>
                 </div>
               )}
             </div>
@@ -713,7 +720,7 @@ export default function CreatePage() {
             }} />
 
             <button type="button" disabled={extracting} onClick={() => setStep('basics')}
-              className="w-full py-3.5 rounded-2xl border-2 border-dashed border-gray-300 text-sm font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
+              className="w-full py-3.5 rounded-2xl border-2 border-dashed border-gray-300 text-sm font-medium text-gray-500 hover:border-[#8caaa3] hover:text-[#355650] transition-colors">
               Start from scratch →
             </button>
           </div>
@@ -737,9 +744,9 @@ export default function CreatePage() {
                 ['Restaurants', importSummary.restaurants],
                 ['Activities', importSummary.activities],
               ].map(([label, count]) => (
-                <div key={String(label)} className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3">
-                  <p className="text-xl font-bold text-blue-800">{count}</p>
-                  <p className="text-xs font-medium text-blue-700">{label}</p>
+                <div key={String(label)} className="rounded-xl bg-[#edf1e9] border border-[#c7d7cf] px-4 py-3">
+                  <p className="text-xl font-bold text-[#2e4147]">{count}</p>
+                  <p className="text-xs font-medium text-[#355650]">{label}</p>
                 </div>
               ))}
             </div>
@@ -770,7 +777,7 @@ export default function CreatePage() {
                 Try another file
               </button>
               <button type="button" onClick={() => setStep('basics')}
-                className="flex-1 bg-blue-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors">
+                className="flex-1 bg-[#355650] text-white py-3 rounded-xl text-sm font-semibold hover:bg-[#2e4a45] transition-colors">
                 Review and continue
               </button>
             </div>
@@ -779,56 +786,50 @@ export default function CreatePage() {
 
         {/* ── BASICS ─────────────────────────────────────────────────────── */}
         {step === 'basics' && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
-            <h2 className="font-semibold text-gray-900 text-lg">Trip details</h2>
-
-            <div>
-              <label htmlFor="title" className={labelClass}>Title *</label>
-              <input id="title" type="text" className={inputClass}
-                placeholder="e.g. 10 days in Japan" value={title} onChange={e => setTitle(e.target.value)} />
-            </div>
-
-            <div>
-              <label htmlFor="description" className={labelClass}>Short description <span className="text-gray-400 font-normal">(optional)</span></label>
-              <textarea id="description" rows={2} className={inputClass}
-                placeholder="A quick summary…" value={description} onChange={e => setDescription(e.target.value)} />
-            </div>
-
-            <TripFormatPicker value={postType === 'guide' ? 'guide' : tripDays === '1' ? 'day-trip' : 'itinerary'} onChange={format => {
+          // Same look as the plan page's "Your next trip starts here" form.
+          <div className="space-y-5 rounded-2xl border border-[#e1d8c9] bg-[#fffdf7]/80 p-4 text-[#2e4147] sm:p-6">
+            <TripFormatPicker variant="polaroid" value={postType === 'guide' ? 'guide' : tripDays === '1' ? 'day-trip' : 'itinerary'} onChange={format => {
                 setPostType(format === 'guide' ? 'guide' : 'itinerary')
                 setTags(current => [...current.filter(tag => tag !== 'day-trip'), ...(format === 'day-trip' ? ['day-trip'] : [])])
                 setTripDays(format === 'day-trip' ? '1' : '')
                 if (format === 'guide') setTripMonth('')
               }} />
-              {postType === 'itinerary' && (
+
+            <label htmlFor="title" className={detailsLabel}>Trip name
+              <input id="title" type="text" className={planInputClass} placeholder="e.g. 10 days in Japan" value={title} onChange={e => setTitle(e.target.value)} />
+            </label>
+
+            <label htmlFor="description" className={detailsLabel}>Short description <span className="font-normal normal-case tracking-normal text-[#73786d]">(optional)</span>
+              <textarea id="description" rows={2} className={planInputClass} placeholder="A quick summary…" value={description} onChange={e => setDescription(e.target.value)} />
+            </label>
+
+            {postType === 'itinerary' && (
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="tripMonth" className={labelClass}>Month and year (optional)</label>
-                  <input id="tripMonth" type="month" className={inputClass} value={tripMonth} onChange={e => setTripMonth(e.target.value)} />
-                </div>
-                <div>
-                  <label htmlFor="tripDays" className={labelClass}>Number of days *</label>
-                  <input id="tripDays" type="number" min="1" step="1" inputMode="numeric" placeholder="e.g. 8" className={inputClass} value={tripDays} onChange={e => setTripDays(e.target.value)} />
-                </div>
+                <label htmlFor="tripMonth" className={detailsLabel}>Month &amp; year <span className="font-normal normal-case tracking-normal text-[#73786d]">(optional)</span>
+                  <input id="tripMonth" type="month" className={planInputClass} value={tripMonth} onChange={e => setTripMonth(e.target.value)} />
+                </label>
+                <label htmlFor="tripDays" className={detailsLabel}>Number of days
+                  <input id="tripDays" type="number" min="1" step="1" inputMode="numeric" placeholder="e.g. 8" className={planInputClass} value={tripDays} onChange={e => setTripDays(e.target.value)} />
+                </label>
               </div>
             )}
 
-            <div className="space-y-2 pt-1">
-              <p className={labelClass}>Trip type</p>
+            <fieldset>
+              <legend className={`${detailsLabel} mb-2`}>Who is this trip for?</legend>
               <div className="flex flex-wrap gap-2">
-                {[
-                  { value: 'family', label: '👨‍👩‍👧 Family' },
-                  { value: 'friends', label: '🥳 Friends' },
-                  { value: 'romantic', label: '💋 Romantic' },
-                  { value: 'adult', label: '🍷 Other' },
-                ].map(({ value, label }) => (
-                  <button key={value} type="button" onClick={() => setTripAudience(value as typeof tripAudience)}
-                    className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${tripAudience === value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>
+                {([
+                  { value: 'family', label: 'Family' },
+                  { value: 'friends', label: 'Friends' },
+                  { value: 'romantic', label: 'Couples' },
+                  { value: 'adult', label: 'Adults' },
+                ] as const).map(({ value, label }) => (
+                  <button key={value} type="button" aria-pressed={tripAudience === value} onClick={() => setTripAudience(value)}
+                    className={`min-h-10 rounded-full border px-4 text-sm text-[#59694f] ${tripAudience === value ? 'border-[#59694f] bg-[#e8eee8] font-semibold' : 'border-[#d7cebc]'}`}>
                     {label}
                   </button>
                 ))}
               </div>
-            </div>
+            </fieldset>
           </div>
         )}
 
@@ -864,15 +865,15 @@ export default function CreatePage() {
                     )}
                     <div className="p-4 space-y-4">
                       {/* Hotel */}
-                      <div className="bg-blue-50 rounded-xl border border-l-4 border-l-blue-400 p-3 space-y-2">
-                        <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">🏨 Hotel / Accommodation</p>
+                      <div className="bg-[#edf1e9] rounded-xl border border-l-4 border-l-[#8caaa3] p-3 space-y-2">
+                        <p className="text-xs font-semibold text-[#355650] uppercase tracking-wide">🏨 Hotel / Accommodation</p>
                         <PlacesAutocomplete value={group.hotelName}
                           onChange={val => { updateHotel(di, gi, 'hotelName', val); if (!val) updGroup(di, gi, g => ({ ...g, hotelPriceLevel: null, hotelNightlyRate: '' })) }}
                           onSelect={(_, __, placeId) => { if (placeId) fetchHotelPriceLevel(di, gi, placeId) }}
                           type="hotel" placeholder="Hotel name (optional)" className={inputClass} />
                         {group.hotelName && (<>
                           <RecommendationPicker type="hotel" value={getRecommendation(group.hotelTags)} onChange={value => updGroup(di, gi, g => ({ ...g, hotelTags: recommendationTags(g.hotelTags, value) }))} />
-                          <button type="button" onClick={() => toggleDetails(`${di}-${gi}-hotel`)} className="text-xs font-medium text-blue-700 hover:text-blue-900">
+                          <button type="button" onClick={() => toggleDetails(`${di}-${gi}-hotel`)} className="text-xs font-medium text-[#355650] hover:text-[#242e25]">
                             {expandedDetails.has(`${di}-${gi}-hotel`) ? '− Hide details' : '+ Add details'}
                           </button>
                           {expandedDetails.has(`${di}-${gi}-hotel`) && <>
@@ -897,7 +898,7 @@ export default function CreatePage() {
                           <div className="flex flex-wrap gap-1.5 pt-1">
                             {HOTEL_TAGS.map(tag => (
                               <button key={tag} type="button" onClick={() => updGroup(di, gi, g => ({ ...g, hotelTags: g.hotelTags.includes(tag) ? g.hotelTags.filter(t => t !== tag) : [...g.hotelTags, tag] }))}
-                                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${group.hotelTags.includes(tag) ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+                                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${group.hotelTags.includes(tag) ? 'bg-[#355650] text-white border-[#355650]' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
                                 {tag}
                               </button>
                             ))}
@@ -922,31 +923,31 @@ export default function CreatePage() {
                               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🍜 Food & Drink</p>
                               {day.food.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
                               <div className="space-y-3">{day.food.map((item, ii) => <div key={ii}><FoodRow onRecommendationChange={value => updDay(di, gi, dyi, d => ({ ...d, food: d.food.map((f, j) => j === ii ? { ...f, isHighlight: value === 'must', tags: recommendationTags(f.tags, value) } : f) }))} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateFood(di, gi, dyi, ii, f, v)} onUpdateFF={v => setFoodFamilyFriendly(di, gi, dyi, ii, v)} onToggleTag={tag => toggleFoodTag(di, gi, dyi, ii, tag)} onRemove={() => removeFood(di, gi, dyi, ii)} onSelectPlace={id => id ? fetchFoodPriceLevel(di, gi, dyi, ii, id) : setFoodPriceLevel(di, gi, dyi, ii, null)} />{moveControl(di, gi, dyi, ii, 'food', item.name)}</div>)}</div>
-                              <button type="button" onClick={() => addFood(di, gi, dyi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add food / drink</button>
+                              <button type="button" onClick={() => addFood(di, gi, dyi)} className="w-full text-xs text-[#59694f] hover:text-[#2e4147] font-medium border border-dashed border-[#8caaa3] hover:border-[#355650] rounded-lg py-2 transition-colors">+ Add food / drink</button>
                             </div>
                             <div className="space-y-2">
                               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">🎯 Activities</p>
                               {day.activities.length === 0 && <p className="text-xs text-gray-400 italic">None added yet.</p>}
                               <div className="space-y-3">{day.activities.map((item, ii) => <div key={ii}><ActivityRow onRecommendationChange={value => updDay(di, gi, dyi, d => ({ ...d, activities: d.activities.map((a, j) => j === ii ? { ...a, isHighlight: value === 'must', tags: recommendationTags(a.tags, value) } : a) }))} item={item} index={ii} showRating={showRating} onUpdate={(f, v) => updateActivity(di, gi, dyi, ii, f, v)} onRemove={() => removeActivity(di, gi, dyi, ii)} />{moveControl(di, gi, dyi, ii, 'activities', item.name)}</div>)}</div>
-                              <button type="button" onClick={() => addActivity(di, gi, dyi)} className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-lg py-2 transition-colors">+ Add activity</button>
+                              <button type="button" onClick={() => addActivity(di, gi, dyi)} className="w-full text-xs text-[#59694f] hover:text-[#2e4147] font-medium border border-dashed border-[#8caaa3] hover:border-[#355650] rounded-lg py-2 transition-colors">+ Add activity</button>
                             </div>
                           </div>
                         </div>
                       ))}
-                      {postType !== 'guide' && <button type="button" onClick={() => addDay(di, gi)} className="w-full text-xs text-gray-500 hover:text-blue-600 border border-dashed border-gray-200 hover:border-blue-300 rounded-lg py-2 transition-colors">+ Add day</button>}
+                      {postType !== 'guide' && <button type="button" onClick={() => addDay(di, gi)} className="w-full text-xs text-gray-500 hover:text-[#355650] border border-dashed border-gray-200 hover:border-[#8caaa3] rounded-lg py-2 transition-colors">+ Add day</button>}
                     </div>
                   </div>
                 ))}
 
                 <button type="button" onClick={() => addGroup(di)}
-                  className="w-full text-sm text-gray-500 hover:text-blue-600 border border-dashed border-gray-300 hover:border-blue-300 rounded-xl py-2.5 transition-colors">
+                  className="w-full text-sm text-gray-500 hover:text-[#355650] border border-dashed border-gray-300 hover:border-[#8caaa3] rounded-xl py-2.5 transition-colors">
                   + Add stay (new hotel)
                 </button>
               </div>
             ))}
 
             <button type="button" onClick={addDest}
-              className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 hover:border-blue-500 rounded-2xl py-3 transition-colors">
+              className="w-full text-sm text-[#59694f] hover:text-[#2e4147] font-medium border border-dashed border-[#8caaa3] hover:border-[#355650] rounded-2xl py-3 transition-colors">
               + Add destination
             </button>
           </div>
@@ -959,7 +960,7 @@ export default function CreatePage() {
               <h2 className="font-semibold text-gray-900 text-lg mb-1">Photos</h2>
               <p className="text-xs text-gray-500">Add photos from your trip — they&apos;ll appear as a scrollable strip.</p>
             </div>
-            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-8 cursor-pointer hover:border-blue-400 transition-colors">
+            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-8 cursor-pointer hover:border-[#8caaa3] transition-colors">
               <span className="text-2xl mb-2">📸</span>
               <span className="text-sm font-medium text-gray-700">{uploading ? 'Uploading…' : 'Click to upload photos'}</span>
               <span className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP, GIF</span>
@@ -980,7 +981,7 @@ export default function CreatePage() {
                     <button type="button" onClick={() => removePhoto(i)}
                       className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
                     <input type="text" value={photo.caption} onChange={e => updateCaption(i, e.target.value)}
-                      className="mt-1 w-full rounded border border-gray-200 px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      className="mt-1 w-full rounded border border-gray-200 px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#59694f]"
                       placeholder="Caption (optional)" />
                   </div>
                 ))}
@@ -1038,7 +1039,7 @@ export default function CreatePage() {
               </button>
               <button type="button" onClick={() => handleSubmit(false)} disabled={pending || uploading || !hasItems}
                 title={!hasItems ? 'Add at least one hotel, restaurant, or activity first' : undefined}
-                className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60">
+                className="flex-1 bg-[#355650] text-white font-semibold py-3 rounded-xl hover:bg-[#2e4a45] transition-colors disabled:opacity-60">
                 {pending ? 'Publishing…' : 'Publish'}
               </button>
             </div>
@@ -1053,7 +1054,7 @@ export default function CreatePage() {
               ← Back
             </button>
             <button type="button" onClick={goNext}
-              className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
+              className="flex-1 py-3 rounded-xl bg-[#355650] text-white text-sm font-semibold hover:bg-[#2e4a45] transition-colors">
               Continue →
             </button>
           </div>

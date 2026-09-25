@@ -1,6 +1,7 @@
 'use client'
 
-import { useTransition, useState, useRef, useId } from 'react'
+import { useTransition, useState, useRef, useId, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { addToBucketList, removeFromBucketList } from '@/actions/bucketList'
 import { getSavedFolders } from '@/actions/savedFolders'
 import { useRouter } from 'next/navigation'
@@ -26,6 +27,9 @@ export default function BucketButton({
   const [folderError, setFolderError] = useState('')
   const [foldersLoaded, setFoldersLoaded] = useState(false)
   const dialog = useRef<HTMLDialogElement>(null)
+  // The folder popup is rendered only while open, outside the card: card hearts sit inside the card's link.
+  const [choosing, setChoosing] = useState(false)
+  useEffect(() => { if (choosing) dialog.current?.showModal() }, [choosing])
   const titleId = useId()
   const router = useRouter()
 
@@ -38,10 +42,10 @@ export default function BucketButton({
       return
     }
 
-    if (withFolders && size === 'md') {
+    if (withFolders) {
       setFolderError('')
       setFoldersLoaded(false)
-      dialog.current?.showModal()
+      setChoosing(true)
       startTransition(async () => {
         try {
           const result = await getSavedFolders(itineraryId)
@@ -99,24 +103,7 @@ export default function BucketButton({
     })
   }
 
-  if (size === 'md') {
-    return (
-      <>
-        <button
-          disabled={pending}
-          onClick={handleClick}
-          title={withFolders ? 'Like trip and choose a folder' : label}
-          aria-label={withFolders ? 'Like trip and choose a folder' : label}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
-            bucketed
-              ? 'bg-red-50 border-red-300 text-red-600 hover:bg-red-100'
-              : 'border-gray-300 text-gray-600 hover:bg-red-50 hover:border-red-300 hover:text-red-500'
-          }`}
-        >
-          <Heart size={15} className={bucketed ? 'fill-red-500 text-red-500' : ''} />
-          {bucketed ? 'Liked' : 'Like'}
-        </button>
-        {withFolders && <dialog ref={dialog} onCancel={event => { if (pending) event.preventDefault() }} aria-labelledby={titleId} className="m-auto w-[calc(100%_-_2rem)] max-w-sm rounded-2xl bg-[#faf7f1] p-5 text-[#242e25] shadow-xl backdrop:bg-black/40">
+  const folderDialog = choosing && typeof document !== 'undefined' ? createPortal(<dialog ref={dialog} onClose={() => setChoosing(false)} onClick={event => event.stopPropagation()} onCancel={event => { if (pending) event.preventDefault() }} aria-labelledby={titleId} className="m-auto w-[calc(100%_-_2rem)] max-w-sm rounded-2xl bg-[#faf7f1] p-5 text-[#242e25] shadow-xl backdrop:bg-black/40">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 id={titleId} className="text-lg font-semibold">Like this trip</h2>
             <button type="button" aria-label="Close" disabled={pending} onClick={() => dialog.current?.close()} className="p-2"><X size={18} /></button>
@@ -135,17 +122,37 @@ export default function BucketButton({
               {bucketed && <button type="button" onClick={unlikeTrip} disabled={pending} className="min-h-11 rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-700 disabled:opacity-50">Unlike</button>}
             </div>
           </form>
-        </dialog>}
+        </dialog>, document.body) : null
+
+  if (size === 'md') {
+    return (
+      <>
+        <button
+          disabled={pending}
+          onClick={handleClick}
+          title={withFolders ? 'Like trip and choose a folder' : label}
+          aria-label={withFolders ? 'Like trip and choose a folder' : label}
+          className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
+            bucketed
+              ? 'bg-red-50 border-red-300 text-red-600 hover:bg-red-100'
+              : 'border-gray-300 text-gray-600 hover:bg-red-50 hover:border-red-300 hover:text-red-500'
+          }`}
+        >
+          <Heart size={15} className={bucketed ? 'fill-red-500 text-red-500' : ''} />
+          {bucketed ? 'Liked' : 'Like'}
+        </button>
+        {folderDialog}
       </>
     )
   }
 
   return (
+    <>
     <button
       disabled={pending}
       onClick={handleClick}
-      title={label}
-      aria-label={label}
+      title={withFolders ? 'Like trip and choose a folder' : label}
+      aria-label={withFolders ? `${label} and choose a folder` : label}
       className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-colors ${
         bucketed
           ? 'bg-red-500 text-white'
@@ -154,5 +161,7 @@ export default function BucketButton({
     >
       <Heart size={14} className={bucketed ? 'fill-white' : ''} />
     </button>
+    {folderDialog}
+    </>
   )
 }

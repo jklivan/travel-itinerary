@@ -8,12 +8,13 @@ import styles from '../../itinerary/[id]/places.module.css'
 import planningStyles from './Planner.module.css'
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, MapPin, LockKeyhole, CalendarDays, Check, Hotel, Utensils, Camera, Plane, Upload } from 'lucide-react'
-import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace, sharePlan } from '@/actions/planning'
+import { Plus, MapPin, LockKeyhole, CalendarDays, Check, Hotel, Utensils, Camera, Plane, Upload, Pencil } from 'lucide-react'
+import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
 import PlaceEntryForm from '@/components/PlaceEntryForm'
 import PlaceEditForm, { type PlaceEditValues, type PlaceType } from '@/components/PlaceEditForm'
 import EventPhotoInput from '@/components/EventPhotoInput'
+import PlaceQuickEdit from '@/components/PlaceQuickEdit'
 import DeleteButton from '@/components/DeleteButton'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import PlanningMap from '@/components/PlanningMap'
@@ -24,7 +25,7 @@ import { TAGS } from '@/lib/tags'
 import { getRecommendation } from '@/lib/placeRecommendation'
 
 type Place = { tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[]; mealType: string | null; alternative: string | null; description: string | null; link: string | null; address: string | null }
-type Trip = { postType: string; durationDays?: number | null; id: string; title: string; audience: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; items: Place[] }[] }
+type Trip = { budget?: number | null; tripRating?: number | null; tags?: string[]; postType: string; durationDays?: number | null; id: string; title: string; audience: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; items: Place[] }[] }
 const categories = [{ value: 'hotel', label: 'Hotels', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
 
 export default function Planner({ trip, initialImport = false, initialDetails = false, initialPost = false }: { trip: Trip; initialImport?: boolean; initialDetails?: boolean; initialPost?: boolean }) {
@@ -35,22 +36,25 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const [importing, setImporting] = useState(initialImport)
   const [publishing, setPublishing] = useState(false)
   const [publishFormat, setPublishFormat] = useState<'guide' | 'day-trip' | 'itinerary' | null>(initialPost ? (trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary') : null)
-  const [publishBudget, setPublishBudget] = useState(0)
-  const [publishRating, setPublishRating] = useState(0)
-  const [publishTags, setPublishTags] = useState<string[]>([])
+  // Prefilled from an earlier Continue, so going back to make changes keeps these choices.
+  const [publishBudget, setPublishBudget] = useState(trip.budget ?? 0)
+  const [publishRating, setPublishRating] = useState(trip.tripRating ?? 0)
+  const [publishTags, setPublishTags] = useState<string[]>((trip.tags ?? []).filter(tag => tag !== 'day-trip'))
   const [publishMessage, setPublishMessage] = useState('')
   const places = trip.destinations.flatMap(d => d.items.map(item => ({ ...item, destination: [d.name, d.country].filter(Boolean).join(', ') })))
   const scheduled = [...new Set(places.flatMap(p => p.day === null ? [] : [p.day]))].sort((a, b) => a - b)
   const maxDay = Math.max(trip.durationDays ?? 0, ...scheduled, 1)
   function renderPlace(place: Place & { destination: string }) { return <PlaceRow key={place.id} place={place} maxDay={maxDay} /> }
-  async function publishTrip(format: 'guide' | 'day-trip' | 'itinerary') {
+  // Continue saves these details on the still-private plan, then shows the trip exactly as it will be posted.
+  // Posting happens from that preview.
+  async function continueToPreview(format: 'guide' | 'day-trip' | 'itinerary') {
     if (publishing) return
     setPublishing(true); setPublishMessage('')
     try {
-      const result = await sharePlan(trip.id, format, { budget: publishBudget, tripRating: publishRating, tags: publishTags })
+      const result = await savePublishDetails(trip.id, format, { budget: publishBudget, tripRating: publishRating, tags: publishTags })
       if (result.error) setPublishMessage(result.error)
-      else { setPublishFormat(null); router.push(`/?posted=${encodeURIComponent(trip.id)}`) }
-    } catch { setPublishMessage('Could not publish your itinerary. Please try again.') }
+      else { setPublishFormat(null); router.push(`/itinerary/${trip.id}?preview=1`) }
+    } catch { setPublishMessage('Could not save these details. Please try again.') }
     finally { setPublishing(false) }
   }
   return <div className="mx-auto max-w-2xl px-4 py-6 text-[#2e4147]">
@@ -85,7 +89,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       </>}
     </section>
     <div className="mt-8 border-t border-[#d7cebc] pt-5"><div className="flex flex-wrap items-center justify-between gap-3"><div className="pointer-events-auto"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div>{trip.isPlan && trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={() => setPublishFormat(trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary')} aria-label="Post trip" title="Post trip" className="pointer-events-auto relative inline-flex h-16 w-24 items-center justify-center bg-[#355650] text-sm font-semibold text-white shadow-lg transition-transform hover:scale-105 disabled:opacity-60 [clip-path:polygon(7%_0,93%_0,100%_10%,100%_90%,93%_100%,7%_100%,0_90%,0_10%)]"><span className="flex h-12 w-20 items-center justify-center border-2 border-dashed border-[#355650] bg-[#f1e7d8]"><Image src="/brand/postcard-icon.svg" alt="" width={42} height={42} /></span><span className="sr-only">Post</span></button>}</div></div>
-    {trip.isPlan && trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-[#242e25]/50 px-5 py-6" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="w-full max-w-md rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-5 shadow-xl"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-[#2e4147]">A few more details</h2><p className="mt-1 text-sm text-[#73786d]">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-2xl leading-none text-[#73786d]" aria-label="Close">×</button></div><div className="mt-5 space-y-5"><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Trip type</legend><div className="grid grid-cols-3 gap-2">{([['guide', 'Guide'], ['day-trip', 'Day trip'], ['itinerary', 'Multi-day']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setPublishFormat(value)} className={`rounded-xl border px-2 py-2 text-xs font-semibold ${publishFormat === value ? 'border-[#59694f] bg-[#e8eee8] text-[#355650]' : 'border-[#d7cebc] text-[#73786d]'}`}>{label}</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Budget</legend><div className="flex gap-2">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => setPublishBudget(publishBudget === value ? 0 : value)} className={`text-xl ${value <= publishBudget ? 'text-[#a27e3b]' : 'text-[#c3bcad]'}`} aria-label={`${value} dollar signs`}>$</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Overall trip rating</legend><div className="flex gap-1">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => setPublishRating(publishRating === value ? 0 : value)} className={`text-2xl ${value <= publishRating ? 'text-[#a27e3b]' : 'text-[#c3bcad]'}`} aria-label={`Rate trip ${value} out of 5`}>★</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Tags</legend><div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">{TAGS.slice(0, 16).map(tag => <button key={tag.id} type="button" onClick={() => setPublishTags(current => current.includes(tag.id) ? current.filter(value => value !== tag.id) : [...current, tag.id])} className={`rounded-full border px-3 py-1.5 text-xs ${publishTags.includes(tag.id) ? 'border-[#59694f] bg-[#e8eee8] text-[#355650]' : 'border-[#d7cebc] text-[#73786d]'}`}>{tag.label}</button>)}</div></fieldset><button type="button" disabled={publishing} onClick={() => void publishTrip(publishFormat)} className="w-full rounded-xl bg-[#355650] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{publishing ? 'Posting…' : 'Post trip'}</button></div></div></div>}
+    {trip.isPlan && trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-[#242e25]/50 px-5 py-6" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="w-full max-w-md rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-5 shadow-xl"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-[#2e4147]">A few more details</h2><p className="mt-1 text-sm text-[#73786d]">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-2xl leading-none text-[#73786d]" aria-label="Close">×</button></div><div className="mt-5 space-y-5"><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Trip type</legend><div className="grid grid-cols-3 gap-2">{([['guide', 'Guide'], ['day-trip', 'Day trip'], ['itinerary', 'Multi-day']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setPublishFormat(value)} className={`rounded-xl border px-2 py-2 text-xs font-semibold ${publishFormat === value ? 'border-[#59694f] bg-[#e8eee8] text-[#355650]' : 'border-[#d7cebc] text-[#73786d]'}`}>{label}</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Budget</legend><div className="flex gap-2">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => setPublishBudget(publishBudget === value ? 0 : value)} className={`text-xl ${value <= publishBudget ? 'text-[#a27e3b]' : 'text-[#c3bcad]'}`} aria-label={`${value} dollar signs`}>$</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Overall trip rating</legend><div className="flex gap-1">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => setPublishRating(publishRating === value ? 0 : value)} className={`text-2xl ${value <= publishRating ? 'text-[#a27e3b]' : 'text-[#c3bcad]'}`} aria-label={`Rate trip ${value} out of 5`}>★</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Tags</legend><div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">{TAGS.slice(0, 16).map(tag => <button key={tag.id} type="button" onClick={() => setPublishTags(current => current.includes(tag.id) ? current.filter(value => value !== tag.id) : [...current, tag.id])} className={`rounded-full border px-3 py-1.5 text-xs ${publishTags.includes(tag.id) ? 'border-[#59694f] bg-[#e8eee8] text-[#355650]' : 'border-[#d7cebc] text-[#73786d]'}`}>{tag.label}</button>)}</div></fieldset><button type="button" disabled={publishing} onClick={() => void continueToPreview(publishFormat)} className="w-full rounded-xl bg-[#355650] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{publishing ? 'Saving…' : 'Continue →'}</button></div></div></div>}
     {publishMessage && <p role="status" className="mt-2 text-right text-sm text-[#59694f]">{publishMessage}</p>}
   </div>
 }
@@ -156,6 +160,7 @@ function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; m
   const [day, setDay] = useState(place.day === null ? '' : String(place.day))
   const [uploading, setUploading] = useState(false)
   const category = categories.find(category => category.value === place.type) ?? categories[2]
+  function openEditor() { setPlaceId(place.placeId ?? ''); setPhotos(place.photos); setDay(place.day === null ? '' : String(place.day)); setEditing(true); setError(''); setSaved(false) }
   async function save(values: PlaceEditValues) {
     if (saving.current || uploading) return
     saving.current = true; setBusy(true); setError('')
@@ -168,7 +173,8 @@ function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; m
   }
   const Icon = category.Icon
   return <article className={`${planningStyles.place} ${styles[category.value]}`}>
-      <div className={`${styles.card} ${planningStyles.card}`}>
+      {/* Tapping the photo or text opens the place with its full notes and details. */}
+      <div role="button" tabIndex={0} aria-label={`Open ${place.name}`} onClick={() => { if (!editing) openEditor() }} onKeyDown={event => { if (!editing && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); openEditor() } }} className={`${styles.card} ${planningStyles.card} cursor-pointer`}>
       <PlacePhoto itemId={place.id} name={place.name} photos={place.photos} thumbnailClass={styles.thumbnail} fallback={<div className={styles.keepsake} aria-hidden="true"><span>{category.eyebrow}</span><Icon size={25} strokeWidth={1} /><span>{place.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span></div>} />
       <div className={styles.cardBody}>
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -183,7 +189,8 @@ function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; m
     </div>
     {place.type !== 'transport' && <PlacePeople key={`${place.placeId}:${place.name}:${place.destination}`} compact placeId={place.placeId ?? ''} name={place.name} location={place.destination} />}
     <div className={planningStyles.controls}>
-    {!editing ? <button onClick={() => { setPlaceId(place.placeId ?? ''); setPhotos(place.photos); setDay(place.day === null ? '' : String(place.day)); setEditing(true); setError(''); setSaved(false) }} type="button" className="min-h-11 text-sm font-semibold text-[#59694f]">Edit details →</button>
+    {!editing ? <PlaceQuickEdit compact row itemId={place.id} name={place.name} rating={place.rating} photos={place.photos}
+        leading={<button onClick={openEditor} type="button" className="inline-flex min-h-11 items-center justify-center gap-1.5 px-2 text-xs text-[#59694f] sm:text-sm"><Pencil size={15} />Edit details</button>} />
       : <div className="w-full">
         {/* Same fields as the trip editor, plus photos and the day for this plan. */}
         <PlaceEditForm type={category.value as PlaceType} city={place.destination} busy={busy || uploading} saveLabel="Save changes" onPlaceIdChange={setPlaceId} onClose={() => setEditing(false)} onSave={values => void save(values)}

@@ -109,7 +109,11 @@ export default function TestPlanner({ trip, chat, hasOwnTrips, lastPreferences }
       }
       const form = new FormData()
       for (const [key, value] of Object.entries({ name: rec.name, type: rec.type, destination, notes: `${rec.why}${rec.friendName ? ` — via ${rec.friendName}` : ''}`, clientId: crypto.randomUUID(), day: '' })) form.set(key, value)
-      if (rec.placeId) form.set('placeId', rec.placeId)
+      // Save the place's Google ID (from the same lookup the pick's pop-out uses), so the planner can show
+      // its photo and map pin. Without it, names like "Hotel Romazzino" vs Google's "Romazzino, A Belmond
+      // Hotel" are too different to match later.
+      const placeId = rec.placeId ?? await loadPickInfo(rec).then(info => info.placeId, () => null)
+      if (placeId) form.set('placeId', placeId)
       const result = await addPlanPlace(tripId.current, form)
       if (result.error) throw new Error(result.error)
       setAdded(current => new Set(current).add(rec.key))
@@ -249,6 +253,16 @@ function SourceBadge({ rec }: { rec: Recommendation }) {
 type PickInfo = { author: string | null; notes: string | null; rating: number | null; description: string | null; googleRating?: { value: number; count: number } | null; photos: { url: string; credit: string | null }[]; photosFromGoogle: boolean; address: string | null; website: string | null; placeId: string | null; trip: { title: string; href: string } | null }
 // Details are fetched once per place per page load; Google lookups are slow and billed.
 const pickInfoCache = new Map<string, Promise<PickInfo>>()
+function loadPickInfo(rec: Recommendation) {
+  const key = rec.sourceItemId ? `item:${rec.sourceItemId}` : `web:${rec.name}|${[rec.destination, rec.country].filter(Boolean).join(', ')}`
+  if (!pickInfoCache.has(key)) {
+    const query = rec.sourceItemId ? `item=${encodeURIComponent(rec.sourceItemId)}` : `name=${encodeURIComponent(rec.name)}&city=${encodeURIComponent(rec.destination)}&country=${encodeURIComponent(rec.country ?? '')}`
+    const request = fetch(`/api/testplan/place?${query}`).then(response => response.ok ? response.json() as Promise<PickInfo> : Promise.reject(new Error()))
+    request.catch(() => pickInfoCache.delete(key))
+    pickInfoCache.set(key, request)
+  }
+  return pickInfoCache.get(key)!
+}
 
 // Pop-out in the same style as the place cards on trip pages: the friend's own notes and photos
 // when the pick came from a trip, otherwise Claude's description with photos from Google.
@@ -265,17 +279,10 @@ function PickDetails({ rec, color, addButton, onClose }: { rec: Recommendation; 
     element?.showModal()
     const previous = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    const key = rec.sourceItemId ? `item:${rec.sourceItemId}` : `web:${rec.name}|${city}`
-    if (!pickInfoCache.has(key)) {
-      const query = rec.sourceItemId ? `item=${encodeURIComponent(rec.sourceItemId)}` : `name=${encodeURIComponent(rec.name)}&city=${encodeURIComponent(rec.destination)}&country=${encodeURIComponent(rec.country ?? '')}`
-      const request = fetch(`/api/testplan/place?${query}`).then(response => response.ok ? response.json() : Promise.reject(new Error()))
-      request.catch(() => pickInfoCache.delete(key))
-      pickInfoCache.set(key, request)
-    }
     let active = true
-    pickInfoCache.get(key)!.then(data => { if (active) setInfo(data) }, () => { if (active) setFailed(true) })
+    loadPickInfo(rec).then(data => { if (active) setInfo(data) }, () => { if (active) setFailed(true) })
     return () => { active = false; element?.close(); document.body.style.overflow = previous }
-  }, [rec.sourceItemId, rec.name, rec.destination, rec.country, city])
+  }, [rec])
 
   const mapUrl = new URL('https://www.google.com/maps/search/')
   mapUrl.searchParams.set('api', '1')

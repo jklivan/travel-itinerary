@@ -21,6 +21,7 @@ import ItineraryMap from '@/components/ItineraryMap'
 import type { ItemPin } from '@/components/ItineraryMapInner'
 import styles from './places.module.css'
 import PlaceDetailsCard from '@/components/PlaceDetailsCard'
+import PublishPreviewBar from '@/components/PublishPreviewBar'
 import { getRecommendation, partitionPlaces } from '@/lib/placeRecommendation'
 import { mapDayNumber } from '@/lib/mapDays'
 import { distanceMiles } from '@/lib/distance'
@@ -177,10 +178,10 @@ export default async function ItineraryPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ view?: string }>
+  searchParams: Promise<{ view?: string; preview?: string }>
 }) {
   const { id } = await params
-  const { view } = await searchParams
+  const { view, preview: previewParam } = await searchParams
   const session = await auth()
 
   const it = await prisma.itinerary.findUnique({
@@ -219,7 +220,9 @@ export default async function ItineraryPage({
   const showMap = view === 'map'
 
   if (it.visibility === 'draft' && !isOwn) notFound()
-  if (it.visibility === 'draft' && isOwn && it.isPlan) redirect(`/plan/${it.id}`)
+  // ?preview=1: a private plan shown as it will look once posted (from "A few more details" → Continue).
+  const previewing = previewParam === '1' && it.visibility === 'draft' && isOwn && it.isPlan
+  if (it.visibility === 'draft' && isOwn && it.isPlan && !previewing) redirect(`/plan/${it.id}`)
   // Plan-based trips are edited in the planner. Link there directly: the editor's server redirect
   // to /plan fails during in-app navigation and leaves a blank page.
   const editHref = it.isPlan ? `/plan/${it.id}` : `/itinerary/${it.id}/edit`
@@ -528,10 +531,15 @@ export default async function ItineraryPage({
 
   return (
     <div className="min-h-screen bg-[#f3eee5]">
+      {previewing && <PublishPreviewBar id={it.id} postType={it.postType} budget={it.budget} tripRating={it.tripRating} tags={it.tags} />}
       <div className={`max-w-4xl mx-auto px-4 ${isOwn ? 'pt-2 pb-6' : 'py-6'}`}>
         <TripBackButton itineraryId={it.id} fallback={isOwn ? `/user/${it.user.id}` : "/"} className={isOwn ? 'mb-1 min-h-9' : ''} />
 
-        {it.visibility === 'draft' && (
+        {previewing ? (
+          <div className="mb-4 rounded-lg border border-[#c7d7cf] bg-[#edf1e9] px-3 py-2 text-xs font-medium text-[#355650]">
+            Preview — only you can see this. It’s how your trip will look once you post it.
+          </div>
+        ) : it.visibility === 'draft' && (
           <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 font-medium">
             Draft — only visible to you. <Link href={editHref} className="underline">Edit &amp; publish</Link>
           </div>

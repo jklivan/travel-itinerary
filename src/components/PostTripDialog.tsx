@@ -34,7 +34,7 @@ export default function PostTripDialog({ onClose }: { onClose: () => void }) {
 
   function go() {
     dialog.current?.close()
-    if (!plan) router.push('/create')
+    if (!plan) router.push('/create?start=scratch')
     // Plans open on their "A few more details" posting step. Plans link straight to /plan: the
     // trip editor's redirect there fails during in-app navigation.
     else if (!plan.isPlan) router.push(`/itinerary/${plan.id}/edit`)

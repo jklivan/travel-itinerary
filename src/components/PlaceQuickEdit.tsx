@@ -1,12 +1,14 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Camera, Star } from 'lucide-react'
 import EventPhotoInput from './EventPhotoInput'
 import { updatePlace } from '@/actions/placeQuickEdit'
 
-export default function PlaceQuickEdit({ itemId, name, rating, photos, compact = false }: { compact?: boolean; itemId: string; name: string; rating: number | null; photos: string[] }) {
+// `row`: an even three-button bar under a planner card (e.g. Edit details · Add photos · Add rating),
+// with `leading` as the first button.
+export default function PlaceQuickEdit({ itemId, name, rating, photos, compact = false, row = false, leading }: { compact?: boolean; row?: boolean; leading?: ReactNode; itemId: string; name: string; rating: number | null; photos: string[] }) {
   const router = useRouter()
   const [mode, setMode] = useState<'photos' | 'rating' | null>(null)
   const [draftRating, setDraftRating] = useState(rating ?? 0)
@@ -44,11 +46,12 @@ export default function PlaceQuickEdit({ itemId, name, rating, photos, compact =
     finally { savingRef.current = false; setSaving(false) }
   }
 
-  return <section aria-label={`Edit ${name}`} className={compact ? `text-sm ${mode ? 'w-full border-t border-[#e3dfd2] pt-3' : ''}` : 'mt-2 rounded-lg border border-[#d7cebc] bg-[#faf7ee] p-2 text-sm'}>
+  return <section aria-label={`Edit ${name}`} className={compact ? `text-sm ${row ? 'w-full' : ''} ${mode ? 'w-full border-t border-[#e3dfd2] pt-3' : ''}` : 'mt-2 rounded-lg border border-[#d7cebc] bg-[#faf7ee] p-2 text-sm'}>
     {!mode ? <>
-    <div className="flex flex-wrap gap-2">
-      <button type="button" onClick={() => open('photos')} aria-label={`Edit photos for ${name}`} className="inline-flex min-h-11 items-center gap-1.5 px-2 text-[#59694f]"><Camera size={15} />{photos.length ? 'Edit photos' : 'Add photos'}</button>
-      <button type="button" onClick={() => open('rating')} aria-label={`Change rating for ${name}`} className="inline-flex min-h-11 items-center gap-1.5 px-2 text-[#59694f]"><Star size={15} />{rating ? 'Change rating' : 'Add rating'}</button>
+    <div className={row ? 'grid grid-cols-3 divide-x divide-[#e3dfd2]' : 'flex flex-wrap gap-2'}>
+      {leading}
+      <button type="button" onClick={() => open('photos')} aria-label={`Edit photos for ${name}`} className={`inline-flex min-h-11 items-center gap-1.5 px-2 text-[#59694f] ${row ? 'justify-center text-xs sm:text-sm' : ''}`}><Camera size={15} />{photos.length ? 'Edit photos' : 'Add photos'}</button>
+      <button type="button" onClick={() => open('rating')} aria-label={`Change rating for ${name}`} className={`inline-flex min-h-11 items-center gap-1.5 px-2 text-[#59694f] ${row ? 'justify-center text-xs sm:text-sm' : ''}`}><Star size={15} />{rating ? 'Change rating' : 'Add rating'}</button>
     </div>
     </> : <>
       <p className="px-2 py-1 font-medium text-[#2e4147]">{mode === 'photos' ? 'Photos' : 'Your rating'} · {name}</p>
