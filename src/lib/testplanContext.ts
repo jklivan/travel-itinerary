@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 export type ContextItem = { id: string; name: string; type: string; placeId: string | null; lat: number | null; lng: number | null; destination: string; country: string | null; tripId: string; owner: string; mine: boolean }
 
 const tripSelect = {
-  id: true, title: true, postType: true, audience: true, tripRating: true, visibility: true, datesFlexible: true, startDate: true,
+  id: true, title: true, postType: true, audience: true, tripRating: true, visibility: true, datesFlexible: true, startDate: true, budget: true, tags: true,
   user: { select: { name: true } },
   destinations: { orderBy: { order: 'asc' as const }, select: { name: true, country: true, items: { orderBy: { order: 'asc' as const }, select: {
     id: true, name: true, type: true, rating: true, notes: true, tags: true, placeId: true, lat: true, lng: true, planningStatus: true,
@@ -29,7 +29,8 @@ export async function loadPlanningContext(userId: string, excludeTripId?: string
     const header = [`## ${isMine ? 'Your trip' : `${trip.user.name}'s trip`}: "${trip.title}"`,
       trip.visibility === 'draft' ? 'draft plan' : trip.postType,
       trip.datesFlexible ? '' : trip.startDate.toISOString().slice(0, 7),
-      trip.tripRating ? `trip rated ${trip.tripRating}/5` : '', `for ${trip.audience}`].filter(Boolean).join(' · ')
+      trip.tripRating ? `trip rated ${trip.tripRating}/5` : '', `for ${trip.audience}`,
+      trip.budget ? `budget ${'$'.repeat(trip.budget)}` : '', trip.tags.length ? `tags: ${trip.tags.slice(0, 6).join(', ')}` : ''].filter(Boolean).join(' · ')
     const body = trip.destinations.map(destination => {
       const lines = destination.items.map(item => {
         items.set(item.id, { id: item.id, name: item.name, type: item.type, placeId: item.placeId, lat: item.lat, lng: item.lng, destination: destination.name, country: destination.country, tripId: trip.id, owner: isMine ? 'you' : trip.user.name, mine: isMine })
@@ -40,5 +41,7 @@ export async function loadPlanningContext(userId: string, excludeTripId?: string
     return `${header}\n${body}`
   })
   const text = sections.length ? sections.join('\n\n') : '(No trips yet from you or your friends.)'
-  return { text, items, friendCount: new Set(friends.map(trip => trip.user.name)).size }
+  // Trips with at least one place say enough about the traveler's taste to skip the budget/type/activity questions.
+  const hasOwnTrips = mine.some(trip => trip.destinations.some(destination => destination.items.length > 0))
+  return { text, items, friendCount: new Set(friends.map(trip => trip.user.name)).size, hasOwnTrips }
 }

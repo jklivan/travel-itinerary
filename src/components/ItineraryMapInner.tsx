@@ -67,6 +67,27 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
   return null
 }
 
+// Day colors, hotels and undated places. Pins with their own color are explained by the caller instead.
+// Shared by the Leaflet and Google versions of this map.
+export function MapDayLegend({ pins }: { pins: ItemPin[] }) {
+  const dayPins = pins.filter(pin => !pin.color)
+  const days = [...new Set(dayPins.flatMap(pin => pin.day === null ? [] : [pin.day]))].sort((a, b) => a - b)
+  const hasHotels = dayPins.some(pin => pin.type === 'hotel' && pin.day === null)
+  const hasUndatedPlaces = dayPins.some(pin => pin.type !== 'hotel' && pin.day === null)
+  if (!dayPins.length) return null
+  return <div aria-label="Map day legend" className="flex max-h-28 shrink-0 flex-wrap gap-x-4 gap-y-2 overflow-y-auto border-b border-[#d7cebc] bg-[#faf7ee] px-4 py-3 text-xs text-[#2e4147]">
+    {days.map(day => <span key={day} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ background: mapDayColor(day) }} />Day {day}</span>)}
+    {hasHotels && <span className="inline-flex items-center gap-1.5"><span aria-hidden="true">🏨</span>Hotels</span>}
+    {hasUndatedPlaces && <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ background: mapDayColor(null) }} />No day assigned</span>}
+  </div>
+}
+
+// What a pin's popup and tooltip say under its name.
+export function pinLabel(pin: ItemPin) {
+  return pin.label ?? (pin.day === null ? pin.type === 'hotel' ? 'Hotel' : 'No day assigned' : `Day ${pin.day}`)
+}
+export const PIN_EMOJI: Record<string, string> = { hotel: '🏨', food_drink: '🍴', activity: '📍', transport: '✈️' }
+
 export default function ItineraryMapInner({ pins }: { pins: ItemPin[] }) {
   if (pins.length === 0) {
     return (
@@ -81,19 +102,9 @@ export default function ItineraryMapInner({ pins }: { pins: ItemPin[] }) {
     pins.reduce((s, p) => s + p.lng, 0) / pins.length,
   ]
   const positions: [number, number][] = pins.map(p => [p.lat, p.lng])
-  // Pins with their own color are explained by the caller, not by the day legend.
-  const dayPins = pins.filter(pin => !pin.color)
-  const days = [...new Set(dayPins.flatMap(pin => pin.day === null ? [] : [pin.day]))].sort((a, b) => a - b)
-  const hasHotels = dayPins.some(pin => pin.type === 'hotel' && pin.day === null)
-  const hasUndatedPlaces = dayPins.some(pin => pin.type !== 'hotel' && pin.day === null)
-
   return (
     <div className="flex h-full flex-col">
-      {dayPins.length > 0 && <div aria-label="Map day legend" className="flex max-h-28 shrink-0 flex-wrap gap-x-4 gap-y-2 overflow-y-auto border-b border-[#d7cebc] bg-[#faf7ee] px-4 py-3 text-xs text-[#2e4147]">
-        {days.map(day => <span key={day} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ background: mapDayColor(day) }} />Day {day}</span>)}
-        {hasHotels && <span className="inline-flex items-center gap-1.5"><span aria-hidden="true">🏨</span>Hotels</span>}
-        {hasUndatedPlaces && <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ background: mapDayColor(null) }} />No day assigned</span>}
-      </div>}
+      <MapDayLegend pins={pins} />
       <div className="min-h-0 flex-1">
       <MapContainer
       center={center}

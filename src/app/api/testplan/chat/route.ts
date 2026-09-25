@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { loadPlanningContext } from '@/lib/testplanContext'
+import { cleanPreferences, describePreferences } from '@/lib/travelPreferences'
 import type { Prisma } from '@/generated/prisma/client'
 
 export const maxDuration = 300
@@ -17,7 +18,9 @@ How to help:
 - Only recommend real, specific places (a named hotel, restaurant, sight), not generic advice. Keep "why" to one or two sentences.
 - Don't re-recommend places already in the user's current trip.
 - Keep the reply conversational and brief (a few short paragraphs at most). The recommendations list renders as cards next to your reply, so don't repeat every detail in the reply text.
+- Whenever you suggest trip ideas, at least one must be a whole destination that nobody in the travel data has been to, so the user discovers somewhere new — even when friends' trips would fill the list. Name it as its own trip idea and make its places your own picks. The exception is when the user asks about one specific place (e.g. "what should we do in Lisbon?"): then stay in that place.
 - When you suggest a destination, cover it as a whole trip: a place or two to stay, a few things to do, and a few places to eat. When you offer alternative destinations, do this for each one.
+- Before recommending places, you need to know: what kind of trip this is now (who's going, how long), their budget, the types of destination they like, and what they like to do. Use <traveler_preferences> when present. When the user has past trips of their own, infer budget, destination types and activities from those trips (budgets, ratings, tags, places) instead of asking. If the user has no past trips and hasn't shared preferences, don't recommend yet: reply with one short, friendly question asking for what's missing, and return an empty recommendations list.
 - Recommendations are optional: return an empty list when the user is just chatting or asking a question that doesn't call for places.
 
 For each recommendation:
@@ -60,7 +63,7 @@ export async function POST(request: Request) {
   const userId = (await auth())?.user?.id
   if (!userId) return Response.json({ error: 'Please sign in.' }, { status: 401 })
   if (!process.env.ANTHROPIC_API_KEY) return Response.json({ error: 'ANTHROPIC_API_KEY is not configured.' }, { status: 500 })
-  const body = await request.json().catch(() => null) as { chatId?: unknown; message?: unknown; tripId?: unknown } | null
+  const body = await request.json().catch(() => null) as { chatId?: unknown; message?: unknown; tripId?: unknown; preferences?: unknown } | null
   const message = typeof body?.message === 'string' ? body.message.trim() : ''
   const tripId = typeof body?.tripId === 'string' && body.tripId ? body.tripId : undefined
   const chatId = typeof body?.chatId === 'string' && body.chatId ? body.chatId : undefined
@@ -77,7 +80,11 @@ export async function POST(request: Request) {
   const current = trip
     ? `<current_trip title="${trip.title}">\n${trip.destinations.flatMap(d => d.items.map(item => `- ${item.name} (${item.type}, ${d.name}${item.dayIndex === null ? '' : `, day ${item.dayIndex}`})`)).join('\n') || '(empty so far)'}\n</current_trip>`
     : '<current_trip>Not started yet. Adding a recommendation will create it.</current_trip>'
-  const userMessage: Anthropic.MessageParam = { role: 'user', content: `${current}\n\n${message}` }
+  // The setup answers ride along with the first message, so they stay in the conversation history.
+  const preferences = cleanPreferences(body?.preferences)
+  const traveler = `<traveler past_trips="${context.hasOwnTrips ? 'yes' : 'none'}" />`
+  const preferencesBlock = preferences ? `\n<traveler_preferences>\n${describePreferences(preferences)}\n</traveler_preferences>` : ''
+  const userMessage: Anthropic.MessageParam = { role: 'user', content: `${current}\n${traveler}${preferencesBlock}\n\n${message}` }
 
   try {
     const response = await client.messages.stream({
@@ -108,7 +115,7 @@ export async function POST(request: Request) {
       }
     })
     const nextHistory = [...history, userMessage, { role: 'assistant', content: response.content }] as unknown as Prisma.InputJsonValue
-    const newTurns = [{ role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations }]
+    const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations }]
     const saved = chat
       ? await prisma.planChat.update({ where: { id: chat.id }, data: { history: nextHistory, turns: [...(chat.turns as Prisma.JsonArray), ...newTurns] as Prisma.InputJsonValue, ...(trip && !chat.tripId ? { tripId } : {}) }, select: { id: true } })
       : await prisma.planChat.create({ data: { userId, tripId: trip ? tripId : null, history: nextHistory, turns: newTurns as Prisma.InputJsonValue }, select: { id: true } })

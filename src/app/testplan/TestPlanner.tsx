@@ -13,11 +13,12 @@ import PlacePhoto from '@/components/PlacePhoto'
 import { addPlanPlace, startPlan } from '@/actions/planning'
 import { linkPlanChat } from '@/actions/planChat'
 import { tripMapLookupKey, validMapLocation, type TripMapPlace } from '@/lib/tripMapPlaces'
+import { ACTIVITIES, BUDGETS, DESTINATION_TYPES, TRAVELERS, TRIP_LENGTHS, type TravelPreferences } from '@/lib/travelPreferences'
 
 type Place = { id: string; name: string; type: string; notes: string | null; placeId: string | null; lat: number | null; lng: number | null; day: number | null; photos: string[]; destination: string }
 type Trip = { id: string; title: string; places: Place[] }
 type Recommendation = { key: string; name: string; type: 'hotel' | 'food_drink' | 'activity'; why: string; destination: string; country: string | null; tripOption?: string; description?: string; source: 'friend' | 'you' | 'claude'; friendName: string; sourceItemId: string; placeId: string | null; lat: number | null; lng: number | null }
-export type Turn = { role: 'user'; text: string } | { role: 'assistant'; text: string; recommendations: Recommendation[] }
+export type Turn = { role: 'user'; text: string } | { role: 'assistant'; text: string; recommendations: Recommendation[] } | { role: 'preferences'; preferences: TravelPreferences }
 type MapPlace = TripMapPlace & { lat: number | null; lng: number | null; color?: string; label?: string }
 
 const categories = [{ value: 'hotel', label: 'Hotels', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
@@ -34,9 +35,9 @@ function groupByOption(recs: Recommendation[]) {
   return [...groups.entries()]
 }
 
-const starters = ['Where should I go for a long weekend?', 'What did my friends love most?', 'Plan 3 days in a city my friends rated highly']
+const starters = ['Surprise me with a long weekend', 'Where should we go this spring?', 'Somewhere new my friends haven’t been']
 
-export default function TestPlanner({ trip, chat }: { trip: Trip | null; chat: { id: string; turns: Turn[] } | null }) {
+export default function TestPlanner({ trip, chat, hasOwnTrips, lastPreferences }: { trip: Trip | null; chat: { id: string; turns: Turn[] } | null; hasOwnTrips: boolean; lastPreferences: TravelPreferences | null }) {
   const router = useRouter()
   const [turns, setTurns] = useState<Turn[]>(chat?.turns ?? [])
   const chatId = useRef(chat?.id ?? '')
@@ -46,6 +47,7 @@ export default function TestPlanner({ trip, chat }: { trip: Trip | null; chat: {
   const [added, setAdded] = useState<Set<string>>(new Set())
   const [adding, setAdding] = useState<string | null>(null)
   const [mapView, setMapView] = useState<'normal' | 'small' | 'hidden'>('normal')
+  const [skippedSetup, setSkippedSetup] = useState(false)
   const tripId = useRef(trip?.id ?? '')
   const scroller = useRef<HTMLDivElement>(null)
   const endOfChat = useRef<HTMLDivElement>(null)
@@ -69,22 +71,24 @@ export default function TestPlanner({ trip, chat }: { trip: Trip | null; chat: {
   const legend = options.filter(option => suggestions.some(rec => optionOf(rec) === option))
   const mapPlaces: MapPlace[] = [
     ...places.filter(place => place.type !== 'transport' || place.placeId || validMapLocation(place)).map(place => ({ id: place.id, name: place.name, city: place.destination, type: place.type as MapPlace['type'], day: place.day, placeId: place.placeId ?? undefined, lat: place.lat, lng: place.lng })),
-    ...suggestions.map(rec => ({ id: rec.key, name: `Suggested: ${rec.name}`, city: [rec.destination, rec.country].filter(Boolean).join(', '), type: rec.type, day: null, placeId: rec.placeId ?? undefined, lat: rec.lat, lng: rec.lng, color: colorOf(rec), label: optionOf(rec) })),
+    // The plain name is what gets located on the map; "Suggested" only belongs in the pin's label.
+    ...suggestions.map(rec => ({ id: rec.key, name: rec.name, city: [rec.destination, rec.country].filter(Boolean).join(', '), type: rec.type, day: null, placeId: rec.placeId ?? undefined, lat: rec.lat, lng: rec.lng, color: colorOf(rec), label: `Suggested · ${optionOf(rec)}` })),
   ]
 
-  async function send(text: string) {
+  async function send(text: string, preferences?: TravelPreferences) {
     const message = text.trim()
     if (!message || thinking) return
     setThinking(true); setError(''); setDraft('')
-    setTurns(current => [...current, { role: 'user', text: message }])
+    const pending: Turn[] = [...(preferences ? [{ role: 'preferences' as const, preferences }] : []), { role: 'user', text: message }]
+    setTurns(current => [...current, ...pending])
     try {
-      const response = await fetch('/api/testplan/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chatId: chatId.current, message, tripId: tripId.current }) })
+      const response = await fetch('/api/testplan/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chatId: chatId.current, message, tripId: tripId.current, preferences }) })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Something went wrong.')
       chatId.current = data.chatId
       setTurns(current => [...current, { role: 'assistant', text: data.reply, recommendations: data.recommendations }])
     } catch (caught) {
-      setTurns(current => current.slice(0, -1)); setDraft(message)
+      setTurns(current => current.slice(0, -pending.length)); if (!preferences) setDraft(message)
       setError(caught instanceof Error ? caught.message : 'Something went wrong.')
     } finally { setThinking(false) }
   }
@@ -136,8 +140,11 @@ export default function TestPlanner({ trip, chat }: { trip: Trip | null; chat: {
 
       <section aria-label="Chat with Postcard" className="flex min-h-0 flex-col rounded-2xl border border-[#d7cebc] bg-[#fffdf7] lg:h-auto lg:flex-[1.2]">
         <div ref={scroller} className="min-h-0 flex-1 space-y-4 p-4 lg:overflow-y-auto" aria-live="polite">
-          {!turns.length && <div className="text-sm text-[#73786d]"><p>Postcard can see your trips and your friends’ trips—their ratings and notes. Try:</p><div className="mt-3 flex flex-wrap gap-2">{starters.map(starter => <button key={starter} type="button" onClick={() => void send(starter)} className="rounded-full border border-[#d7cebc] px-3 py-1.5 text-left text-xs text-[#59694f] hover:bg-[#f3eee5]">{starter}</button>)}</div></div>}
-          {turns.map((turn, index) => turn.role === 'user'
+          {!turns.length && !skippedSetup && <TripSetup hasOwnTrips={hasOwnTrips} initial={lastPreferences} disabled={thinking} onSubmit={preferences => void send('Show me trip ideas that fit what I picked.', preferences)} onSkip={() => setSkippedSetup(true)} />}
+          {!turns.length && skippedSetup && <div className="text-sm text-[#73786d]"><p>Postcard uses your trips and your friends’ trips—their ratings and notes—plus its own picks. Try:</p><div className="mt-3 flex flex-wrap gap-2">{starters.map(starter => <button key={starter} type="button" onClick={() => void send(starter)} className="rounded-full border border-[#d7cebc] px-3 py-1.5 text-left text-xs text-[#59694f] hover:bg-[#f3eee5]">{starter}</button>)}</div></div>}
+          {turns.map((turn, index) => turn.role === 'preferences'
+            ? <PreferencesSummary key={index} preferences={turn.preferences} />
+            : turn.role === 'user'
             ? <p key={index} className="ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-[#355650] px-4 py-2 text-sm text-white">{turn.text}</p>
             : <div key={index} className="space-y-3"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed">{turn.text}</p>
               {groupByOption(turn.recommendations).map(([option, recs]) => <section key={option} aria-label={option} className="rounded-xl border-l-4 bg-[#faf7f1] py-3 pl-3 pr-2" style={{ borderColor: colorOf(recs[0]) }}>
@@ -194,6 +201,45 @@ function RecommendationCard({ rec, color, grouped = false, added, busy, disabled
     </div>
     {open && <PickDetails rec={rec} color={color} addButton={addButton} onClose={() => setOpen(false)} />}
   </article>
+}
+
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return <fieldset className="mt-4"><legend className="mb-2 text-sm font-semibold text-[#2e4147]">{title}</legend><div className="flex flex-wrap gap-2">{children}</div></fieldset>
+}
+
+// Asked before the first recommendation. What the trip is now is always asked; budget, destination
+// types and activities only when there are no past trips to learn them from.
+function TripSetup({ hasOwnTrips, initial, disabled, onSubmit, onSkip }: { hasOwnTrips: boolean; initial: TravelPreferences | null; disabled: boolean; onSubmit: (preferences: TravelPreferences) => void; onSkip: () => void }) {
+  const [travelers, setTravelers] = useState(initial?.travelers ?? '')
+  const [length, setLength] = useState(initial?.length ?? '')
+  const [budget, setBudget] = useState<number | null>(initial?.budget ?? null)
+  const [destinationTypes, setDestinationTypes] = useState<string[]>(initial?.destinationTypes ?? [])
+  const [activities, setActivities] = useState<string[]>(initial?.activities ?? [])
+  const askTaste = !hasOwnTrips
+  const ready = !!travelers && !!length && (!askTaste || (!!budget && destinationTypes.length > 0 && activities.length > 0))
+  const toggle = (list: string[], value: string) => list.includes(value) ? list.filter(item => item !== value) : [...list, value]
+  const chip = (selected: boolean) => `min-h-10 rounded-full border px-3 text-sm ${selected ? 'border-[#59694f] bg-[#e6ece5] font-semibold text-[#2e4147]' : 'border-[#d7cebc] text-[#59694f] hover:bg-[#f3eee5]'}`
+  return <section aria-label="Tell us about this trip" className="rounded-xl bg-[#faf7f1] p-4">
+    <h2 className="font-[family-name:var(--font-playfair)] text-xl">Tell us about this trip</h2>
+    <p className="mt-1 text-sm text-[#73786d]">{askTaste ? 'A few quick picks so the ideas actually fit you.' : 'We’ll use your past trips for your budget and taste—just tell us about this one.'}</p>
+    <Group title="Who’s going?">{TRAVELERS.map(option => <button key={option} type="button" aria-pressed={travelers === option} onClick={() => setTravelers(option)} className={chip(travelers === option)}>{option}</button>)}</Group>
+    <Group title="How long?">{TRIP_LENGTHS.map(option => <button key={option} type="button" aria-pressed={length === option} onClick={() => setLength(option)} className={chip(length === option)}>{option}</button>)}</Group>
+    {askTaste && <>
+      <Group title="Budget">{BUDGETS.map(option => <button key={option.value} type="button" aria-pressed={budget === option.value} onClick={() => setBudget(option.value)} className={chip(budget === option.value)}>{option.label} <span className="font-normal text-[#73786d]">{option.hint}</span></button>)}</Group>
+      <Group title="Types of destination (pick any)">{DESTINATION_TYPES.map(option => <button key={option} type="button" aria-pressed={destinationTypes.includes(option)} onClick={() => setDestinationTypes(list => toggle(list, option))} className={chip(destinationTypes.includes(option))}>{option}</button>)}</Group>
+      <Group title="Things you like to do (pick any)">{ACTIVITIES.map(option => <button key={option} type="button" aria-pressed={activities.includes(option)} onClick={() => setActivities(list => toggle(list, option))} className={chip(activities.includes(option))}>{option}</button>)}</Group>
+    </>}
+    <div className="mt-5 flex flex-wrap items-center gap-3">
+      <button type="button" disabled={!ready || disabled} onClick={() => onSubmit({ travelers, length, budget: askTaste ? budget : null, destinationTypes: askTaste ? destinationTypes : [], activities: askTaste ? activities : [] })} className="min-h-11 rounded-xl bg-[#355650] px-5 text-sm font-semibold text-white disabled:opacity-40">Show me ideas →</button>
+      <button type="button" onClick={onSkip} className="min-h-11 text-sm text-[#59694f] underline">Skip, I’ll just ask</button>
+    </div>
+  </section>
+}
+
+function PreferencesSummary({ preferences }: { preferences: TravelPreferences }) {
+  const budget = BUDGETS.find(option => option.value === preferences.budget)
+  const parts = [preferences.travelers, preferences.length, budget?.label, preferences.destinationTypes.join(', '), preferences.activities.join(', ')].filter(Boolean)
+  return <p className="ml-auto w-fit max-w-[85%] rounded-2xl border border-[#c7d7cf] bg-[#edf1e9] px-4 py-2 text-xs text-[#355650]"><span className="font-semibold">This trip:</span> {parts.join(' · ')}</p>
 }
 
 function SourceBadge({ rec }: { rec: Recommendation }) {
