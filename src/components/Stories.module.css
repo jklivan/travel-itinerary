@@ -34,6 +34,8 @@
 .paper h3 { display: -webkit-box; min-height: 2.4em; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-family: var(--font-playfair), serif; font-size: 27px; line-height: 1.2; margin-top: 10px; }
 .paper > p { height: 1.3em; overflow: hidden; font-size: 13px; color: #73786d; margin-top: 6px; white-space: nowrap; text-overflow: ellipsis; }
 .paper > .caption { display: -webkit-box; flex: 0 0 auto; height: 3em; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: pre-wrap; font-size: 15px; line-height: 1.5; color: #2e4147; margin-top: 14px; }
+.paper > .captionOpen { display: block; height: auto; max-height: 40dvh; overflow-y: auto; -webkit-line-clamp: unset; }
+.captionMore { align-self: flex-start; min-height: 32px; margin-top: 2px; padding: 0; border: 0; background: none; font-size: 14px; font-weight: 600; color: #59694f; text-decoration: underline; cursor: pointer; }
 .preview .paper { max-width: 290px; }
 .preview .paper h3 { font-size: 22px; }
 .privacy { font-size: 12px; line-height: 1.5; color: #73786d; }

@@ -89,10 +89,12 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
   function changeRecommendation(value: PlaceRecommendation) { setRecommendation(value); onRecommendationChange?.(value) }
   function cancel() { onDraftChange?.(original); onRecommendationChange?.(originalRecommendation); onClose() }
   const [tags, setTags]           = useDraftField('tags', initial.tags)
-  const [description, setDescription] = useDraftField('description', initial.description)
+  // No description box: Notes is the one place for the poster's own words. The description (written
+  // automatically for places found on Google) is kept as is.
+  const description = initial.description
   const [link, setLink]           = useDraftField('link', initial.link)
   const [address, setAddress]     = useDraftField('address', initial.address)
-  const [showMore, setShowMore]   = useState(initial.tags.length > 0 || !!initial.description || !!initial.link || !!initial.address)
+  const [showMore, setShowMore]   = useState(initial.tags.length > 0 || !!initial.link || !!initial.address)
 
   const cfg = {
     hotel:     { color: 'bg-[#edf1e9] border-[#bbcfc5]',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
@@ -110,7 +112,7 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
     onSave({ name: name.trim(), mealType, rating, notes: notes.trim(), tags: recommendationTags(tags, recommendation), isHighlight: recommendation === 'must', alternative: alternative.trim(), description: description.trim(), link: link.trim(), address: address.trim() })
   }
 
-  const moreCount = tags.length + (description ? 1 : 0) + (link ? 1 : 0) + (address ? 1 : 0)
+  const moreCount = tags.length + (link ? 1 : 0) + (address ? 1 : 0)
 
   return (
     <div className={`rounded-xl border ${cfg.color} p-4 space-y-3`}>
@@ -166,11 +168,6 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
               </button>
             ))}
           </div>
-          <label className="block space-y-1">
-            <span className="text-xs text-[#7a7b70]">About the {type === 'food_drink' ? 'restaurant' : type === 'hotel' ? 'hotel' : 'activity'}</span>
-            <textarea rows={3} value={description} onChange={e => setDescription(e.target.value)}
-              placeholder="Description (optional)" className={subInputCls} />
-          </label>
           {type === 'hotel' && (
             <input type="text" value={address} onChange={e => setAddress(e.target.value)}
               placeholder="📍 Address (for Airbnbs, apartments…)" className={subInputCls} />

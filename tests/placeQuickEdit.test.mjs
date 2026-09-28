@@ -4,10 +4,11 @@ import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
 import { eventPhotos } from '../src/lib/eventPhotos.ts'
+import * as placeRecommendation from '../src/lib/placeRecommendation.ts'
 
 const code = ts.transpileModule(readFileSync(new URL('../src/actions/placeQuickEdit.ts', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText
 function harness({ user = 'owner', concurrent = false, fail = false } = {}) {
-  const item = { id: 'event', owner: 'owner', rating: 3, notes: 'Keep my notes', photoUrl: '/old.jpg', photoUrls: ['/old.jpg'], destination: { itineraryId: 'trip' } }
+  const item = { id: 'event', owner: 'owner', rating: 3, tags: ['Pool'], notes: 'Keep my notes', photoUrl: '/old.jpg', photoUrls: ['/old.jpg'], destination: { itineraryId: 'trip' } }
   const invalidated = []
   const writes = []
   const owned = where => where.id === item.id && where.destination.itinerary.userId === item.owner
@@ -21,7 +22,7 @@ function harness({ user = 'owner', concurrent = false, fail = false } = {}) {
       return { count: 1 }
     },
   } }
-  const deps = { '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, '@/lib/eventPhotos': { eventPhotos }, 'next/cache': { revalidatePath: p => invalidated.push(p) } }
+  const deps = { '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, '@/lib/eventPhotos': { eventPhotos }, '@/lib/placeRecommendation': placeRecommendation, 'next/cache': { revalidatePath: p => invalidated.push(p) } }
   const exports = {}
   vm.runInNewContext(code, { exports, require: name => deps[name] })
   return { update: exports.updatePlace, item, invalidated, writes }
@@ -82,4 +83,16 @@ test('database failures return a retryable error', async () => {
   const h = harness({ fail: true })
   assert.ok((await h.update('event', { kind: 'rating', rating: 4 })).error)
   assert.equal(h.item.rating, 3)
+})
+
+test('Must do and Avoid save with the rating, keeping other tags', async () => {
+  const h = harness()
+  assert.ok((await h.update('event', { kind: 'rating', rating: 4, recommendation: 'must' })).success)
+  assert.equal(h.item.rating, 4)
+  assert.deepEqual(h.item.tags, ['Pool', '__highlight'])
+  assert.ok((await h.update('event', { kind: 'rating', rating: 4, recommendation: 'avoid' })).success)
+  assert.deepEqual(h.item.tags, ['Pool', '__avoid'])
+  assert.ok((await h.update('event', { kind: 'rating', rating: 4 })).success)
+  assert.deepEqual(h.item.tags, ['Pool', '__avoid'], 'rating alone leaves the label')
+  assert.ok((await h.update('event', { kind: 'rating', rating: 4, recommendation: 'bogus' })).error)
 })

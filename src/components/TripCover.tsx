@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { sizedPhoto } from '@/lib/photoSizing'
 
 // Cover for a trip card: a saved photo, else the first place's Google photo (as the planner shows it),
 // else a destination stock photo, else the Postcard placeholder. Plain <img> because saved and provider
@@ -26,7 +27,7 @@ export default function TripCover({ saved, itemId, stock }: { saved: string | nu
   if (!url) return <span className="grid h-full place-items-center text-[9px] uppercase tracking-wider text-[#59694f]">Postcard</span>
   return <>
     {/* eslint-disable-next-line @next/next/no-img-element */}
-    <img src={url} alt="" className="absolute inset-0 h-full w-full object-cover" onError={() => setFailed(current => [...current, url])} />
+    <img src={sizedPhoto(url, 256)} alt="" className="absolute inset-0 h-full w-full object-cover" onError={() => setFailed(current => [...current, url])} />
     {url === google && <span className="absolute bottom-0.5 right-1 text-[7px] text-white drop-shadow">Google</span>}
   </>
 }

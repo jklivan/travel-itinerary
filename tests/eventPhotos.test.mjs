@@ -60,6 +60,7 @@ test('multi-file upload appends successes, reports failures, and balances busy s
     if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx }
     if (name === 'lucide-react') return {}
     if (name === '@/lib/eventPhotos') return { eventPhotos }
+    if (name === '@/lib/photoSizing') return { compressPhoto: async file => file, sizedPhoto: url => url }
     if (name === '@vercel/blob/client') return { upload: async (_path, file) => {
       if (file.name === 'failed.jpg') throw new Error('Upload failed')
       return { url: `https://example.com/${file.name}` }

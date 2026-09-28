@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { PlacePhoto as Photo } from '@/lib/placePhoto'
+import { sizedPhoto } from '@/lib/photoSizing'
 
 export default function PlacePhoto({ itemId, name, photos = [], thumbnailClass, fallback, fullWidth = false }: { itemId: string; name: string; photos?: string[]; thumbnailClass: string; fallback: ReactNode; fullWidth?: boolean }) {
   const element = useRef<HTMLDivElement>(null)
@@ -31,7 +32,7 @@ export default function PlacePhoto({ itemId, name, photos = [], thumbnailClass, 
       {displayPhoto && !failed ? <>
         {/* Provider photos must not pass through the image optimizer/cache. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={displayPhoto.url} alt={name} className="h-full w-full object-cover" onError={() => setFailed(true)} />
+        <img src={sizedPhoto(displayPhoto.url, fullWidth ? 1080 : 640)} alt={name} className="h-full w-full object-cover" onError={() => setFailed(true)} />
       </> : fallback}
     </div>
     {displayPhoto && !failed && displayPhoto.mapsUrl && <div className="relative z-[2] mt-1 space-y-1 bg-[#fffdf6] p-1 text-xs leading-tight text-[#5e5e5e] [overflow-wrap:anywhere]">

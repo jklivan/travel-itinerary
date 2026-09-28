@@ -22,6 +22,7 @@ import type { ItemPin } from '@/components/ItineraryMapInner'
 import styles from './places.module.css'
 import PlaceDetailsCard from '@/components/PlaceDetailsCard'
 import PublishPreviewBar from '@/components/PublishPreviewBar'
+import GooglePlaceThumb from '@/components/GooglePlaceThumb'
 import { getRecommendation, partitionPlaces } from '@/lib/placeRecommendation'
 import { mapDayNumber } from '@/lib/mapDays'
 import { distanceMiles } from '@/lib/distance'
@@ -498,12 +499,13 @@ export default async function ItineraryPage({
           </div>
         ) : (
           <div className={`${styles.thumbnail} ${isOwn ? styles.polaroidPhoto : ''}`}>
-            {isOwn && <span className={styles.polaroidImage} />}
+            {isOwn && <span className={styles.polaroidImage}>{type !== 'transport' && <GooglePlaceThumb itemId={item.id} />}</span>}
             <div className={styles.keepsake} aria-hidden="true">
               <span>{eyebrow}</span>
               <Icon size={25} strokeWidth={1} />
               <span>{item.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span>
             </div>
+            {!isOwn && type !== 'transport' && <GooglePlaceThumb itemId={item.id} />}
           </div>
         )}
         <div className={styles.cardBody}>
@@ -803,13 +805,13 @@ export default async function ItineraryPage({
                               </div>
                             </div>
                           )}
-                          {dTransport.length > 0 && <div><CategoryHeading type="transport" count={dTransport.length} /><div className="space-y-2">{dTransport.map(item => renderPlaceCard(item, 'transport'))}</div></div>}
                           {dActs.length > 0 && (
                             <div>
                               <CategoryHeading type="activity" count={dActs.length} />
                               <div className="space-y-2">{dActs.map(item => renderActivityCard(item))}</div>
                             </div>
                           )}
+                          {dTransport.length > 0 && <div><CategoryHeading type="transport" count={dTransport.length} /><div className="space-y-2">{dTransport.map(item => renderPlaceCard(item, 'transport'))}</div></div>}
                         </div>
                       </div>
                     )

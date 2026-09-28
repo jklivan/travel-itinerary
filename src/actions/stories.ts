@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { samePlanDestination } from '@/lib/planPlaceIdentity'
 import { eventPhotos } from '@/lib/eventPhotos'
+import { getRecommendation, recommendationTags, type PlaceRecommendation } from '@/lib/placeRecommendation'
 import { STORY_LIFETIME_MS, visibleStoriesWhere, type StoryCard } from '@/lib/stories'
 
 type Result = { error?: string; success?: boolean }
@@ -29,7 +30,7 @@ export async function storySources() {
   const [user, trips] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { isPrivate: true } }),
     prisma.itinerary.findMany({ where: { userId, OR: [{ isPlan: true }, { destinations: { some: { items: { some: {} } } } }] }, orderBy: { createdAt: 'desc' },
-      select: { id: true, title: true, isPlan: true, photos: { where: { isStock: false }, select: { url: true } }, destinations: { orderBy: { order: 'asc' }, select: { name: true, country: true, items: { orderBy: { order: 'asc' }, select: { id: true, name: true, type: true, photoUrl: true, photoUrls: true } } } } },
+      select: { id: true, title: true, isPlan: true, photos: { where: { isStock: false }, select: { url: true } }, destinations: { orderBy: { order: 'asc' }, select: { name: true, country: true, items: { orderBy: { order: 'asc' }, select: { id: true, name: true, type: true, photoUrl: true, photoUrls: true, rating: true, tags: true } } } } },
     }),
   ])
   return { isPrivate: user?.isPrivate ?? true, trips: trips.map(trip => ({ id: trip.id, title: trip.title, isPlan: trip.isPlan, photos: trip.photos.map(photo => photo.url),
@@ -37,11 +38,12 @@ export async function storySources() {
     destinations: trip.destinations.filter(destination => destination.name !== 'Destination to decide').map(destination => ({ name: destination.name, country: destination.country })),
     places: trip.destinations.flatMap(destination => destination.items.map(item => ({ id: item.id, name: item.name, type: item.type,
       destination: [destination.name, destination.country].filter(Boolean).join(', '), photos: eventPhotos(item.photoUrls, item.photoUrl),
+      rating: item.rating ?? 0, recommendation: getRecommendation(item.tags),
     }))),
   })) }
 }
 
-type StoryPostDetails = { itemId?: string; placeName?: string; destination?: string; country?: string; type?: string; placeId?: string; tripId?: string; newPlanId?: string; newPlanTitle?: string; caption: string }
+type StoryPostDetails = { itemId?: string; placeName?: string; destination?: string; country?: string; type?: string; placeId?: string; tripId?: string; newPlanId?: string; newPlanTitle?: string; caption: string; rating?: number; recommendation?: PlaceRecommendation }
 type StoryPhotoPost = { id: string; photoUrl: string }
 
 export async function postStories(input: StoryPostDetails & { photos: StoryPhotoPost[] }): Promise<Result> {
@@ -52,6 +54,8 @@ export async function postStories(input: StoryPostDetails & { photos: StoryPhoto
     || input.photos.some(photo => !photo || typeof photo.id !== 'string' || !/^[a-f0-9-]{36}$/.test(photo.id) || typeof photo.photoUrl !== 'string' || photo.photoUrl.length > 4096 || !/^(https:\/\/|\/(?!\/))/.test(photo.photoUrl))
     || new Set(input.photos.map(photo => photo.id)).size !== input.photos.length
     || new Set(input.photos.map(photo => photo.photoUrl)).size !== input.photos.length) return { error: 'Choose 1–10 different photos and keep your caption under 500 characters.' }
+  if ((input.rating !== undefined && (!Number.isInteger(input.rating) || input.rating < 0 || input.rating > 5))
+    || (input.recommendation !== undefined && !['none', 'must', 'avoid', 'option'].includes(input.recommendation))) return { error: 'Choose a rating from 1 to 5 stars.' }
   const standalone = !input.itemId
   const allowedTypes = ['hotel', 'food_drink', 'activity', 'transport']
   if (input.itemId && (typeof input.itemId !== 'string' || input.itemId.length > 200)) return { error: 'Choose a place, and keep your caption under 500 characters.' }
@@ -89,6 +93,15 @@ export async function postStories(input: StoryPostDetails & { photos: StoryPhoto
           })
           if (updated.count !== 1) throw new Error('Photos changed while posting; retry')
         }
+        // Rating and Must do / Avoid chosen while posting go onto the place, so there's nothing to fill in later.
+        const details: { rating?: number | null; tags?: string[]; notes?: string } = {}
+        // The caption becomes the place's notes: filled in when empty, added on a new line otherwise.
+        const caption = input.caption.trim()
+        if (caption && !(item.notes ?? '').includes(caption)) details.notes = item.notes?.trim() ? `${item.notes.trim()}\n\n${caption}` : caption
+        if (input.rating !== undefined && (input.rating || null) !== item.rating) details.rating = input.rating || null
+        const tags = input.recommendation === undefined ? null : recommendationTags(item.tags, input.recommendation)
+        if (tags && tags.join('\n') !== item.tags.join('\n')) details.tags = tags
+        if (Object.keys(details).length) await tx.destItem.update({ where: { id: item.id }, data: details })
         storyPlace = { name: item.name, destination: item.destination.name, country: item.destination.country, type: item.type, placeId: item.placeId, lat: item.lat, lng: item.lng, tripId: item.destination.itineraryId, itemId: item.id }
       } else {
         let itineraryId: string
@@ -115,6 +128,7 @@ export async function postStories(input: StoryPostDetails & { photos: StoryPhoto
         const item = await tx.destItem.create({ data: {
           destinationId: destination.id, name: input.placeName!.trim(), type: input.type!, placeId: input.placeId?.trim() || null,
           photoUrl: photoUrls[0], photoUrls, order: (last._max.order ?? -1) + 1,
+          rating: input.rating || null, tags: recommendationTags([], input.recommendation ?? 'none'), notes: input.caption.trim() || null,
           groupIndex: input.type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0,
         } })
         storyPlace = { name: item.name, destination: destination.name, country: destination.country, type: item.type, placeId: item.placeId, lat: item.lat, lng: item.lng, tripId: itineraryId, itemId: item.id }

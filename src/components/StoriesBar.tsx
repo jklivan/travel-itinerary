@@ -7,6 +7,7 @@ import { Check, ChevronLeft, ChevronRight, Plus, Trash2, X, Pause, Play } from '
 import { activeStories, deleteStory } from '@/actions/stories'
 import { groupStories, type StoryCard } from '@/lib/stories'
 import StoryComposer from './StoryComposer'
+import { sizedPhoto } from '@/lib/photoSizing'
 import SavePlaceToPlan from './SavePlaceToPlan'
 import styles from './Stories.module.css'
 
@@ -42,7 +43,7 @@ export default function StoriesBar({ stories, userId, following, serverTime }: {
         finally { setLoading('') }
       }}><span className={styles.miniPaper}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={latest.photoUrl} alt="" /><i>{loading === group.authorId ? '…' : group.items.length > 1 ? group.items.length : ''}</i>
+        <img src={sizedPhoto(latest.photoUrl, 256)} alt="" /><i>{loading === group.authorId ? '…' : group.items.length > 1 ? group.items.length : ''}</i>
       </span><span className={styles.author}>{group.authorId === userId ? 'You' : latest.authorName}</span></button> })}
       {!groups.length && <p className={styles.trayHint}>A hotel you loved.<br />A meal to remember.<br />Share a snapshot.</p>}
     </div>
@@ -66,10 +67,17 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
   const [holding, setHolding] = useState(false)
   const [paused, setPaused] = useState(false)
   const [loaded, setLoaded] = useState('')
+  // A long caption shows "more"; tapping it opens the full text and pauses the story while it's read.
+  const captionRef = useRef<HTMLParagraphElement>(null)
+  const [expanded, setExpanded] = useState('')
+  const [clipped, setClipped] = useState('')
   const available = stories.filter(story => Date.parse(story.expiresAt) > now && !removed.includes(story.id))
   const index = available.findIndex(story => story.id === selected)
   const story = available[index]
   const authorStories = story ? available.filter(item => item.authorId === story.authorId) : []
+  // Start loading the next snapshot while this one is on screen.
+  const upcoming = available[index + 1]?.photoUrl
+  useEffect(() => { if (upcoming) new Image().src = sizedPhoto(upcoming, 1080) }, [upcoming])
   useEffect(() => {
     const element = dialog.current
     element?.showModal()
@@ -77,6 +85,10 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
     if (previous !== 'hidden') document.body.style.overflow = 'hidden'
     return () => { element?.close(); if (previous !== 'hidden') document.body.style.overflow = previous }
   }, [])
+  useEffect(() => {
+    const element = captionRef.current
+    if (element && story && element.scrollHeight > element.clientHeight + 1) setClipped(story.id)
+  }, [story])
   function move(offset: number) {
     if (deleting || saveOpen || confirmDelete) return
     const next = available[index + offset]
@@ -94,7 +106,7 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
       <div className={styles.viewerInner}>
         <header className={styles.viewerHeader}><div><h2 id={titleId}>{story?.authorName ?? 'Story expired'}</h2><p>{story ? age : 'Stories disappear after 24 hours.'}</p></div><button type="button" autoFocus className={styles.viewerClose} aria-label="Close story" onClick={() => dialog.current?.close()}><X size={22} /></button></header>
         {story ? <>
-          <StoryProgress key={story.id} stories={authorStories} selected={story.id} paused={paused || holding || saveOpen || confirmDelete || deleting || loaded !== story.id} onComplete={() => move(1)} />
+          <StoryProgress key={story.id} stories={authorStories} selected={story.id} paused={paused || holding || expanded === story.id || saveOpen || confirmDelete || deleting || loaded !== story.id} onComplete={() => move(1)} />
           <div className={styles.storyContent} onContextMenu={event => event.preventDefault()} onPointerDown={event => {
             if (!event.isPrimary || event.button !== 0) return
             touch.current = { x: event.clientX, y: event.clientY, time: performance.now() }
@@ -112,11 +124,14 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
           }} onPointerCancel={() => { touch.current = null; setHolding(false) }} onLostPointerCapture={() => { touch.current = null; setHolding(false) }}>
             <article className={styles.paper}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img key={story.id} src={story.photoUrl} alt={story.placeName} draggable={false} onLoad={() => setLoaded(story.id)} onError={() => setLoaded(story.id)} />
+              <img key={story.id} src={sizedPhoto(story.photoUrl, 1080)} alt={story.placeName} draggable={false} onLoad={() => setLoaded(story.id)} onError={() => setLoaded(story.id)} />
               <span className={styles.placeType}>{story.type === 'hotel' ? 'Stay' : story.type === 'food_drink' ? 'Eat & drink' : story.type === 'transport' ? 'Transport' : 'Experience'}</span>
               <h3>{story.placeName}</h3>
               <p>{story.destination}</p>
-              <p className={styles.caption}>{story.caption || ' '}</p>
+              <p ref={captionRef} className={`${styles.caption} ${expanded === story.id ? styles.captionOpen : ''}`}>{story.caption || ' '}</p>
+              {clipped === story.id && <button type="button" className={styles.captionMore} aria-expanded={expanded === story.id}
+                onPointerDown={event => event.stopPropagation()} onPointerUp={event => event.stopPropagation()}
+                onClick={() => setExpanded(current => current === story.id ? '' : story.id)}>{expanded === story.id ? 'Show less' : 'Read more'}</button>}
             </article>
           </div>
           <div className={styles.viewerActions}>

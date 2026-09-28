@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
 import * as placeIdentity from '../src/lib/planPlaceIdentity.ts'
+import * as placeRecommendation from '../src/lib/placeRecommendation.ts'
 function module(path, deps = {}) {
   const exports = {}
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, { exports, Date, require: name => deps[name] })
@@ -14,7 +15,7 @@ const lib = module('../src/lib/stories.ts')
 const id = '12345678-1234-1234-1234-123456789012'
 function harness(user = 'owner', itemType = 'hotel') {
   const rows = [], queries = [], plans = [], destinations = [], addedItems = []
-  const item = { id: 'place', name: 'Hotel', type: itemType, photoUrl: '/old.jpg', photoUrls: ['/old.jpg'], notes: 'secret notes', destination: { itineraryId: 'private', name: 'Rome', country: 'Italy' } }
+  const item = { id: 'place', name: 'Hotel', type: itemType, photoUrl: '/old.jpg', photoUrls: ['/old.jpg'], rating: null, tags: ['Pool'], notes: 'secret notes', destination: { itineraryId: 'private', name: 'Rome', country: 'Italy' } }
   const prisma = {
     story: {
       findUnique: async ({ where }) => rows.find(row => row.id === where.id),
@@ -25,7 +26,7 @@ function harness(user = 'owner', itemType = 'hotel') {
       count: async ({ where }) => rows.filter(row => row.sourceItemId === where.sourceItemId && row.photoUrl === where.photoUrl && row.photoAddedToPlace === where.photoAddedToPlace).length,
       deleteMany: async ({ where }) => { const index = rows.findIndex(row => row.id === where.id && row.userId === where.userId); if (index < 0) return { count: 0 }; rows.splice(index, 1); return { count: 1 } },
     },
-    destItem: { findFirst: async ({ where }) => where.destination.itinerary.userId === 'owner' ? item : null, updateMany: async ({data}) => { Object.assign(item, data); return { count: 1 } }, aggregate: async () => ({ _max: { order: -1, groupIndex: -1 } }), create: async ({ data }) => { const created = { ...data, id: 'new-place', lat: null, lng: null }; addedItems.push(created); return created } },
+    destItem: { findFirst: async ({ where }) => where.destination.itinerary.userId === 'owner' ? item : null, updateMany: async ({data}) => { Object.assign(item, data); return { count: 1 } }, update: async ({ data }) => Object.assign(item, data), aggregate: async () => ({ _max: { order: -1, groupIndex: -1 } }), create: async ({ data }) => { const created = { ...data, id: 'new-place', lat: null, lng: null }; addedItems.push(created); return created } },
     destination: { findMany: async ({ where }) => destinations.filter(destination => destination.itineraryId === where.itineraryId), findFirst: async ({ where }) => destinations.find(destination => destination.itineraryId === where.itineraryId && destination.name.toLowerCase() === where.name.equals.toLowerCase()) ?? null, create: async ({ data }) => { const created = { ...data, id: `destination-${destinations.length + 1}` }; destinations.push(created); return created }, count: async ({ where }) => destinations.filter(destination => destination.itineraryId === where.itineraryId).length },
     user: { findUnique: async () => ({ isPrivate: false }) },
     itinerary: { create: async ({ data }) => { plans.push(data); return data }, findFirst: async () => ({ id: 'plan' }), findMany: async query => { queries.push(query); return [] } },
@@ -35,7 +36,7 @@ function harness(user = 'owner', itemType = 'hotel') {
     try { return await callback(prisma) }
     catch (error) { Object.assign(item, before); rows.splice(beforeRows); plans.splice(beforePlans); destinations.splice(beforeDestinations); addedItems.splice(beforeItems); throw error }
   }
-  const actions = module('../src/actions/stories.ts', { '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} }, '@/lib/eventPhotos': photos, '@/lib/stories': lib, '@/lib/planPlaceIdentity': placeIdentity })
+  const actions = module('../src/actions/stories.ts', { '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} }, '@/lib/eventPhotos': photos, '@/lib/stories': lib, '@/lib/planPlaceIdentity': placeIdentity, '@/lib/placeRecommendation': placeRecommendation })
   return { actions, rows, queries, item, prisma, plans, destinations, addedItems }
 }
 const input = { id, itemId: 'place', photoUrl: '/photo.jpg', caption: 'Great stay' }
@@ -77,6 +78,25 @@ test('posting a new activity from a story adds it to an existing itinerary', asy
   assert.equal(h.plans.length, 0)
   assert.equal(h.addedItems[0].name, 'A new cafe')
   assert.equal(h.rows[0].sourceItineraryId, 'plan')
+})
+test('a rating and Must do chosen while posting are saved onto the place', async () => {
+  const h = harness()
+  assert.ok((await h.actions.postStories({ itemId: 'place', caption: '', rating: 5, recommendation: 'must', photos: [{ id, photoUrl: '/photo.jpg' }] })).success)
+  assert.equal(h.item.rating, 5)
+  assert.deepEqual(h.item.tags, ['Pool', '__highlight'])
+  const fresh = harness()
+  assert.ok((await fresh.actions.postStories({ placeName: 'Pinball Pete\'s', destination: 'Ann Arbor', type: 'activity', tripId: 'plan', caption: '', rating: 4, recommendation: 'avoid', photos: [{ id, photoUrl: '/pinball.jpg' }] })).success)
+  assert.equal(fresh.addedItems[0].rating, 4)
+  assert.deepEqual(fresh.addedItems[0].tags, ['__avoid'])
+  assert.ok((await harness().actions.postStories({ itemId: 'place', caption: '', rating: 9, photos: [{ id, photoUrl: '/photo.jpg' }] })).error)
+})
+test('the caption fills in the place notes, or is added to notes already there', async () => {
+  const h = harness()
+  assert.ok((await h.actions.postStories({ itemId: 'place', caption: 'Get the cheesy bread', photos: [{ id, photoUrl: '/photo.jpg' }] })).success)
+  assert.equal(h.item.notes, 'secret notes\n\nGet the cheesy bread')
+  const fresh = harness()
+  assert.ok((await fresh.actions.postStories({ placeName: 'Pizza Bob\'s', destination: 'Ann Arbor', type: 'food_drink', tripId: 'plan', caption: ' Chipati! ', photos: [{ id, photoUrl: '/bobs.jpg' }] })).success)
+  assert.equal(fresh.addedItems[0].notes, 'Chipati!')
 })
 test('posting expires exactly 24 hours later and retries do not extend expiry', async () => {
   const h = harness()

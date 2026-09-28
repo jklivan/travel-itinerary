@@ -28,6 +28,8 @@ export async function GET(req: NextRequest) {
       headers: {
         'Content-Type': result.blob.contentType,
         'Cache-Control': 'public, max-age=31536000, immutable',
+        // Blob URLs never change content, so Vercel's CDN can keep them too, not just each viewer's browser.
+        'CDN-Cache-Control': 'public, max-age=31536000, immutable',
       },
     })
   } catch (err) {
