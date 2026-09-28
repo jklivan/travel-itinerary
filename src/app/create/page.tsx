@@ -191,8 +191,6 @@ function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, sho
       <div className="grid gap-2">
         <textarea aria-label="Notes" rows={4} value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
-        <input type="text" value={item.alternative ?? ''} onChange={e => onUpdate('alternative', e.target.value)} className={subInputClass} placeholder="Suggest another place (optional)" />
-          <p className="text-xs text-[#7a7b70]">Name a different place to suggest instead. To mark this place as a backup, use “Save as alternative.”</p>
       </div>
       </>}
     </div>
@@ -223,8 +221,6 @@ function ActivityRow({ item, index, onUpdate, onRemove, showRating, onRecommenda
       <div className="grid gap-2">
         <textarea aria-label="Notes" rows={4} value={item.notes} onChange={e => onUpdate('notes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
         <input type="url" value={item.link} onChange={e => onUpdate('link', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
-        <input type="text" value={item.alternative ?? ''} onChange={e => onUpdate('alternative', e.target.value)} className={subInputClass} placeholder="Suggest another place (optional)" />
-          <p className="text-xs text-[#7a7b70]">Name a different place to suggest instead. To mark this place as a backup, use “Save as alternative.”</p>
       </div>
       </>}
     </div>
@@ -905,7 +901,6 @@ export default function CreatePage({ searchParams }: { searchParams: Promise<{ s
                           </div>
                           <textarea aria-label="Hotel notes" rows={4} value={group.hotelNotes} onChange={e => updateHotel(di, gi, 'hotelNotes', e.target.value)} className={subInputClass} placeholder="📝 Notes (optional)" />
                           <input type="url" value={group.hotelLink} onChange={e => updateHotel(di, gi, 'hotelLink', e.target.value)} className={subInputClass} placeholder="🔗 Website link (optional)" />
-                          <input type="text" value={group.hotelAlternative ?? ''} onChange={e => updateHotel(di, gi, 'hotelAlternative', e.target.value)} className={subInputClass} placeholder="↔ Stay here instead (optional)" />
                           </>}
                         </>)}
                       </div>

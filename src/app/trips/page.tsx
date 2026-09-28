@@ -41,7 +41,7 @@ export default async function MyTripsPage() {
     <h1 className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-[#2e4147]">My trips</h1>
     <TripSection title="Private plans" description="Only you can see these. Keep planning, then post when you’re ready." empty="No private plans yet." action={<Link href="/plan" className="shrink-0 whitespace-nowrap text-sm font-semibold text-[#59694f]">+ New plan</Link>}>
       {/* Plans go straight to /plan: the trip editor's redirect there fails during in-app navigation. */}
-      {plans.map(trip => <TripRow key={trip.id} href={trip.isPlan ? `/plan/${trip.id}` : `/itinerary/${trip.id}/edit`} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={`${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}`} cta="Keep planning →" />)}
+      {plans.map(trip => <TripRow key={trip.id} href={`/plan/${trip.id}`} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={`${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}`} cta="Keep planning →" />)}
     </TripSection>
     <TripSection title="Shared postcards" description="Posted trips. You can still add places and update them." empty="You haven’t posted a trip yet.">
       {postcards.map(trip => <TripRow key={trip.id} href={`/itinerary/${trip.id}`} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={`${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}${trip.publishedAt ? ` · Posted ${trip.publishedAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : ''}`} cta="View postcard →" />)}

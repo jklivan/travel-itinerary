@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
       {
         pathname: '/api/img',
       },
+      // Brand images (the Postcard stamp).
+      {
+        pathname: '/brand/**',
+      },
     ],
     remotePatterns: [
       {

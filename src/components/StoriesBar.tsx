@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, ChevronLeft, ChevronRight, Plus, Trash2, X, Pause, Play } from 'lucide-react'
+import { ArrowRight, Check, ChevronLeft, ChevronRight, MapPin, MessageCircle, Plus, Trash2, X, Pause, Play } from 'lucide-react'
 import { activeStories, deleteStory } from '@/actions/stories'
 import { groupStories, type StoryCard } from '@/lib/stories'
 import StoryComposer from './StoryComposer'
@@ -67,10 +67,6 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
   const [holding, setHolding] = useState(false)
   const [paused, setPaused] = useState(false)
   const [loaded, setLoaded] = useState('')
-  // A long caption shows "more"; tapping it opens the full text and pauses the story while it's read.
-  const captionRef = useRef<HTMLParagraphElement>(null)
-  const [expanded, setExpanded] = useState('')
-  const [clipped, setClipped] = useState('')
   const available = stories.filter(story => Date.parse(story.expiresAt) > now && !removed.includes(story.id))
   const index = available.findIndex(story => story.id === selected)
   const story = available[index]
@@ -85,10 +81,6 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
     if (previous !== 'hidden') document.body.style.overflow = 'hidden'
     return () => { element?.close(); if (previous !== 'hidden') document.body.style.overflow = previous }
   }, [])
-  useEffect(() => {
-    const element = captionRef.current
-    if (element && story && element.scrollHeight > element.clientHeight + 1) setClipped(story.id)
-  }, [story])
   function move(offset: number) {
     if (deleting || saveOpen || confirmDelete) return
     const next = available[index + offset]
@@ -104,9 +96,9 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
       if (event.key === 'ArrowLeft') { event.preventDefault(); move(-1) }
     }}>
       <div className={styles.viewerInner}>
-        <header className={styles.viewerHeader}><div><h2 id={titleId}>{story?.authorName ?? 'Story expired'}</h2><p>{story ? age : 'Stories disappear after 24 hours.'}</p></div><button type="button" autoFocus className={styles.viewerClose} aria-label="Close story" onClick={() => dialog.current?.close()}><X size={22} /></button></header>
+        <header className={styles.viewerHeader}><div className={styles.viewerAuthor}>{story && <span className={styles.avatar} aria-hidden="true">{story.authorName.split(/\s+/).filter(Boolean).map(word => word[0]).join('').slice(0, 2).toUpperCase()}</span>}<div><h2 id={titleId}>{story?.authorName ?? 'Story expired'}</h2><p>{story ? age : 'Stories disappear after 24 hours.'}</p></div></div><button type="button" autoFocus className={styles.viewerClose} aria-label="Close story" onClick={() => dialog.current?.close()}><X size={22} /></button></header>
         {story ? <>
-          <StoryProgress key={story.id} stories={authorStories} selected={story.id} paused={paused || holding || expanded === story.id || saveOpen || confirmDelete || deleting || loaded !== story.id} onComplete={() => move(1)} />
+          <StoryProgress key={story.id} stories={authorStories} selected={story.id} paused={paused || holding || saveOpen || confirmDelete || deleting || loaded !== story.id} onComplete={() => move(1)} />
           <div className={styles.storyContent} onContextMenu={event => event.preventDefault()} onPointerDown={event => {
             if (!event.isPrimary || event.button !== 0) return
             touch.current = { x: event.clientX, y: event.clientY, time: performance.now() }
@@ -122,22 +114,25 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
               move(event.clientX < bounds.left + bounds.width / 2 ? -1 : 1)
             }
           }} onPointerCancel={() => { touch.current = null; setHolding(false) }} onLostPointerCapture={() => { touch.current = null; setHolding(false) }}>
-            <article className={styles.paper}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img key={story.id} src={sizedPhoto(story.photoUrl, 1080)} alt={story.placeName} draggable={false} onLoad={() => setLoaded(story.id)} onError={() => setLoaded(story.id)} />
+            {/* A tilted polaroid on cream paper, the place in serif, and the caption handwritten. */}
+            <article className={styles.story}>
+              <div className={styles.polaroid}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img key={story.id} src={sizedPhoto(story.photoUrl, 1080)} alt={story.placeName} draggable={false} onLoad={() => setLoaded(story.id)} onError={() => setLoaded(story.id)} />
+              </div>
               <span className={styles.placeType}>{story.type === 'hotel' ? 'Stay' : story.type === 'food_drink' ? 'Eat & drink' : story.type === 'transport' ? 'Transport' : 'Experience'}</span>
-              <h3>{story.placeName}</h3>
-              <p>{story.destination}</p>
-              <p ref={captionRef} className={`${styles.caption} ${expanded === story.id ? styles.captionOpen : ''}`}>{story.caption || ' '}</p>
-              {clipped === story.id && <button type="button" className={styles.captionMore} aria-expanded={expanded === story.id}
-                onPointerDown={event => event.stopPropagation()} onPointerUp={event => event.stopPropagation()}
-                onClick={() => setExpanded(current => current === story.id ? '' : story.id)}>{expanded === story.id ? 'Show less' : 'Read more'}</button>}
+              <h3 className={styles.storyTitle}>{story.placeName}</h3>
+              <p className={styles.storyPlace}><MapPin size={15} aria-hidden="true" />{story.destination}</p>
+              {story.caption && <p className={styles.storyCaption}>{story.caption}</p>}
             </article>
           </div>
           <div className={styles.viewerActions}>
-            {story.tripHref && <Link href={story.tripHref} onClick={() => dialog.current?.close()}>View trip →</Link>}
-            {(story.authorId !== userId || !story.hasTrip) && <button type="button" onClick={() => setSaveOpen(true)} aria-haspopup="dialog"><span>{saved.includes(story.id) ? <Check size={18} /> : <Plus size={19} />}</span>Save to a trip</button>}
-            {story.authorId === userId && <button type="button" onClick={() => setConfirmDelete(true)}><Trash2 size={16} />Delete story</button>}
+            {story.tripHref && <Link href={story.tripHref} className={styles.pillOutline} onClick={() => dialog.current?.close()}><ArrowRight size={17} />View trip</Link>}
+            {(story.authorId !== userId || !story.hasTrip) && <button type="button" className={styles.pillDark} onClick={() => setSaveOpen(true)} aria-haspopup="dialog">{saved.includes(story.id) ? <Check size={17} /> : <Plus size={17} />}Save to a trip</button>}
+            <span className={styles.actionIcons}>
+              {userId && story.authorId !== userId && <Link href={`/messages/${story.authorId}`} aria-label={`Message ${story.authorName}`} onClick={() => dialog.current?.close()}><MessageCircle size={21} /></Link>}
+              {story.authorId === userId && <button type="button" aria-label="Delete story" onClick={() => setConfirmDelete(true)}><Trash2 size={19} /></button>}
+            </span>
           </div>
           {confirmDelete && <div className={styles.deletePrompt}><p>{story.removesTripPhoto ? `Remove this story now? Its photo will also come off ${story.placeName} in your trip.` : 'Remove this story now?'}</p><button type="button" disabled={deleting} onClick={async () => {
             setDeleting(true); setError('')
@@ -148,7 +143,8 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
             } catch { setError('Could not delete your story. Please try again.') } finally { setDeleting(false) }
           }}>{deleting ? 'Removing…' : 'Delete'}</button><button type="button" disabled={deleting} onClick={() => setConfirmDelete(false)}>Keep story</button></div>}
           {error && <p role="alert" className={styles.viewerError}>{error}</p>}
-          <nav className={styles.storyNav} aria-label="Story navigation"><button type="button" disabled={index <= 0 || deleting || saveOpen || confirmDelete} aria-label="Previous story" onClick={() => move(-1)}><ChevronLeft size={22} /></button><button type="button" className={styles.playback} aria-label={paused ? 'Resume stories' : 'Pause stories'} onClick={() => setPaused(value => !value)}>{paused ? <Play size={18} /> : <Pause size={18} />}</button><button type="button" disabled={deleting || saveOpen || confirmDelete} aria-label="Next story" onClick={() => move(1)}><ChevronRight size={22} /></button></nav>
+          {/* Tap the left or right of the snapshot (or swipe) to move; hold to pause. These stay for keyboards and screen readers. */}
+          <nav className={`${styles.storyNav} sr-only`} aria-label="Story navigation"><button type="button" disabled={index <= 0 || deleting || saveOpen || confirmDelete} aria-label="Previous story" onClick={() => move(-1)}><ChevronLeft size={22} /></button><button type="button" className={styles.playback} aria-label={paused ? 'Resume stories' : 'Pause stories'} onClick={() => setPaused(value => !value)}>{paused ? <Play size={18} /> : <Pause size={18} />}</button><button type="button" disabled={deleting || saveOpen || confirmDelete} aria-label="Next story" onClick={() => move(1)}><ChevronRight size={22} /></button></nav>
         </> : <div className={styles.expired}><p>This polaroid is no longer available.</p><button type="button" onClick={() => dialog.current?.close()}>Back to feed</button></div>}
       </div>
     </dialog>

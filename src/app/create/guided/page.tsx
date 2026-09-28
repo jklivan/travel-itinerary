@@ -136,7 +136,7 @@ function ItemEditForm({ type, initial, onDraftChange, onSave, onClose, onRecomme
   const [mealType, setMealType] = useDraftField('mealType', initial.mealType)
   const [rating, setRating] = useDraftField('rating', initial.rating)
   const [notes, setNotes] = useDraftField('notes', initial.notes)
-  const [alternative, setAlternative] = useDraftField('alternative', initial.alternative || '')
+  const alternative = initial.alternative || ''
   const recommendation = getRecommendation(initial.tags, initial.isHighlight)
   const [originalRecommendation] = useState(recommendation)
   function cancel() { onDraftChange?.(original); onRecommendationChange(originalRecommendation); onPhotosChange(originalPhotos); onClose() }
@@ -196,9 +196,6 @@ function ItemEditForm({ type, initial, onDraftChange, onSave, onClose, onRecomme
         <textarea aria-label="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)}
           placeholder={cfg.notesPh} className={inputCls} />
       </div>
-      <PlacesAutocomplete value={alternative} onChange={setAlternative} type={cfg.placeType}
-        placeholder="Suggest another place (optional)" className={`${inputCls} text-gray-500`} city={city} />
-      <p className="text-xs text-[#7a7b70]">Name a different place to suggest instead. To mark this place as a backup, use “Save as alternative.”</p>
       <RecommendationPicker type={type} value={recommendation} onChange={onRecommendationChange} />
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">

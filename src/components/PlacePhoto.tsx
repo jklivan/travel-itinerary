@@ -30,9 +30,9 @@ export default function PlacePhoto({ itemId, name, photos = [], thumbnailClass, 
   return <div ref={element} className="shrink-0" style={displayPhoto && !failed && fullWidth ? { width: '100%' } : fullWidth ? { minHeight: 1 } : undefined}>
     <div className={thumbnailClass} style={displayPhoto && !failed ? { width: '100%' } : fullWidth ? { display: 'none' } : undefined}>
       {displayPhoto && !failed ? <>
-        {/* Provider photos must not pass through the image optimizer/cache. */}
+        {/* Card thumbnails fill their box (it has a minimum height, not a fixed one), cropped to fit. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={sizedPhoto(displayPhoto.url, fullWidth ? 1080 : 640)} alt={name} className="h-full w-full object-cover" onError={() => setFailed(true)} />
+        <img src={sizedPhoto(displayPhoto.url, fullWidth ? 1080 : 640)} alt={name} className={fullWidth ? 'h-full w-full object-cover' : 'absolute inset-0 h-full w-full object-cover'} onError={() => setFailed(true)} />
       </> : fallback}
     </div>
     {displayPhoto && !failed && displayPhoto.mapsUrl && <div className="relative z-[2] mt-1 space-y-1 bg-[#fffdf6] p-1 text-xs leading-tight text-[#5e5e5e] [overflow-wrap:anywhere]">

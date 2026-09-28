@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Playfair_Display } from 'next/font/google'
+import { Caveat, Geist, Playfair_Display } from 'next/font/google'
 import './globals.css'
 import Navbar from '@/components/Navbar'
 import Providers from '@/components/Providers'
@@ -7,6 +7,8 @@ import BottomNavWrapper from '@/components/BottomNavWrapper'
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair', style: ['normal', 'italic'] })
+// Handwritten snapshot captions.
+const caveat = Caveat({ subsets: ['latin'], variable: '--font-script' })
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -22,7 +24,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geist.variable} ${playfair.variable} h-full antialiased`}>
+    <html lang="en" className={`${geist.variable} ${playfair.variable} ${caveat.variable} h-full antialiased`}>
       <body className="min-h-screen bg-[#f3eee5] font-[family-name:var(--font-geist-sans)]">
         <Providers>
           <Navbar />

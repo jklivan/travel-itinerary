@@ -19,7 +19,7 @@ export async function activeStories(following = false): Promise<StoryCard[]> {
   return rows.map(row => ({ id: row.id, authorId: row.user.id, authorName: row.user.name, placeName: row.placeName,
     destination: [row.destination, row.country].filter(Boolean).join(', '), hasTrip: !!row.sourceItinerary, type: row.type, photoUrl: row.photoUrl, caption: row.caption,
     createdAt: row.createdAt.toISOString(), expiresAt: row.expiresAt.toISOString(),
-    tripHref: row.sourceItinerary?.visibility === 'public' ? `/itinerary/${row.sourceItinerary.id}` : row.user.id === userId && row.sourceItinerary?.isPlan ? `/plan/${row.sourceItinerary.id}` : null,
+    tripHref: row.sourceItinerary?.visibility === 'public' ? `/itinerary/${row.sourceItinerary.id}` : row.user.id === userId && row.sourceItinerary ? `/plan/${row.sourceItinerary.id}` : null,
     removesTripPhoto: row.user.id === userId && row.photoAddedToPlace && !!row.sourceItemId,
   }))
 }

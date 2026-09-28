@@ -10,6 +10,11 @@ type Result = { error?: string; success?: boolean; id?: string }
 class InputError extends Error {}
 
 const unavailable = 'This trip is unavailable or belongs to another account.'
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+// "When to go": known month names only, in calendar order.
+function bestMonths(value: unknown) {
+  return Array.isArray(value) ? MONTHS.filter(month => value.includes(month)) : []
+}
 function text(form: FormData, key: string, max: number) {
   const value = form.get(key)
   if (typeof value !== 'string' || value.length > max) throw new InputError(`Please check ${key}.`)
@@ -83,7 +88,11 @@ export async function savePlanDetails(id: string, form: FormData): Promise<Resul
     if (!title) return { error: 'Give your trip a name.' }
     const audience = text(form, 'audience', 20)
     if (!['family', 'friends', 'romantic', 'adult'].includes(audience)) return { error: 'Choose a trip type.' }
-    const result = await prisma.itinerary.updateMany({ where: { id, userId, isPlan: true }, data: { title, audience, ...dates(form), ...(form.has('durationDays') ? { durationDays: duration(form) } : {}) } })
+    // Whole-trip notes & tips and When to go are only changed when the form sends them.
+    const extra: { notes?: string | null; bestMonths?: string[] } = {}
+    if (form.has('notes')) extra.notes = text(form, 'notes', 8000) || null
+    if (form.has('bestMonths')) { try { extra.bestMonths = bestMonths(JSON.parse(String(form.get('bestMonths')))) } catch { extra.bestMonths = [] } }
+    const result = await prisma.itinerary.updateMany({ where: { id, userId }, data: { title, audience, ...dates(form), ...(form.has('durationDays') ? { durationDays: duration(form) } : {}), ...extra } })
     if (!result.count) return { error: unavailable }
     refresh(id, userId)
     return { success: true }
@@ -188,14 +197,15 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
 }
 
 type PublishFormat = 'guide' | 'day-trip' | 'itinerary'
-type PublishDetails = { budget?: number; tripRating?: number; tags?: string[] }
+type PublishDetails = { budget?: number; tripRating?: number; tags?: string[]; bestMonths?: string[] }
 // The post type, duration, budget, rating and tags a plan gets when posted; also saved ahead of time
 // so the preview shows the trip exactly as it will be posted.
 function publishFields(format: PublishFormat, details: PublishDetails, durationDays: number | null) {
   const budget = details.budget && details.budget >= 1 && details.budget <= 5 ? Math.floor(details.budget) : null
   const tripRating = details.tripRating && details.tripRating >= 1 && details.tripRating <= 5 ? Math.floor(details.tripRating) : null
   const tags = Array.isArray(details.tags) ? [...new Set(details.tags.filter(tag => typeof tag === 'string').slice(0, 20))] : []
-  return { postType: format, durationDays: format === 'day-trip' ? 1 : format === 'guide' ? null : durationDays, budget, tripRating, tags: format === 'day-trip' ? [...new Set(['day-trip', ...tags])] : tags }
+  return { postType: format, durationDays: format === 'day-trip' ? 1 : format === 'guide' ? null : durationDays, budget, tripRating, tags: format === 'day-trip' ? [...new Set(['day-trip', ...tags])] : tags,
+    ...(details.bestMonths === undefined ? {} : { bestMonths: bestMonths(details.bestMonths) }) }
 }
 
 // "A few more details" → Continue: save the details on the still-private plan, before previewing it.
@@ -204,7 +214,7 @@ export async function savePublishDetails(id: string, format: PublishFormat = 'it
   if (!userId) return { error: 'Please sign in.' }
   if (!['guide', 'day-trip', 'itinerary'].includes(format)) return { error: 'Choose a trip type.' }
   try {
-    const trip = await prisma.itinerary.findFirst({ where: { id, userId, isPlan: true, visibility: 'draft', destinations: { some: { items: { some: {} } } } }, select: { durationDays: true } })
+    const trip = await prisma.itinerary.findFirst({ where: { id, userId, visibility: 'draft', destinations: { some: { items: { some: {} } } } }, select: { durationDays: true } })
     if (!trip) return { error: 'Add at least one place before posting your trip.' }
     await prisma.itinerary.updateMany({ where: { id, userId, visibility: 'draft' }, data: publishFields(format, details, trip.durationDays) })
     refresh(id, userId)
@@ -216,7 +226,7 @@ export async function sharePlan(id: string, format: PublishFormat = 'itinerary',
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
   try {
-    const trip = await prisma.itinerary.findFirst({ where: { id, userId, isPlan: true, destinations: { some: { items: { some: {} } } } }, select: { id: true, durationDays: true } })
+    const trip = await prisma.itinerary.findFirst({ where: { id, userId, destinations: { some: { items: { some: {} } } } }, select: { id: true, durationDays: true } })
     if (!trip) return { error: 'Add at least one place before sharing your trip.' }
     const result = await prisma.itinerary.updateMany({ where: { id, userId, visibility: 'draft' }, data: { visibility: 'public', publishedAt: new Date(), ...publishFields(format, details, trip.durationDays) } })
     if (result.count) scheduleTripPublishedNotifications(id)

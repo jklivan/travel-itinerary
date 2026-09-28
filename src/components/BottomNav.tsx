@@ -1,19 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
-import { useState } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { Bookmark, Compass, Home, NotebookPen, Sparkles } from 'lucide-react'
 import useBottomToolbar from './useBottomToolbar'
-import PostTripDialog from './PostTripDialog'
 
-// Feed · Post · Explore · Plan · My Trips · Saved. Plan starts a new trip; Messages lives in the header.
+// Feed · Explore · Plan · My Trips · Saved. Plan starts a new trip; Post (+) and Messages live in the header.
 export default function BottomNav({ userId }: { pendingCount: number; userId: string | null }) {
   const pathname = usePathname()
-  const router = useRouter()
   const toolbarRef = useBottomToolbar()
-  const [posting, setPosting] = useState(false)
 
   const isFeed = pathname === '/'
   const isExplore = pathname.startsWith('/explore')
@@ -32,16 +27,11 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
 
   return (
     <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#faf7f1] border-t border-[#dfd3c2] shadow-lg z-50">
-      <div className="max-w-2xl mx-auto grid grid-cols-6 items-center py-2">
+      <div className="max-w-2xl mx-auto grid grid-cols-5 items-center py-2">
         <Link href="/" aria-current={isFeed ? 'page' : undefined} className={cls(isFeed)}>
           <span className={iconClass(isFeed)}><Home className="w-6 h-6" /></span>
           <span className={label}>Feed</span>
         </Link>
-
-        <button type="button" aria-haspopup="dialog" onClick={() => userId ? setPosting(true) : router.push('/login')} className={cls(posting)}>
-          <span className={iconClass(false)}><Image src="/brand/postcard-icon.svg" alt="" width={24} height={24} /></span>
-          <span className={label}>Post</span>
-        </button>
 
         <Link href="/explore" aria-current={isExplore ? 'page' : undefined} className={cls(isExplore)}>
           <span className={iconClass(isExplore)}><Compass className="w-5 h-5" /></span>
@@ -63,7 +53,6 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
           <span className={label}>Saved</span>
         </Link>
       </div>
-      {posting && <PostTripDialog onClose={() => setPosting(false)} />}
     </div>
   )
 }

@@ -148,10 +148,17 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
         <textarea aria-label="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)}
           placeholder={cfg.notesPh} className={inputCls} />
       </div>
-      <PlacesAutocomplete value={alternative} onChange={setAlternative} type={cfg.placeType}
-        placeholder="Suggest another place (optional)" className={`${inputCls} text-[#7a7b70]`} city={city} />
-      <p className="text-xs text-[#7a7b70]">Name a different place to suggest instead.{showRating && ' To mark this place as a backup, use “Save as alternative.”'}</p>
-      {showRating && <RecommendationPicker type={type} value={recommendation} onChange={changeRecommendation} />}
+      {/* Alternatives are places of their own ("Save as alternative"). An older typed suggestion stays
+          visible here only so it can be cleared. */}
+      {!!initial.alternative && <label className="block space-y-1">
+        <span className="text-xs text-[#7a7b70]">Earlier suggestion (clear it to remove)</span>
+        <input value={alternative} onChange={event => setAlternative(event.target.value)} className={`${inputCls} text-[#7a7b70]`} />
+      </label>}
+      {showRating ? <RecommendationPicker type={type} value={recommendation} onChange={changeRecommendation} />
+        : <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-[#485340]">
+          <input type="checkbox" checked={recommendation === 'option'} onChange={event => changeRecommendation(event.target.checked ? 'option' : 'none')} className="h-4 w-4 accent-[#59694f]" />
+          Save as alternative <span className="text-xs text-[#7a7b70]">(a backup you’re considering)</span>
+        </label>}
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-[#59694f] hover:text-[#355650] font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}

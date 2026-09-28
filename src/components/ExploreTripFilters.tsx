@@ -7,7 +7,7 @@ import { TRIP_TYPES } from '@/lib/exploreFilters'
 import { ChevronDown, MapPin, Check } from 'lucide-react'
 
 const TILE_PHOTOS: Record<string, string> = {
-  family: 'photo-1504150558240-0b4fd0b4fd0b', friends: 'photo-1529156069898-49953e39b3ac', romantic: 'photo-1516589178581-6cd7833ae3b2', adult: 'photo-1517248135467-4c7edcad34c4',
+  family: 'photo-1475503572774-15a45e5d60b9', friends: 'photo-1529156069898-49953e39b3ac', romantic: 'photo-1516589178581-6cd7833ae3b2', adult: 'photo-1517248135467-4c7edcad34c4',
   'day-trip': 'photo-1500530855697-b586d89ba3ee', adventure: 'photo-1464822759023-fed622ff2c3b', beach: 'photo-1507525428034-b723cf961d3e', city: 'photo-1477959858617-67f85cf4f1df',
   culture: 'photo-1549490349-8643362247b5', food: 'photo-1552566626-52f8b828add9', hiking: 'photo-1551632811-561732d1e306', history: 'photo-1552832230-c0197dd311b5',
   luxury: 'photo-1566073771259-6a8506099945', nature: 'photo-1441974231531-c6227db76b6e', nightlife: 'photo-1514525253161-7a46d19cd819', relaxing: 'photo-1500534623283-312aade485b7', 'road-trip': 'photo-1469854523086-cc02fe5d8800', shopping: 'photo-1441986300917-64674bd600d8', wildlife: 'photo-1549366021-9f761d450615',

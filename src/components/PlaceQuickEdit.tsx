@@ -10,9 +10,9 @@ import { getRecommendation, type PlaceRecommendation } from '@/lib/placeRecommen
 
 // `row`: an even three-button bar under a planner card (e.g. Edit details · Add photos · Add rating),
 // with `leading` as the first button.
-export default function PlaceQuickEdit({ itemId, name, type, tags, rating, photos, compact = false, row = false, leading }: { compact?: boolean; row?: boolean; leading?: ReactNode; itemId: string; name: string; type: 'hotel' | 'food_drink' | 'activity' | 'transport'; tags: string[]; rating: number | null; photos: string[] }) {
+export default function PlaceQuickEdit({ itemId, name, type, tags, rating, photos, compact = false, row = false, leading, initialMode }: { initialMode?: 'rating'; compact?: boolean; row?: boolean; leading?: ReactNode; itemId: string; name: string; type: 'hotel' | 'food_drink' | 'activity' | 'transport'; tags: string[]; rating: number | null; photos: string[] }) {
   const router = useRouter()
-  const [mode, setMode] = useState<'photos' | 'rating' | null>(null)
+  const [mode, setMode] = useState<'photos' | 'rating' | null>(initialMode ?? null)
   const [draftRating, setDraftRating] = useState(rating ?? 0)
   const [draftRecommendation, setDraftRecommendation] = useState(getRecommendation(tags))
   const [draftPhotos, setDraftPhotos] = useState(photos)
@@ -81,7 +81,7 @@ export default function PlaceQuickEdit({ itemId, name, type, tags, rating, photo
             {[1, 2, 3, 4, 5].map(value => <button key={value} type="button" aria-label={`Rate ${name} ${value} out of 5`} aria-pressed={draftRating === value} onClick={() => void saveRating(value, draftRecommendation)} className={`min-h-11 min-w-11 text-2xl ${value <= draftRating ? 'text-[#ba9146]' : 'text-[#8B6F4E]'}`}>★</button>)}
             {draftRating > 0 && <button type="button" onClick={() => void saveRating(0, draftRecommendation)} className="min-h-11 px-2 text-xs underline">Clear rating</button>}
           </div>
-          <RecommendationPicker type={type} value={draftRecommendation} onChange={value => void saveRating(draftRating, value)} />
+          <RecommendationPicker type={type} value={draftRecommendation} onChange={value => void saveRating(draftRating, value)} allowAlternative={false} />
         </div>}
       </fieldset>
       {error && <p role="alert" className="px-2 py-1 text-red-700">{error}</p>}

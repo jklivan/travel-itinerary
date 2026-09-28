@@ -17,7 +17,7 @@ export async function findFriendsPlanPlaces(planId: string, query: string, befor
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in to browse your friends’ trips.' }
   if (typeof query !== 'string' || !query.trim() || query.length > 160) return { error: 'Enter a city or destination.' }
-  const plan = await prisma.itinerary.findFirst({ where: { id: planId, userId, isPlan: true }, select: { id: true } })
+  const plan = await prisma.itinerary.findFirst({ where: { id: planId, userId }, select: { id: true } })
   if (!plan) return { error: unavailable }
   const search = query.trim()
   const destinationWhere = { OR: [{ name: { contains: search, mode: 'insensitive' as const } }, { country: { contains: search, mode: 'insensitive' as const } }] }
@@ -59,7 +59,7 @@ export async function copyPlacesToPlan(sourceIds: string[], planId: string) {
   const ids = [...new Set(sourceIds)]
   try {
     const result = await prisma.$transaction(async tx => {
-      const plan = await tx.itinerary.findFirst({ where: { id: planId, userId, isPlan: true }, select: { id: true } })
+      const plan = await tx.itinerary.findFirst({ where: { id: planId, userId }, select: { id: true } })
       if (!plan) return { error: unavailable }
       // Serialize bulk additions to this plan so concurrent batches cannot duplicate places.
       await tx.$queryRaw`SELECT id FROM "Itinerary" WHERE id = ${planId} FOR UPDATE`

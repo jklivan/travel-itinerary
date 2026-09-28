@@ -31,12 +31,8 @@ export default async function ProfilePage() {
         <Link href="/settings" aria-label="Settings" className="flex size-11 shrink-0 items-center justify-center rounded-full border border-[#b5c8bc] text-[#59694f] hover:bg-white/60"><Settings size={19} /></Link>
       </div>
     </section>
-    <section className="mt-6" aria-labelledby="shared-trips-heading">
-      <div className="mb-3"><h2 id="shared-trips-heading" className="font-[family-name:var(--font-playfair)] text-xl uppercase tracking-wide text-[#8B6F4E]">Shared trips <span className="font-sans text-sm">({sharedTrips.length})</span></h2><p className="mt-1 text-sm text-[#73786d]">Trips you’ve published for others to explore.</p></div>
-      {sharedTrips.length === 0 ? <div className="rounded-2xl border border-dashed border-[#d7cebc] p-6 text-center text-sm text-[#73786d]">No shared trips yet.</div> : <div className="space-y-4">{sharedTrips.map(it => <ItineraryCard fullWidth key={it.id} id={it.id} postType={it.postType} tags={it.tags} durationDays={it.durationDays} title={it.title} bestMonths={it.bestMonths} datesFlexible={it.datesFlexible} startDate={it.startDate} endDate={it.endDate} audience={it.audience} budget={it.budget} tripRating={it.tripRating} authorName={user.name} authorId={user.id} destinations={it.destinations} coverPhoto={it.photos[0]?.url ?? null} photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items))} currentUserId={userId} isOwn isBucketed={false} saveCount={it._count.bucketedBy} />)}</div>}
-    </section>
     <div className="mt-5 space-y-3">
-      <Link href={`/user/${userId}`} className="group flex min-h-20 items-center gap-4 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4 hover:bg-[#f5efe2]">
+      <Link href="/trips" className="group flex min-h-20 items-center gap-4 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4 hover:bg-[#f5efe2]">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#59694f]/10 text-[#59694f]"><Map size={22} /></span>
         <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-xl">My Trips</span><span className="mt-0.5 block text-sm text-[#73786d]">View your posts and plans</span></span><ChevronRight size={20} className="text-[#59694f]" />
       </Link>
@@ -49,5 +45,9 @@ export default async function ProfilePage() {
         <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-xl">Settings</span><span className="mt-0.5 block text-sm text-[#73786d]">Account and notification preferences</span></span><ChevronRight size={20} className="text-[#59694f]" />
       </Link>
     </div>
+    <section className="mt-6" aria-labelledby="shared-trips-heading">
+      <div className="mb-3"><h2 id="shared-trips-heading" className="font-[family-name:var(--font-playfair)] text-xl uppercase tracking-wide text-[#8B6F4E]">Shared trips <span className="font-sans text-sm">({sharedTrips.length})</span></h2><p className="mt-1 text-sm text-[#73786d]">Trips you’ve published for others to explore.</p></div>
+      {sharedTrips.length === 0 ? <div className="rounded-2xl border border-dashed border-[#d7cebc] p-6 text-center text-sm text-[#73786d]">No shared trips yet.</div> : <div className="space-y-4">{sharedTrips.map(it => <ItineraryCard fullWidth key={it.id} id={it.id} postType={it.postType} tags={it.tags} durationDays={it.durationDays} title={it.title} bestMonths={it.bestMonths} datesFlexible={it.datesFlexible} startDate={it.startDate} endDate={it.endDate} audience={it.audience} budget={it.budget} tripRating={it.tripRating} authorName={user.name} authorId={user.id} destinations={it.destinations} coverPhoto={it.photos[0]?.url ?? null} photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items))} currentUserId={userId} isOwn isBucketed={false} saveCount={it._count.bucketedBy} />)}</div>}
+    </section>
   </main>
 }

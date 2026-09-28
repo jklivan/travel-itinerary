@@ -160,9 +160,17 @@ const MEAL_GROUPS = [
   { value: 'breakfast', label: 'Breakfast' },
   { value: 'lunch', label: 'Lunch' },
   { value: 'dinner', label: 'Dinner' },
+  { value: 'drinks', label: 'Drinks' },
+  { value: 'coffee', label: 'Coffee' },
   { value: 'dessert', label: 'Dessert' },
-  { value: 'other', label: 'Other' },
+  { value: 'bakery', label: 'Bakery' },
+  { value: 'other', label: 'More places to eat' },
 ] as const
+// A place tagged with several meals (e.g. lunch and dinner) is listed under the first of them.
+function mealGroup(mealType: string | null | undefined) {
+  const types = (mealType ?? '').split(',').map(type => type.trim().toLowerCase())
+  return MEAL_GROUPS.find(group => types.includes(group.value))?.value ?? 'other'
+}
 
 function CategoryHeading({ type, count }: { type: PlaceCategory; count: number }) {
   const { label, Icon } = PLACE_CATEGORIES[type]
@@ -226,7 +234,7 @@ export default async function ItineraryPage({
   if (it.visibility === 'draft' && isOwn && it.isPlan && !previewing) redirect(`/plan/${it.id}`)
   // Plan-based trips are edited in the planner. Link there directly: the editor's server redirect
   // to /plan fails during in-app navigation and leaves a blank page.
-  const editHref = it.isPlan ? `/plan/${it.id}` : `/itinerary/${it.id}/edit`
+  const editHref = `/plan/${it.id}`
 
 
   const [followRecord, bucketItem] = await Promise.all([
@@ -788,16 +796,12 @@ export default async function ItineraryPage({
                               <CategoryHeading type="food_drink" count={dFood.length} />
                               <div className="space-y-5">
                                 {MEAL_GROUPS.map(group => {
-                                  const meals = dFood.filter(item => {
-                                    const mealType = item.mealType?.trim().toLowerCase()
-                                    return group.value === 'other'
-                                      ? !MEAL_GROUPS.some(candidate => candidate.value !== 'other' && candidate.value === mealType)
-                                      : mealType === group.value
-                                  })
+                                  const meals = dFood.filter(item => mealGroup(item.mealType) === group.value)
                                   if (meals.length === 0) return null
                                   return (
                                     <section key={group.value} aria-label={group.label}>
-                                      <h4 className="text-xs font-semibold uppercase tracking-wider text-[#ad6b57] mb-2">{group.label}</h4>
+                                      {/* No heading when no restaurant has a meal type. */}
+                                      {!(group.value === 'other' && meals.length === dFood.length) && <h4 className="text-xs font-semibold uppercase tracking-wider text-[#ad6b57] mb-2">{group.label}</h4>}
                                       <div className="space-y-2">{meals.map(item => renderFoodCard(item))}</div>
                                     </section>
                                   )

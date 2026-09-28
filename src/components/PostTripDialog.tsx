@@ -8,7 +8,7 @@ import styles from './Stories.module.css'
 
 type Plan = { id: string; title: string; isPlan: boolean; places: number }
 
-// The bottom bar's Post button: pick one of your private plans to post, or start a new trip from scratch.
+// The header's + button: pick one of your private plans to post, or start a new trip from scratch.
 // Same shape as the snapshot composer.
 export default function PostTripDialog({ onClose }: { onClose: () => void }) {
   const router = useRouter()
@@ -34,10 +34,8 @@ export default function PostTripDialog({ onClose }: { onClose: () => void }) {
 
   function go() {
     dialog.current?.close()
-    if (!plan) router.push('/create?start=scratch')
-    // Plans open on their "A few more details" posting step. Plans link straight to /plan: the
-    // trip editor's redirect there fails during in-app navigation.
-    else if (!plan.isPlan) router.push(`/itinerary/${plan.id}/edit`)
+    if (!plan) router.push('/plan?from=post')
+    // Trips open in the planner on their "A few more details" posting step.
     else router.push(plan.places ? `/plan/${plan.id}?post=1` : `/plan/${plan.id}`)
   }
 
