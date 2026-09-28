@@ -104,23 +104,9 @@ export default function ItineraryCard({
             {audience === 'romantic' && <span className="w-fit rounded-sm bg-[#fffdf2]/90 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-[#2e4147]">Romantic</span>}
           </div>
 
-          <div aria-hidden="true" className="pointer-events-none absolute right-2.5 top-2.5 z-20 flex size-14 items-center pl-3 text-[#2e4147] drop-shadow-lg">
-            <svg viewBox="0 0 100 100" className="absolute inset-0 size-full" fill="none" aria-hidden="true">
-              <defs>
-                <mask id="sm">
-                  <rect width="100" height="100" fill="white"/>
-                  <circle cx="12" cy="0" r="4" fill="black"/><circle cx="24" cy="0" r="4" fill="black"/><circle cx="36" cy="0" r="4" fill="black"/><circle cx="48" cy="0" r="4" fill="black"/><circle cx="60" cy="0" r="4" fill="black"/><circle cx="72" cy="0" r="4" fill="black"/><circle cx="84" cy="0" r="4" fill="black"/>
-                  <circle cx="12" cy="100" r="4" fill="black"/><circle cx="24" cy="100" r="4" fill="black"/><circle cx="36" cy="100" r="4" fill="black"/><circle cx="48" cy="100" r="4" fill="black"/><circle cx="60" cy="100" r="4" fill="black"/><circle cx="72" cy="100" r="4" fill="black"/><circle cx="84" cy="100" r="4" fill="black"/>
-                  <circle cx="0" cy="12" r="4" fill="black"/><circle cx="0" cy="24" r="4" fill="black"/><circle cx="0" cy="36" r="4" fill="black"/><circle cx="0" cy="48" r="4" fill="black"/><circle cx="0" cy="60" r="4" fill="black"/><circle cx="0" cy="72" r="4" fill="black"/><circle cx="0" cy="84" r="4" fill="black"/>
-                  <circle cx="100" cy="12" r="4" fill="black"/><circle cx="100" cy="24" r="4" fill="black"/><circle cx="100" cy="36" r="4" fill="black"/><circle cx="100" cy="48" r="4" fill="black"/><circle cx="100" cy="60" r="4" fill="black"/><circle cx="100" cy="72" r="4" fill="black"/><circle cx="100" cy="84" r="4" fill="black"/>
-                </mask>
-              </defs>
-              <rect width="100" height="100" fill="#f6f1e7" mask="url(#sm)"/>
-              <rect x="9" y="9" width="82" height="82" stroke="#c4b99a" strokeWidth="1.5"/>
-            </svg>
-            <span className="relative z-10 flex items-center gap-0.5 font-[family-name:var(--font-playfair)] text-[29px] leading-none">P
-              <svg viewBox="0 0 34 22" className="h-5 w-8 text-[#8b6f4e]" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M2 5c6-4 10 4 16 0s10 4 14 0M2 11c6-4 10 4 16 0s10 4 14 0M2 17c6-4 10 4 16 0s10 4 14 0" /></svg>
-            </span>
+          {/* The Postcard stamp, on a cream disc so it reads on dark photos. */}
+          <div aria-hidden="true" className="pointer-events-none absolute right-2.5 top-2.5 z-20 size-[60px] rotate-[8deg] rounded-full bg-[#f6f1e7]/95 p-0.5 shadow-md">
+            <Image src="/brand/postcard-stamp-logo.png" alt="" width={56} height={56} className="size-full" />
           </div>
 
           <Link href={`/itinerary/${id}`} className="absolute inset-x-3 bottom-3 z-10 block max-w-[76%] text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] sm:inset-x-5 sm:bottom-4">
