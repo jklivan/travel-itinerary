@@ -52,7 +52,7 @@ export function StarRating({ value, onChange }: { value: number; onChange: (v: n
 
 // ── Item edit form ─────────────────────────────────────────────────────────────
 
-export default function PlaceEditForm({ type, initial, onDraftChange, onSave, onClose, onRecommendationChange, onPlaceIdChange, city, busy = false, saveLabel = 'Save', children }: {
+export default function PlaceEditForm({ type, initial, onDraftChange, onSave, onClose, onRecommendationChange, onPlaceIdChange, city, busy = false, saveLabel = 'Save', showRating = true, children }: {
   type: PlaceType
   initial: PlaceEditValues
   onDraftChange?: (updated: Partial<PlaceEditValues>) => void
@@ -64,6 +64,8 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
   city?: string
   busy?: boolean
   saveLabel?: string
+  // false where rating and Must do / Avoid have their own button (the planner's Change rating).
+  showRating?: boolean
   // Extra fields (photos, day…) shown above the Save and Cancel buttons.
   children?: React.ReactNode
 }) {
@@ -137,10 +139,10 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
           })}
         </div>
       )}
-      <div className="space-y-1">
+      {showRating && <div className="space-y-1">
         <p className="text-xs text-[#7a7b70]">Rate it</p>
         <StarRating value={rating} onChange={setRating} />
-      </div>
+      </div>}
       <div className="space-y-1">
         <p className="text-xs text-[#7a7b70]">Notes</p>
         <textarea aria-label="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)}
@@ -148,8 +150,8 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
       </div>
       <PlacesAutocomplete value={alternative} onChange={setAlternative} type={cfg.placeType}
         placeholder="Suggest another place (optional)" className={`${inputCls} text-[#7a7b70]`} city={city} />
-      <p className="text-xs text-[#7a7b70]">Name a different place to suggest instead. To mark this place as a backup, use “Save as alternative.”</p>
-      <RecommendationPicker type={type} value={recommendation} onChange={changeRecommendation} />
+      <p className="text-xs text-[#7a7b70]">Name a different place to suggest instead.{showRating && ' To mark this place as a backup, use “Save as alternative.”'}</p>
+      {showRating && <RecommendationPicker type={type} value={recommendation} onChange={changeRecommendation} />}
       <button type="button" onClick={() => setShowMore(s => !s)}
         className="text-xs text-[#59694f] hover:text-[#355650] font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}

@@ -71,7 +71,7 @@ export default function PlaceQuickEdit({ itemId, name, type, tags, rating, photo
     <div className={row ? 'grid grid-cols-3 divide-x divide-[#e3dfd2]' : 'flex flex-wrap gap-2'}>
       {leading}
       <button type="button" onClick={() => open('photos')} aria-label={`Edit photos for ${name}`} className={`inline-flex min-h-11 items-center gap-1.5 px-2 text-[#59694f] ${row ? 'justify-center text-xs sm:text-sm' : ''}`}><Camera size={15} />{photos.length ? 'Edit photos' : 'Add photos'}</button>
-      <button type="button" onClick={() => open('rating')} aria-label={`Change rating for ${name}`} className={`inline-flex min-h-11 items-center gap-1.5 px-2 text-[#59694f] ${row ? 'justify-center text-xs sm:text-sm' : ''}`}><Star size={15} />{rating || getRecommendation(tags) !== 'none' ? 'Change rating' : 'Add rating'}</button>
+      <button type="button" onClick={() => open('rating')} aria-label={`Change rating for ${name}`} className={`inline-flex min-h-11 items-center gap-1.5 px-2 text-[#59694f] ${row ? 'justify-center text-xs sm:text-sm' : ''}`}><Star size={15} />{rating ? 'Change rating' : 'Add rating'}</button>
     </div>
     </> : <>
       <p className="px-2 py-1 font-medium text-[#2e4147]">{mode === 'photos' ? 'Photos' : 'Rating & status'} · {name}</p>

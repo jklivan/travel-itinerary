@@ -165,7 +165,7 @@ function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; m
     if (saving.current || uploading) return
     saving.current = true; setBusy(true); setError('')
     const data = new FormData()
-    for (const [key, value] of Object.entries({ name: values.name, placeId, status: place.status, rating: String(values.rating), notes: values.notes, day, mealType: values.mealType,
+    for (const [key, value] of Object.entries({ name: values.name, placeId, status: place.status, notes: values.notes, day, mealType: values.mealType,
       tags: JSON.stringify(values.tags), alternative: values.alternative, description: values.description, link: values.link, address: values.address, photos: JSON.stringify(photos) })) data.set(key, value)
     try { const result = await editPlanPlace(place.id, data); if (result.error) setError(result.error); else { setEditing(false); setSaved(true); router.refresh() } }
     catch { setError('Could not save. Your changes are still here; try again.') }
@@ -193,7 +193,7 @@ function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; m
         leading={<button onClick={openEditor} type="button" className="inline-flex min-h-11 items-center justify-center gap-1.5 px-2 text-xs text-[#59694f] sm:text-sm"><Pencil size={15} />Edit details</button>} />
       : <div className="w-full">
         {/* Same fields as the trip editor, plus photos and the day for this plan. */}
-        <PlaceEditForm type={category.value as PlaceType} city={place.destination} busy={busy || uploading} saveLabel="Save changes" onPlaceIdChange={setPlaceId} onClose={() => setEditing(false)} onSave={values => void save(values)}
+        <PlaceEditForm type={category.value as PlaceType} city={place.destination} busy={busy || uploading} saveLabel="Save changes" showRating={false} onPlaceIdChange={setPlaceId} onClose={() => setEditing(false)} onSave={values => void save(values)}
           initial={{ name: place.name, mealType: place.mealType ?? '', rating: place.rating ?? 0, notes: place.notes ?? '', tags: place.tags, isHighlight: false, alternative: place.alternative ?? '', description: place.description ?? '', link: place.link ?? '', address: place.address ?? '' }}>
           <div className="space-y-1"><p className="text-xs text-[#7a7b70]">Photos</p><EventPhotoInput photos={photos} name={place.name} onChange={setPhotos} onBusyChange={setUploading} /></div>
           <label className="block text-xs text-[#7a7b70]">Day (optional)<select value={day} onChange={event => setDay(event.target.value)} className={inputClass}><option value="">Unscheduled</option>{Array.from({ length: maxDay }, (_, index) => index + 1).map(value => <option key={value} value={value}>Day {value}</option>)}</select></label>
