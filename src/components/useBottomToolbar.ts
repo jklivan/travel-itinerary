@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { Capacitor } from '@capacitor/core'
-import { keyboardCoversToolbar } from '@/lib/bottomToolbar'
+import { keyboardCoversToolbar, viewportLeftShifted } from '@/lib/bottomToolbar'
 
 export default function useBottomToolbar() {
   const ref = useRef<HTMLDivElement>(null)
@@ -25,6 +25,12 @@ export default function useBottomToolbar() {
       // Keep CSS fixed positioning: scroll-driven document coordinates lag behind
       // iOS's asynchronous scrolling. Only keyboard visibility needs JavaScript.
       bar.style.visibility = viewport && keyboardCoversToolbar(editing, window.innerHeight, viewport.height, viewport.scale) ? 'hidden' : 'visible'
+      // Keyboard closed but the page was left shifted: a one-pixel scroll makes iOS put the
+      // bars back at the edges of the screen.
+      if (viewport && viewportLeftShifted(editing, viewport.offsetTop, viewport.scale)) {
+        window.scrollBy(0, 1)
+        window.scrollBy(0, -1)
+      }
     }
     function schedule() {
       cancelAnimationFrame(frame)
