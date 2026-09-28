@@ -78,7 +78,7 @@ export default function PlaceQuickEdit({ itemId, name, type, tags, rating, photo
       <fieldset disabled={saving || uploading}>
         {mode === 'photos' ? <EventPhotoInput photos={draftPhotos} name={name} onChange={setDraftPhotos} onBusyChange={setUploading} /> : <div className="space-y-3 px-1">
           <div className="flex flex-wrap items-center">
-            {[1, 2, 3, 4, 5].map(value => <button key={value} type="button" aria-label={`Rate ${name} ${value} out of 5`} aria-pressed={draftRating === value} onClick={() => void saveRating(value, draftRecommendation)} className={`min-h-11 min-w-11 text-2xl ${value <= draftRating ? 'text-[#ba9146]' : 'text-[#8B6F4E]'}`}>★</button>)}
+            {[1, 2, 3, 4, 5].map(value => <button key={value} type="button" aria-label={`Rate ${name} ${value} out of 5`} aria-pressed={draftRating === value} onClick={() => void saveRating(value, draftRecommendation)} className="flex min-h-11 min-w-11 items-center justify-center"><Star size={26} strokeWidth={1.6} className={value <= draftRating ? 'fill-[#ba9146] text-[#ba9146]' : 'fill-none text-[#b3a78e]'} /></button>)}
             {draftRating > 0 && <button type="button" onClick={() => void saveRating(0, draftRecommendation)} className="min-h-11 px-2 text-xs underline">Clear rating</button>}
           </div>
           <RecommendationPicker type={type} value={draftRecommendation} onChange={value => void saveRating(draftRating, value)} allowAlternative={false} />

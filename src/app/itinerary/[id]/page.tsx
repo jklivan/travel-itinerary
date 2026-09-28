@@ -23,52 +23,51 @@ import styles from './places.module.css'
 import PlaceDetailsCard from '@/components/PlaceDetailsCard'
 import PublishPreviewBar from '@/components/PublishPreviewBar'
 import GooglePlaceThumb from '@/components/GooglePlaceThumb'
+import FriendRatingsButton from '@/components/FriendRatingsButton'
 import { getRecommendation, partitionPlaces } from '@/lib/placeRecommendation'
 import { mapDayNumber } from '@/lib/mapDays'
 import { distanceMiles } from '@/lib/distance'
 
-function FriendProof({
-  friends,
-  avg,
-  total,
-  verb = 'also went',
-}: {
-  friends: { friendName: string; rating: number | null; itineraryId: string }[]
-  avg: number | null
-  total: number
-  verb?: string
-}) {
-  const ratedFriends = friends.filter(friend => friend.rating != null && friend.rating > 0)
-  const friendAverage = ratedFriends.length > 0
-    ? ratedFriends.reduce((sum, friend) => sum + friend.rating!, 0) / ratedFriends.length
-    : null
-  if (friends.length === 0 && (avg === null || total === 0)) return null
+type FriendRating = { friendName: string; rating: number | null; itineraryId: string }
 
-  const renderFriend = (friend: typeof friends[number], index: number) => (
-    <div key={`${friend.itineraryId}-${index}`} className={styles.friendRow}>
-      <span className={styles.friendName}>{friend.friendName.split(' ')[0]}</span>
-      {friend.rating != null && friend.rating > 0 ? (
-        <RatingStars value={friend.rating} />
-      ) : <span>{verb}</span>}
-      <Link href={`/itinerary/${friend.itineraryId}`} className={styles.friendLink}>their trip</Link>
-    </div>
-  )
-
+// On the card: one friend's name and stars, or for several friends a "Friends' rating" average that opens
+// the full list. Everything is also in the place's popup.
+function FriendSummary({ friends, verb, placeName }: { friends: FriendRating[]; verb: string; placeName: string }) {
+  if (friends.length === 0) return null
+  const rated = friends.filter(friend => friend.rating != null && friend.rating > 0)
+  const average = rated.length ? rated.reduce((sum, friend) => sum + friend.rating!, 0) / rated.length : null
   return (
     <div className={styles.socialProof}>
-      {friends.length === 1 ? renderFriend(friends[0], 0) : friends.length > 1 ? (
-        <details className={styles.friendDetails}>
-          <summary>
-            <span>{friends.length} friends {verb}</span>
-            {friendAverage !== null && <span className={styles.rating}><RatingStars value={friendAverage} label={`Friends average ${friendAverage.toFixed(1)} out of 5 from ${ratedFriends.length} ratings`} /> friends’ avg</span>}
-          </summary>
-          <div className={styles.friendList}>{friends.map(renderFriend)}</div>
-        </details>
-      ) : null}
-      {avg !== null && total > 0 && (
-        <p className={styles.communityRating}><RatingStars value={avg} label={`Community average ${avg.toFixed(1)} out of 5 from ${total} ratings`} /> Community · {total} {total === 1 ? 'rating' : 'ratings'}</p>
-      )}
+      <p className={styles.friendRow}>
+        {friends.length === 1
+          ? <><span className={styles.friendName}>{friends[0].friendName.split(' ')[0]}</span>{average !== null ? <RatingStars value={average} label={`${friends[0].friendName} rated it ${average} out of 5`} /> : <span>{verb}</span>}</>
+          : <FriendRatingsButton friends={friends} placeName={placeName} verb={verb} />}
+      </p>
     </div>
+  )
+}
+
+// In the place's popup: the poster's rating, the community rating (other trips; opens every trip with this
+// place), then each friend's rating with a link to their trip.
+function RatingsDetails({ itemId, authorName, authorRating, friends, avg, total, trips }: { itemId: string; authorName: string; authorRating: number | null | undefined; friends: FriendRating[]; avg: number | null; total: number; trips: number }) {
+  if (!authorRating && friends.length === 0 && !trips) return null
+  return (
+    <section className={styles.ratingsDetails}>
+      <h3>Ratings</h3>
+      {!!authorRating && <p className={styles.ratingsRow}><span className={styles.friendName}>{authorName}</span><RatingStars value={authorRating} label={`${authorName} rated it ${authorRating} out of 5`} /></p>}
+      {trips > 0 && <Link href={`/place/${itemId}`} className={`${styles.ratingsRow} ${styles.communityLink}`}>
+        <span>Community rating</span>
+        {avg !== null && total > 0 ? <><RatingStars value={avg} label={`Community rating ${avg.toFixed(1)} out of 5 from ${total} ratings`} /><span>{avg.toFixed(1)} · {total} {total === 1 ? 'rating' : 'ratings'}</span></> : <span>No ratings yet</span>}
+        <span className={styles.ratingsTripLink}>See all trips →</span>
+      </Link>}
+      {friends.length > 0 && <div className={styles.ratingsGroup}><p className={styles.ratingsGroupTitle}>Friends who went</p>
+        {friends.map((friend, index) => <p key={`${friend.itineraryId}-${index}`} className={styles.ratingsRow}>
+          <span className={styles.friendName}>{friend.friendName}</span>
+          {friend.rating ? <RatingStars value={friend.rating} label={`${friend.friendName} rated it ${friend.rating} out of 5`} /> : <span>Went, no rating</span>}
+          <Link href={`/itinerary/${friend.itineraryId}`} className={styles.ratingsTripLink}>See trip →</Link>
+        </p>)}
+      </div>}
+    </section>
   )
 }
 
@@ -292,7 +291,7 @@ export default async function ItineraryPage({
   type SocialRow = { name: string; count: bigint }
   type FriendNameRow = { name: string; friend_name: string }
   type FriendDetailRow = { name: string; friend_name: string; rating: number | null; itinerary_id: string; place_id: string | null }
-  type AvgRow = { item_id: string; total: bigint; avg_rating: number | null }
+  type AvgRow = { item_id: string; total: bigint; avg_rating: number | null; trips: bigint }
   type BucketerRow = { friend_name: string }
 
   const [friendDestRows, savedDestRows, friendHotelRows, friendFoodRows, friendActivityRows, placeAvgRows, itineraryBucketersRows] = await Promise.all([
@@ -387,8 +386,9 @@ export default async function ItineraryPage({
     // Match every current place to published ratings by place ID or name.
     // Key by item ID so spelling variants resolve to the correct card.
     prisma.$queryRaw<AvgRow[]>(Prisma.sql`
-      SELECT current_item.id AS item_id, COUNT(rated.id) AS total,
-        AVG(rated.rating::float) AS avg_rating
+      SELECT current_item.id AS item_id, COUNT(rated.id) FILTER (WHERE rated.rating > 0) AS total,
+        AVG(rated.rating::float) FILTER (WHERE rated.rating > 0) AS avg_rating,
+        COUNT(DISTINCT rated_dest."itineraryId") AS trips
       FROM "DestItem" current_item
       JOIN "Destination" current_dest ON current_dest.id = current_item."destinationId"
       JOIN "DestItem" rated ON rated.type = current_item.type
@@ -400,7 +400,8 @@ export default async function ItineraryPage({
       JOIN "Itinerary" rated_trip ON rated_trip.id = rated_dest."itineraryId"
       WHERE current_dest."itineraryId" = ${id}
         AND rated_trip.visibility != 'draft'
-        AND rated.rating > 0
+        -- Community: other trips only, not this trip's own rating.
+        AND rated_dest."itineraryId" != ${id}
       GROUP BY current_item.id
     `),
     // Which friends saved this specific itinerary
@@ -447,6 +448,7 @@ export default async function ItineraryPage({
   const placeRatings = new Map(placeAvgRows.map(row => [row.item_id, {
     avg: row.avg_rating == null ? null : Number(row.avg_rating),
     total: Number(row.total),
+    trips: Number(row.trips),
   }]))
 
   // friends who saved this itinerary
@@ -480,6 +482,8 @@ export default async function ItineraryPage({
   ))
 
   const stamp = it.tripRating ? TRIP_STAMPS.find(s => s.value === it.tripRating) : null
+  // Card label for the poster's own rating: their first name, or "You" on your own trip.
+  const authorFirst = isOwn ? 'You' : it.user.name.split(' ')[0]
 
   // Use the same paper cards throughout highlights, daily plans, and guides.
   const renderPlaceCard = (item: DestItemRow, type: PlaceCategory, compact = false) => {
@@ -488,7 +492,7 @@ export default async function ItineraryPage({
     const tilePhoto = pickEventPhoto(eventPhotos(item.photoUrls, item.photoUrl))
     const nameKey = item.name.toLowerCase()
     const friends = (type === 'hotel' ? friendHotelDetails : type === 'food_drink' ? friendFoodDetails : friendActivityDetails).get(nameKey) ?? []
-    const { avg = null, total = 0 } = placeRatings.get(item.id) ?? {}
+    const { avg = null, total = 0, trips = 0 } = placeRatings.get(item.id) ?? {}
     const label = type === 'food_drink' && item.mealType
       ? item.mealType.split(',').map(meal => meal.trim()).filter(Boolean).join(' · ')
       : eyebrow
@@ -496,7 +500,7 @@ export default async function ItineraryPage({
 
     return (
       <div key={item.id} id={`place-${item.id}`} className="scroll-mt-24">
-      <PlaceDetailsCard messageHref={!isOwn ? `/messages/${it.user.id}?place=${encodeURIComponent(item.id)}` : undefined} editHref={isOwn ? editHref : undefined} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} className={`${styles.card} ${styles[type]} ${isOwn ? styles.ownerPolaroid : ''} ${recommendation !== 'none' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
+      <PlaceDetailsCard messageHref={!isOwn ? `/messages/${it.user.id}?place=${encodeURIComponent(item.id)}` : undefined} editHref={isOwn ? editHref : undefined} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} ratings={<RatingsDetails itemId={item.id} authorName={isOwn ? 'You' : it.user.name} authorRating={item.rating} friends={friends} avg={avg} total={total} trips={trips} />} className={`${styles.card} ${styles[type]} ${isOwn ? styles.ownerPolaroid : ''} ${recommendation !== 'none' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
         {recommendation === 'must' && type !== 'hotel' && <Image src="/must-do-stamp.png" alt="Must do" width={60} height={54} unoptimized className={styles.mustDoStamp} />}
         {recommendation === 'must' && type === 'hotel' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><BedDouble size={24} aria-hidden="true" /><span>Must stay</span></span>}
         {recommendation === 'avoid' && <span className={`${styles.mustDoStamp} ${styles.textStamp} ${styles.avoidStamp}`}><Ban size={24} aria-hidden="true" /><span>Avoid</span></span>}
@@ -521,14 +525,14 @@ export default async function ItineraryPage({
           <h4 className={styles.placeName}>{item.name}</h4>
           {(!!item.rating || (!compact && price !== null && price > 0)) && (
             <div className={styles.meta}>
-              {!!item.rating && <span className={styles.rating}><RatingStars value={item.rating} label={`Trip author rated ${item.rating} out of 5 stars`} /> <span className={styles.ratingLabel}>Author</span></span>}
+              {!!item.rating && <span className={styles.rating}><RatingStars value={item.rating} label={`${authorFirst} rated it ${item.rating} out of 5 stars`} /> <span className={styles.ratingLabel}>{authorFirst}</span></span>}
               {!compact && price !== null && price > 0 && <span className={styles.price}>{'$'.repeat(price)}</span>}
             </div>
           )}
           {!compact && item.notes && <p className={styles.note}>{item.notes}</p>}
           {recommendation === 'option' && <p className={styles.recommendation}>Saved as an alternative</p>}
           {recommendation === 'must' && <p className={styles.recommendation}><Check size={12} /> {type === 'hotel' ? 'Must stay' : 'Trip highlight'}</p>}
-          <FriendProof friends={friends} avg={avg} total={total} verb={type === 'hotel' ? 'stayed here' : type === 'activity' ? 'also did this' : 'also went'} />
+          <FriendSummary friends={friends} placeName={item.name} verb={type === 'hotel' ? 'stayed here' : type === 'activity' ? 'also did this' : 'also went'} />
         </div>
       </PlaceDetailsCard>
       </div>

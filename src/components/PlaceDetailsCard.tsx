@@ -25,10 +25,12 @@ type Place = {
   placeId?: string | null
 }
 
-export default function PlaceDetailsCard({ place, destination, category, recommendation = 'none', isHotel = false, messageHref, editHref, className, children }: {
+export default function PlaceDetailsCard({ place, destination, category, recommendation = 'none', isHotel = false, messageHref, editHref, ratings, className, children }: {
   place: Place
   messageHref?: string
   editHref?: string
+  // The poster's, friends' and everyone else's ratings, shown in the popup.
+  ratings?: ReactNode
   destination: string
   category: string
   recommendation?: PlaceRecommendation
@@ -90,6 +92,7 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
             </header>
             {place.notes && <section><h3 className={styles.sectionTitle}>Poster’s notes</h3><p className={styles.text}>{place.notes}</p></section>}
             {!place.notes && <p className={styles.muted}>The trip author hasn’t added notes for this place.</p>}
+            {ratings}
             {place.description && <section><h3 className={styles.sectionTitle}>About this place</h3><p className={styles.text}>{place.description}</p></section>}
             {photos.length > 0 ? <PhotoStrip photos={photos.map((url, index) => ({ id: String(index), url, caption: null }))} title={place.name} contain />
               : place.id && <PlacePhoto itemId={place.id} name={place.name} thumbnailClass={styles.providerPhoto} fallback={null} fullWidth />}

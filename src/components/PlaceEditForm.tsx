@@ -43,7 +43,7 @@ export function StarRating({ value, onChange }: { value: number; onChange: (v: n
     <div className="flex gap-1">
       {[1, 2, 3, 4, 5].map(s => (
         <button key={s} type="button" onClick={() => onChange(value === s ? 0 : s)} className="focus:outline-none">
-          <Star size={22} className={s <= value ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />
+          <Star size={24} strokeWidth={1.6} className={s <= value ? 'fill-[#ba9146] text-[#ba9146]' : 'fill-none text-[#b3a78e]'} />
         </button>
       ))}
     </div>

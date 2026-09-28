@@ -9,6 +9,9 @@
 				"banner",
 				"list"
 			]
+		},
+		"Keyboard": {
+			"resize": "native"
 		}
 	},
 	"server": {
@@ -16,6 +19,7 @@
 		"cleartext": false
 	},
 	"packageClassList": [
+		"KeyboardPlugin",
 		"PushNotificationsPlugin"
 	]
 }

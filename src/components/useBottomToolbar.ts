@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { Capacitor } from '@capacitor/core'
+import { Capacitor, type PluginListenerHandle } from '@capacitor/core'
+import { Keyboard } from '@capacitor/keyboard'
 import { keyboardCoversToolbar, viewportLeftShifted } from '@/lib/bottomToolbar'
 
 export default function useBottomToolbar() {
@@ -42,6 +43,14 @@ export default function useBottomToolbar() {
       // Keyboard dismissal finishes after focusout on iOS.
       settleTimer = setTimeout(schedule, 400)
     }
+    // In the iPhone app (build 6 on), the keyboard plugin says exactly when the keyboard opens and closes.
+    const keyboardListeners: Promise<PluginListenerHandle>[] = []
+    if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('Keyboard')) {
+      keyboardListeners.push(
+        Keyboard.addListener('keyboardWillShow', () => { bar.style.visibility = 'hidden' }),
+        Keyboard.addListener('keyboardDidHide', () => { bar.style.visibility = 'visible'; window.scrollBy(0, 1); window.scrollBy(0, -1) }),
+      )
+    }
     window.addEventListener('resize', settle)
     window.addEventListener('pageshow', settle)
     viewport?.addEventListener('resize', settle)
@@ -56,6 +65,7 @@ export default function useBottomToolbar() {
       viewport?.removeEventListener('resize', settle)
       document.removeEventListener('focusin', settle)
       document.removeEventListener('focusout', settle)
+      for (const listener of keyboardListeners) void listener.then(handle => handle.remove()).catch(() => {})
       bar.style.removeProperty('visibility')
     }
   }, [])

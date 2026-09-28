@@ -38,7 +38,7 @@ export function StarRating({ value, onChange }: { value: number; onChange: (v: n
     <div className="flex gap-1">
       {[1, 2, 3, 4, 5].map((s) => (
         <button key={s} type="button" aria-label={`Rate ${s} out of 5`} aria-pressed={value === s} onClick={() => onChange(value === s ? 0 : s)} className="focus:outline-none">
-          <Star size={22} className={s <= value ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />
+          <Star size={24} strokeWidth={1.6} className={s <= value ? 'fill-[#ba9146] text-[#ba9146]' : 'fill-none text-[#b3a78e]'} />
         </button>
       ))}
     </div>
@@ -130,6 +130,14 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
         <textarea aria-label="Notes" maxLength={8000} rows={4} value={notes} onChange={e => setNotes(e.target.value)}
           placeholder={cfg.notesPh} className={planning ? `${inputCls} !border-[#d7cebc] focus:!ring-[#59694f]` : inputCls} />
       </div>
+      {/* Planning: rating and Must do / Avoid are optional here too, for places you've already been. */}
+      {planning && <>
+        <div className="space-y-1">
+          <p className="text-xs text-gray-500">Rating (optional)</p>
+          <StarRating value={rating} onChange={setRating} />
+        </div>
+        <RecommendationPicker type={type} value={recommendation} onChange={setRecommendation} />
+      </>}
 
       {/* More details toggle */}
       {!planning && <>
