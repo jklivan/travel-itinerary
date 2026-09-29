@@ -8,6 +8,10 @@ import PhotoStrip from './PhotoStrip'
 import BucketButton from './BucketButton'
 
 
+const AUDIENCE_CHIP = 'w-fit rounded-md bg-[#fbf8f3]/95 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[#1f3354]'
+// Muted postage-stamp colours for the author's verdict (1 Hard pass … 5 Must go!).
+const STAMP_COLORS: Record<number, string> = { 1: '#8c7b72', 2: '#b3955f', 3: '#8e9b6c', 4: '#4d6a8c', 5: '#6f8b6e' }
+
 type DestItem = { type: string; name: string; dayIndex?: number | null }
 type Destination = { lat?: number | null; name: string; country: string | null; items: DestItem[] }
 
@@ -42,10 +46,6 @@ const COVER_COLORS = [
   '#C0392B', '#1A6BAB', '#7B2D8B', '#1E8449',
   '#CA6F1E', '#A93226', '#117A65', '#1A5276',
 ]
-const AVATAR_COLORS = [
-  '#6366F1', '#8B5CF6', '#EC4899', '#14B8A6',
-  '#F59E0B', '#EF4444', '#10B981', '#3B82F6',
-]
 function hashPick(str: string, arr: string[]) {
   let h = 0
   for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0
@@ -66,7 +66,6 @@ export default function ItineraryCard({
   const isGuide = days === null
   const stamp = TRIP_STAMPS.find(stamp => stamp.value === tripRating)
   const coverColor = hashPick(title, COVER_COLORS)
-  const avatarColor = hashPick(authorName, AVATAR_COLORS)
   const initials = getInitials(authorName)
   const season = tripSeason({ startDate, endDate, datesFlexible: !hasTripDates({ startDate, endDate, datesFlexible, postType }), postType: isGuide ? 'guide' : postType, bestMonths, latitude: destinations.find(destination => destination.lat != null)?.lat })
 
@@ -91,52 +90,52 @@ export default function ItineraryCard({
 
   return (
     <article className={`block ${fullWidth ? 'w-full' : 'w-[clamp(200px,44vw,320px)]'} relative`}>
-      <div className="rounded-[4px] border border-[#e7e0d3] bg-[#fffdf8] p-2 shadow-[2px_4px_14px_rgba(45,38,27,0.16)] sm:p-2.5">
+      <div className="rounded-md border border-[#ebe4d8] bg-[#fffefb] p-2.5 shadow-[0_4px_16px_rgba(31,51,84,0.09)] sm:p-3">
         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[2px]" style={{ backgroundColor: coverColor }}>
           {fullWidth && photos.length > 0 ? <PhotoStrip href={`/itinerary/${id}`} photos={photos.map(photo => ({ ...photo, caption: null }))} title={title} fillContainer counterPosition="left" /> : <Link href={`/itinerary/${id}`} aria-label={`Open ${title}`} className="absolute inset-0">
             {coverPhoto && <Image src={coverPhoto} alt="" fill sizes={fullWidth ? '(max-width: 575px) calc(100vw - 44px), 516px' : '(max-width: 727px) 44vw, 320px'} className="object-cover" />}
           </Link>}
 
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#17221c]/85 via-[#17221c]/15 to-transparent" />
-
           <div className="pointer-events-none absolute left-3 top-3 z-10 flex max-w-[55%] flex-col gap-1">
-            {audience === 'family' && <span className="w-fit rounded-sm bg-[#fffdf2]/90 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-[#2e4147]">Family</span>}
-            {audience === 'friends' && <span className="w-fit rounded-sm bg-[#fffdf2]/90 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-[#2e4147]">Friends</span>}
-            {audience === 'romantic' && <span className="w-fit rounded-sm bg-[#fffdf2]/90 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-[#2e4147]">Romantic</span>}
+            {audience === 'family' && <span className={AUDIENCE_CHIP}>Family</span>}
+            {audience === 'friends' && <span className={AUDIENCE_CHIP}>Friends</span>}
+            {audience === 'romantic' && <span className={AUDIENCE_CHIP}>Couples</span>}
           </div>
 
-          {/* The Postcard stamp, on a cream disc so it reads on dark photos. */}
-          <div aria-hidden="true" className="pointer-events-none absolute right-2.5 top-2.5 z-20 size-[60px] rotate-[8deg] rounded-full bg-[#f6f1e7]/95 p-0.5 shadow-md">
-            <Image src="/brand/postcard-stamp-logo.png" alt="" width={56} height={56} className="size-full" />
+          {/* The Postcard stamp, on a white disc so it reads on dark photos. */}
+          <div aria-hidden="true" className="pointer-events-none absolute right-2.5 top-2.5 z-20 size-[64px] rotate-[8deg] rounded-full bg-white/95 p-0.5 shadow-md">
+            <Image src="/brand/postcard-stamp-logo.png" alt="" width={60} height={60} className="size-full" />
           </div>
+        </div>
 
-          <Link href={`/itinerary/${id}`} className="absolute inset-x-3 bottom-3 z-10 block max-w-[76%] text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] sm:inset-x-5 sm:bottom-4">
-            {location && <span className="mb-1 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/90 sm:text-[10px]">
-              <MapPin size={11} className="shrink-0" />{location}
+        {/* Place, title and length sit on the paper under the photo; the verdict is a postage stamp beside them. */}
+        <div className="relative px-1 pt-3">
+          <Link href={`/itinerary/${id}`} className={`block text-[#1f3354] ${stamp ? 'pr-24' : ''}`}>
+            {location && <span className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.16em] text-[#3f5270]">
+              <MapPin size={12} className="shrink-0 text-[#8a7560]" />{location}
             </span>}
-            <h2 className="trip-title line-clamp-2 font-[family-name:var(--font-playfair)] text-xl leading-[1.08] sm:text-2xl">{title}</h2>
-            <span className="mt-1 block text-[9px] font-medium uppercase tracking-[0.14em] text-white/85">{days === null ? 'Guide' : `${days}-day trip`}</span>
+            <h2 className="trip-title line-clamp-2 font-[family-name:var(--font-playfair)] text-xl !uppercase leading-[1.1] tracking-[0.08em] sm:text-2xl">{title}</h2>
+            <span className="mt-1 block text-[10px] font-medium uppercase tracking-[0.16em] text-[#3f5270]">{days === null ? 'Guide' : `${days}-day trip`}</span>
           </Link>
-
-          {stamp && <span aria-label={`Author verdict: ${stamp.label}`} className={`pointer-events-none absolute bottom-3 right-3 z-20 -rotate-3 border border-dashed border-white/80 px-2 py-1 text-[8px] font-extrabold uppercase tracking-[0.12em] text-white shadow-sm sm:bottom-4 sm:right-4 ${stamp.bg}`}>
-            {stamp.label}
+          {stamp && <span aria-label={`Author verdict: ${stamp.label}`} className="pointer-events-none absolute -top-5 right-0 z-20 -rotate-[12deg] p-[3px] shadow-md" style={{ backgroundColor: STAMP_COLORS[stamp.value] }}>
+            <span className="block border border-dashed border-white/70 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white">{stamp.label}</span>
           </span>}
         </div>
 
-        <div className={`flex min-h-10 items-center justify-between gap-2 px-1 pt-2 ${fullWidth ? 'sm:px-1.5' : ''}`}>
+        <div className={`mt-2 flex min-h-11 items-center justify-between gap-2 border-t border-[#efe9df] px-1 pt-2 ${fullWidth ? 'sm:px-1.5' : ''}`}>
           {authorId ? <Link href={`/user/${authorId}`} className="flex min-w-0 items-center gap-2 hover:opacity-80">
-            <span className="flex size-6 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold text-white" style={{ backgroundColor: avatarColor }}>{initials}</span>
-            <span className="truncate text-[10px] font-medium lowercase text-[#667069]">{authorName}</span>
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#4d6a8c] text-[10px] font-semibold text-white">{initials}</span>
+            <span className="truncate font-[family-name:var(--font-playfair)] text-[11px] uppercase tracking-[0.18em] text-[#3f5270]">{authorName}</span>
           </Link> : <div className="flex min-w-0 items-center gap-2">
-            <span className="flex size-6 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold text-white" style={{ backgroundColor: avatarColor }}>{initials}</span>
-            <span className="truncate text-[10px] font-medium lowercase text-[#667069]">{authorName}</span>
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#4d6a8c] text-[10px] font-semibold text-white">{initials}</span>
+            <span className="truncate font-[family-name:var(--font-playfair)] text-[11px] uppercase tracking-[0.18em] text-[#3f5270]">{authorName}</span>
           </div>}
-          <div className="flex shrink-0 items-center gap-2.5 text-[#667069]">
-            {season && <span className="hidden text-[8px] font-medium uppercase tracking-[0.12em] text-[#8B6F4E] min-[390px]:inline">{season}</span>}
+          <div className="flex shrink-0 items-center gap-2.5 text-[#1f3354]">
+            {season && <span className="hidden text-[8px] font-medium uppercase tracking-[0.12em] text-[#8a7560] min-[390px]:inline">{season}</span>}
             {showBucket && <BucketButton itineraryId={id} initialBucketed={isBucketed} isLoggedIn={!!currentUserId} withFolders={!!currentUserId} />}
-            <span aria-label={`${saveCount} likes`} className="flex items-center gap-0.5 text-[10px]"><Heart size={13} />{saveCount}</span>
-            <Link href={`/itinerary/${id}#comments`} aria-label={`${commentCount} comments`} className="flex min-h-8 items-center gap-0.5 text-[10px] hover:text-[#2e4147]">
-              <MessageCircle size={13} />{commentCount}
+            <span aria-label={`${saveCount} likes`} className="flex items-center gap-1 text-[11px]"><Heart size={15} />{saveCount}</span>
+            <Link href={`/itinerary/${id}#comments`} aria-label={`${commentCount} comments`} className="flex min-h-8 items-center gap-1 text-[11px] hover:text-[#3f5270]">
+              <MessageCircle size={15} />{commentCount}
             </Link>
             {showBudget && budget && budget > 0 && <span className="text-[9px] font-medium tracking-tight" aria-label={`Budget level ${budget} out of 5`}>
               {[1,2,3,4,5].map((n) => <span key={n} className={n <= budget ? 'text-green-600' : 'text-gray-300'}>$</span>)}

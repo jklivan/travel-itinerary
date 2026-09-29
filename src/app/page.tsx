@@ -67,24 +67,24 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
     <div className="max-w-xl mx-auto px-4 py-3 sm:px-8 sm:py-5">
       <Suspense fallback={null}><StoryFeed userId={userId} following={false} /></Suspense>
       <section className="mb-3 mt-3 flex items-center justify-between gap-2 px-1" aria-label="Trip recommendations">
-        <h1 className="shrink-0 font-[family-name:var(--font-playfair)] text-sm font-medium tracking-[0.2em] text-[#2e4147]">FOR YOU</h1>
+        <h1 className="shrink-0 font-[family-name:var(--font-playfair)] text-lg font-medium tracking-[0.2em] text-[#1f3354]">FOR YOU</h1>
         <FeedTabs active={feed} search={searchQuery} />
       </section>
       {searchQuery && <div className="mb-5">
-        <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-[#242e25]">&quot;{searchQuery}&quot;</h1>
-        <Link href="/" className="text-sm text-[#485340] hover:underline">Clear search</Link>
+        <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-[#1f3354]">&quot;{searchQuery}&quot;</h1>
+        <Link href="/" className="text-sm text-[#2b4368] hover:underline">Clear search</Link>
       </div>}
 
-      {justPosted && feed === 'all' && <p role="status" className="mb-3 rounded-xl bg-[#e8eee8] px-4 py-3 text-sm text-[#355650]">Your postcard is posted.</p>}
+      {justPosted && feed === 'all' && <p role="status" className="mb-3 rounded-xl bg-[#e6ecf4] px-4 py-3 text-sm text-[#243b61]">Your postcard is posted.</p>}
       {feed !== 'all' ? (
         <div className="rounded-xl border border-dashed border-[#c9c4b7] bg-[#faf7f1] px-5 py-10 text-center">
-          <p className="font-[family-name:var(--font-playfair)] text-xl text-[#2e4147]">{feed === 'friends' ? 'Friends’ trips are coming soon.' : 'Expert recommendations are coming soon.'}</p>
-          <p className="mt-2 text-sm text-[#73786d]">For now, browse every trip in All.</p>
+          <p className="font-[family-name:var(--font-playfair)] text-xl text-[#1f3354]">{feed === 'friends' ? 'Friends’ trips are coming soon.' : 'Expert recommendations are coming soon.'}</p>
+          <p className="mt-2 text-sm text-[#6b7285]">For now, browse every trip in All.</p>
         </div>
       ) : itineraries.length === 0 ? (
         <div className="text-center py-20 bg-[#faf7f1] rounded-xl border border-[#dfd3c2]">
           <p className="text-4xl mb-4">🌍</p>
-          <p className="text-base font-medium text-[#242e25]">
+          <p className="text-base font-medium text-[#1f3354]">
             {searchQuery ? 'No trips match your search.' : 'No itineraries yet.'}
           </p>
           <p className="text-sm mt-1 text-[#8B6F4E]">

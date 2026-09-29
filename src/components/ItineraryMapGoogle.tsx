@@ -69,7 +69,7 @@ export default function ItineraryMapGoogle({ pins }: { pins: ItemPin[] }) {
           {open && <InfoWindow position={{ lat: open.lat, lng: open.lng }} pixelOffset={[0, -20]} onCloseClick={() => setSelected(null)} headerDisabled>
             <div style={{ fontFamily: 'inherit', maxWidth: 200 }}>
               <p style={{ fontWeight: 700, fontSize: 13, color: '#111', margin: 0 }}>{PIN_EMOJI[open.type] ?? '📍'} {open.name}</p>
-              {open.recommendation !== 'none' && <p style={{ margin: '6px 0 0', color: open.recommendation === 'avoid' ? '#a44138' : '#59694f', fontWeight: 700 }}>
+              {open.recommendation !== 'none' && <p style={{ margin: '6px 0 0', color: open.recommendation === 'avoid' ? '#a44138' : '#3f5a80', fontWeight: 700 }}>
                 {open.recommendation === 'option' ? 'Alternative' : open.recommendation === 'avoid' ? 'Avoid' : open.type === 'hotel' ? 'Must stay' : 'Must do'} · {open.recommendation === 'option' ? 'Saved as an alternative' : 'Poster’s recommendation'}
               </p>}
               <p style={{ margin: '6px 0 0', color: open.color ?? mapDayColor(open.day), fontWeight: 600 }}>{pinLabel(open)}</p>

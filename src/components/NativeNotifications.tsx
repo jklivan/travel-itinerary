@@ -113,12 +113,12 @@ export function NotificationPreferences() {
   const push = useContext(PushContext)
   if (!push) return null
   return <section className="mb-5 rounded-xl border border-[#e3dfd2] bg-[#faf7ee] p-4">
-    <h2 className="font-semibold text-[#2e4147]">iPhone notifications</h2>
-    <p className="mt-1 text-sm text-[#6b7067]">Get an alert for forum posts, private messages, new trips from people you follow, and activity on your trips.</p>
-    {!push.native ? <p className="mt-2 text-sm text-[#6b7067]">Open the iPhone app to enable push notifications.</p> :
-      !push.available ? <p className="mt-2 text-sm text-[#6b7067]">Update the iPhone app to enable notifications.</p> :
-        !push.ready ? <p className="mt-2 text-sm text-[#6b7067]">Push notifications are not available yet. You can still check your activity here.</p> :
-          <button onClick={push.toggle} disabled={push.busy} className="mt-3 rounded-full bg-[#59694f] px-4 py-2 text-sm text-white disabled:opacity-50">{push.busy ? 'Updating…' : push.enabled ? 'Turn off on this iPhone' : 'Enable notifications'}</button>}
-    {push.message && <p role="status" className="mt-2 text-sm text-[#6b7067]">{push.message}</p>}
+    <h2 className="font-semibold text-[#1f3354]">iPhone notifications</h2>
+    <p className="mt-1 text-sm text-[#5f6780]">Get an alert for forum posts, private messages, new trips from people you follow, and activity on your trips.</p>
+    {!push.native ? <p className="mt-2 text-sm text-[#5f6780]">Open the iPhone app to enable push notifications.</p> :
+      !push.available ? <p className="mt-2 text-sm text-[#5f6780]">Update the iPhone app to enable notifications.</p> :
+        !push.ready ? <p className="mt-2 text-sm text-[#5f6780]">Push notifications are not available yet. You can still check your activity here.</p> :
+          <button onClick={push.toggle} disabled={push.busy} className="mt-3 rounded-full bg-[#3f5a80] px-4 py-2 text-sm text-white disabled:opacity-50">{push.busy ? 'Updating…' : push.enabled ? 'Turn off on this iPhone' : 'Enable notifications'}</button>}
+    {push.message && <p role="status" className="mt-2 text-sm text-[#5f6780]">{push.message}</p>}
   </section>
 }

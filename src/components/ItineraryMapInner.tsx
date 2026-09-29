@@ -75,7 +75,7 @@ export function MapDayLegend({ pins }: { pins: ItemPin[] }) {
   const hasHotels = dayPins.some(pin => pin.type === 'hotel' && pin.day === null)
   const hasUndatedPlaces = dayPins.some(pin => pin.type !== 'hotel' && pin.day === null)
   if (!dayPins.length) return null
-  return <div aria-label="Map day legend" className="flex max-h-28 shrink-0 flex-wrap gap-x-4 gap-y-2 overflow-y-auto border-b border-[#d7cebc] bg-[#faf7ee] px-4 py-3 text-xs text-[#2e4147]">
+  return <div aria-label="Map day legend" className="flex max-h-28 shrink-0 flex-wrap gap-x-4 gap-y-2 overflow-y-auto border-b border-[#d7cebc] bg-[#faf7ee] px-4 py-3 text-xs text-[#1f3354]">
     {days.map(day => <span key={day} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ background: mapDayColor(day) }} />Day {day}</span>)}
     {hasHotels && <span className="inline-flex items-center gap-1.5"><span aria-hidden="true">🏨</span>Hotels</span>}
     {hasUndatedPlaces && <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ background: mapDayColor(null) }} />No day assigned</span>}
@@ -126,7 +126,7 @@ export default function ItineraryMapInner({ pins }: { pins: ItemPin[] }) {
               <p style={{ fontWeight: 700, fontSize: 13, color: '#111', margin: 0 }}>
                 {TYPE_STYLE[pin.type]?.emoji ?? '📍'} {pin.name}
               </p>
-              {pin.recommendation !== 'none' && <p style={{ margin: '6px 0 0', color: pin.recommendation === 'avoid' ? '#a44138' : '#59694f', fontWeight: 700 }}>
+              {pin.recommendation !== 'none' && <p style={{ margin: '6px 0 0', color: pin.recommendation === 'avoid' ? '#a44138' : '#3f5a80', fontWeight: 700 }}>
                 {pin.recommendation === 'option' ? 'Alternative' : pin.recommendation === 'avoid' ? 'Avoid' : pin.type === 'hotel' ? 'Must stay' : 'Must do'} · {pin.recommendation === 'option' ? 'Saved as an alternative' : 'Poster’s recommendation'}
               </p>}
               <p style={{ margin: '6px 0 0', color: pin.color ?? mapDayColor(pin.day), fontWeight: 600 }}>

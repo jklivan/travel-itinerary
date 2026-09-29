@@ -32,12 +32,12 @@ export default function ExploreSearchBar() {
         type="text"
         defaultValue={current}
         placeholder={'Try \u201cfamily trip in Europe\u201d or \u201ccheap beach vacation\u201d\u2026'}
-        className="w-full pl-10 pr-24 py-3 rounded-xl border border-[#c1ad93] text-xs sm:text-sm tracking-[-0.01em] text-[#242e25] placeholder-[#8B6F4E] focus:outline-none focus:ring-2 focus:ring-[#59694f] focus:border-transparent bg-[#faf7f1] shadow-sm"
+        className="w-full pl-10 pr-24 py-3 rounded-xl border border-[#c1ad93] text-xs sm:text-sm tracking-[-0.01em] text-[#1f3354] placeholder-[#8B6F4E] focus:outline-none focus:ring-2 focus:ring-[#3f5a80] focus:border-transparent bg-[#faf7f1] shadow-sm"
       />
       <button
         type="submit"
         disabled={isPending}
-        className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-[#59694f] text-white text-sm font-medium rounded-lg hover:bg-[#414f39] transition-colors disabled:opacity-50"
+        className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-[#3f5a80] text-white text-sm font-medium rounded-lg hover:bg-[#414f39] transition-colors disabled:opacity-50"
       >
         {isPending ? 'Searching…' : 'Search'}
       </button>

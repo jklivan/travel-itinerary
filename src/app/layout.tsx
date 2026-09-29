@@ -14,7 +14,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#303b2c',
+  themeColor: '#f7f3ec',
 }
 
 export const metadata: Metadata = {
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geist.variable} ${playfair.variable} ${caveat.variable} h-full antialiased`}>
-      <body className="min-h-screen bg-[#f3eee5] font-[family-name:var(--font-geist-sans)]">
+      <body className="min-h-screen bg-[#f7f3ec] font-[family-name:var(--font-geist-sans)]">
         <Providers>
           <Navbar />
           <main className="app-main">{children}</main>

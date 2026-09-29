@@ -63,7 +63,7 @@ export default function ExploreTripFilters({
         className="w-full flex items-center justify-between px-5 py-4 text-left gap-3"
       >
         <div className="min-w-0">
-          <span className="font-[family-name:var(--font-playfair)] text-lg text-[#242e25]">
+          <span className="font-[family-name:var(--font-playfair)] text-lg text-[#1f3354]">
             {hasActive ? 'Your filters' : 'Filter trips'}
           </span>
           {!open && activeLabels.length > 0 && (
@@ -89,7 +89,7 @@ export default function ExploreTripFilters({
 
           {groups.map(group => (
             <fieldset key={group.name} disabled={pending} className="mb-6">
-              <legend className="mb-3 font-[family-name:var(--font-playfair)] text-xl text-[#242e25]">
+              <legend className="mb-3 font-[family-name:var(--font-playfair)] text-xl text-[#1f3354]">
                 {group.title}
               </legend>
               <div className="grid grid-cols-4 gap-2">
@@ -116,12 +116,12 @@ export default function ExploreTripFilters({
                       <div className={[
                         'flex flex-col items-center overflow-hidden rounded-xl border-2 bg-[#FFFCF7] text-center transition-all select-none',
                         isChecked
-                          ? 'border-[#59694f] shadow-sm'
+                          ? 'border-[#3f5a80] shadow-sm'
                           : 'border-[#e0d5c5] hover:bg-[#f0e8db]',
                         pending ? 'opacity-60' : '',
                       ].join(' ')}>
                         <span className="block aspect-[1.35] w-full bg-cover bg-center" style={{ backgroundImage: `url(${tilePhoto(option.id)})` }} aria-hidden="true" />
-                        <span className="flex w-full items-center justify-center gap-1 px-1 py-1.5"><span className="text-[10px] font-medium leading-tight text-[#485340]">{option.label}</span><span className={`grid size-4 shrink-0 place-items-center rounded-full border ${isChecked ? 'border-[#59694f] bg-[#59694f] text-white' : 'border-[#485340] text-transparent'}`}><Check size={10} strokeWidth={3} /></span></span>
+                        <span className="flex w-full items-center justify-center gap-1 px-1 py-1.5"><span className="text-[10px] font-medium leading-tight text-[#2b4368]">{option.label}</span><span className={`grid size-4 shrink-0 place-items-center rounded-full border ${isChecked ? 'border-[#3f5a80] bg-[#3f5a80] text-white' : 'border-[#2b4368] text-transparent'}`}><Check size={10} strokeWidth={3} /></span></span>
                       </div>
                     </label>
                   )
@@ -131,7 +131,7 @@ export default function ExploreTripFilters({
           ))}
 
           <div className="mb-6">
-            <p className="mb-3 font-[family-name:var(--font-playfair)] text-xl text-[#242e25]">Where?</p>
+            <p className="mb-3 font-[family-name:var(--font-playfair)] text-xl text-[#1f3354]">Where?</p>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8B6F4E] pointer-events-none" />
               <input
@@ -140,7 +140,7 @@ export default function ExploreTripFilters({
                 onChange={e => setLocation(e.target.value)}
                 placeholder="e.g. Europe, Japan, beach…"
                 disabled={pending}
-                className="w-full rounded-full border border-[#c1ad93] bg-[#FFFCF7] pl-9 pr-4 py-2.5 text-sm text-[#242e25] placeholder:text-[#c1ad93] focus:outline-2 focus:outline-[#59694f] disabled:opacity-60"
+                className="w-full rounded-full border border-[#c1ad93] bg-[#FFFCF7] pl-9 pr-4 py-2.5 text-sm text-[#1f3354] placeholder:text-[#c1ad93] focus:outline-2 focus:outline-[#3f5a80] disabled:opacity-60"
               />
             </div>
           </div>
@@ -149,7 +149,7 @@ export default function ExploreTripFilters({
             <button
               type="submit"
               disabled={pending}
-              className="min-h-11 rounded-full bg-[#242e25] px-6 py-2.5 text-sm font-medium text-[#faf7f1] transition-colors hover:bg-[#485340] disabled:opacity-60"
+              className="min-h-11 rounded-full bg-[#1f3354] px-6 py-2.5 text-sm font-medium text-[#faf7f1] transition-colors hover:bg-[#2b4368] disabled:opacity-60"
             >
               {pending ? 'Finding trips\u2026' : 'Find trips'}
             </button>

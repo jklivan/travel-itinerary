@@ -33,24 +33,24 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
       if (fetched) coverPhotos.set(trip.id, fetched)
     }
   }))
-  return <div className="mx-auto max-w-2xl px-4 py-7 text-[#2e4147]">
+  return <div className="mx-auto max-w-2xl px-4 py-7 text-[#1f3354]">
     <section aria-labelledby="start-planning-heading" className="bg-transparent">
       <header className="relative mb-5 px-1">
-        <h1 id="start-planning-heading" className="max-w-sm pr-20 sm:pr-8 font-[family-name:var(--font-playfair)] text-4xl uppercase leading-[0.98] tracking-[0.03em] text-[#2e4147]">Your next trip starts here</h1>
+        <h1 id="start-planning-heading" className="max-w-sm pr-20 sm:pr-8 font-[family-name:var(--font-playfair)] text-4xl uppercase leading-[0.98] tracking-[0.03em] text-[#1f3354]">Your next trip starts here</h1>
         <Image src="/brand/postcard-stamp-logo.png" alt="" width={84} height={84} className="absolute -top-1 right-0 rotate-[8deg]" />
-        <p className="mt-2 text-sm text-[#73786d]">{posting ? 'Add your places, then post it when you’re ready.' : 'Collect places now. Work out the details later.'}</p>
+        <p className="mt-2 text-sm text-[#6b7285]">{posting ? 'Add your places, then post it when you’re ready.' : 'Collect places now. Work out the details later.'}</p>
       </header>
-      {!posting && <Link href="/testplan" className="group mb-5 flex items-center gap-3 rounded-2xl border border-[#c7d7cf] bg-[#edf1e9] p-4 text-[#2e4147] transition-colors hover:bg-[#e3ebe0]">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#59694f]/10 text-[#59694f]"><Sparkles size={20} /></span>
-        <span className="min-w-0 flex-1"><span className="block font-semibold">Plan with AI</span><span className="block text-sm text-[#59694f]">Ask where to go, using what you and your friends loved.</span></span>
-        <ChevronRight size={20} className="shrink-0 text-[#59694f] transition-transform group-hover:translate-x-0.5" />
+      {!posting && <Link href="/testplan" className="group mb-5 flex items-center gap-3 rounded-2xl border border-[#c8d2e0] bg-[#eaeff6] p-4 text-[#1f3354] transition-colors hover:bg-[#dde5f0]">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#3f5a80]/10 text-[#3f5a80]"><Sparkles size={20} /></span>
+        <span className="min-w-0 flex-1"><span className="block font-semibold">Plan with AI</span><span className="block text-sm text-[#3f5a80]">Ask where to go, using what you and your friends loved.</span></span>
+        <ChevronRight size={20} className="shrink-0 text-[#3f5a80] transition-transform group-hover:translate-x-0.5" />
       </Link>}
       <NewPlanForm saveStory={typeof saveStory === 'string' && saveStory.length <= 200 ? saveStory : undefined} savePlace={typeof savePlace === 'string' && savePlace.length <= 200 ? savePlace : undefined} />
     </section>
     <section className="mt-8" aria-labelledby="your-trips-heading">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 id="your-trips-heading" className="font-[family-name:var(--font-playfair)] text-2xl tracking-wide text-[#242e25]">Your trips</h2>
-        <Link href="/trips" className="inline-flex min-h-10 items-center text-sm font-medium text-[#59694f] hover:underline">All trips →</Link>
+        <h2 id="your-trips-heading" className="font-[family-name:var(--font-playfair)] text-2xl tracking-wide text-[#1f3354]">Your trips</h2>
+        <Link href="/trips" className="inline-flex min-h-10 items-center text-sm font-medium text-[#3f5a80] hover:underline">All trips →</Link>
       </div>
       {[
         { title: 'Private Plans', description: 'Only you can see these. Keep planning or publish whenever you’re ready.', private: true, empty: 'No private plans yet.' },
@@ -59,17 +59,17 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
         const items = trips.filter(trip => (trip.visibility === 'draft') === group.private)
         return <section key={group.title} aria-label={group.title} className="mt-6">
           <div className="mb-3 border-b border-[#d7cebc] pb-3">
-            <h3 className="font-[family-name:var(--font-playfair)] text-xl text-[#59694f]">{group.title} <span className="ml-1 font-sans text-sm text-[#73786d]">{items.length}</span></h3>
-            <p className="mt-1 text-sm text-[#73786d]">{group.description}</p>
+            <h3 className="font-[family-name:var(--font-playfair)] text-xl text-[#3f5a80]">{group.title} <span className="ml-1 font-sans text-sm text-[#6b7285]">{items.length}</span></h3>
+            <p className="mt-1 text-sm text-[#6b7285]">{group.description}</p>
           </div>
           {items.length ? <div className="space-y-3">{items.map(trip => <article key={trip.id} aria-label={trip.title} className="relative min-h-[190px] overflow-hidden rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-3">
             <Link href={`/plan/${trip.id}`} className="flex min-h-[164px] items-stretch gap-4 pr-3">
-              <span className="relative aspect-[3/4] w-32 shrink-0 rotate-[-3deg] overflow-hidden border-[5px] border-white bg-[#e8eee8] shadow-[0_2px_5px_rgba(45,38,27,0.18)]">{coverPhotos.get(trip.id) ? <Image src={coverPhotos.get(trip.id)!} alt="" fill sizes="128px" className="object-cover" /> : <span className="grid h-full place-items-center text-center text-[9px] uppercase tracking-wider text-[#59694f]">Postcard</span>}</span>
-              <span className="min-w-0 flex-1 pt-2"><h4 className="trip-title break-words text-lg font-semibold">{trip.title}</h4><p className="mt-2 text-sm text-[#73786d]">{trip.destinations.reduce((sum, d) => sum + d._count.items, 0)} places · {group.private ? 'Keep planning' : 'Open trip'} →</p></span>
+              <span className="relative aspect-[3/4] w-32 shrink-0 rotate-[-3deg] overflow-hidden border-[5px] border-white bg-[#e6ecf4] shadow-[0_2px_5px_rgba(45,38,27,0.18)]">{coverPhotos.get(trip.id) ? <Image src={coverPhotos.get(trip.id)!} alt="" fill sizes="128px" className="object-cover" /> : <span className="grid h-full place-items-center text-center text-[9px] uppercase tracking-wider text-[#3f5a80]">Postcard</span>}</span>
+              <span className="min-w-0 flex-1 pt-2"><h4 className="trip-title break-words text-lg font-semibold">{trip.title}</h4><p className="mt-2 text-sm text-[#6b7285]">{trip.destinations.reduce((sum, d) => sum + d._count.items, 0)} places · {group.private ? 'Keep planning' : 'Open trip'} →</p></span>
             </Link>
             {group.private && <div className="absolute right-3 top-3"><DeleteButton compact id={trip.id} visibility={trip.visibility} returnTo="/plan" label="Delete trip" /></div>}
             {group.private && <Link href={`/plan/${trip.id}?post=1`} aria-label={`Post ${trip.title}`} title="Post trip" className="absolute bottom-3 right-3 inline-flex h-12 w-[66px] items-center justify-center transition-transform hover:-rotate-3"><Image src="/brand/postcard-stamp-logo.png" alt="" width={52} height={52} /><span className="sr-only">Post</span></Link>}
-          </article>)}</div> : <p className="py-3 text-sm text-[#73786d]">{group.empty}</p>}
+          </article>)}</div> : <p className="py-3 text-sm text-[#6b7285]">{group.empty}</p>}
         </section>
       })}
     </section>

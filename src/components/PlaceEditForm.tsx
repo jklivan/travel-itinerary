@@ -22,8 +22,8 @@ export type PlaceEditValues = {
   address: string
 }
 
-export const inputCls = 'w-full rounded-xl border border-[#e3dfd2] px-3 py-2.5 text-sm text-[#2e4147] focus:outline-none focus:ring-2 focus:ring-[#59694f] focus:border-transparent bg-[#fffdf6]'
-export const subInputCls = 'w-full rounded-xl border border-[#e3dfd2] px-3 py-2.5 text-sm text-[#2e4147] focus:outline-none focus:ring-1 focus:ring-[#59694f] bg-[#fffdf6]'
+export const inputCls = 'w-full rounded-xl border border-[#e3dfd2] px-3 py-2.5 text-sm text-[#1f3354] focus:outline-none focus:ring-2 focus:ring-[#3f5a80] focus:border-transparent bg-[#fffdf6]'
+export const subInputCls = 'w-full rounded-xl border border-[#e3dfd2] px-3 py-2.5 text-sm text-[#1f3354] focus:outline-none focus:ring-1 focus:ring-[#3f5a80] bg-[#fffdf6]'
 
 export const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] as const
 export const MEAL_EMOJI: Record<string, string> = {
@@ -99,7 +99,7 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
   const [showMore, setShowMore]   = useState(initial.tags.length > 0 || !!initial.link || !!initial.address)
 
   const cfg = {
-    hotel:     { color: 'bg-[#edf1e9] border-[#bbcfc5]',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
+    hotel:     { color: 'bg-[#eaeff6] border-[#c8d2e0]',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
     food_drink:{ color: 'bg-[#f5ebe1] border-[#dec4b4]', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const, notesPh: 'e.g. Order the truffle pasta, great for groups…'           },
     activity:  { color: 'bg-[#f3eddb] border-[#d9c99f]',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const,   notesPh: 'e.g. Book tickets online, go early to beat the crowds…'   },
     transport: { color: 'bg-[#edf1f5] border-[#c5cfdb]', label: 'Transportation', placeholder: 'e.g. Ferry to Nantucket, car rental, Uber tips…', placeType: 'activity' as const, notesPh: 'Flight or ferry details, routes, times, booking tips, car rentals, or taxi / Uber availability…' },
@@ -119,8 +119,8 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
   return (
     <div className={`rounded-xl border ${cfg.color} p-4 space-y-3`}>
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-[#6b7067] uppercase tracking-wide">Edit {cfg.label}</p>
-        <button type="button" onClick={cancel} className="text-[#918d81] hover:text-[#6b7067]"><X size={16} /></button>
+        <p className="text-xs font-semibold text-[#5f6780] uppercase tracking-wide">Edit {cfg.label}</p>
+        <button type="button" onClick={cancel} className="text-[#918d81] hover:text-[#5f6780]"><X size={16} /></button>
       </div>
       {type === 'transport' ? <input aria-label="Transport name" value={name} onChange={event => setName(event.target.value)} placeholder={cfg.placeholder} className={inputCls} /> : <PlacesAutocomplete value={name} onChange={value => { setName(value); onPlaceIdChange?.('') }} onSelect={(_main, _secondary, id) => onPlaceIdChange?.(id ?? '')} type={cfg.placeType}
         aria-label="Place name" placeholder={cfg.placeholder} className={inputCls} city={city} />}
@@ -132,7 +132,7 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
             return (
               <button key={mt} type="button"
                 onClick={() => setMealType(isSel ? sel.filter(t => t !== mt).join(',') : [...sel, mt].join(','))}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSel ? MEAL_ACTIVE[mt] : 'border-[#e3dfd2] text-[#7a7b70] hover:border-[#b8a98e]'}`}>
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSel ? MEAL_ACTIVE[mt] : 'border-[#e3dfd2] text-[#6b7285] hover:border-[#b8a98e]'}`}>
                 {MEAL_EMOJI[mt]} {mt}
               </button>
             )
@@ -140,30 +140,30 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
         </div>
       )}
       {showRating && <div className="space-y-1">
-        <p className="text-xs text-[#7a7b70]">Rate it</p>
+        <p className="text-xs text-[#6b7285]">Rate it</p>
         <StarRating value={rating} onChange={setRating} />
       </div>}
       <div className="space-y-1">
-        <p className="text-xs text-[#7a7b70]">Notes</p>
+        <p className="text-xs text-[#6b7285]">Notes</p>
         <textarea aria-label="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)}
           placeholder={cfg.notesPh} className={inputCls} />
       </div>
       {/* Alternatives are places of their own ("Save as alternative"). An older typed suggestion stays
           visible here only so it can be cleared. */}
       {!!initial.alternative && <label className="block space-y-1">
-        <span className="text-xs text-[#7a7b70]">Earlier suggestion (clear it to remove)</span>
-        <input value={alternative} onChange={event => setAlternative(event.target.value)} className={`${inputCls} text-[#7a7b70]`} />
+        <span className="text-xs text-[#6b7285]">Earlier suggestion (clear it to remove)</span>
+        <input value={alternative} onChange={event => setAlternative(event.target.value)} className={`${inputCls} text-[#6b7285]`} />
       </label>}
       {showRating ? <RecommendationPicker type={type} value={recommendation} onChange={changeRecommendation} />
-        : <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-[#485340]">
-          <input type="checkbox" checked={recommendation === 'option'} onChange={event => changeRecommendation(event.target.checked ? 'option' : 'none')} className="h-4 w-4 accent-[#59694f]" />
-          Save as alternative <span className="text-xs text-[#7a7b70]">(a backup you’re considering)</span>
+        : <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-[#2b4368]">
+          <input type="checkbox" checked={recommendation === 'option'} onChange={event => changeRecommendation(event.target.checked ? 'option' : 'none')} className="h-4 w-4 accent-[#3f5a80]" />
+          Save as alternative <span className="text-xs text-[#6b7285]">(a backup you’re considering)</span>
         </label>}
       <button type="button" onClick={() => setShowMore(s => !s)}
-        className="text-xs text-[#59694f] hover:text-[#355650] font-medium flex items-center gap-1 transition-colors">
+        className="text-xs text-[#3f5a80] hover:text-[#243b61] font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
         {moreCount > 0 && !showMore && (
-          <span className="ml-1 bg-[#e6ece5] text-[#426862] rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{moreCount}</span>
+          <span className="ml-1 bg-[#e4eaf3] text-[#3f5a80] rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{moreCount}</span>
         )}
       </button>
       {showMore && (
@@ -172,7 +172,7 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
           <div className="flex flex-wrap gap-1.5">
             {ITEM_TAGS[type].map(tag => (
               <button key={tag} type="button" onClick={() => toggleTag(tag)}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-[#242e25] text-white border-[#242e25]' : 'border-[#e3dfd2] text-[#7a7b70] hover:border-[#b8a98e]'}`}>
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-[#1f3354] text-white border-[#1f3354]' : 'border-[#e3dfd2] text-[#6b7285] hover:border-[#b8a98e]'}`}>
                 {tag}
               </button>
             ))}
@@ -188,11 +188,11 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
       {children}
       <div className="flex gap-2">
         <button type="button" onClick={cancel} disabled={busy}
-          className="flex-1 py-2.5 rounded-xl border-2 border-[#e3dfd2] text-[#7a7b70] text-sm font-medium hover:border-[#d7cebc] transition-colors">
+          className="flex-1 py-2.5 rounded-xl border-2 border-[#e3dfd2] text-[#6b7285] text-sm font-medium hover:border-[#d7cebc] transition-colors">
           Cancel
         </button>
         <button type="button" onClick={submit} disabled={!name.trim() || busy}
-          className="flex-1 py-2.5 rounded-xl bg-[#242e25] text-white text-sm font-semibold hover:bg-[#485340] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+          className="flex-1 py-2.5 rounded-xl bg-[#1f3354] text-white text-sm font-semibold hover:bg-[#2b4368] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
           <Check size={14} /> {busy ? 'Saving…' : saveLabel}
         </button>
       </div>

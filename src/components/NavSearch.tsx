@@ -118,7 +118,7 @@ function NavSearchForm({ initialQuery }: { initialQuery: string }) {
                 onMouseDown={() => pick(s)}
                 className={`px-3 py-2.5 cursor-pointer text-sm transition-colors ${i === activeIdx ? 'bg-[#dfd3c2]' : 'hover:bg-[#dfd3c2]'}`}
               >
-                <span className="font-medium text-[#242e25]">{s.main}</span>
+                <span className="font-medium text-[#1f3354]">{s.main}</span>
                 {s.secondary && (
                   <span className="text-[#8B6F4E] text-xs ml-1.5">{s.secondary}</span>
                 )}

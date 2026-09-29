@@ -9,7 +9,7 @@ export default async function Navbar() {
   const session = await auth()
 
   return (
-    <header className="app-header postcard-header bg-[#242e25] text-white shadow-md sticky top-0 z-40">
+    <header className="app-header postcard-header bg-[#f7f3ec] text-[#1f3354] sticky top-0 z-40">
       {/* Signed in: + (post) · centered logo · messages and profile. Signed out: logo left, sign-in right. */}
       <div className={`max-w-5xl mx-auto px-4 py-3 items-center gap-2 ${session?.user ? 'grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'flex flex-wrap justify-between gap-3'}`}>
         {session?.user && <div className="flex justify-start"><HeaderPostButton /></div>}
@@ -22,22 +22,22 @@ export default async function Navbar() {
             <>
               <HeaderMessagesLink />
               <Link href="/settings"
-                className="text-xs text-white/70 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors hidden sm:block">
+                className="text-xs text-[#1f3354]/80 hover:text-[#1f3354] px-3 py-1.5 rounded-lg transition-colors hidden sm:block">
                 Settings
               </Link>
               <Link href="/profile" aria-label="Profile"
-                className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors sm:size-11">
+                className="flex size-10 shrink-0 items-center justify-center rounded-full text-[#1f3354] hover:bg-[#1f3354]/10 transition-colors sm:size-11">
                 <User size={22} />
               </Link>
             </>
           ) : (
             <>
               <Link href="/login"
-                className="text-xs text-white/70 hover:text-white transition-colors">
+                className="text-xs text-[#1f3354]/80 hover:text-[#1f3354] transition-colors">
                 Sign in
               </Link>
               <Link href="/register"
-                className="text-xs bg-[#dfd3c2] text-[#242e25] font-semibold px-3 py-1.5 rounded-lg hover:bg-[#c1ad93] transition-colors">
+                className="text-xs bg-[#1f3354] text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-[#2b4368] transition-colors">
                 Get started
               </Link>
             </>

@@ -277,7 +277,7 @@ function SortableItem({ item, dayControl, isEditing, onEdit, onDraftChange, onUp
           <div className="flex items-center gap-2 flex-wrap">
             {item.mealType && <span className="text-xs text-gray-500">{item.mealType.split(',').map(type => `${MEAL_EMOJI[type]} ${type}`).join(' · ')}</span>}
             {item.rating > 0 && <span className="text-xs text-yellow-500">{'★'.repeat(item.rating)}</span>}
-            {getRecommendation(item.tags, item.isHighlight) !== 'none' && <span className={`text-xs font-medium ${getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'text-red-700' : 'text-[#59694f]'}`}>{getRecommendation(item.tags, item.isHighlight) === 'option' ? 'Alternative' : getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'Avoid' : item.type === 'hotel' ? 'Must stay' : 'Must do'}</span>}
+            {getRecommendation(item.tags, item.isHighlight) !== 'none' && <span className={`text-xs font-medium ${getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'text-red-700' : 'text-[#3f5a80]'}`}>{getRecommendation(item.tags, item.isHighlight) === 'option' ? 'Alternative' : getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'Avoid' : item.type === 'hotel' ? 'Must stay' : 'Must do'}</span>}
             {item.notes && <span className="text-xs text-gray-400 truncate">{item.notes}</span>}
           </div>
         </div>
@@ -290,7 +290,7 @@ function SortableItem({ item, dayControl, isEditing, onEdit, onDraftChange, onUp
 
 function DayDropZone({ day }: { day: number }) {
   const { setNodeRef, isOver } = useDroppable({ id: `day-end-${day}`, data: { day } })
-  return <div ref={setNodeRef} className={`mt-2 rounded-lg border border-dashed p-3 text-center text-xs ${isOver ? 'bg-[#edf1e9] border-[#59694f]' : 'border-gray-200 text-gray-400'}`}>Drop here to move to the end of this day</div>
+  return <div ref={setNodeRef} className={`mt-2 rounded-lg border border-dashed p-3 text-center text-xs ${isOver ? 'bg-[#eaeff6] border-[#3f5a80]' : 'border-gray-200 text-gray-400'}`}>Drop here to move to the end of this day</div>
 }
 
 // ── Inline item form ──────────────────────────────────────────────────────────
@@ -828,7 +828,7 @@ export default function GuidedCreatePage() {
                       )}
                     </div>
                   </SortableContext>
-                  <DragOverlay dropAnimation={null}>{draggedItem && <div className="rounded-xl border border-[#bbcfc5] bg-[#fffdf6] p-4 shadow-xl">{draggedItem.name}</div>}</DragOverlay>
+                  <DragOverlay dropAnimation={null}>{draggedItem && <div className="rounded-xl border border-[#c8d2e0] bg-[#fffdf6] p-4 shadow-xl">{draggedItem.name}</div>}</DragOverlay>
                 </DndContext>
               )}
 
@@ -1003,7 +1003,7 @@ export default function GuidedCreatePage() {
         {/* ── REVIEW card ─────────────────────────────────────────────────── */}
         {phase === 'review' && (
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 space-y-5">
-            <button type="button" onClick={() => { setReturnToReview(true); setPhase('details') }} className="text-sm text-[#59694f] underline">Edit trip details</button>
+            <button type="button" onClick={() => { setReturnToReview(true); setPhase('details') }} className="text-sm text-[#3f5a80] underline">Edit trip details</button>
             <div>
               <h2 className="font-bold text-gray-900">Ready to publish</h2>
               <p className="text-sm text-gray-500 mt-0.5">Your recommendations are set on each place. Go back to edit them before publishing.</p>

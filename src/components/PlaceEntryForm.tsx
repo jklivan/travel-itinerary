@@ -101,9 +101,9 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
           <X size={16} />
         </button>
       </div>
-      {type === 'transport' ? <input aria-label="Transport name" maxLength={240} value={name} onChange={event => setName(event.target.value)} placeholder={cfg.placeholder} className={planning ? `${inputCls} !border-[#d7cebc] focus:!ring-[#59694f]` : inputCls} /> : <PlacesAutocomplete value={name} onChange={v => { setName(v); setPlaceId('') }}
+      {type === 'transport' ? <input aria-label="Transport name" maxLength={240} value={name} onChange={event => setName(event.target.value)} placeholder={cfg.placeholder} className={planning ? `${inputCls} !border-[#d7cebc] focus:!ring-[#3f5a80]` : inputCls} /> : <PlacesAutocomplete value={name} onChange={v => { setName(v); setPlaceId('') }}
         onSelect={(_m, _s, pid) => { setPlaceId(pid ?? ''); setPlaceLocation(_s); setPlaceContext(JSON.stringify([city, type])) }}
-        aria-label="Place name" maxLength={240} type={cfg.placeType} placeholder={cfg.placeholder} className={planning ? `${inputCls} !border-[#d7cebc] focus:!ring-[#59694f]` : inputCls} city={city} />}
+        aria-label="Place name" maxLength={240} type={cfg.placeType} placeholder={cfg.placeholder} className={planning ? `${inputCls} !border-[#d7cebc] focus:!ring-[#3f5a80]` : inputCls} city={city} />}
       {type !== 'transport' && placeId && placeContext === JSON.stringify([city, type]) && <PlacePeople key={placeId} placeId={placeId} name={name} location={[city, placeLocation].filter(Boolean).join(', ')} />}
       {type === 'food_drink' && (
         <div className="flex flex-wrap gap-1.5">
@@ -128,7 +128,7 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
       <div className="space-y-1">
         <p className="text-xs text-gray-500">Notes</p>
         <textarea aria-label="Notes" maxLength={8000} rows={4} value={notes} onChange={e => setNotes(e.target.value)}
-          placeholder={cfg.notesPh} className={planning ? `${inputCls} !border-[#d7cebc] focus:!ring-[#59694f]` : inputCls} />
+          placeholder={cfg.notesPh} className={planning ? `${inputCls} !border-[#d7cebc] focus:!ring-[#3f5a80]` : inputCls} />
       </div>
       {/* Planning: rating and Must do / Avoid are optional here too, for places you've already been. */}
       {planning && <>
@@ -169,7 +169,7 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
       {children}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <button type="button" onClick={() => void submit()} disabled={!name.trim() || photoUploading}
-        className="w-full py-2.5 rounded-xl bg-[#242e25] text-white text-sm font-semibold hover:bg-[#485340] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+        className="w-full py-2.5 rounded-xl bg-[#1f3354] text-white text-sm font-semibold hover:bg-[#2b4368] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
         <Check size={14} /> {busy ? 'Saving…' : planning ? 'Save Place' : 'Add'}
       </button>
     </fieldset>

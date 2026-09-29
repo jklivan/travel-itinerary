@@ -257,7 +257,7 @@ function ItemForm({ type, onAdd, onClose, city }: {
   const [showMore, setShowMore] = useState(false)
 
   const cfg = {
-    hotel:     { color: 'bg-[#edf1e9] border-[#bbcfc5]',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
+    hotel:     { color: 'bg-[#eaeff6] border-[#c8d2e0]',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
     food_drink:{ color: 'bg-[#f5ebe1] border-[#dec4b4]', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const, notesPh: 'e.g. Order the truffle pasta, great for groups…'           },
     activity:  { color: 'bg-[#f3eddb] border-[#d9c99f]',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const,   notesPh: 'e.g. Book tickets online, go early to beat the crowds…'   },
     transport: { color: 'bg-[#edf1f5] border-[#c5cfdb]', label: 'Transportation', placeholder: 'e.g. Ferry to Nantucket, car rental, Uber tips…', placeType: 'activity' as const, notesPh: 'Flight or ferry details, routes, times, booking tips, car rentals, or taxi / Uber availability…' },
@@ -274,8 +274,8 @@ function ItemForm({ type, onAdd, onClose, city }: {
   return (
     <div className={`rounded-xl border ${cfg.color} p-4 space-y-3`}>
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-[#6b7067] uppercase tracking-wide">{cfg.label}</p>
-        <button type="button" onClick={onClose} className="text-[#918d81] hover:text-[#6b7067]"><X size={16} /></button>
+        <p className="text-xs font-semibold text-[#5f6780] uppercase tracking-wide">{cfg.label}</p>
+        <button type="button" onClick={onClose} className="text-[#918d81] hover:text-[#5f6780]"><X size={16} /></button>
       </div>
       {type === 'transport' ? <input aria-label="Transport name" value={name} onChange={event => setName(event.target.value)} placeholder={cfg.placeholder} className={inputCls} /> : <PlacesAutocomplete value={name} onChange={setName} type={cfg.placeType}
         placeholder={cfg.placeholder} className={inputCls} city={city} />}
@@ -287,7 +287,7 @@ function ItemForm({ type, onAdd, onClose, city }: {
             return (
               <button key={mt} type="button"
                 onClick={() => setMealType(isSel ? sel.filter(t => t !== mt).join(',') : [...sel, mt].join(','))}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSel ? MEAL_ACTIVE[mt] : 'border-[#e3dfd2] text-[#7a7b70] hover:border-[#b8a98e]'}`}>
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSel ? MEAL_ACTIVE[mt] : 'border-[#e3dfd2] text-[#6b7285] hover:border-[#b8a98e]'}`}>
                 {MEAL_EMOJI[mt]} {mt}
               </button>
             )
@@ -295,20 +295,20 @@ function ItemForm({ type, onAdd, onClose, city }: {
         </div>
       )}
       <div className="space-y-1">
-        <p className="text-xs text-[#7a7b70]">Rate it</p>
+        <p className="text-xs text-[#6b7285]">Rate it</p>
         <StarRating value={rating} onChange={setRating} />
       </div>
       <div className="space-y-1">
-        <p className="text-xs text-[#7a7b70]">Notes</p>
+        <p className="text-xs text-[#6b7285]">Notes</p>
         <textarea aria-label="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)}
           placeholder={cfg.notesPh} className={inputCls} />
       </div>
       <RecommendationPicker type={type} value={recommendation} onChange={setRecommendation} />
       <button type="button" onClick={() => setShowMore(s => !s)}
-        className="text-xs text-[#59694f] hover:text-[#355650] font-medium flex items-center gap-1 transition-colors">
+        className="text-xs text-[#3f5a80] hover:text-[#243b61] font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
         {tags.length > 0 && !showMore && (
-          <span className="ml-1 bg-[#e6ece5] text-[#426862] rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{tags.length}</span>
+          <span className="ml-1 bg-[#e4eaf3] text-[#3f5a80] rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{tags.length}</span>
         )}
       </button>
       {showMore && (
@@ -317,7 +317,7 @@ function ItemForm({ type, onAdd, onClose, city }: {
           <div className="flex flex-wrap gap-1.5">
             {ITEM_TAGS[type].map(tag => (
               <button key={tag} type="button" onClick={() => toggleTag(tag)}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-[#242e25] text-white border-[#242e25]' : 'border-[#e3dfd2] text-[#7a7b70] hover:border-[#b8a98e]'}`}>
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-[#1f3354] text-white border-[#1f3354]' : 'border-[#e3dfd2] text-[#6b7285] hover:border-[#b8a98e]'}`}>
                 {tag}
               </button>
             ))}
@@ -325,7 +325,7 @@ function ItemForm({ type, onAdd, onClose, city }: {
         </div>
       )}
       <button type="button" onClick={submit} disabled={!name.trim()}
-        className="w-full py-2.5 rounded-xl bg-[#242e25] text-white text-sm font-semibold hover:bg-[#485340] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+        className="w-full py-2.5 rounded-xl bg-[#1f3354] text-white text-sm font-semibold hover:bg-[#2b4368] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
         <Check size={14} /> Add
       </button>
     </div>
@@ -338,7 +338,7 @@ function DayDropZone({ destId, day }: { destId: string; day: number }) {
     data: { day },
   })
   return (
-    <div ref={setNodeRef} className={`mt-2 rounded-lg border border-dashed px-3 py-3 text-xs text-center ${isOver ? 'border-[#59694f] bg-[#edf1e9] text-[#426862]' : 'border-[#e3dfd2] text-[#918d81]'}`}>
+    <div ref={setNodeRef} className={`mt-2 rounded-lg border border-dashed px-3 py-3 text-xs text-center ${isOver ? 'border-[#3f5a80] bg-[#eaeff6] text-[#3f5a80]' : 'border-[#e3dfd2] text-[#918d81]'}`}>
       Drop here to move to the end of this day
     </div>
   )
@@ -357,11 +357,11 @@ function ItemSummary({ item }: { item: EditItem }) {
     <>
         {icon}
         <div className="min-w-0">
-          <p className="text-sm font-medium text-[#2e4147] truncate">{item.name}</p>
+          <p className="text-sm font-medium text-[#1f3354] truncate">{item.name}</p>
           <div className="flex items-center gap-2 flex-wrap">
-            {item.mealType && <span className="text-xs text-[#7a7b70]">{item.mealType.split(',').map(t => `${MEAL_EMOJI[t]} ${t}`).join(' · ')}</span>}
+            {item.mealType && <span className="text-xs text-[#6b7285]">{item.mealType.split(',').map(t => `${MEAL_EMOJI[t]} ${t}`).join(' · ')}</span>}
             {item.rating > 0 && <span className="text-xs text-yellow-500">{'★'.repeat(item.rating)}</span>}
-            {getRecommendation(item.tags, item.isHighlight) !== 'none' && <span className={`text-xs font-medium ${getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'text-red-700' : 'text-[#59694f]'}`}>{getRecommendation(item.tags, item.isHighlight) === 'option' ? 'Alternative' : getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'Avoid' : item.type === 'hotel' ? 'Must stay' : 'Must do'}</span>}
+            {getRecommendation(item.tags, item.isHighlight) !== 'none' && <span className={`text-xs font-medium ${getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'text-red-700' : 'text-[#3f5a80]'}`}>{getRecommendation(item.tags, item.isHighlight) === 'option' ? 'Alternative' : getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'Avoid' : item.type === 'hotel' ? 'Must stay' : 'Must do'}</span>}
             {item.notes && <span className="text-xs text-[#918d81] truncate">{item.notes}</span>}
           </div>
         </div>
@@ -371,7 +371,7 @@ function ItemSummary({ item }: { item: EditItem }) {
 
 function DraggedItem({ item }: { item: EditItem }) {
   return (
-    <div aria-hidden="true" className="pointer-events-none flex items-center gap-2 rounded-xl border border-[#bbcfc5] bg-[#faf7ee] px-3 py-2.5 shadow-xl cursor-grabbing">
+    <div aria-hidden="true" className="pointer-events-none flex items-center gap-2 rounded-xl border border-[#c8d2e0] bg-[#faf7ee] px-3 py-2.5 shadow-xl cursor-grabbing">
       <GripVertical size={14} className="shrink-0 text-[#918d81]" />
       <div className="flex min-w-0 flex-1 items-center gap-2 text-left"><ItemSummary item={item} /></div>
       <span className="shrink-0 text-lg leading-none text-[#c3bcad]">×</span>
@@ -410,7 +410,7 @@ function SortableItem({ item, dayControl, isEditing, onEdit, onDraftChange, onUp
     <div ref={setNodeRef} style={style} className="bg-[#faf7ee] rounded-xl">
       {dayControl}
       <div className="flex items-center justify-between px-3 py-2.5 gap-2">
-      <button type="button" {...attributes} {...listeners} className="text-[#c3bcad] hover:text-[#7a7b70] cursor-grab active:cursor-grabbing shrink-0 touch-none">
+      <button type="button" {...attributes} {...listeners} className="text-[#c3bcad] hover:text-[#6b7285] cursor-grab active:cursor-grabbing shrink-0 touch-none">
         <GripVertical size={14} />
       </button>
       <button type="button" onClick={onEdit} className="flex items-center gap-2 min-w-0 flex-1 text-left hover:opacity-75 transition-opacity">
@@ -574,7 +574,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
 
       <div className="flex justify-end">
         <button type="button" onClick={discardChanges} disabled={pending}
-          className="min-h-11 px-3 text-sm font-medium text-[#6b7067] hover:text-[#2e4147] underline underline-offset-4 disabled:opacity-50">
+          className="min-h-11 px-3 text-sm font-medium text-[#5f6780] hover:text-[#1f3354] underline underline-offset-4 disabled:opacity-50">
           ← Back without saving
         </button>
       </div>
@@ -587,14 +587,14 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       {/* ── DETAILS ──────────────────────────────────────────────────────────── */}
       <div className="bg-[#fffdf6] rounded-xl shadow-sm border border-[#e3dfd2] overflow-hidden">
         <div className="bg-[#eee7d9] border-b border-[#d7cebc] px-5 py-4">
-          <h2 className="font-[family-name:var(--font-playfair)] text-xl text-[#2e4147]">Details</h2>
+          <h2 className="font-[family-name:var(--font-playfair)] text-xl text-[#1f3354]">Details</h2>
           {itinerary.visibility === 'draft' && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-[#eee0c2] text-[#80632f] font-medium mt-1 inline-block">Draft</span>
           )}
         </div>
         <div className="p-5 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-[#7a7b70] mb-1">Title</label>
+            <label className="block text-xs font-medium text-[#6b7285] mb-1">Title</label>
             <input name="title" type="text" required value={title} onChange={e => setTitle(e.target.value)} className={inputCls} />
           </div>
           <TripFormatPicker value={postType === 'guide' ? 'guide' : tripDays === '1' ? 'day-trip' : 'itinerary'} onChange={format => {
@@ -606,30 +606,30 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
           {postType === 'itinerary' && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-[#7a7b70] mb-1">Month and year (optional)</label>
+                <label className="block text-xs font-medium text-[#6b7285] mb-1">Month and year (optional)</label>
                 <input type="month" value={tripMonth} onChange={e => setTripMonth(e.target.value)} className={inputCls} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-[#7a7b70] mb-1">Number of days</label>
+                <label className="block text-xs font-medium text-[#6b7285] mb-1">Number of days</label>
                 <input type="number" min="1" step="1" inputMode="numeric" value={tripDays} onChange={e => setTripDays(e.target.value)} placeholder="e.g. 8" className={inputCls} />
               </div>
             </div>
           )}
           <fieldset className="space-y-2">
-            <legend className="text-sm font-medium text-[#2e4147]">When to go <span className="font-normal text-[#7a7b70]">(optional)</span></legend>
-            <p className="text-xs text-[#7a7b70]">Which months would you recommend visiting? Select all that apply.</p>
+            <legend className="text-sm font-medium text-[#1f3354]">When to go <span className="font-normal text-[#6b7285]">(optional)</span></legend>
+            <p className="text-xs text-[#6b7285]">Which months would you recommend visiting? Select all that apply.</p>
             <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
               {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map(month => (
                 <button key={month} type="button" aria-pressed={bestMonths.includes(month)}
                   onClick={() => setBestMonths(months => months.includes(month) ? months.filter(value => value !== month) : [...months, month])}
-                  className={`min-h-10 rounded-lg border text-sm font-medium ${bestMonths.includes(month) ? 'bg-[#59694f] border-[#59694f] text-white' : 'bg-[#fffdf6] border-[#d7cebc] text-[#6b7067] hover:border-[#59694f]'}`}>
+                  className={`min-h-10 rounded-lg border text-sm font-medium ${bestMonths.includes(month) ? 'bg-[#3f5a80] border-[#3f5a80] text-white' : 'bg-[#fffdf6] border-[#d7cebc] text-[#5f6780] hover:border-[#3f5a80]'}`}>
                   {month}
                 </button>
               ))}
             </div>
           </fieldset>
           <div>
-            <p className="text-xs font-medium text-[#7a7b70] mb-2">Trip type</p>
+            <p className="text-xs font-medium text-[#6b7285] mb-2">Trip type</p>
             <div className="flex flex-wrap gap-2">
               {[
                 { value: 'family',   label: '👨‍👩‍👧 Family'  },
@@ -638,18 +638,18 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 { value: 'adult',    label: '🍷 Other'   },
               ].map(({ value, label }) => (
                 <button key={value} type="button" onClick={() => setTripAudience(value as typeof tripAudience)}
-                  className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${tripAudience === value ? 'bg-[#59694f] text-white border-[#59694f]' : 'border-[#d7cebc] text-[#6b7067] hover:border-[#b8a98e]'}`}>
+                  className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${tripAudience === value ? 'bg-[#3f5a80] text-white border-[#3f5a80]' : 'border-[#d7cebc] text-[#5f6780] hover:border-[#b8a98e]'}`}>
                   {label}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <p className="text-xs font-medium text-[#7a7b70] mb-2">Tags</p>
+            <p className="text-xs font-medium text-[#6b7285] mb-2">Tags</p>
             <TagPicker theme="paper" selected={tags} onChange={setTags} />
           </div>
           <div>
-            <p className="text-xs font-medium text-[#7a7b70] mb-2">Budget</p>
+            <p className="text-xs font-medium text-[#6b7285] mb-2">Budget</p>
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5].map(n => (
                 <button key={n} type="button" onClick={() => setBudget(budget === n ? 0 : n)}
@@ -659,12 +659,12 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
           </div>
           {postType === 'itinerary' && (
             <div>
-              <p className="text-xs font-medium text-[#7a7b70] mb-2">Overall trip rating <span className="text-[#918d81] font-normal">(optional)</span></p>
+              <p className="text-xs font-medium text-[#6b7285] mb-2">Overall trip rating <span className="text-[#918d81] font-normal">(optional)</span></p>
               <TripRatingPicker theme="paper" value={tripRating} onChange={setTripRating} />
             </div>
           )}
           <div>
-            <p className="text-xs font-medium text-[#7a7b70] mb-1">General notes</p>
+            <p className="text-xs font-medium text-[#6b7285] mb-1">General notes</p>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
               placeholder="Tips, packing list, visa info…" className={inputCls} />
           </div>
@@ -675,14 +675,14 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       {dests.map(dest => (
         <div key={dest.id} className="bg-[#fffdf6] rounded-xl shadow-sm border border-[#e3dfd2] overflow-hidden">
           {/* Header */}
-          <div className="bg-[#e6ece5] border-t-2 border-t-[#59694f] border-b border-b-[#d7cebc] px-5 py-3 flex items-center gap-2">
-            <MapPin size={15} className="text-[#59694f]" />
-            <span className="font-[family-name:var(--font-playfair)] text-[#2e4147] text-lg flex-1">
+          <div className="bg-[#e4eaf3] border-t-2 border-t-[#3f5a80] border-b border-b-[#d7cebc] px-5 py-3 flex items-center gap-2">
+            <MapPin size={15} className="text-[#3f5a80]" />
+            <span className="font-[family-name:var(--font-playfair)] text-[#1f3354] text-lg flex-1">
               {dest.name || 'Destination'}{dest.country ? `, ${dest.country}` : ''}
             </span>
             {dests.length > 1 && (
               <button type="button" onClick={() => setDests(ds => ds.filter(d => d.id !== dest.id))}
-                className="text-[#59694f] hover:text-red-700 text-lg leading-none">×</button>
+                className="text-[#3f5a80] hover:text-red-700 text-lg leading-none">×</button>
             )}
           </div>
 
@@ -729,8 +729,8 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                     <div key={day ?? 'guide'}>
                       {day !== undefined && (
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs font-bold text-[#426862] bg-[#e6ece5] px-2.5 py-1 rounded-full shrink-0">Day {day}</span>
-                          <div className="flex-1 h-px bg-[#e6ece5]" />
+                          <span className="text-xs font-bold text-[#3f5a80] bg-[#e4eaf3] px-2.5 py-1 rounded-full shrink-0">Day {day}</span>
+                          <div className="flex-1 h-px bg-[#e4eaf3]" />
                         </div>
                       )}
                         <SortableContext items={items.map(item => item.id)} strategy={verticalListSortingStrategy}>
@@ -780,13 +780,13 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
               <div className="space-y-2">
                 {postType !== 'guide' && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold bg-[#e6ece5] text-[#426862] px-2.5 py-1 rounded-full">Day {dest.curDayIndex}</span>
+                    <span className="text-sm font-bold bg-[#e4eaf3] text-[#3f5a80] px-2.5 py-1 rounded-full">Day {dest.curDayIndex}</span>
                     <span className="text-xs text-[#918d81]">Add places for this day</span>
                   </div>
                 )}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <button type="button" onClick={() => setActiveInput({ destId: dest.id, type: 'hotel' })}
-                    className="flex flex-col items-center gap-1.5 py-4 rounded-xl border-2 border-dashed border-[#bbcfc5] text-[#59694f] hover:border-[#59694f] hover:bg-[#edf1e9] transition-all">
+                    className="flex flex-col items-center gap-1.5 py-4 rounded-xl border-2 border-dashed border-[#c8d2e0] text-[#3f5a80] hover:border-[#3f5a80] hover:bg-[#eaeff6] transition-all">
                     <Hotel size={20} />
                     <span className="text-xs font-semibold">+ Hotel</span>
                   </button>
@@ -804,7 +804,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
                 </div>
                 {postType !== 'guide' && (
                   <button type="button" onClick={() => updDest(dest.id, d => ({ ...d, curDayIndex: d.curDayIndex + 1 }))}
-                    className="w-full py-2.5 rounded-xl border-2 border-[#bbcfc5] text-[#59694f] text-sm font-semibold hover:border-[#59694f] hover:bg-[#edf1e9] transition-all flex items-center justify-center gap-2">
+                    className="w-full py-2.5 rounded-xl border-2 border-[#c8d2e0] text-[#3f5a80] text-sm font-semibold hover:border-[#3f5a80] hover:bg-[#eaeff6] transition-all flex items-center justify-center gap-2">
                     <ArrowRight size={14} /> Add Day {dest.curDayIndex + 1}
                   </button>
                 )}
@@ -815,17 +815,17 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       ))}
 
       <button type="button" onClick={() => setDests(ds => [...ds, { id: uid(), name: '', country: '', notes: '', items: [], curDayIndex: 1 }])}
-        className="w-full py-3 rounded-xl border-2 border-dashed border-[#bbcfc5] text-[#59694f] text-sm font-semibold hover:border-[#59694f] hover:bg-[#edf1e9] transition-all flex items-center justify-center gap-2">
+        className="w-full py-3 rounded-xl border-2 border-dashed border-[#c8d2e0] text-[#3f5a80] text-sm font-semibold hover:border-[#3f5a80] hover:bg-[#eaeff6] transition-all flex items-center justify-center gap-2">
         <Plus size={15} /> Add destination
       </button>
 
       {/* ── PHOTOS ───────────────────────────────────────────────────────────── */}
       <div className="bg-[#fffdf6] rounded-xl shadow-sm border border-[#e3dfd2] p-5 space-y-4">
-        <h2 className="font-[family-name:var(--font-playfair)] text-xl text-[#2e4147]">Photos</h2>
-        <label className={`flex flex-col items-center justify-center border-2 border-dashed border-[#d7cebc] rounded-xl p-5 cursor-pointer hover:border-[#59694f] transition-colors ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}>
-          <ImageIcon size={22} className="text-[#7a7b70] mb-1" />
-          <span className="text-sm font-medium text-[#59694f]">{uploading ? 'Uploading…' : 'Click to upload photos'}</span>
-          <span className="text-xs text-[#7a7b70] mt-0.5">JPG, PNG, WEBP</span>
+        <h2 className="font-[family-name:var(--font-playfair)] text-xl text-[#1f3354]">Photos</h2>
+        <label className={`flex flex-col items-center justify-center border-2 border-dashed border-[#d7cebc] rounded-xl p-5 cursor-pointer hover:border-[#3f5a80] transition-colors ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}>
+          <ImageIcon size={22} className="text-[#6b7285] mb-1" />
+          <span className="text-sm font-medium text-[#3f5a80]">{uploading ? 'Uploading…' : 'Click to upload photos'}</span>
+          <span className="text-xs text-[#6b7285] mt-0.5">JPG, PNG, WEBP</span>
           <input type="file" accept="image/*" multiple className="sr-only" disabled={uploading}
             onChange={e => { uploadPhotos(Array.from(e.target.files ?? [])); e.target.value = '' }} />
         </label>
@@ -847,16 +847,16 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
       {/* ── SUBMIT ───────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3 sm:flex-row">
         <button type="button" onClick={discardChanges} disabled={pending}
-          className="flex-1 text-[#6b7067] font-semibold py-3 rounded-xl border-2 border-[#d7cebc] hover:bg-[#eee7d9] transition-colors disabled:opacity-60 text-sm">
+          className="flex-1 text-[#5f6780] font-semibold py-3 rounded-xl border-2 border-[#d7cebc] hover:bg-[#eee7d9] transition-colors disabled:opacity-60 text-sm">
           Discard changes
         </button>
         <button type="submit" name="isDraft" value="1" disabled={pending || uploading || itemUploads > 0 || hasUnnamedItems}
-          className="flex-1 bg-[#fffdf6] text-[#485340] font-semibold py-3 rounded-xl border-2 border-[#d7cebc] hover:border-[#b8a98e] transition-colors disabled:opacity-60 text-sm">
+          className="flex-1 bg-[#fffdf6] text-[#2b4368] font-semibold py-3 rounded-xl border-2 border-[#d7cebc] hover:border-[#b8a98e] transition-colors disabled:opacity-60 text-sm">
           {pending ? 'Saving…' : 'Save as Draft'}
         </button>
         <button type="submit" disabled={pending || uploading || itemUploads > 0 || hasUnnamedItems || !hasItems}
           title={!hasItems ? 'Add at least one item first' : undefined}
-          className="flex-1 bg-[#59694f] text-white font-semibold py-3 rounded-xl hover:bg-[#426862] transition-colors disabled:opacity-60 text-sm">
+          className="flex-1 bg-[#3f5a80] text-white font-semibold py-3 rounded-xl hover:bg-[#3f5a80] transition-colors disabled:opacity-60 text-sm">
           {pending ? 'Saving…' : itinerary.visibility === 'draft' ? 'Publish' : 'Save changes'}
         </button>
       </div>

@@ -28,13 +28,13 @@ export default function SavedImportNotes({ refreshKey, disabled, onRestore }: {
   }
   if (!notes.length && !error) return null
   return <details className="rounded-xl border border-[#d7cebc] bg-[#faf7ee] p-4">
-    <summary className="cursor-pointer text-sm font-semibold text-[#59694f]">Recover saved notes{notes.length ? ` (${notes.length})` : ''}</summary>
-    <p className="mt-2 text-xs text-[#6b7067]">Your last 20 saved imports. Only you can access these notes. Choose one to try importing again.</p>
+    <summary className="cursor-pointer text-sm font-semibold text-[#3f5a80]">Recover saved notes{notes.length ? ` (${notes.length})` : ''}</summary>
+    <p className="mt-2 text-xs text-[#5f6780]">Your last 20 saved imports. Only you can access these notes. Choose one to try importing again.</p>
     {error && <p role="alert" className="mt-2 text-sm text-red-700">{error} <button type="button" onClick={() => setRetry(value => value + 1)} className="underline">Retry</button></p>}
     <ul className="mt-3 space-y-2">{notes.map(note => <li key={note.id}>
       <button type="button" disabled={disabled || loadingId !== null} onClick={() => restore(note.id)} className="w-full rounded-lg border border-[#d7cebc] bg-white p-3 text-left disabled:opacity-50">
-        <span className="block line-clamp-2 whitespace-pre-wrap break-words text-sm text-[#2e4147]">{note.preview}</span>
-        <span className="mt-1 block text-xs text-[#6b7067]">{loadingId === note.id ? 'Recovering…' : new Date(note.createdAt).toLocaleString()}</span>
+        <span className="block line-clamp-2 whitespace-pre-wrap break-words text-sm text-[#1f3354]">{note.preview}</span>
+        <span className="mt-1 block text-xs text-[#5f6780]">{loadingId === note.id ? 'Recovering…' : new Date(note.createdAt).toLocaleString()}</span>
       </button>
     </li>)}</ul>
   </details>
