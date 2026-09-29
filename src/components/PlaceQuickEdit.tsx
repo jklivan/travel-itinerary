@@ -10,9 +10,9 @@ import { getRecommendation, type PlaceRecommendation } from '@/lib/placeRecommen
 
 // `row`: an even three-button bar under a planner card (e.g. Edit details · Add photos · Add rating),
 // with `leading` as the first button.
-export default function PlaceQuickEdit({ itemId, name, type, tags, rating, photos, compact = false, row = false, leading, initialMode }: { initialMode?: 'rating'; compact?: boolean; row?: boolean; leading?: ReactNode; itemId: string; name: string; type: 'hotel' | 'food_drink' | 'activity' | 'transport'; tags: string[]; rating: number | null; photos: string[] }) {
+export default function PlaceQuickEdit({ itemId, name, type, tags, rating, photos, compact = false, row = false, leading }: { compact?: boolean; row?: boolean; leading?: ReactNode; itemId: string; name: string; type: 'hotel' | 'food_drink' | 'activity' | 'transport'; tags: string[]; rating: number | null; photos: string[] }) {
   const router = useRouter()
-  const [mode, setMode] = useState<'photos' | 'rating' | null>(initialMode ?? null)
+  const [mode, setMode] = useState<'photos' | 'rating' | null>(null)
   const [draftRating, setDraftRating] = useState(rating ?? 0)
   const [draftRecommendation, setDraftRecommendation] = useState(getRecommendation(tags))
   const [draftPhotos, setDraftPhotos] = useState(photos)

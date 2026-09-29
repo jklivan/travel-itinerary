@@ -15,6 +15,7 @@ import PlaceEntryForm from '@/components/PlaceEntryForm'
 import PlaceEditForm, { type PlaceEditValues, type PlaceType } from '@/components/PlaceEditForm'
 import EventPhotoInput from '@/components/EventPhotoInput'
 import PlaceQuickEdit from '@/components/PlaceQuickEdit'
+import { updatePlace } from '@/actions/placeQuickEdit'
 import DeleteButton from '@/components/DeleteButton'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import PlanningMap from '@/components/PlanningMap'
@@ -43,25 +44,14 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const [publishMonths, setPublishMonths] = useState<string[]>(trip.bestMonths ?? [])
   const [publishMessage, setPublishMessage] = useState('')
   // After Continue: offer to rate places without a rating (not transport or alternatives) before the preview.
-  const [unratedPrompt, setUnratedPrompt] = useState(false)
-  const [ratingBeforePost, setRatingBeforePost] = useState(false)
-  const [rateRequest, setRateRequest] = useState<{ id: string; seq: number } | null>(null)
+  // The places listed when the prompt opened; they stay listed (showing their new stars) as they're rated.
+  const [unratedPrompt, setUnratedPrompt] = useState<string[] | null>(null)
   const places = trip.destinations.flatMap(d => d.items.map(item => ({ ...item, destination: [d.name, d.country].filter(Boolean).join(', ') })))
   const scheduled = [...new Set(places.flatMap(p => p.day === null ? [] : [p.day]))].sort((a, b) => a - b)
   const maxDay = Math.max(trip.durationDays ?? 0, ...scheduled, 1)
   const unrated = places.filter(place => place.type !== 'transport' && !place.rating && getRecommendation(place.tags) !== 'option')
-  function renderPlace(place: Place & { destination: string }) { return <PlaceRow key={place.id} place={place} maxDay={maxDay} rateSignal={rateRequest?.id === place.id ? rateRequest.seq : undefined} /> }
-  function showPreview() { setUnratedPrompt(false); setRatingBeforePost(false); router.push(`/itinerary/${trip.id}?preview=1`) }
-  function rateNow(id: string) {
-    setUnratedPrompt(false); setRatingBeforePost(true)
-    if (tab === 'map') setTab('places')
-    setRateRequest(current => ({ id, seq: (current?.seq ?? 0) + 1 }))
-    // Scroll to the card's rating panel, centered so the floating Preview bar doesn't cover it.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      const card = document.getElementById(`place-${id}`)
-      ;(card?.querySelector('section[aria-label^="Edit"]') ?? card)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }))
-  }
+  function renderPlace(place: Place & { destination: string }) { return <PlaceRow key={place.id} place={place} maxDay={maxDay} /> }
+  function showPreview() { setUnratedPrompt(null); router.push(`/itinerary/${trip.id}?preview=1`) }
   // Continue saves these details on the still-private plan, then shows the trip exactly as it will be posted.
   // Posting happens from that preview.
   async function continueToPreview(format: 'guide' | 'day-trip' | 'itinerary') {
@@ -70,7 +60,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     try {
       const result = await savePublishDetails(trip.id, format, { budget: publishBudget, tripRating: publishRating, tags: publishTags, bestMonths: publishMonths })
       if (result.error) setPublishMessage(result.error)
-      else { setPublishFormat(null); if (unrated.length) setUnratedPrompt(true); else showPreview() }
+      else { setPublishFormat(null); if (unrated.length) setUnratedPrompt(unrated.map(place => place.id)); else showPreview() }
     } catch { setPublishMessage('Could not save these details. Please try again.') }
     finally { setPublishing(false) }
   }
@@ -106,18 +96,9 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       </>}
     </section>
     <div className="mt-8 border-t border-[#d7cebc] pt-5"><div className="flex flex-wrap items-center justify-between gap-3"><div className="pointer-events-auto"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div>{trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={() => setPublishFormat(trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary')} aria-label="Post trip" title="Post trip" className="pointer-events-auto relative inline-flex size-20 items-center justify-center transition-transform hover:-rotate-6 hover:scale-105 disabled:opacity-60"><Image src="/brand/postcard-stamp-logo.png" alt="" width={80} height={80} /><span className="sr-only">Post</span></button>}</div></div>
-    {trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-[#242e25]/50 px-5 py-6" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="w-full max-w-md rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-5 shadow-xl"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-[#2e4147]">A few more details</h2><p className="mt-1 text-sm text-[#73786d]">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-2xl leading-none text-[#73786d]" aria-label="Close">×</button></div><div className="mt-5 space-y-5"><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Trip type</legend><div className="grid grid-cols-3 gap-2">{([['guide', 'Guide'], ['day-trip', 'Day trip'], ['itinerary', 'Multi-day']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setPublishFormat(value)} className={`rounded-xl border px-2 py-2 text-xs font-semibold ${publishFormat === value ? 'border-[#59694f] bg-[#e8eee8] text-[#355650]' : 'border-[#d7cebc] text-[#73786d]'}`}>{label}</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Budget</legend><div className="flex gap-2">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => setPublishBudget(publishBudget === value ? 0 : value)} className={`text-xl ${value <= publishBudget ? 'text-[#a27e3b]' : 'text-[#c3bcad]'}`} aria-label={`${value} dollar signs`}>$</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Overall trip rating</legend><div className="flex gap-1">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => setPublishRating(publishRating === value ? 0 : value)} className="flex size-9 items-center justify-center" aria-label={`Rate trip ${value} out of 5`}><Star size={26} strokeWidth={1.6} className={value <= publishRating ? 'fill-[#ba9146] text-[#ba9146]' : 'fill-none text-[#b3a78e]'} /></button>)}</div></fieldset><MonthPicker value={publishMonths} onChange={setPublishMonths} legendClass="mb-1 text-sm font-semibold text-[#59694f]" /><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Tags</legend><div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">{TAGS.slice(0, 16).map(tag => <button key={tag.id} type="button" onClick={() => setPublishTags(current => current.includes(tag.id) ? current.filter(value => value !== tag.id) : [...current, tag.id])} className={`rounded-full border px-3 py-1.5 text-xs ${publishTags.includes(tag.id) ? 'border-[#59694f] bg-[#e8eee8] text-[#355650]' : 'border-[#d7cebc] text-[#73786d]'}`}>{tag.label}</button>)}</div></fieldset><button type="button" disabled={publishing} onClick={() => void continueToPreview(publishFormat)} className="w-full rounded-xl bg-[#355650] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{publishing ? 'Saving…' : 'Continue →'}</button></div></div></div>}
+    {trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-[#242e25]/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="w-full max-w-md rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-5 shadow-xl"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-[#2e4147]">A few more details</h2><p className="mt-1 text-sm text-[#73786d]">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-2xl leading-none text-[#73786d]" aria-label="Close">×</button></div><div className="mt-5 space-y-5"><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Trip type</legend><div className="grid grid-cols-3 gap-2">{([['guide', 'Guide'], ['day-trip', 'Day trip'], ['itinerary', 'Multi-day']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setPublishFormat(value)} className={`rounded-xl border px-2 py-2 text-xs font-semibold ${publishFormat === value ? 'border-[#59694f] bg-[#e8eee8] text-[#355650]' : 'border-[#d7cebc] text-[#73786d]'}`}>{label}</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Budget</legend><div className="flex gap-2">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => setPublishBudget(publishBudget === value ? 0 : value)} className={`text-xl ${value <= publishBudget ? 'text-[#a27e3b]' : 'text-[#c3bcad]'}`} aria-label={`${value} dollar signs`}>$</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Overall trip rating</legend><div className="flex gap-1">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => setPublishRating(publishRating === value ? 0 : value)} className="flex size-9 items-center justify-center" aria-label={`Rate trip ${value} out of 5`}><Star size={26} strokeWidth={1.6} className={value <= publishRating ? 'fill-[#ba9146] text-[#ba9146]' : 'fill-none text-[#b3a78e]'} /></button>)}</div></fieldset><MonthPicker value={publishMonths} onChange={setPublishMonths} legendClass="mb-1 text-sm font-semibold text-[#59694f]" /><fieldset><legend className="mb-2 text-sm font-semibold text-[#59694f]">Tags</legend><div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">{TAGS.slice(0, 16).map(tag => <button key={tag.id} type="button" onClick={() => setPublishTags(current => current.includes(tag.id) ? current.filter(value => value !== tag.id) : [...current, tag.id])} className={`rounded-full border px-3 py-1.5 text-xs ${publishTags.includes(tag.id) ? 'border-[#59694f] bg-[#e8eee8] text-[#355650]' : 'border-[#d7cebc] text-[#73786d]'}`}>{tag.label}</button>)}</div></fieldset><button type="button" disabled={publishing} onClick={() => void continueToPreview(publishFormat)} className="w-full rounded-xl bg-[#355650] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{publishing ? 'Saving…' : 'Continue →'}</button></div></div></div>}
     {publishMessage && <p role="status" className="mt-2 text-right text-sm text-[#59694f]">{publishMessage}</p>}
-    {unratedPrompt && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-[#242e25]/50 px-5 py-6" role="dialog" aria-modal="true" aria-labelledby="unrated-heading"><div className="w-full max-w-md rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-5 shadow-xl">
-      <div className="flex items-start justify-between gap-4"><div><h2 id="unrated-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-[#2e4147]">Rate your places?</h2><p className="mt-1 text-sm text-[#73786d]">{unrated.length === 1 ? 'One place doesn’t have a rating yet.' : `${unrated.length} places don’t have a rating yet.`} Ratings help friends know what to prioritize.</p></div><button type="button" onClick={() => setUnratedPrompt(false)} className="text-2xl leading-none text-[#73786d]" aria-label="Close">×</button></div>
-      <ul className="mt-4 max-h-[45dvh] divide-y divide-[#e3dfd2] overflow-y-auto">{unrated.map(place => <li key={place.id} className="flex items-center justify-between gap-3 py-2"><span className="min-w-0"><span className="block truncate text-sm font-semibold">{place.name}</span><span className="block text-xs text-[#73786d]">{categories.find(category => category.value === place.type)?.eyebrow ?? 'Place'}</span></span><button type="button" onClick={() => rateNow(place.id)} className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg border border-[#59694f] px-3 text-sm font-semibold text-[#59694f]"><Star size={15} />Rate</button></li>)}</ul>
-      <button type="button" onClick={showPreview} className="mt-4 w-full rounded-xl bg-[#355650] px-4 py-3 text-sm font-semibold text-white">Skip, preview my trip →</button>
-    </div></div>}
-    {ratingBeforePost && !unratedPrompt && <div aria-hidden="true" className="h-24" />}
-    {ratingBeforePost && !unratedPrompt && <div className="pointer-events-none fixed bottom-[var(--app-bottom-clearance)] left-0 right-0 z-40 px-4 pb-2"><div className="pointer-events-auto mx-auto flex max-w-2xl items-center justify-between gap-3 rounded-2xl border border-[#d7cebc] bg-[#fffdf7]/95 p-3 shadow-lg backdrop-blur">
-      <button type="button" onClick={() => setUnratedPrompt(true)} disabled={!unrated.length} className="min-w-0 text-left text-sm text-[#59694f] underline disabled:no-underline">{unrated.length ? `${unrated.length} still unrated` : 'All places rated'}</button>
-      <button type="button" onClick={showPreview} className="min-h-11 shrink-0 rounded-xl bg-[#355650] px-4 text-sm font-semibold text-white">Preview my trip →</button>
-    </div></div>}
+    {unratedPrompt && <UnratedPrompt places={places.filter(place => unratedPrompt.includes(place.id))} onClose={() => setUnratedPrompt(null)} onPreview={showPreview} />}
   </div>
 }
 
@@ -174,7 +155,38 @@ function AddPlace({ trip, maxDay, onClose }: { trip: Trip; maxDay: number; onClo
   </section>
 }
 
-function PlaceRow({ place, maxDay, rateSignal }: { place: Place & { destination: string }; maxDay: number; rateSignal?: number }) {
+// After "A few more details" → Continue: rate places that have no rating, right here. Each tap saves.
+function UnratedPrompt({ places, onClose, onPreview }: { places: (Place & { destination: string })[]; onClose: () => void; onPreview: () => void }) {
+  const router = useRouter()
+  const [ratings, setRatings] = useState<Record<string, number>>({})
+  const [saving, setSaving] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const remaining = places.filter(place => !ratings[place.id]).length
+  async function rate(id: string, value: number) {
+    if (saving) return
+    const previous = ratings[id] ?? 0
+    setRatings(current => ({ ...current, [id]: value })); setSaving(id); setError('')
+    try {
+      const result = await updatePlace(id, { kind: 'rating', rating: value })
+      if (result.error) { setError(result.error); setRatings(current => ({ ...current, [id]: previous })) } else router.refresh()
+    } catch { setError('Could not save that rating. Please try again.'); setRatings(current => ({ ...current, [id]: previous })) }
+    finally { setSaving(null) }
+  }
+  return <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-[#242e25]/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="unrated-heading">
+    <div className="w-full max-w-md min-w-0 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-5 shadow-xl">
+      <div className="flex items-start justify-between gap-4"><div className="min-w-0"><h2 id="unrated-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-[#2e4147]">Rate your places?</h2><p className="mt-1 text-sm text-[#73786d]">{remaining === 0 ? 'All rated. Thanks!' : remaining === 1 ? 'One place doesn’t have a rating yet.' : `${remaining} places don’t have a rating yet.`} Ratings help friends know what to prioritize.</p></div><button type="button" onClick={onClose} className="shrink-0 text-2xl leading-none text-[#73786d]" aria-label="Close">×</button></div>
+      <ul className="mt-4 max-h-[50dvh] divide-y divide-[#e3dfd2] overflow-y-auto">{places.map(place => <li key={place.id} className="min-w-0 py-3">
+        <p className="text-sm font-semibold [overflow-wrap:anywhere]">{place.name}</p>
+        <p className="text-xs text-[#73786d]">{categories.find(category => category.value === place.type)?.eyebrow ?? 'Place'}</p>
+        <div className="mt-1 flex items-center">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" disabled={!!saving} aria-label={`Rate ${place.name} ${value} out of 5`} aria-pressed={ratings[place.id] === value} onClick={() => void rate(place.id, value)} className="flex size-10 items-center justify-center"><Star size={24} strokeWidth={1.6} className={value <= (ratings[place.id] ?? 0) ? 'fill-[#ba9146] text-[#ba9146]' : 'fill-none text-[#b3a78e]'} /></button>)}{saving === place.id ? <span className="ml-2 text-xs text-[#73786d]">Saving…</span> : ratings[place.id] ? <span className="ml-2 flex items-center gap-1 text-xs text-[#59694f]"><Check size={13} />Saved</span> : null}</div>
+      </li>)}</ul>
+      {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+      <button type="button" onClick={onPreview} disabled={!!saving} className="mt-4 w-full rounded-xl bg-[#355650] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">{remaining === 0 ? 'Preview my trip →' : 'Skip, preview my trip →'}</button>
+    </div>
+  </div>
+}
+
+function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; maxDay: number }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -216,7 +228,7 @@ function PlaceRow({ place, maxDay, rateSignal }: { place: Place & { destination:
     </div>
     {place.type !== 'transport' && <PlacePeople key={`${place.placeId}:${place.name}:${place.destination}`} compact placeId={place.placeId ?? ''} name={place.name} location={place.destination} />}
     <div className={planningStyles.controls}>
-    {!editing ? <PlaceQuickEdit key={rateSignal ?? 'quick'} initialMode={rateSignal ? 'rating' : undefined} compact row itemId={place.id} name={place.name} type={category.value as PlaceType} tags={place.tags} rating={place.rating} photos={place.photos}
+    {!editing ? <PlaceQuickEdit compact row itemId={place.id} name={place.name} type={category.value as PlaceType} tags={place.tags} rating={place.rating} photos={place.photos}
         leading={<button onClick={openEditor} type="button" className="inline-flex min-h-11 items-center justify-center gap-1.5 px-2 text-xs text-[#59694f] sm:text-sm"><Pencil size={15} />Edit details</button>} />
       : <div className="w-full">
         {/* Same fields as the trip editor, plus photos and the day for this plan. */}
