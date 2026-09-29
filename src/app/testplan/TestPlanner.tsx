@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowUp, ArrowUpRight, Camera, Check, EyeOff, Hotel, Map as MapIcon, Maximize2, Minimize2, Plane, Plus, Sparkles, Users, Utensils, MapPin, SquarePen, X } from 'lucide-react'
+import { ArrowUp, ArrowUpRight, Camera, Check, EyeOff, History, Hotel, Map as MapIcon, Maximize2, Minimize2, Plane, Plus, Sparkles, Users, Utensils, MapPin, SquarePen, X } from 'lucide-react'
 import styles from '../itinerary/[id]/places.module.css'
 import planningStyles from '../plan/[id]/Planner.module.css'
 import detailStyles from '@/components/PlaceDetailsCard.module.css'
@@ -13,7 +13,7 @@ import PlacePhoto from '@/components/PlacePhoto'
 import { addPlanPlace, startPlan } from '@/actions/planning'
 import { linkPlanChat } from '@/actions/planChat'
 import { tripMapLookupKey, validMapLocation, type TripMapPlace } from '@/lib/tripMapPlaces'
-import { ACTIVITIES, BUDGETS, DESTINATION_TYPES, TRAVELERS, TRIP_LENGTHS, type TravelPreferences } from '@/lib/travelPreferences'
+import { ACTIVITIES, BUDGETS, DESTINATION_TYPES, SETUP_MESSAGE, TRAVELERS, TRIP_LENGTHS, type TravelPreferences } from '@/lib/travelPreferences'
 
 type Place = { id: string; name: string; type: string; notes: string | null; placeId: string | null; lat: number | null; lng: number | null; day: number | null; photos: string[]; destination: string }
 type Trip = { id: string; title: string; places: Place[] }
@@ -35,9 +35,11 @@ function groupByOption(recs: Recommendation[]) {
   return [...groups.entries()]
 }
 
+type PastChat = { id: string; topic: string; updatedAt: string }
+
 const starters = ['Surprise me with a long weekend', 'Where should we go this spring?', 'Somewhere new my friends haven’t been']
 
-export default function TestPlanner({ trip, chat, hasOwnTrips, lastPreferences }: { trip: Trip | null; chat: { id: string; turns: Turn[] } | null; hasOwnTrips: boolean; lastPreferences: TravelPreferences | null }) {
+export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPreferences }: { trip: Trip | null; chat: { id: string; turns: Turn[] } | null; history: PastChat[]; hasOwnTrips: boolean; lastPreferences: TravelPreferences | null }) {
   const router = useRouter()
   const [turns, setTurns] = useState<Turn[]>(chat?.turns ?? [])
   const chatId = useRef(chat?.id ?? '')
@@ -48,6 +50,7 @@ export default function TestPlanner({ trip, chat, hasOwnTrips, lastPreferences }
   const [adding, setAdding] = useState<string | null>(null)
   const [mapView, setMapView] = useState<'normal' | 'small' | 'hidden'>('normal')
   const [skippedSetup, setSkippedSetup] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
   const tripId = useRef(trip?.id ?? '')
   const scroller = useRef<HTMLDivElement>(null)
   const endOfChat = useRef<HTMLDivElement>(null)
@@ -74,6 +77,8 @@ export default function TestPlanner({ trip, chat, hasOwnTrips, lastPreferences }
     // The plain name is what gets located on the map; "Suggested" only belongs in the pin's label.
     ...suggestions.map(rec => ({ id: rec.key, name: rec.name, city: [rec.destination, rec.country].filter(Boolean).join(', '), type: rec.type, day: null, placeId: rec.placeId ?? undefined, lat: rec.lat, lng: rec.lng, color: colorOf(rec), label: `Suggested · ${optionOf(rec)}` })),
   ]
+
+  function startNewChat() { chatId.current = ''; tripId.current = ''; setTurns([]); setAdded(new Set()); setError(''); router.push('/testplan?new=1') }
 
   async function send(text: string, preferences?: TravelPreferences) {
     const message = text.trim()
@@ -123,7 +128,12 @@ export default function TestPlanner({ trip, chat, hasOwnTrips, lastPreferences }
     finally { setAdding(null) }
   }
 
-  return <div className={`mx-auto grid max-w-7xl gap-4 px-4 pt-4 text-[#2e4147] lg:h-[calc(100dvh-4.5rem-var(--app-bottom-clearance))] ${mapView === 'hidden' ? 'lg:grid-cols-1' : mapView === 'small' ? 'lg:grid-cols-[minmax(0,1fr)_320px]' : 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]'}`}>
+  return <div className={`mx-auto grid max-w-[1440px] gap-4 px-4 pt-4 text-[#2e4147] lg:h-[calc(100dvh-4.5rem-var(--app-bottom-clearance))] ${mapView === 'hidden' ? 'lg:grid-cols-[220px_minmax(0,1fr)]' : mapView === 'small' ? 'lg:grid-cols-[220px_minmax(0,1fr)_320px]' : 'lg:grid-cols-[220px_minmax(0,1fr)_minmax(0,1.1fr)]'}`}>
+    {/* Desktop: past conversations down the left. */}
+    <aside aria-label="Past chats" className="hidden min-h-0 flex-col overflow-hidden rounded-2xl border border-[#d7cebc] bg-[#fffdf7] lg:flex">
+      <p className="flex items-center gap-2 border-b border-[#e6dfd1] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#59694f]"><History size={14} />Past chats</p>
+      {history.length ? <div className="min-h-0 overflow-y-auto p-2"><PastChats history={history} currentId={chat?.id} /></div> : <p className="p-4 text-sm text-[#73786d]">Your conversations will appear here.</p>}
+    </aside>
     <div className="flex min-h-0 flex-col gap-4">
       <section aria-label="New trip" className={`min-h-0 overflow-y-auto rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4 ${places.length ? 'lg:flex-1' : 'lg:flex-none'}`}>
         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#59694f]"><Sparkles size={14} />Plan with Postcard</p>
@@ -132,7 +142,6 @@ export default function TestPlanner({ trip, chat, hasOwnTrips, lastPreferences }
           <div className="flex items-center gap-4 text-sm font-semibold text-[#59694f]">
             {trip && <Link href={`/plan/${trip.id}`}>Open in planner →</Link>}
             {mapView === 'hidden' && <button type="button" onClick={() => setMapView('normal')} className="inline-flex items-center gap-1"><MapIcon size={14} />Show map</button>}
-            {turns.length > 0 && <button type="button" disabled={thinking} onClick={() => { chatId.current = ''; tripId.current = ''; setTurns([]); setAdded(new Set()); setError(''); router.push('/testplan?new=1') }} className="inline-flex items-center gap-1 disabled:opacity-50"><SquarePen size={14} />New chat</button>}
           </div>
         </div>
         {!places.length ? <p className="mt-3 text-sm text-[#73786d]">Ask Postcard where to go. Places you add from its suggestions will build your itinerary here.</p>
@@ -142,9 +151,16 @@ export default function TestPlanner({ trip, chat, hasOwnTrips, lastPreferences }
           </div></article>)}</div></section> })}
       </section>
 
+      {/* Between the trip card and the chat: start over, or (on phones) open a past conversation. */}
+      <div className="flex gap-2">
+        <button type="button" disabled={thinking || !turns.length} onClick={startNewChat} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#8caaa3] bg-[#fffdf7] px-4 text-sm font-semibold text-[#355650] disabled:opacity-50"><SquarePen size={16} />Start a new chat</button>
+        {history.length > 0 && <button type="button" onClick={() => setShowHistory(value => !value)} aria-expanded={showHistory} aria-controls="past-chats-phone" className="flex min-h-11 items-center gap-2 rounded-xl border border-[#d7cebc] bg-[#fffdf7] px-4 text-sm font-semibold text-[#59694f] lg:hidden"><History size={16} />Past chats</button>}
+      </div>
+      {showHistory && <div id="past-chats-phone" className="rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-2 lg:hidden"><PastChats history={history} currentId={chat?.id} /></div>}
+
       <section aria-label="Chat with Postcard" className="flex min-h-0 flex-col rounded-2xl border border-[#d7cebc] bg-[#fffdf7] lg:h-auto lg:flex-[1.2]">
         <div ref={scroller} className="min-h-0 flex-1 space-y-4 p-4 lg:overflow-y-auto" aria-live="polite">
-          {!turns.length && !skippedSetup && <TripSetup hasOwnTrips={hasOwnTrips} initial={lastPreferences} disabled={thinking} onSubmit={preferences => void send('Show me trip ideas that fit what I picked.', preferences)} onSkip={() => setSkippedSetup(true)} />}
+          {!turns.length && !skippedSetup && <TripSetup hasOwnTrips={hasOwnTrips} initial={lastPreferences} disabled={thinking} onSubmit={preferences => void send(SETUP_MESSAGE, preferences)} onSkip={() => setSkippedSetup(true)} />}
           {!turns.length && skippedSetup && <div className="text-sm text-[#73786d]"><p>Postcard uses your trips and your friends’ trips—their ratings and notes—plus its own picks. Try:</p><div className="mt-3 flex flex-wrap gap-2">{starters.map(starter => <button key={starter} type="button" onClick={() => void send(starter)} className="rounded-full border border-[#d7cebc] px-3 py-1.5 text-left text-xs text-[#59694f] hover:bg-[#f3eee5]">{starter}</button>)}</div></div>}
           {turns.map((turn, index) => turn.role === 'preferences'
             ? <PreferencesSummary key={index} preferences={turn.preferences} />
@@ -368,4 +384,15 @@ function TripMap({ places }: { places: MapPlace[] }) {
     return location ? [{ id: place.id, name: place.name, type: place.type, day: place.day, recommendation: 'none' as const, color: place.color, label: place.label, ...location }] : []
   })
   return pins.length ? <ItineraryMap pins={pins} /> : <div className="flex h-full items-center justify-center p-6 text-center text-sm text-[#73786d]">{places.length ? 'Finding places on the map…' : 'Suggestions and the places in your trip will appear here.'}</div>
+}
+
+// Past conversations, newest first, each labelled by its topic.
+function PastChats({ history, currentId }: { history: PastChat[]; currentId?: string }) {
+  return <ul className="space-y-1">{history.map(past => <li key={past.id}>
+    <Link href={`/testplan?chat=${past.id}`} aria-current={past.id === currentId ? 'page' : undefined}
+      className={`block rounded-xl px-3 py-2 text-sm hover:bg-[#f3eee5] ${past.id === currentId ? 'bg-[#edf1e9] font-semibold text-[#355650]' : 'text-[#2e4147]'}`}>
+      <span className="block [overflow-wrap:anywhere]">{past.topic}</span>
+      <span className="block text-xs font-normal text-[#73786d]">{new Date(past.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>
+    </Link>
+  </li>)}</ul>
 }

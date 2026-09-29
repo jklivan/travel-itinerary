@@ -12,6 +12,9 @@ export const BUDGETS = [
 export const DESTINATION_TYPES = ['Beach', 'City', 'Mountains', 'Countryside', 'Islands', 'Lakes', 'Snow & ski', 'Desert'] as const
 export const ACTIVITIES = ['Food & restaurants', 'Wine & bars', 'Museums & history', 'Hiking & outdoors', 'Beaches & swimming', 'Shopping', 'Nightlife', 'Spa & wellness', 'Kid-friendly activities', 'Adventure sports', 'Architecture', 'Local markets'] as const
 
+// The chat message sent when the setup questions are answered.
+export const SETUP_MESSAGE = 'Show me trip ideas that fit what I picked.'
+
 export type TravelPreferences = {
   travelers: string
   length: string
