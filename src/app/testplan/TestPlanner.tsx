@@ -39,17 +39,18 @@ type PastChat = { id: string; topic: string; updatedAt: string }
 
 const starters = ['Surprise me with a long weekend', 'Where should we go this spring?', 'Somewhere new my friends haven’t been']
 
-export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPreferences }: { trip: Trip | null; chat: { id: string; turns: Turn[] } | null; history: PastChat[]; hasOwnTrips: boolean; lastPreferences: TravelPreferences | null }) {
+export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPreferences, initialDraft = '' }: { initialDraft?: string; trip: Trip | null; chat: { id: string; turns: Turn[] } | null; history: PastChat[]; hasOwnTrips: boolean; lastPreferences: TravelPreferences | null }) {
   const router = useRouter()
   const [turns, setTurns] = useState<Turn[]>(chat?.turns ?? [])
   const chatId = useRef(chat?.id ?? '')
-  const [draft, setDraft] = useState('')
+  const [draft, setDraft] = useState(initialDraft)
   const [thinking, setThinking] = useState(false)
   const [error, setError] = useState('')
   const [added, setAdded] = useState<Set<string>>(new Set())
   const [adding, setAdding] = useState<string | null>(null)
   const [mapView, setMapView] = useState<'normal' | 'small' | 'hidden'>('normal')
-  const [skippedSetup, setSkippedSetup] = useState(false)
+  // Arriving with a question about a place skips the setup questions.
+  const [skippedSetup, setSkippedSetup] = useState(!!initialDraft)
   const [showHistory, setShowHistory] = useState(false)
   const tripId = useRef(trip?.id ?? '')
   const scroller = useRef<HTMLDivElement>(null)
@@ -182,7 +183,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
         <div ref={endOfChat} aria-hidden="true" style={{ scrollMarginBottom: 'calc(var(--app-bottom-clearance) + 4.5rem)' }} />
         {/* On phones the composer sticks just above the bottom navigation so it is always reachable. */}
         <form className="sticky bottom-[calc(var(--app-bottom-clearance)-2.1rem)] z-10 flex items-end gap-2 rounded-b-2xl border-t border-[#e6dfd1] bg-[#fffdf7] p-3 lg:static" onSubmit={event => { event.preventDefault(); void send(draft) }}>
-          <textarea value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(draft) } }} rows={1} maxLength={4000} placeholder="Ask about a place or a trip…" aria-label="Message Postcard" className="max-h-32 min-h-11 flex-1 resize-none rounded-xl border border-[#d7cebc] bg-white px-3 py-2.5 text-base lg:text-sm outline-none focus:border-[#59694f]" />
+          <textarea autoFocus={!!initialDraft} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(draft) } }} rows={1} maxLength={4000} placeholder="Ask about a place or a trip…" aria-label="Message Postcard" className="max-h-32 min-h-11 flex-1 resize-none rounded-xl border border-[#d7cebc] bg-white px-3 py-2.5 text-base lg:text-sm outline-none focus:border-[#59694f]" />
           <button type="submit" disabled={thinking || !draft.trim()} aria-label="Send" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#355650] text-white disabled:opacity-40"><ArrowUp size={18} /></button>
         </form>
       </section>

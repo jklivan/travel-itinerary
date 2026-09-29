@@ -119,7 +119,6 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
               isBucketed={bucketSet.has(it.id)}
               saveCount={it._count.bucketedBy}
               commentCount={it._count.comments}
-              showBudget={false}
             />
           ))}
         </div>

@@ -576,6 +576,7 @@ export default async function ItineraryPage({
           <div aria-label="Trip tags" className="flex flex-wrap gap-2 items-center mb-4">
             {!isOwn && <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />}
             {stamp && <span className={`-rotate-2 rounded-full px-3 py-1 text-xs font-bold text-white shadow-sm ${stamp.bg}`}>{stamp.label}</span>}
+            {!!it.budget && it.budget > 0 && <span aria-label={`Budget ${it.budget} out of 5`} className="rounded-full bg-[#e8eee8] px-2.5 py-1 text-xs font-semibold tracking-tight">{[1, 2, 3, 4, 5].map(n => <span key={n} className={n <= it.budget! ? 'text-[#355650]' : 'text-[#b9c4b8]'}>$</span>)}</span>}
             {audienceLabel && (
               <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-800">
                 {audienceLabel}
@@ -639,12 +640,6 @@ export default async function ItineraryPage({
             </div>
           </div>
 
-          {it.notes && (
-            <section className="mb-5 border-l-2 border-[#c1ad93] pl-4">
-              <h2 className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-2">Notes &amp; Tips</h2>
-              <p className="text-sm leading-relaxed text-[#485340] whitespace-pre-line break-words">{it.notes}</p>
-            </section>
-          )}
 
           {/* Friends who saved this trip */}
           <div className="flex flex-wrap gap-2 items-center">
@@ -842,6 +837,14 @@ export default async function ItineraryPage({
                     </div>
                   ))}
                 </div>
+              </section>
+            )}
+
+            {/* The poster's general notes and tips come after the places. */}
+            {it.notes && (
+              <section className="mb-10 border-l-2 border-[#c1ad93] pl-4">
+                <h2 className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-2">Notes &amp; Tips</h2>
+                <p className="text-sm leading-relaxed text-[#485340] whitespace-pre-line break-words">{it.notes}</p>
               </section>
             )}
 

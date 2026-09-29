@@ -8,7 +8,7 @@ import styles from '../../itinerary/[id]/places.module.css'
 import planningStyles from './Planner.module.css'
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, MapPin, LockKeyhole, CalendarDays, Check, Hotel, Utensils, Camera, Plane, Upload, Pencil, Star } from 'lucide-react'
+import { Plus, MapPin, LockKeyhole, Check, Hotel, Utensils, Camera, Plane, Upload, Pencil, Star, Sparkles, Users } from 'lucide-react'
 import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
 import PlaceEntryForm from '@/components/PlaceEntryForm'
@@ -50,7 +50,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const scheduled = [...new Set(places.flatMap(p => p.day === null ? [] : [p.day]))].sort((a, b) => a - b)
   const maxDay = Math.max(trip.durationDays ?? 0, ...scheduled, 1)
   const unrated = places.filter(place => place.type !== 'transport' && !place.rating && getRecommendation(place.tags) !== 'option')
-  function renderPlace(place: Place & { destination: string }) { return <PlaceRow key={place.id} place={place} maxDay={maxDay} /> }
+  function renderPlace(place: Place & { destination: string }) { return <PlaceRow key={place.id} tripId={trip.id} place={place} maxDay={maxDay} /> }
   function showPreview() { setUnratedPrompt(null); router.push(`/itinerary/${trip.id}?preview=1`) }
   // Continue saves these details on the still-private plan, then shows the trip exactly as it will be posted.
   // Posting happens from that preview.
@@ -68,18 +68,18 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     <BackButton fallback="/plan" className="text-sm text-[#59694f]">← Back</BackButton>
     <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#59694f]"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
     <h1 className="trip-title mt-2 break-words font-[family-name:var(--font-playfair)] text-3xl sm:text-4xl">{trip.title}</h1>
-    <p className="mt-2 flex items-center gap-2 text-sm text-[#73786d]"><CalendarDays size={16} />{trip.start ? `${trip.start} — ${trip.end}` : 'Dates are flexible'} · {places.length} places</p>
-    {<details open={initialDetails || undefined} className="mt-3"><summary className="cursor-pointer py-2 text-sm text-[#59694f]">Edit trip details</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
-    <div className="mt-4 flex flex-wrap items-center gap-3">
-      {trip.visibility !== 'draft' && <Link href={`/itinerary/${trip.id}`} className="min-h-11 rounded-xl border border-[#d7cebc] px-4 py-3 text-sm">View shared trip</Link>}
-      {trip.visibility !== 'draft' && <span className="text-xs text-[#73786d]">Saved changes appear on your shared trip.</span>}
-    </div>
-    <div className="sticky top-0 z-20 -mx-1 mt-5 space-y-2 bg-[#f3eee5] px-1 py-3">
-      {!adding && !importing && <>
-      <button className={`${buttonClass} flex w-full items-center justify-center gap-2`} onClick={() => setAdding(true)}><Plus size={20} />Add a place</button>
-      {<Link href={`/plan/${trip.id}/friends`} className="mt-2 flex min-h-11 items-center justify-center rounded-xl border border-[#8caaa3] bg-[#fffdf7] px-4 py-2 text-sm font-semibold text-[#59694f]">Browse friends’ places · Add several at once</Link>}
-      </>}
-      <button type="button" onClick={() => setImporting(true)} disabled={importing} aria-expanded={importing} aria-controls="plan-import-panel" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#8caaa3] bg-[#fffdf7] px-4 py-2 text-sm font-semibold text-[#59694f] disabled:opacity-60"><Upload size={17} />Import notes or files</button>
+    {<details open={initialDetails || undefined} className="mt-3"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-2 text-sm text-[#59694f] [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit trip details</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
+    {trip.visibility !== 'draft' && <div className="mt-4 flex flex-wrap items-center gap-3">
+      {<Link href={`/itinerary/${trip.id}`} className="min-h-11 rounded-xl border border-[#d7cebc] px-4 py-3 text-sm">View shared trip</Link>}
+      <span className="text-xs text-[#73786d]">Saved changes appear on your shared trip.</span>
+    </div>}
+    {/* One row of compact actions, so the places start higher up the screen. */}
+    <div className="sticky top-0 z-20 -mx-1 mt-3 grid grid-cols-4 gap-2 bg-[#f3eee5] px-1 py-3">
+      <button type="button" onClick={() => { setImporting(false); setAdding(true) }} className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-[#2e4147] bg-[#2e4147] text-white"><Plus size={20} />Add a place</button>
+      <Link href={`/plan/${trip.id}/friends`} className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-[#8caaa3] bg-[#fffdf7] text-[#59694f]"><Users size={18} />Browse friends’ places</Link>
+      <button type="button" onClick={() => { setAdding(false); setImporting(true) }} aria-expanded={importing} aria-controls="plan-import-panel" className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-[#8caaa3] bg-[#fffdf7] text-[#59694f]"><Upload size={18} />Import notes or files</button>
+      {/* This trip's AI chat: it sees the trip's places and can add its picks here. */}
+      <Link href={`/testplan?trip=${trip.id}`} className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-[#c7d7cf] bg-[#edf1e9] text-[#355650]"><Sparkles size={18} />Plan with AI</Link>
     </div>
     {adding && <div hidden={importing}><AddPlace trip={trip} maxDay={maxDay} onClose={() => setAdding(false)} /></div>}
     {importing && <div id="plan-import-panel"><PlanImport tripId={trip.id} onClose={() => setImporting(false)} /></div>}
@@ -186,7 +186,7 @@ function UnratedPrompt({ places, onClose, onPreview }: { places: (Place & { dest
   </div>
 }
 
-function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; maxDay: number }) {
+function PlaceRow({ tripId, place, maxDay }: { tripId: string; place: Place & { destination: string }; maxDay: number }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -224,6 +224,8 @@ function PlaceRow({ place, maxDay }: { place: Place & { destination: string }; m
         <p className={planningStyles.location}>{place.destination}</p>
         {!!place.rating && <p className="text-sm text-[#a27e3b]" aria-label={`Your rating: ${place.rating} out of 5`}>{'★'.repeat(place.rating)}{'☆'.repeat(5 - place.rating)}</p>}
         {place.notes && <p className={styles.note}>{place.notes}</p>}
+        {/* Opens this trip's AI chat with a question about this place ready to finish. */}
+        <Link href={`/testplan?trip=${tripId}&ask=${place.id}`} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} className="relative z-[2] mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#59694f] underline-offset-2 hover:underline"><Sparkles size={13} />Ask AI about this place</Link>
       </div>
     </div>
     {place.type !== 'transport' && <PlacePeople key={`${place.placeId}:${place.name}:${place.destination}`} compact placeId={place.placeId ?? ''} name={place.name} location={place.destination} />}

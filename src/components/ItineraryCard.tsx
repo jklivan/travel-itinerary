@@ -59,7 +59,8 @@ function getInitials(name: string) {
 export default function ItineraryCard({
   id, postType, title, startDate, endDate, audience, budget, tripRating, authorName, authorId, destinations, coverPhoto, photos = [],
   currentUserId, isOwn, isBucketed = false, saveCount, fullWidth = false, datesFlexible = false, bestMonths = [], tags = [], durationDays,
-  commentCount = 0, showBudget = true,
+  // Budget shows on the trip page, not on cards.
+  commentCount = 0, showBudget = false,
 }: Props) {
   const days = tripDuration({ postType, startDate, endDate, datesFlexible, destinations, tags, durationDays })
   const isGuide = days === null
