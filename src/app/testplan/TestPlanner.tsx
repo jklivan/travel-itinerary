@@ -58,10 +58,10 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
   const firstRender = useRef(true)
   useEffect(() => {
     const box = scroller.current
-    // Desktop: the messages scroll inside their panel. Phones: they flow with the page, so bring the
-    // newest message into view instead (not on first load, so the page opens at the top).
-    if (box && box.scrollHeight > box.clientHeight) box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' })
-    else if (!firstRender.current) endOfChat.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    // Desktop: the messages scroll inside their panel. Phones: they flow with the page.
+    if (box && box.scrollHeight > box.clientHeight) box.scrollTo({ top: box.scrollHeight, behavior: firstRender.current ? 'auto' : 'smooth' })
+    // Phones: bring the newest message into view, including when reopening a past conversation.
+    else if (!firstRender.current || turns.length) endOfChat.current?.scrollIntoView({ behavior: firstRender.current ? 'auto' : 'smooth', block: 'end' })
     firstRender.current = false
   }, [turns, thinking])
 

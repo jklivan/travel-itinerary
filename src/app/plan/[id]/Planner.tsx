@@ -231,7 +231,7 @@ function PlaceRow({ tripId, place, maxDay, dayChips }: { tripId: string; place: 
         {!!place.rating && <p className="text-sm text-[#a27e3b]" aria-label={`Your rating: ${place.rating} out of 5`}>{'★'.repeat(place.rating)}{'☆'.repeat(5 - place.rating)}</p>}
         {place.notes && <p className={styles.note}>{place.notes}</p>}
         {/* Opens this trip's AI chat with a question about this place ready to finish. */}
-        <Link href={`/testplan?trip=${tripId}&ask=${place.id}&from=planner`} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} className="relative z-[2] mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#3f5a80] underline-offset-2 hover:underline"><Sparkles size={13} />Ask AI about this place</Link>
+        <Link href={`/testplan?trip=${tripId}&ask=${place.id}&from=planner&new=1`} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} className="relative z-[2] mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#3f5a80] underline-offset-2 hover:underline"><Sparkles size={13} />Ask AI about this place</Link>
       </div>
     </div>
     {!!dayChips && <DayChips itemId={place.id} days={dayChips} />}
