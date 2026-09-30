@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Star, X } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import RecommendationPicker from '@/components/RecommendationPicker'
 import { getRecommendation, recommendationTags, type PlaceRecommendation } from '@/lib/placeRecommendation'
+import { StarPicker as StarRating } from '@/components/ui/Stars'
 
 // The per-place edit form shared by the trip editor and the planner, so both offer the same fields.
 
@@ -38,17 +39,7 @@ const HOTEL_TAGS    = ['Great Service', 'Worth the Splurge', 'Great Value', 'Hid
 const ACTIVITY_TAGS = ['Hidden Gem', 'Family Friendly', 'Great Views', 'Free', 'Outdoor', 'Cultural', 'Adventurous']
 export const ITEM_TAGS: Record<PlaceType, string[]> = { food_drink: FOOD_TAGS, hotel: HOTEL_TAGS, activity: ACTIVITY_TAGS, transport: ['Flight', 'Ferry', 'Train', 'Bus', 'Car rental', 'Taxi / Uber', 'Transfer', 'Book Ahead', 'Great Value'] }
 
-export function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  return (
-    <div className="flex gap-1">
-      {[1, 2, 3, 4, 5].map(s => (
-        <button key={s} type="button" onClick={() => onChange(value === s ? 0 : s)} className="focus:outline-none">
-          <Star size={24} strokeWidth={1.6} className={s <= value ? 'fill-gold text-gold' : 'fill-none text-gold-faint'} />
-        </button>
-      ))}
-    </div>
-  )
-}
+export { StarRating }
 
 // ── Item edit form ─────────────────────────────────────────────────────────────
 
@@ -132,7 +123,7 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
             return (
               <button key={mt} type="button"
                 onClick={() => setMealType(isSel ? sel.filter(t => t !== mt).join(',') : [...sel, mt].join(','))}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSel ? MEAL_ACTIVE[mt] : 'border-line-soft text-muted hover:border-gold-faint'}`}>
+                aria-pressed={isSel} className="chip capitalize">
                 {MEAL_EMOJI[mt]} {mt}
               </button>
             )
@@ -171,8 +162,8 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
           <p className="text-xs text-muted font-medium uppercase tracking-wide">Tags</p>
           <div className="flex flex-wrap gap-1.5">
             {ITEM_TAGS[type].map(tag => (
-              <button key={tag} type="button" onClick={() => toggleTag(tag)}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-ink text-white border-ink' : 'border-line-soft text-muted hover:border-gold-faint'}`}>
+              <button key={tag} type="button" aria-pressed={tags.includes(tag)} onClick={() => toggleTag(tag)}
+                className="chip">
                 {tag}
               </button>
             ))}
@@ -192,7 +183,7 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
           Cancel
         </button>
         <button type="button" onClick={submit} disabled={!name.trim() || busy}
-          className="flex-1 py-2.5 rounded-xl bg-ink text-white text-sm font-semibold hover:bg-ink-soft transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+          className="btn btn-primary flex-1">
           <Check size={14} /> {busy ? 'Saving…' : saveLabel}
         </button>
       </div>

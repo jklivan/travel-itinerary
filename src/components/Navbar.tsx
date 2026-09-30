@@ -37,7 +37,7 @@ export default async function Navbar() {
                 Sign in
               </Link>
               <Link href="/register"
-                className="text-xs bg-ink text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-ink-soft transition-colors">
+                className="btn btn-primary btn-sm">
                 Get started
               </Link>
             </>

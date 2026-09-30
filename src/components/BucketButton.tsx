@@ -118,7 +118,7 @@ export default function BucketButton({
             <p className="mt-3 text-xs text-brown">Liked trips appear in All saved. Choose a folder to organize this trip.</p>
             {folderError && <p role="alert" className="mt-3 text-sm text-red-700">{folderError}</p>}
             <div className="mt-5 flex flex-wrap gap-2">
-              <button type="submit" disabled={pending || !foldersLoaded} className="min-h-11 flex-1 rounded-lg bg-ink px-4 py-3 text-sm font-medium text-white disabled:opacity-50">{pending ? 'Please wait…' : bucketed ? 'Update saved trip' : 'Like & save'}</button>
+              <button type="submit" disabled={pending || !foldersLoaded} className="btn btn-primary flex-1">{pending ? 'Please wait…' : bucketed ? 'Update saved trip' : 'Like & save'}</button>
               {bucketed && <button type="button" onClick={unlikeTrip} disabled={pending} className="min-h-11 rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-700 disabled:opacity-50">Unlike</button>}
             </div>
           </form>

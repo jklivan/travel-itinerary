@@ -1,6 +1,7 @@
 'use client'
 
 import BackButton from '@/components/BackButton'
+import RatingStars from '@/components/RatingStars'
 
 import TripFormatPicker from '@/components/TripFormatPicker'
 
@@ -276,7 +277,7 @@ function SortableItem({ item, dayControl, isEditing, onEdit, onDraftChange, onUp
           <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
           <div className="flex items-center gap-2 flex-wrap">
             {item.mealType && <span className="text-xs text-gray-500">{item.mealType.split(',').map(type => `${MEAL_EMOJI[type]} ${type}`).join(' · ')}</span>}
-            {item.rating > 0 && <span className="text-xs text-yellow-500">{'★'.repeat(item.rating)}</span>}
+            {item.rating > 0 && <RatingStars value={item.rating} size={12} />}
             {getRecommendation(item.tags, item.isHighlight) !== 'none' && <span className={`text-xs font-medium ${getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'text-red-700' : 'text-link'}`}>{getRecommendation(item.tags, item.isHighlight) === 'option' ? 'Alternative' : getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'Avoid' : item.type === 'hotel' ? 'Must stay' : 'Must do'}</span>}
             {item.notes && <span className="text-xs text-gray-400 truncate">{item.notes}</span>}
           </div>
@@ -323,7 +324,7 @@ function DestSummary({ dest, onRemove, onEdit }: { dest: GuidedDest; onRemove: (
           <div key={hotel.id} className="flex items-center gap-1.5">
             <Hotel size={12} className="text-blue-500 shrink-0" />
             <span className="truncate">{hotel.name}</span>
-            {hotel.rating > 0 && <span className="text-yellow-500 ml-1">{'★'.repeat(hotel.rating)}</span>}
+            {hotel.rating > 0 && <span className="ml-1"><RatingStars value={hotel.rating} size={12} /></span>}
           </div>
         ))}
         {nonHotels.map(item => (
@@ -333,7 +334,7 @@ function DestSummary({ dest, onRemove, onEdit }: { dest: GuidedDest; onRemove: (
               : <Camera size={12} className="text-green-500 shrink-0" />}
             <span className="truncate">{item.name}</span>
             {item.mealType && <span className="text-gray-400 ml-1">{item.mealType.split(',').map(type => MEAL_EMOJI[type]).join(' ')}</span>}
-            {item.rating > 0 && <span className="text-yellow-500 ml-1">{'★'.repeat(item.rating)}</span>}
+            {item.rating > 0 && <span className="ml-1"><RatingStars value={item.rating} size={12} /></span>}
           </div>
         ))}
         {dest.notes && <p className="text-gray-500 italic mt-1">📝 {dest.notes}</p>}

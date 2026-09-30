@@ -74,7 +74,7 @@ export default function SavedFolderPicker({ itineraryId, label = 'Save to folder
           </label>}
           <p className="mt-3 text-xs text-brown">Folders are only visible to you. Trips also appear in All saved.</p>
           {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
-          <button type="submit" disabled={pending || !loaded} className="mt-5 w-full rounded-lg bg-ink px-4 py-3 text-sm font-medium text-white disabled:opacity-50">{pending ? 'Please wait…' : 'Save'}</button>
+          <button type="submit" disabled={pending || !loaded} className="btn btn-primary mt-5 w-full">{pending ? 'Please wait…' : 'Save'}</button>
         </form>
       </dialog>
     </>

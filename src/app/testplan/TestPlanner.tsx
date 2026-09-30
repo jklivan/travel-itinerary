@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import RatingStars from '@/components/RatingStars'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowUp, ArrowUpRight, Camera, Check, EyeOff, History, Hotel, Map as MapIcon, Maximize2, Minimize2, Plane, Plus, Sparkles, Users, Utensils, MapPin, SquarePen, X } from 'lucide-react'
@@ -147,7 +148,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
 
   return <div className={`mx-auto grid max-w-[1440px] gap-4 px-4 pt-4 text-ink lg:h-[calc(100dvh-4.5rem-var(--app-bottom-clearance))] ${mapView === 'hidden' ? 'lg:grid-cols-[220px_minmax(0,1fr)]' : mapView === 'small' ? 'lg:grid-cols-[220px_minmax(0,1fr)_320px]' : 'lg:grid-cols-[220px_minmax(0,1fr)_minmax(0,1.1fr)]'}`}>
     {/* Desktop: past conversations down the left. */}
-    <aside aria-label="Past chats" className="hidden min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-card lg:flex">
+    <aside aria-label="Past chats" className="panel hidden min-h-0 flex-col overflow-hidden lg:flex">
       <p className="flex items-center gap-2 border-b border-line-soft px-4 py-3 text-xs font-semibold uppercase tracking-wide text-link"><History size={14} />Past chats</p>
       {history.length ? <div className="min-h-0 overflow-y-auto p-2"><PastChats history={history} currentId={chat?.id} /></div> : <p className="p-4 text-sm text-muted">Your conversations will appear here.</p>}
     </aside>
@@ -172,11 +173,11 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
       {/* Between the trip card and the chat: start over, or (on phones) open a past conversation. */}
       <div ref={chatControls} className="flex scroll-mt-24 gap-2">
         <button type="button" disabled={thinking || !turns.length} onClick={startNewChat} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-mist-edge bg-card px-4 text-sm font-semibold text-ink disabled:opacity-50"><SquarePen size={16} />Start a new chat</button>
-        {history.length > 0 && <button type="button" onClick={() => setShowHistory(value => !value)} aria-expanded={showHistory} aria-controls="past-chats-phone" className="flex min-h-11 items-center gap-2 rounded-xl border border-line bg-card px-4 text-sm font-semibold text-link lg:hidden"><History size={16} />Past chats</button>}
+        {history.length > 0 && <button type="button" onClick={() => setShowHistory(value => !value)} aria-expanded={showHistory} aria-controls="past-chats-phone" className="btn btn-outline lg:hidden"><History size={16} />Past chats</button>}
       </div>
-      {showHistory && <div id="past-chats-phone" className="rounded-2xl border border-line bg-card p-2 lg:hidden"><PastChats history={history} currentId={chat?.id} /></div>}
+      {showHistory && <div id="past-chats-phone" className="panel p-2 lg:hidden"><PastChats history={history} currentId={chat?.id} /></div>}
 
-      <section aria-label="Chat with Postcard" className="flex min-h-0 flex-col rounded-2xl border border-line bg-card lg:h-auto lg:flex-[1.2]">
+      <section aria-label="Chat with Postcard" className="panel flex min-h-0 flex-col lg:h-auto lg:flex-[1.2]">
         <div ref={scroller} className="min-h-0 flex-1 space-y-4 p-4 lg:overflow-y-auto" aria-live="polite">
           {!turns.length && !skippedSetup && <TripSetup hasOwnTrips={hasOwnTrips} initial={lastPreferences} disabled={thinking} onSubmit={preferences => void send(SETUP_MESSAGE, preferences)} onSkip={() => setSkippedSetup(true)} />}
           {!turns.length && skippedSetup && <div className="text-sm text-muted"><p>Postcard uses your trips and your friends’ trips—their ratings and notes—plus its own picks. Try:</p><div className="mt-3 flex flex-wrap gap-2">{starters.map(starter => <button key={starter} type="button" onClick={() => void send(starter)} className="rounded-full border border-line px-3 py-1.5 text-left text-xs text-link hover:bg-paper">{starter}</button>)}</div></div>}
@@ -268,7 +269,7 @@ function TripSetup({ hasOwnTrips, initial, disabled, onSubmit, onSkip }: { hasOw
       <Group title="Things you like to do (pick any)">{ACTIVITIES.map(option => <button key={option} type="button" aria-pressed={activities.includes(option)} onClick={() => setActivities(list => toggle(list, option))} className={chip(activities.includes(option))}>{option}</button>)}</Group>
     </>}
     <div className="mt-5 flex flex-wrap items-center gap-3">
-      <button type="button" disabled={!ready || disabled} onClick={() => onSubmit({ travelers, length, budget: askTaste ? budget : null, destinationTypes: askTaste ? destinationTypes : [], activities: askTaste ? activities : [] })} className="min-h-11 rounded-xl bg-ink px-5 text-sm font-semibold text-white disabled:opacity-40">Show me ideas →</button>
+      <button type="button" disabled={!ready || disabled} onClick={() => onSubmit({ travelers, length, budget: askTaste ? budget : null, destinationTypes: askTaste ? destinationTypes : [], activities: askTaste ? activities : [] })} className="btn btn-primary">Show me ideas →</button>
       <button type="button" onClick={onSkip} className="min-h-11 text-sm text-link underline">Skip, I’ll just ask</button>
     </div>
   </section>
@@ -339,7 +340,7 @@ function PickDetails({ rec, color, addButton, onClose }: { rec: Recommendation; 
       </header>
 
       {rec.source !== 'claude' && <section>
-        <h3 className={detailStyles.sectionTitle}>{who} notes{info?.rating ? <span className="ml-2 font-normal text-gold">{'★'.repeat(info.rating)}{'☆'.repeat(5 - info.rating)}</span> : null}</h3>
+        <h3 className={detailStyles.sectionTitle}>{who} notes{info?.rating ? <span className="ml-2 inline-block align-middle"><RatingStars value={info.rating} /></span> : null}</h3>
         {!info && !failed ? <p className={detailStyles.muted}>Loading…</p> : info?.notes ? <p className={detailStyles.text}>{info.notes}</p> : <p className={detailStyles.muted}>{rec.source === 'you' ? 'You didn’t add notes for this place.' : `${rec.friendName} didn’t add notes for this place.`}</p>}
         {info?.trip && <Link href={info.trip.href} className="mt-2 inline-block text-sm font-semibold text-link">From {rec.source === 'you' ? 'your' : `${rec.friendName}’s`} trip “{info.trip.title}” →</Link>}
       </section>}

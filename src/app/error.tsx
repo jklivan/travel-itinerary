@@ -13,8 +13,8 @@ export default function Error({ error, unstable_retry }: { error: Error & { dige
     <h1 className="font-[family-name:var(--font-playfair)] text-2xl">Something went wrong</h1>
     <p className="mt-2 text-sm text-muted">Your saved trips are safe. Try again, or reload the page.</p>
     <div className="mt-6 flex justify-center gap-3">
-      <button type="button" onClick={() => unstable_retry()} className="min-h-11 rounded-xl bg-ink px-5 text-sm font-semibold text-white">Try again</button>
-      <button type="button" onClick={() => location.reload()} className="min-h-11 rounded-xl border border-line px-5 text-sm font-semibold text-link">Reload</button>
+      <button type="button" onClick={() => unstable_retry()} className="btn btn-primary">Try again</button>
+      <button type="button" onClick={() => location.reload()} className="btn btn-outline">Reload</button>
     </div>
   </div>
 }

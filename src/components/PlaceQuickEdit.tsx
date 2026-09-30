@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Camera, Star } from 'lucide-react'
 import EventPhotoInput from './EventPhotoInput'
 import { updatePlace } from '@/actions/placeQuickEdit'
+import { StarPicker } from './ui/Stars'
 import RecommendationPicker from './RecommendationPicker'
 import { getRecommendation, type PlaceRecommendation } from '@/lib/placeRecommendation'
 
@@ -78,7 +79,7 @@ export default function PlaceQuickEdit({ itemId, name, type, tags, rating, photo
       <fieldset disabled={saving || uploading}>
         {mode === 'photos' ? <EventPhotoInput photos={draftPhotos} name={name} onChange={setDraftPhotos} onBusyChange={setUploading} /> : <div className="space-y-3 px-1">
           <div className="flex flex-wrap items-center">
-            {[1, 2, 3, 4, 5].map(value => <button key={value} type="button" aria-label={`Rate ${name} ${value} out of 5`} aria-pressed={draftRating === value} onClick={() => void saveRating(value, draftRecommendation)} className="flex min-h-11 min-w-11 items-center justify-center"><Star size={26} strokeWidth={1.6} className={value <= draftRating ? 'fill-gold text-gold' : 'fill-none text-gold-faint'} /></button>)}
+            <StarPicker value={draftRating} onChange={value => void saveRating(value, draftRecommendation)} name={name} size={26} />
             {draftRating > 0 && <button type="button" onClick={() => void saveRating(0, draftRecommendation)} className="min-h-11 px-2 text-xs underline">Clear rating</button>}
           </div>
           <RecommendationPicker type={type} value={draftRecommendation} onChange={value => void saveRating(draftRating, value)} allowAlternative={false} />

@@ -182,12 +182,12 @@ export default async function UserProfilePage({
       {isOwn && !showBucket ? (
         <>
           <section aria-labelledby="your-trips-heading">
-            <div><h1 id="your-trips-heading" className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-ink">Your trips</h1><Link href="/plan" className="mt-4 inline-flex min-h-10 items-center rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white">Start planning!</Link></div>
+            <div><h1 id="your-trips-heading" className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-ink">Your trips</h1><Link href="/plan" className="btn btn-primary mt-4">Start planning!</Link></div>
             <section className="mt-5" aria-labelledby="private-plans-heading">
               <div className="mb-4"><h2 id="private-plans-heading" className="font-[family-name:var(--font-playfair)] text-xl uppercase tracking-[0.1em] text-brown">Private plans <span className="font-sans text-sm tracking-normal">({drafts.length})</span></h2><p className="mt-1 max-w-sm text-sm leading-snug text-muted">Only you can see these. Keep planning or publish whenever you’re ready.</p></div>
               {drafts.length === 0 ? <div className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">No private plans yet.</div> : <div className="space-y-4">{drafts.map(trip => {
                 const tripHref = `/plan/${trip.id}`
-                return <article key={trip.id} className="grid grid-cols-[minmax(0,38%)_minmax(0,1fr)] gap-x-4 gap-y-3 rounded-2xl border border-line-soft bg-card p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)]">
+                return <article key={trip.id} className="panel grid grid-cols-[minmax(0,38%)_minmax(0,1fr)] gap-x-4 gap-y-3 p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)]">
                   <Link href={tripHref} aria-label={`Open ${trip.title}`} className="relative row-span-2 min-h-[210px] rotate-[-3deg] overflow-hidden border-[5px] border-white bg-mist shadow-[0_2px_5px_rgba(45,38,27,0.18)]">{draftCoverPhotos.get(trip.id) ? <Image src={draftCoverPhotos.get(trip.id)!} alt="" fill sizes="(max-width: 640px) 34vw, 180px" className="object-cover" /> : <span className="grid h-full place-items-center text-center text-[9px] uppercase tracking-wider text-link">Postcard</span>}</Link>
                   <Link href={tripHref} className="min-w-0 pt-2"><h3 className="break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-ink">{trip.title || 'Untitled trip'}</h3><p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places</p><p className="mt-1 text-sm text-muted">Keep planning →</p></Link>
                   <div className="flex min-w-0 flex-wrap items-end justify-between gap-2 self-end">
@@ -203,8 +203,8 @@ export default async function UserProfilePage({
       ) : showDrafts ? (
         <>
           <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="font-semibold text-ink">In progress</h2><p className="mt-1 text-sm text-brown">All your unpublished trips, ready to pick up anytime.</p></div></div>
-          {drafts.length === 0 ? <div className="rounded-xl border border-sand bg-cream p-8 text-center"><p className="text-sm text-brown">No trips in progress yet.</p><Link href="/plan" className="mt-4 inline-flex min-h-11 items-center rounded-full bg-ink px-5 text-sm font-semibold text-white">Start planning</Link></div> : <div className="space-y-3">
-            {drafts.map(trip => <Link key={trip.id} href={`/plan/${trip.id}`} className="flex items-center gap-3 rounded-2xl border border-line bg-card p-4 transition-colors hover:bg-mist">
+          {drafts.length === 0 ? <div className="rounded-xl border border-sand bg-cream p-8 text-center"><p className="text-sm text-brown">No trips in progress yet.</p><Link href="/plan" className="btn btn-primary mt-4">Start planning</Link></div> : <div className="space-y-3">
+            {drafts.map(trip => <Link key={trip.id} href={`/plan/${trip.id}`} className="panel flex items-center gap-3 p-4 transition-colors hover:bg-mist">
               <span className="min-w-0 flex-1"><span className="text-xs font-semibold uppercase tracking-wide text-link">Only you · Not posted</span><span className="mt-1 block break-words font-[family-name:var(--font-playfair)] text-xl text-ink">{trip.title || 'Untitled trip'}</span><span className="mt-1 block text-sm text-muted">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places · Open to keep planning</span></span><ChevronRight size={20} className="shrink-0 text-link" />
             </Link>)}
           </div>}

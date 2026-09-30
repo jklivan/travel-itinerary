@@ -1,6 +1,7 @@
 'use client'
 
 import TripFormatPicker from '@/components/TripFormatPicker'
+import RatingStars from '@/components/RatingStars'
 import { hasTripDates, tripDuration } from '@/lib/dayTrips'
 
 import { previousPage } from '@/lib/backNavigation'
@@ -360,7 +361,7 @@ function ItemSummary({ item }: { item: EditItem }) {
           <p className="text-sm font-medium text-ink truncate">{item.name}</p>
           <div className="flex items-center gap-2 flex-wrap">
             {item.mealType && <span className="text-xs text-muted">{item.mealType.split(',').map(t => `${MEAL_EMOJI[t]} ${t}`).join(' · ')}</span>}
-            {item.rating > 0 && <span className="text-xs text-yellow-500">{'★'.repeat(item.rating)}</span>}
+            {item.rating > 0 && <RatingStars value={item.rating} size={12} />}
             {getRecommendation(item.tags, item.isHighlight) !== 'none' && <span className={`text-xs font-medium ${getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'text-red-700' : 'text-link'}`}>{getRecommendation(item.tags, item.isHighlight) === 'option' ? 'Alternative' : getRecommendation(item.tags, item.isHighlight) === 'avoid' ? 'Avoid' : item.type === 'hotel' ? 'Must stay' : 'Must do'}</span>}
             {item.notes && <span className="text-xs text-muted truncate">{item.notes}</span>}
           </div>

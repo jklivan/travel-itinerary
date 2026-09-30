@@ -51,7 +51,7 @@ export default function PlanningMap({ places }: { places: PlanningMapPlace[] }) 
     setAttempt(value => value + 1)
   }
 
-  return <section aria-label="Planning map" className="overflow-hidden rounded-2xl border border-line bg-card">
+  return <section aria-label="Planning map" className="panel overflow-hidden">
     <div className="px-4 py-3"><h2 className="font-semibold">Your trip on the map</h2><p role="status" className="mt-1 text-sm text-muted">{pins.length} of {places.length} places mapped{pending ? ` · Finding ${pending}…` : ''}</p></div>
     <div className="relative isolate h-[55dvh] min-h-80 max-h-[650px]">
       {pins.length ? <ItineraryMap pins={pins} /> : <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted">{pending ? 'Finding your places…' : places.length ? 'Select a Google suggestion or enter a more specific place name to locate your places.' : 'Add places to your plan to see them on the map.'}</div>}

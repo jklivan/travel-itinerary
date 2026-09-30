@@ -3,6 +3,7 @@
 import BackButton from '@/components/BackButton'
 
 import TripFormatPicker from '@/components/TripFormatPicker'
+import { StarPicker as StarRating } from '@/components/ui/Stars'
 
 import { readFileForUpload, fetchExtraction } from '@/lib/importFiles'
 import TripEntryLayout from '@/components/TripEntryLayout'
@@ -117,18 +118,6 @@ function nightlyRateToTier(rate: number): number {
   return 5
 }
 
-function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  return (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button key={star} type="button" onClick={() => onChange(value === star ? 0 : star)}
-          className="text-lg leading-none focus:outline-none" aria-label={`${star} star`}>
-          <span className={star <= value ? 'text-yellow-400' : 'text-gray-300'}>★</span>
-        </button>
-      ))}
-    </div>
-  )
-}
 
 function FoodRow({ item, index, onUpdate, onUpdateFF, onToggleTag, onRemove, showRating, onSelectPlace, onRecommendationChange }: {
   item: FoodItem; index: number

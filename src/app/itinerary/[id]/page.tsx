@@ -156,7 +156,8 @@ const PLACE_CATEGORIES = {
 
 type PlaceCategory = keyof typeof PLACE_CATEGORIES
 
-const TAG_CHIP = 'inline-flex h-7 items-center gap-1 rounded-full px-3 text-xs font-medium'
+// Trip-page chips use the shared .chip (globals.css); colours below only override its background.
+const TAG_CHIP = 'chip'
 
 const MEAL_GROUPS = [
   { value: 'breakfast', label: 'Breakfast' },

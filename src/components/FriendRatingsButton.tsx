@@ -31,7 +31,7 @@ export default function FriendRatingsButton({ friends, placeName, verb }: { frie
     </button>
     <dialog ref={dialog} aria-labelledby={titleId} onClose={() => setOpen(false)}
       onClick={event => { if (event.target === event.currentTarget) dialog.current?.close() }}
-      className="m-auto w-[min(92vw,420px)] rounded-2xl border border-line bg-card p-0 text-ink shadow-xl backdrop:bg-ink/50">
+      className="panel m-auto w-[min(92vw,420px)] p-0 text-ink shadow-xl backdrop:bg-ink/50">
       {open && <div className="flex max-h-[75dvh] flex-col">
         <header className="flex items-start justify-between gap-3 border-b border-line-soft p-5 pb-3">
           <div>

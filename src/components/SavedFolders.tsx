@@ -56,7 +56,7 @@ export default function SavedFolders({ userId, folders, selected, total, basePat
           <input autoFocus required maxLength={80} value={name} onChange={event => setName(event.target.value)} placeholder="Beach ideas" disabled={pending} className="mt-2 w-full rounded-lg border border-line-strong bg-white px-3 py-2" />
         </label>
         <div className="mt-2 flex gap-3 text-sm">
-          <button disabled={pending} className="rounded-lg bg-ink px-4 py-2 text-white disabled:opacity-50">{pending ? 'Saving…' : editing === 'new' ? 'Create folder' : 'Save name'}</button>
+          <button disabled={pending} className="btn btn-primary">{pending ? 'Saving…' : editing === 'new' ? 'Create folder' : 'Save name'}</button>
           <button type="button" disabled={pending} onClick={() => { setEditing(null); setError('') }}>Cancel</button>
         </div>
       </form>}

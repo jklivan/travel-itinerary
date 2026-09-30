@@ -60,7 +60,7 @@ function TripSection({ title, description, empty, action, children }: { title: s
 }
 
 function TripRow({ href, title, photo, detail, cta }: { href: string; title: string; photo: { saved: string | null; itemId: string | null; stock: string | null }; detail: string; cta: string }) {
-  return <Link href={href} className="flex items-center gap-4 rounded-2xl border border-line-soft bg-card p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)] transition-colors hover:bg-chip">
+  return <Link href={href} className="panel flex items-center gap-4 p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)] transition-colors hover:bg-chip">
     <span className="relative aspect-[3/4] w-24 shrink-0 rotate-[-3deg] overflow-hidden border-[4px] border-white bg-mist shadow-[0_2px_5px_rgba(45,38,27,0.18)]"><TripCover {...photo} /></span>
     <span className="min-w-0 flex-1"><span className="block break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-ink">{title}</span><span className="mt-2 block text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">{detail}</span><span className="mt-1 block text-sm text-link">{cta}</span></span>
   </Link>

@@ -32,15 +32,15 @@ export default async function ProfilePage() {
       </div>
     </section>
     <div className="mt-5 space-y-3">
-      <Link href="/trips" className="group flex min-h-20 items-center gap-4 rounded-2xl border border-line bg-card p-4 hover:bg-paper">
+      <Link href="/trips" className="panel group flex min-h-20 items-center gap-4 p-4 hover:bg-paper">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Map size={22} /></span>
         <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-xl">My Trips</span><span className="mt-0.5 block text-sm text-muted">View your posts and plans</span></span><ChevronRight size={20} className="text-link" />
       </Link>
-      <Link href="/friends" className="group flex min-h-20 items-center gap-4 rounded-2xl border border-line bg-card p-4 hover:bg-paper">
+      <Link href="/friends" className="panel group flex min-h-20 items-center gap-4 p-4 hover:bg-paper">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Users size={22} /></span>
         <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-xl">Friends</span><span className="mt-0.5 block text-sm text-muted">{pending ? `${pending} friend request${pending === 1 ? '' : 's'} waiting` : 'Find friends & see who you follow'}</span></span>{pending > 0 && <span className="rounded-full bg-link px-2 py-1 text-xs font-semibold text-white">{pending}</span>}<ChevronRight size={20} className="text-link" />
       </Link>
-      <Link href="/settings" className="group flex min-h-20 items-center gap-4 rounded-2xl border border-line bg-card p-4 hover:bg-paper">
+      <Link href="/settings" className="panel group flex min-h-20 items-center gap-4 p-4 hover:bg-paper">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Settings size={22} /></span>
         <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-xl">Settings</span><span className="mt-0.5 block text-sm text-muted">Account and notification preferences</span></span><ChevronRight size={20} className="text-link" />
       </Link>

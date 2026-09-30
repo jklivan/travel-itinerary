@@ -46,7 +46,7 @@ function FollowButton({
   }
   return (
     <button onClick={() => onFollow(userId)}
-      className="text-xs font-medium px-3 py-1.5 rounded-full bg-ink text-white hover:bg-ink-soft transition-colors flex items-center gap-1">
+      className="btn btn-primary btn-sm">
       <UserPlus size={12} />
       Follow
     </button>
@@ -143,7 +143,7 @@ export default function FriendsUI({
                 </Link>
                 <div className="flex gap-2">
                   <button onClick={() => handleAccept(user)}
-                    className="text-xs font-medium px-3 py-1.5 rounded-full bg-ink text-white hover:bg-ink-soft transition-colors">
+                    className="btn btn-primary btn-sm">
                     Accept
                   </button>
                   <button onClick={() => handleReject(user.id)}
@@ -170,7 +170,7 @@ export default function FriendsUI({
               placeholder="Search by name…"
               className="flex-1 rounded-lg border border-line-strong px-3 py-2 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-brown" />
             <button type="submit"
-              className="bg-ink text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-ink-soft transition-colors">
+              className="btn btn-primary">
               Search
             </button>
           </form>

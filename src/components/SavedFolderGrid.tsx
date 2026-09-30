@@ -53,7 +53,7 @@ export default function SavedFolderGrid({ folders, total }: { folders: FolderSum
   return <>
     <div className="flex flex-wrap items-start justify-between gap-3">
       <h1 className="font-[family-name:var(--font-playfair)] text-4xl uppercase tracking-[0.04em] text-ink">Saved</h1>
-      <button type="button" disabled={pending} onClick={() => { setCreating(true); setName(''); setError('') }} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-ink px-5 text-xs font-semibold uppercase tracking-[0.16em] text-white disabled:opacity-50"><Plus size={18} />New folder</button>
+      <button type="button" disabled={pending} onClick={() => { setCreating(true); setName(''); setError('') }} className="btn btn-primary uppercase tracking-[0.16em]"><Plus size={18} />New folder</button>
     </div>
     <p className="mb-5 mt-2 text-xs uppercase tracking-[0.16em] text-muted">Trips you’ve saved, sorted into folders.</p>
     {creating && <form className="mb-5 rounded-xl border border-line-soft bg-card p-4" onSubmit={event => {
@@ -70,7 +70,7 @@ export default function SavedFolderGrid({ folders, total }: { folders: FolderSum
         <input autoFocus required maxLength={80} value={name} onChange={event => setName(event.target.value)} placeholder="Ski trips" disabled={pending} className="mt-2 w-full rounded-lg border border-line-strong bg-white px-3 py-2" />
       </label>
       <div className="mt-3 flex gap-3 text-sm">
-        <button disabled={pending} className="rounded-lg bg-ink px-4 py-2 text-white disabled:opacity-50">{pending ? 'Creating…' : 'Create folder'}</button>
+        <button disabled={pending} className="btn btn-primary">{pending ? 'Creating…' : 'Create folder'}</button>
         <button type="button" disabled={pending} onClick={() => setCreating(false)}>Cancel</button>
       </div>
       {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
@@ -110,7 +110,7 @@ export function SavedFolderActions({ folder }: { folder: { id: string; name: str
         <input autoFocus required maxLength={80} value={name} onChange={event => setName(event.target.value)} disabled={pending} className="mt-2 w-full rounded-lg border border-line-strong bg-white px-3 py-2" />
       </label>
       <div className="mt-3 flex gap-3 text-sm">
-        <button disabled={pending} className="rounded-lg bg-ink px-4 py-2 text-white disabled:opacity-50">{pending ? 'Saving…' : 'Save name'}</button>
+        <button disabled={pending} className="btn btn-primary">{pending ? 'Saving…' : 'Save name'}</button>
         <button type="button" disabled={pending} onClick={() => setMode(null)}>Cancel</button>
       </div>
     </form>}

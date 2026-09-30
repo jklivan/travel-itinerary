@@ -1,12 +1,13 @@
 'use client'
 
 import { useRef, useState, type ReactNode } from 'react'
-import { Star, X, Check } from 'lucide-react'
+import { X, Check } from 'lucide-react'
 import PlacePeople from './PlacePeople'
 import PlacesAutocomplete from './PlacesAutocomplete'
 import EventPhotoInput from './EventPhotoInput'
 import RecommendationPicker from './RecommendationPicker'
 import { recommendationTags, type PlaceRecommendation } from '@/lib/placeRecommendation'
+import { StarPicker as StarRating } from '@/components/ui/Stars'
 
 type ItemType = 'hotel' | 'food_drink' | 'activity' | 'transport'
 export type PlaceEntry = { type: ItemType; name: string; mealType: string; rating: number; notes: string; tags: string[]; photo: string; photos?: string[]; placeId: string }
@@ -33,17 +34,7 @@ const ACTIVITY_TAGS = ['Hidden Gem', 'Family Friendly', 'Great Views', 'Free', '
 
 export const ITEM_TAGS: Record<ItemType, string[]> = { food_drink: FOOD_TAGS, hotel: HOTEL_TAGS, activity: ACTIVITY_TAGS, transport: ['Flight', 'Ferry', 'Train', 'Bus', 'Car rental', 'Taxi / Uber', 'Transfer', 'Book Ahead', 'Great Value'] }
 
-export function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  return (
-    <div className="flex gap-1">
-      {[1, 2, 3, 4, 5].map((s) => (
-        <button key={s} type="button" aria-label={`Rate ${s} out of 5`} aria-pressed={value === s} onClick={() => onChange(value === s ? 0 : s)} className="focus:outline-none">
-          <Star size={24} strokeWidth={1.6} className={s <= value ? 'fill-gold text-gold' : 'fill-none text-gold-faint'} />
-        </button>
-      ))}
-    </div>
-  )
-}
+export { StarRating }
 
 export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange, city, children, planning = false }: {
   planning?: boolean
@@ -112,7 +103,7 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
             const isSelected = selected.includes(mt)
             return (
               <button key={mt} type="button" onClick={() => setMealType(isSelected ? selected.filter(t => t !== mt).join(',') : [...selected, mt].join(','))}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors capitalize ${isSelected ? MEAL_ACTIVE[mt] : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+                aria-pressed={isSelected} className="chip capitalize">
                 {MEAL_EMOJI[mt]} {mt}
               </button>
             )
@@ -155,8 +146,8 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Tags</p>
           <div className="flex flex-wrap gap-1.5">
             {ITEM_TAGS[type].map(tag => (
-              <button key={tag} type="button" onClick={() => toggleTag(tag)}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${tags.includes(tag) ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+              <button key={tag} type="button" aria-pressed={tags.includes(tag)} onClick={() => toggleTag(tag)}
+                className="chip">
                 {tag}
               </button>
             ))}
@@ -169,7 +160,7 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
       {children}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <button type="button" onClick={() => void submit()} disabled={!name.trim() || photoUploading}
-        className="w-full py-2.5 rounded-xl bg-ink text-white text-sm font-semibold hover:bg-ink-soft transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+        className="btn btn-primary w-full">
         <Check size={14} /> {busy ? 'Saving…' : planning ? 'Save Place' : 'Add'}
       </button>
     </fieldset>
