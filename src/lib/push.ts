@@ -27,21 +27,28 @@ export async function deliverNotification(id: string) {
   if (notification.kind === 'forum' && (!notification.questionId || !await prisma.friendQuestion.findFirst({ where: { id: notification.questionId, author: { following: { some: { followingId: notification.recipientId, status: 'accepted' } } } }, select: { id: true } }))) return
   if (notification.kind === 'forum_reply' && (!notification.questionId || !await prisma.friendQuestion.findFirst({ where: { id: notification.questionId, authorId: notification.recipientId }, select: { id: true } }))) return
   const devices = await prisma.pushDevice.findMany({ where: { userId: notification.recipientId } })
-  if (!devices.length) return
-  const authorization = `bearer ${providerToken()}`
+  if (!devices.length) { console.log('push skipped: no registered iPhone', notification.kind); return }
   const payload = JSON.stringify({
     aps: { alert: { title: 'Postcard', body: notificationText(notification.kind, notification.actor.name.slice(0, 80), notification.itinerary?.title.slice(0, 200) ?? '') }, sound: 'default', 'thread-id': (notification.kind === 'forum' || notification.kind === 'forum_reply') ? `forum:${notification.questionId}` : notification.kind === 'message' ? `message:${notification.actorId}${notification.message?.itineraryId ? `:${notification.message.itineraryId}` : ''}` : notification.itineraryId },
     url: notificationPath(notification.kind === 'message' ? notification.message?.itineraryId ?? null : notification.itineraryId, notification.kind, notification.actorId, notification.questionId), notificationId: id,
   })
+  const results = await sendToDevices(devices, payload, id)
+  console.log('push delivered', JSON.stringify({ kind: notification.kind, devices: devices.length, results }))
+}
+
+type Device = { id: string; token: string; updatedAt: Date }
+// Sends one alert to each device. Returns Apple's answer per device (status, and reason when refused).
+export async function sendToDevices(devices: Device[], payload: string, collapseId: string) {
+  const authorization = `bearer ${providerToken()}`
   // TestFlight and App Store builds use production APNs. Sandbox is for local development builds only.
   const host = process.env.APNS_ENVIRONMENT === 'sandbox' ? 'https://api.sandbox.push.apple.com' : 'https://api.push.apple.com'
-  const results = await Promise.allSettled(devices.map(device => new Promise<void>((resolve, reject) => {
+  const results = await Promise.allSettled(devices.map(device => new Promise<{ status: number; reason: string }>((resolve, reject) => {
     const client = connect(host)
     const timer = setTimeout(() => { client.destroy(); reject(new Error('APNs timeout')) }, 8000)
     client.on('error', error => { clearTimeout(timer); client.destroy(); reject(error) })
     const request = client.request({ ':method': 'POST', ':path': `/3/device/${device.token}`, authorization,
       'apns-topic': process.env.APNS_BUNDLE_ID!, 'apns-push-type': 'alert', 'apns-priority': '10',
-      'apns-collapse-id': id, 'apns-expiration': String(Math.floor(Date.now() / 1000) + 3600),
+      'apns-collapse-id': collapseId.slice(0, 64), 'apns-expiration': String(Math.floor(Date.now() / 1000) + 3600),
     })
     let status = 0
     let response = ''
@@ -52,15 +59,17 @@ export async function deliverNotification(id: string) {
     request.on('end', () => {
       clearTimeout(timer)
       client.close()
+      let reason = ''
+      try { reason = response ? JSON.parse(response).reason ?? '' : '' } catch { reason = response.slice(0, 100) }
       if (status === 410) {
         // Keep a token that was registered again while this request was in flight.
-        void prisma.pushDevice.deleteMany({ where: { id: device.id, updatedAt: device.updatedAt } }).then(() => resolve(), reject)
-      } else if (status !== 200) {
-        console.error('APNs delivery failed', status, response)
-        resolve()
-      } else resolve()
+        void prisma.pushDevice.deleteMany({ where: { id: device.id, updatedAt: device.updatedAt } }).then(() => resolve({ status, reason }), reject)
+      } else {
+        if (status !== 200) console.error('APNs delivery failed', status, response)
+        resolve({ status, reason })
+      }
     })
     request.end(payload)
   })))
-  for (const result of results) if (result.status === 'rejected') console.error('APNs connection failed')
+  return results.map(result => result.status === 'fulfilled' ? result.value : { status: 0, reason: result.reason instanceof Error ? result.reason.message : 'connection failed' })
 }

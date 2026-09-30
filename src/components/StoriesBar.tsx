@@ -31,7 +31,7 @@ export default function StoriesBar({ stories, userId, following, serverTime }: {
     <div className={styles.barHeading}><h2>SNAPSHOTS</h2></div>
     <div className={styles.tray}>
       {userId ? <button type="button" className={styles.addStory} onClick={() => { setMessage(''); setComposing(true) }}><span><Plus size={25} /></span>Your story</button> : <Link href="/login" className={styles.addStory}><span><Plus size={25} /></span>Your story</Link>}
-      {groups.map(group => { const latest = group.items.at(-1)!; return <button key={group.authorId} type="button" className={styles.storyThumb} disabled={!!loading} aria-label={`View ${group.authorId === userId ? 'your' : latest.authorName + '’s'} stories, ${group.items.length} ${group.items.length === 1 ? 'story' : 'stories'}`} onClick={async () => {
+      {groups.map(group => { const latest = group.items[0]; return <button key={group.authorId} type="button" className={styles.storyThumb} disabled={!!loading} aria-label={`View ${group.authorId === userId ? 'your' : latest.authorName + '’s'} stories, ${group.items.length} ${group.items.length === 1 ? 'story' : 'stories'}`} onClick={async () => {
         setLoading(group.authorId); setMessage('')
         try {
           const current = await activeStories(following)
@@ -123,7 +123,8 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
               <span className={styles.placeType}>{story.type === 'hotel' ? 'Stay' : story.type === 'food_drink' ? 'Eat & drink' : story.type === 'transport' ? 'Transport' : 'Experience'}</span>
               <h3 className={styles.storyTitle}>{story.placeName}</h3>
               <p className={styles.storyPlace}><MapPin size={15} aria-hidden="true" />{story.destination}</p>
-              {story.caption && <p className={styles.storyCaption}>{story.caption}</p>}
+              {/* Always there (empty when no caption) so the buttons sit in the same spot on every snapshot. */}
+              <p className={styles.storyCaption}>{story.caption}</p>
             </article>
           </div>
           <div className={styles.viewerActions}>

@@ -21,6 +21,7 @@ export function visibleStoriesWhere(userId: string | null, following = false, no
 export function groupStories(stories: StoryCard[], userId: string | null) {
   const groups = new Map<string, StoryCard[]>()
   for (const story of stories) groups.set(story.authorId, [...(groups.get(story.authorId) ?? []), story])
-  return [...groups.entries()].map(([authorId, items]) => ({ authorId, items: items.sort((a, b) => a.createdAt.localeCompare(b.createdAt)) }))
-    .sort((a, b) => a.authorId === userId ? -1 : b.authorId === userId ? 1 : b.items.at(-1)!.createdAt.localeCompare(a.items.at(-1)!.createdAt))
+  // Newest first, so a snapshot you just posted is the first one shown.
+  return [...groups.entries()].map(([authorId, items]) => ({ authorId, items: items.sort((a, b) => b.createdAt.localeCompare(a.createdAt)) }))
+    .sort((a, b) => a.authorId === userId ? -1 : b.authorId === userId ? 1 : b.items[0].createdAt.localeCompare(a.items[0].createdAt))
 }

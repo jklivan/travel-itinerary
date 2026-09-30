@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core'
 import { PushNotifications } from '@capacitor/push-notifications'
-import { notificationStatus, registerPushDevice, unregisterPushDevice, openNotification } from '@/actions/notifications'
+import { notificationStatus, registerPushDevice, unregisterPushDevice, openNotification, sendTestPush } from '@/actions/notifications'
 
 type PushState = { native: boolean; available: boolean; ready: boolean; enabled: boolean; busy: boolean; message: string; toggle: () => Promise<void> }
 const PushContext = createContext<PushState | null>(null)
@@ -118,7 +118,26 @@ export function NotificationPreferences() {
     {!push.native ? <p className="mt-2 text-sm text-[#5f6780]">Open the iPhone app to enable push notifications.</p> :
       !push.available ? <p className="mt-2 text-sm text-[#5f6780]">Update the iPhone app to enable notifications.</p> :
         !push.ready ? <p className="mt-2 text-sm text-[#5f6780]">Push notifications are not available yet. You can still check your activity here.</p> :
-          <button onClick={push.toggle} disabled={push.busy} className="mt-3 rounded-full bg-[#3f5a80] px-4 py-2 text-sm text-white disabled:opacity-50">{push.busy ? 'Updating…' : push.enabled ? 'Turn off on this iPhone' : 'Enable notifications'}</button>}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button onClick={push.toggle} disabled={push.busy} className="rounded-full bg-[#3f5a80] px-4 py-2 text-sm text-white disabled:opacity-50">{push.busy ? 'Updating…' : push.enabled ? 'Turn off on this iPhone' : 'Enable notifications'}</button>
+            {push.enabled && <TestPushButton />}
+          </div>}
     {push.message && <p role="status" className="mt-2 text-sm text-[#5f6780]">{push.message}</p>}
   </section>
+}
+
+// Sends a notification to this account's iPhones right away and shows Apple's answer, to check the setup.
+function TestPushButton() {
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState('')
+  return <>
+    <button type="button" disabled={busy} onClick={async () => {
+      setBusy(true); setResult('')
+      try {
+        const response = await sendTestPush()
+        setResult('error' in response && response.error ? response.error : 'results' in response ? `Sent to ${response.ok} of ${response.devices} iPhone${response.devices === 1 ? '' : 's'} (${response.environment}): ${response.results?.join(', ')}. ${response.ok ? 'It should arrive in a few seconds; close the app to see it as a banner.' : ''}` : '')
+      } catch { setResult('Could not send a test. Please try again.') } finally { setBusy(false) }
+    }} className="rounded-full border border-[#3f5a80] px-4 py-2 text-sm text-[#3f5a80] disabled:opacity-50">{busy ? 'Sending…' : 'Send a test notification'}</button>
+    {result && <p role="status" className="basis-full text-sm text-[#5f6780]">{result}</p>}
+  </>
 }

@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { pushConfigured } from '@/lib/push'
+import { pushConfigured, sendToDevices } from '@/lib/push'
 import { notificationPath, forumNotificationWhere, forumReplyNotificationWhere } from '@/lib/notificationText'
 
 export async function notificationStatus() {
@@ -60,4 +60,18 @@ export async function openNotification(form: FormData) {
   revalidatePath('/notifications')
   revalidatePath('/messages')
   redirect(notificationPath(notification.kind === 'message' ? notification.message?.itineraryId ?? null : notification.itineraryId, notification.kind, notification.actorId, notification.questionId))
+}
+
+// Settings → "Send a test notification": pushes straight to this account's iPhones and reports what Apple said.
+export async function sendTestPush() {
+  const session = await auth()
+  if (!session?.user?.id) return { error: 'Please sign in first.' }
+  if (!pushConfigured()) return { error: 'Notifications aren’t set up on the server.' }
+  const devices = await prisma.pushDevice.findMany({ where: { userId: session.user.id } })
+  if (!devices.length) return { error: 'This account has no iPhone registered. Tap Enable notifications first.' }
+  const payload = JSON.stringify({ aps: { alert: { title: 'Postcard', body: 'Test notification: notifications are working.' }, sound: 'default' }, url: '/settings' })
+  const results = await sendToDevices(devices, payload, `test-${Date.now()}`)
+  console.log('test push', JSON.stringify({ environment: process.env.APNS_ENVIRONMENT || 'production', results }))
+  const ok = results.filter(result => result.status === 200).length
+  return { devices: devices.length, ok, results: results.map(result => result.status === 200 ? 'Sent' : `${result.status || 'No connection'}${result.reason ? ` ${result.reason}` : ''}`), environment: process.env.APNS_ENVIRONMENT === 'sandbox' ? 'sandbox' : 'production' }
 }
