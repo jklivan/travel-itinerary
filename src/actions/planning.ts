@@ -99,6 +99,97 @@ export async function savePlanDetails(id: string, form: FormData): Promise<Resul
   } catch (error) { return message(error) }
 }
 
+// The planner's "How many days is your trip?" prompt: sets the length (one day makes it a day trip).
+export async function setPlanDays(id: string, days: number): Promise<Result> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  if (!Number.isInteger(days) || days < 1 || days > 365) return { error: 'Enter a number of days from 1 to 365.' }
+  try {
+    const trip = await prisma.itinerary.findFirst({ where: { id, userId }, select: { tags: true } })
+    if (!trip) return { error: unavailable }
+    const tags = days === 1 ? [...new Set([...trip.tags, 'day-trip'])] : trip.tags.filter(tag => tag !== 'day-trip')
+    await prisma.itinerary.updateMany({ where: { id, userId }, data: { durationDays: days, postType: days === 1 ? 'day-trip' : 'itinerary', tags } })
+    refresh(id, userId)
+    return { success: true }
+  } catch { return { error: 'Could not save. Please try again.' } }
+}
+
+// Removes one day from a day-by-day trip: its places become unscheduled and later days move up one.
+export async function deletePlanDay(id: string, day: number): Promise<Result> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  if (!Number.isInteger(day) || day < 1 || day > 365) return { error: 'Choose a day to delete.' }
+  try {
+    const trip = await prisma.itinerary.findFirst({ where: { id, userId }, select: { durationDays: true, tags: true, destinations: { select: { items: { select: { id: true, type: true, dayIndex: true } } } } } })
+    if (!trip) return { error: unavailable }
+    if (!trip.durationDays || trip.durationDays <= 1 || day > trip.durationDays) return { error: 'A trip needs at least one day.' }
+    const updates: { id: string; dayIndex: number | null }[] = []
+    for (const destination of trip.destinations) {
+      // Older trips count days from 0; the planner shows them from 1. Save the new days from 1.
+      const offset = destination.items.some(item => item.type !== 'hotel' && item.dayIndex === 0) ? 1 : 0
+      for (const item of destination.items) {
+        if (item.dayIndex === null) continue
+        const shown = item.dayIndex + offset
+        const next = shown === day ? null : shown > day ? shown - 1 : shown
+        if (next !== item.dayIndex) updates.push({ id: item.id, dayIndex: next })
+      }
+    }
+    const days = trip.durationDays - 1
+    const tags = days === 1 ? [...new Set([...trip.tags, 'day-trip'])] : trip.tags.filter(tag => tag !== 'day-trip')
+    await prisma.$transaction([
+      ...updates.map(update => prisma.destItem.update({ where: { id: update.id }, data: { dayIndex: update.dayIndex } })),
+      prisma.itinerary.updateMany({ where: { id, userId }, data: { durationDays: days, postType: days === 1 ? 'day-trip' : 'itinerary', tags } }),
+    ])
+    refresh(id, userId)
+    return { success: true }
+  } catch { return { error: 'Could not delete this day. Please try again.' } }
+}
+
+// Day chips: put one place on a day. A day past the trip's length makes the trip longer to fit it.
+export async function setPlaceDay(itemId: string, day: number | null): Promise<Result> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  if (day !== null && (!Number.isInteger(day) || day < 1 || day > 365)) return { error: 'Choose a day.' }
+  try {
+    const owned = { id: itemId, destination: { itinerary: { userId } } }
+    const item = await prisma.destItem.findFirst({ where: owned, select: { destinationId: true, destination: { select: { itinerary: { select: { id: true, durationDays: true, tags: true } } } } } })
+    if (!item) return { error: unavailable }
+    const trip = item.destination.itinerary
+    await prisma.$transaction(async tx => {
+      // Older trips count days from 0; move them to count from 1 first, as the planner shows them.
+      const zeroBased = await tx.destItem.count({ where: { destinationId: item.destinationId, dayIndex: 0, type: { not: 'hotel' } } })
+      if (zeroBased) await tx.destItem.updateMany({ where: { destinationId: item.destinationId, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
+      await tx.destItem.updateMany({ where: owned, data: { dayIndex: day } })
+      if (day !== null && trip.durationDays && day > trip.durationDays) await tx.itinerary.updateMany({ where: { id: trip.id, userId }, data: { durationDays: day, postType: 'itinerary', tags: trip.tags.filter(tag => tag !== 'day-trip') } })
+    })
+    refresh(trip.id, userId)
+    return { success: true }
+  } catch { return { error: 'Could not move this place. Please try again.' } }
+}
+
+// "Organize with AI" → Apply: puts each listed place on its day. Only places still unscheduled move.
+export async function applyDayPlan(tripId: string, assignments: { id: string; day: number }[]): Promise<Result> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  if (!Array.isArray(assignments) || assignments.length > 500 || assignments.some(a => !a || typeof a.id !== 'string' || a.id.length > 100 || !Number.isInteger(a.day) || a.day < 1 || a.day > 365)) return { error: 'Please try organizing again.' }
+  try {
+    const trip = await prisma.itinerary.findFirst({ where: { id: tripId, userId }, select: { durationDays: true, destinations: { select: { id: true, items: { select: { id: true, type: true, dayIndex: true } } } } } })
+    if (!trip) return { error: unavailable }
+    const days = trip.durationDays ?? 0
+    await prisma.$transaction(async tx => {
+      for (const destination of trip.destinations) {
+        const moving = assignments.filter(a => a.day <= days && destination.items.some(item => item.id === a.id && item.dayIndex === null))
+        if (!moving.length) continue
+        // Older trips count days from 0; move them to count from 1 first, as the planner shows them.
+        if (destination.items.some(item => item.type !== 'hotel' && item.dayIndex === 0)) await tx.destItem.updateMany({ where: { destinationId: destination.id, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
+        for (const a of moving) await tx.destItem.updateMany({ where: { id: a.id, destinationId: destination.id, dayIndex: null }, data: { dayIndex: a.day } })
+      }
+    })
+    refresh(tripId, userId)
+    return { success: true }
+  } catch { return { error: 'Could not apply the plan. Please try again.' } }
+}
+
 export async function addPlanPlace(id: string, form: FormData): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }

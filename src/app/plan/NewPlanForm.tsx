@@ -20,7 +20,8 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [destination, setDestination] = useState('')
-  const [format, setFormat] = useState('itinerary')
+  const [style, setStyle] = useState<'days' | 'ideas'>('days')
+  const [days, setDays] = useState('')
   const [audience, setAudience] = useState('family')
   return <form onSubmit={async event => {
     event.preventDefault()
@@ -48,20 +49,24 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
   }} className="space-y-5 rounded-2xl border border-[#e1d8c9] bg-[#fffdf7]/80 p-4 sm:p-6">
     {(savePlace || saveStory) && <p className="text-sm text-[#3f5a80]">We’ll add the place you selected to this new plan.</p>}
     <fieldset disabled={saving} className="space-y-5">
+      {/* Two ways to plan: day by day (asks how many days, so places can go on a day right away), or just
+          collecting ideas (a guide). One day is saved as a day trip. */}
       <fieldset>
-        <legend className="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#1f3354]">What are you planning?</legend>
-        <input type="hidden" name="format" value={format} />
-        <div className="grid grid-cols-3 gap-3 py-2">
+        <legend className="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#1f3354]">How do you want to plan?</legend>
+        <input type="hidden" name="format" value={style === 'ideas' ? 'guide' : days === '1' ? 'day-trip' : 'itinerary'} />
+        <div className="mx-auto grid max-w-[270px] grid-cols-2 gap-4 py-2">
           {[
-            { value: 'guide', label: 'Guide', hint: 'Places & ideas', photo: 'photo-1499793983690-e29da59ef1c2', tilt: 'rotate-[-4deg]' },
-            { value: 'day-trip', label: 'Day trip', hint: 'A short getaway', photo: 'photo-1449965408869-eaa3f722e40d', tilt: 'rotate-[-2deg]' },
-            { value: 'itinerary', label: 'Multi-day trip', hint: 'A longer journey', photo: 'photo-1436491865332-7a61a109cc05', tilt: 'rotate-[4deg]' },
-          ].map(option => <button key={option.value} type="button" aria-pressed={format === option.value} onClick={() => setFormat(option.value)} className={`${option.tilt} min-w-0 rounded-lg border bg-[#fffdf7] p-1.5 pb-3 shadow-md sm:p-2 ${format === option.value ? 'border-[#3f5a80] ring-2 ring-[#3f5a80]/20' : 'border-[#e1d8c9]'}`}>
-            <span className="block aspect-[3/4] rounded bg-cover bg-center" style={{ backgroundImage: `url(https://images.unsplash.com/${option.photo}?auto=format&fit=crop&w=480&q=85)` }} />
-            <span className="mt-2 block text-[10px] font-semibold uppercase leading-tight tracking-wide text-[#1f3354] sm:text-sm">{option.label}</span>
-            <span className="mt-1 block text-[7px] uppercase tracking-wide text-[#3f5a80] sm:text-[9px]">{option.hint}</span>
+            { value: 'days', label: 'Plan day by day', hint: 'A day-by-day itinerary', photo: 'photo-1435527173128-983b87201f4d', tilt: 'rotate-[-3deg]' },
+            { value: 'ideas', label: 'Start collecting ideas', hint: 'Places & ideas', photo: 'photo-1499793983690-e29da59ef1c2', tilt: 'rotate-[3deg]' },
+          ].map(option => <button key={option.value} type="button" aria-pressed={style === option.value} onClick={() => setStyle(option.value as 'days' | 'ideas')} className={`${option.tilt} min-w-0 rounded-lg border bg-[#fffdf7] p-1.5 pb-3 shadow-md sm:p-2 ${style === option.value ? 'border-[#3f5a80] ring-2 ring-[#3f5a80]/20' : 'border-[#e1d8c9]'}`}>
+            <span className="block aspect-[4/3] rounded bg-cover bg-center" style={{ backgroundImage: `url(https://images.unsplash.com/${option.photo}?auto=format&fit=crop&w=480&q=85)` }} />
+            <span className="mt-2 block text-[11px] font-semibold uppercase leading-tight tracking-wide text-[#1f3354] sm:text-sm">{option.label}</span>
+            <span className="mt-1 block text-[8px] uppercase tracking-wide text-[#3f5a80] sm:text-[9px]">{option.hint}</span>
           </button>)}
         </div>
+        {style === 'days' && <label className="mt-4 block text-[10px] font-semibold uppercase tracking-[0.16em] text-[#3f5a80]">How many days?
+          <input name="durationDays" type="number" inputMode="numeric" min={1} max={365} step={1} required value={days} onChange={event => setDays(event.target.value)} placeholder="e.g. 5" className={inputClass} />
+        </label>}
       </fieldset>
       <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-[#3f5a80]">Where are you thinking?<PlacesAutocomplete name="destination" value={destination} onChange={setDestination} onSelect={(main, secondary) => setDestination([main, secondary].filter(Boolean).join(', '))} type="destination" maxLength={160} placeholder="e.g. Italy, Japan, a weekend away…" className={inputClass} /></label>
       <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-[#3f5a80]">Trip name <span className="font-normal normal-case tracking-normal">(optional)</span><input name="title" maxLength={160} placeholder="Summer in Italy" className={inputClass} /></label>

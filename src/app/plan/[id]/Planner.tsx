@@ -9,7 +9,7 @@ import planningStyles from './Planner.module.css'
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, MapPin, LockKeyhole, Check, Hotel, Utensils, Camera, Plane, Upload, Pencil, Star, Sparkles, Users } from 'lucide-react'
-import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails } from '@/actions/planning'
+import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, setPlanDays, deletePlanDay, setPlaceDay, applyDayPlan } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
 import PlaceEntryForm from '@/components/PlaceEntryForm'
 import PlaceEditForm, { type PlaceEditValues, type PlaceType } from '@/components/PlaceEditForm'
@@ -86,13 +86,17 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     <div role="tablist" aria-label="Trip view" className="mb-5 mt-3 flex border-b border-[#d7cebc]">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className={`min-h-12 flex-1 border-b-2 p-3 font-semibold ${tab === value ? 'border-[#3f5a80] text-[#3f5a80]' : 'border-transparent text-[#6b7285]'}`}>{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
     <section role="tabpanel" id="trip-panel" aria-labelledby={`${tab}-tab`}>
       {mapOpened && <div hidden={tab !== 'map'}><PlanningMap places={places.filter(place => place.type !== 'transport' || place.placeId || (place.lat !== null && place.lng !== null)).map(place => ({ id: place.id, name: place.name, city: place.destination, type: place.type === 'hotel' ? 'hotel' : place.type === 'food_drink' ? 'food_drink' : place.type === 'transport' ? 'transport' : 'activity', day: place.day, placeId: place.placeId ?? undefined, lat: place.lat, lng: place.lng }))} /></div>}
+      {tab === 'itinerary' && !places.length && (trip.durationDays ? <p className="mb-4 text-sm text-[#6b7285]">Your {trip.durationDays}-day trip. Add places and choose a day for each.</p> : <TripDaysPrompt tripId={trip.id} />)}
       {tab === 'map' ? null : !places.length ? <div className="rounded-2xl border border-dashed border-[#c4b99e] p-8 text-center"><MapPin className="mx-auto mb-3 text-[#3f5a80]" /><h2 className="text-xl font-semibold">A place to start</h2><p className="mt-2 text-sm text-[#6b7285]">A hotel you love, a restaurant someone mentioned, something you want to do. Add it now and decide when later.</p></div> : tab === 'places' ? <>
         <p className="mb-5 text-sm text-[#6b7285]">Everything you’re considering, all in one place. Days are optional.</p>
         {categories.map(category => { const items = places.filter(p => p.type === category.value); return items.length > 0 && <section key={category.value} className="mb-7"><div className={`${styles.categoryHeading} ${styles[category.value]}`}><h3><span className={styles.categoryIcon}><category.Icon size={17} /></span>{category.label}</h3><span className={styles.count}>{items.length} {items.length === 1 ? 'place' : 'places'}</span></div><div className="space-y-3">{items.map(renderPlace)}</div></section> })}
       </> : <>
-        <p className="mb-5 text-sm text-[#6b7285]">Your places, day by day. Places without a day are listed under “Unscheduled”—give them one with Edit details whenever you’re ready.</p>
-        {scheduled.map(day => <section key={day} className="mb-6"><h2 className="mb-3 text-lg font-semibold">Day {day}</h2><div className="space-y-3">{places.filter(p => p.day === day).map(renderPlace)}</div></section>)}
-        <section><h2 className="mb-3 text-lg font-semibold">Unscheduled</h2><div className="space-y-3">{places.filter(p => p.day === null).map(renderPlace)}</div>{places.every(p => p.day !== null) && <p className="text-sm text-[#6b7285]">All your places have a day.</p>}</section>
+        {!trip.durationDays && <TripDaysPrompt tripId={trip.id} />}
+        {Array.from({ length: maxDay }, (_, index) => index + 1).filter(day => trip.durationDays || scheduled.includes(day)).map(day => { const dayPlaces = places.filter(p => p.day === day); return <section key={day} className="mb-6"><h2 className="mb-3 text-lg font-semibold">Day {day}</h2>{dayPlaces.length ? <div className="space-y-3">{dayPlaces.map(renderPlace)}</div> : <p className="rounded-xl border border-dashed border-[#d7cebc] px-4 py-3 text-sm text-[#6b7285]">Nothing planned yet.</p>}
+          {!!trip.durationDays && trip.durationDays > 1 && <DeleteDay tripId={trip.id} day={day} places={dayPlaces.length} />}</section> })}
+        {!!trip.durationDays && <AddDay tripId={trip.id} days={trip.durationDays} />}
+        <section><h2 className="mb-3 text-lg font-semibold">Unscheduled</h2>
+          {!!trip.durationDays && places.some(p => p.day === null) && <OrganizeWithAI tripId={trip.id} places={places} />}<div className="space-y-3">{places.filter(p => p.day === null).map(place => trip.durationDays ? <PlaceRow key={place.id} tripId={trip.id} place={place} maxDay={maxDay} dayChips={trip.durationDays} /> : renderPlace(place))}</div>{places.every(p => p.day !== null) && <p className="text-sm text-[#6b7285]">All your places have a day.</p>}</section>
       </>}
     </section>
     <div className="mt-8 border-t border-[#d7cebc] pt-5"><div className="flex flex-wrap items-center justify-between gap-3"><div className="pointer-events-auto"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div>{trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={() => setPublishFormat(trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary')} aria-label="Post trip" title="Post trip" className="pointer-events-auto relative inline-flex size-20 items-center justify-center transition-transform hover:-rotate-6 hover:scale-105 disabled:opacity-60"><Image src="/brand/postcard-stamp-logo.png" alt="" width={80} height={80} /><span className="sr-only">Post</span></button>}</div></div>
@@ -147,9 +151,11 @@ function AddPlace({ trip, maxDay, onClose }: { trip: Trip; maxDay: number; onClo
       finally { saving.current = false; setBusy(false) }
     }}>
       <fieldset><legend className="mb-2 text-xs uppercase tracking-wide text-[#3f5a80]">Booking status (optional)</legend><div className="flex flex-wrap gap-2">{[['considering', 'Want to go'], ['booked', 'Booked'], ['visited', 'Visited']].map(([value, label]) => <button key={value} type="button" aria-pressed={status === value} onClick={() => setStatus(value)} className={`min-h-10 rounded-full border px-3 text-xs ${status === value ? 'border-[#3f5a80] bg-[#e6ecf4] text-[#243b61]' : 'border-[#d7cebc] text-[#6b7285]'}`}>{label}</button>)}</div></fieldset>
-      <details><summary className="text-sm text-[#3f5a80]">Add a day (optional)</summary>
+      {/* Day-by-day trips ask which day right away; idea lists keep it tucked away. */}
+      {trip.durationDays ? <label className="block text-xs uppercase tracking-wide text-[#3f5a80]">Which day?<select value={day} onChange={event => setDay(event.target.value)} className={inputClass}><option value="">Unscheduled</option>{Array.from({ length: maxDay }, (_, index) => index + 1).map(value => <option key={value} value={value}>Day {value}</option>)}</select></label>
+      : <details><summary className="text-sm text-[#3f5a80]">Add a day (optional)</summary>
       <label className="block text-sm">Day (optional)<select value={day} onChange={event => setDay(event.target.value)} className={inputClass}><option value="">Unscheduled</option>{Array.from({ length: maxDay }, (_, index) => index + 1).map(value => <option key={value} value={value}>Day {value}</option>)}</select></label>
-      </details>
+      </details>}
     </PlaceEntryForm>
     {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
   </section>
@@ -186,7 +192,7 @@ function UnratedPrompt({ places, onClose, onPreview }: { places: (Place & { dest
   </div>
 }
 
-function PlaceRow({ tripId, place, maxDay }: { tripId: string; place: Place & { destination: string }; maxDay: number }) {
+function PlaceRow({ tripId, place, maxDay, dayChips }: { tripId: string; place: Place & { destination: string }; maxDay: number; dayChips?: number }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -228,6 +234,7 @@ function PlaceRow({ tripId, place, maxDay }: { tripId: string; place: Place & { 
         <Link href={`/testplan?trip=${tripId}&ask=${place.id}`} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} className="relative z-[2] mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#3f5a80] underline-offset-2 hover:underline"><Sparkles size={13} />Ask AI about this place</Link>
       </div>
     </div>
+    {!!dayChips && <DayChips itemId={place.id} days={dayChips} />}
     {place.type !== 'transport' && <PlacePeople key={`${place.placeId}:${place.name}:${place.destination}`} compact placeId={place.placeId ?? ''} name={place.name} location={place.destination} />}
     <div className={planningStyles.controls}>
     {!editing ? <PlaceQuickEdit compact row itemId={place.id} name={place.name} type={category.value as PlaceType} tags={place.tags} rating={place.rating} photos={place.photos}
@@ -268,4 +275,123 @@ function DetailsForm({ trip }: { trip: Trip }) {
     try { const result = await savePlanDetails(trip.id, data); setMessage(result.error || 'Saved'); if (!result.error) router.refresh() }
     catch { setMessage('Could not save. Please try again.') } finally { setBusy(false) }
   }}><fieldset disabled={busy} className="space-y-3"><label className="block text-sm">Trip name<input name="title" required defaultValue={trip.title} maxLength={160} className={inputClass} /></label><label className="block text-sm">Number of days (optional)<input name="durationDays" type="number" min="1" step="1" defaultValue={trip.durationDays ?? ''} className={inputClass} /></label><fieldset><legend className="mb-2 text-sm">Who is this trip for?</legend><div className="flex flex-wrap gap-2">{([{ value: 'family', label: 'Family' }, { value: 'friends', label: 'Friends' }, { value: 'romantic', label: 'Couples' }, { value: 'adult', label: 'Adults' }] as const).map(option => <label key={option.value} className="cursor-pointer"><input className="peer sr-only" type="radio" name="audience" value={option.value} defaultChecked={trip.audience === option.value} /><span className="inline-flex min-h-10 items-center rounded-full border border-[#d7cebc] px-4 text-sm text-[#3f5a80] peer-checked:border-[#3f5a80] peer-checked:bg-[#e6ecf4] peer-checked:font-semibold">{option.label}</span></label>)}</div></fieldset><DateFields start={trip.start} end={trip.end} /><p className="text-xs text-[#6b7285]">Leave both dates blank to keep things flexible.</p><MonthPicker value={months} onChange={setMonths} /><input type="hidden" name="bestMonths" value={JSON.stringify(months)} /><label className="block text-sm">Trip notes & tips (optional)<textarea name="notes" rows={4} defaultValue={trip.notes ?? ''} maxLength={8000} placeholder="Tips, packing list, visa info…" className={inputClass} /></label><button className={buttonClass}>{busy ? 'Saving…' : 'Save details'}</button></fieldset>{message && <p role="status" className="text-sm">{message}</p>}</form>
+}
+
+// Itinerary tab: how many days the trip is, so places can be put on days.
+function TripDaysPrompt({ tripId, current, onDone }: { tripId: string; current?: number; onDone?: () => void }) {
+  const router = useRouter()
+  const [days, setDays] = useState(current ? String(current) : '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  return <form className="mb-5 rounded-2xl border border-[#c8d2e0] bg-[#eaeff6] p-4" onSubmit={async event => {
+    event.preventDefault(); if (busy) return
+    setBusy(true); setError('')
+    try { const result = await setPlanDays(tripId, Number(days)); if (result.error) setError(result.error); else { onDone?.(); router.refresh() } }
+    catch { setError('Could not save. Please try again.') } finally { setBusy(false) }
+  }}>
+    <label className="block text-sm font-semibold text-[#1f3354]">How many days is your trip?
+      <span className="mt-0.5 block text-xs font-normal text-[#6b7285]">Then give each place a day.</span>
+      <span className="mt-2 flex gap-2"><input type="number" inputMode="numeric" min={1} max={365} step={1} required value={days} onChange={event => setDays(event.target.value)} placeholder="e.g. 5" className={`${inputClass} !mt-0 max-w-32`} />
+      <button disabled={busy} className={buttonClass}>{busy ? 'Saving…' : 'Set days'}</button></span>
+    </label>
+    {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+  </form>
+}
+
+// Itinerary tab: a dotted "+ Add a day" after the last day, which makes the trip one day longer.
+function AddDay({ tripId, days }: { tripId: string; days: number }) {
+  const router = useRouter()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  return <div className="mb-8">
+    <button type="button" disabled={busy || days >= 365} onClick={async () => {
+      setBusy(true); setError('')
+      try { const result = await setPlanDays(tripId, days + 1); if (result.error) setError(result.error); else router.refresh() }
+      catch { setError('Could not add a day. Please try again.') } finally { setBusy(false) }
+    }} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#a9b6c8] text-sm font-semibold text-[#3f5a80] hover:bg-[#eaeff6] disabled:opacity-50"><Plus size={18} />{busy ? 'Adding…' : 'Add a day'}</button>
+    {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+  </div>
+}
+
+// Under each day: delete it. Its places move to Unscheduled and later days move up.
+function DeleteDay({ tripId, day, places }: { tripId: string; day: number; places: number }) {
+  const router = useRouter()
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  async function remove() {
+    setBusy(true); setError('')
+    try { const result = await deletePlanDay(tripId, day); if (result.error) setError(result.error); else { setConfirming(false); router.refresh() } }
+    catch { setError('Could not delete this day. Please try again.') } finally { setBusy(false) }
+  }
+  return <div className="mt-2 text-right text-xs">
+    {!confirming ? <button type="button" onClick={() => places ? setConfirming(true) : void remove()} disabled={busy} className="min-h-9 text-red-700 hover:underline disabled:opacity-50">{busy ? 'Deleting…' : `Delete day ${day}`}</button>
+    : <span className="inline-flex flex-wrap items-center justify-end gap-3 text-[#1f3354]">Delete Day {day}? Its {places === 1 ? 'place moves' : `${places} places move`} to Unscheduled.
+      <button type="button" disabled={busy} onClick={() => void remove()} className="min-h-9 font-semibold text-red-700">{busy ? 'Deleting…' : 'Delete'}</button>
+      <button type="button" disabled={busy} onClick={() => setConfirming(false)} className="min-h-9">Keep</button></span>}
+    {error && <p role="alert" className="mt-1 text-red-700">{error}</p>}
+  </div>
+}
+
+// On an unscheduled place in a day-by-day trip: one tap puts it on a day. "+" adds a new day for it.
+function DayChips({ itemId, days }: { itemId: string; days: number }) {
+  const router = useRouter()
+  const [busy, setBusy] = useState<number | null>(null)
+  const [error, setError] = useState('')
+  async function move(day: number) {
+    setBusy(day); setError('')
+    try { const result = await setPlaceDay(itemId, day); if (result.error) setError(result.error); else router.refresh() }
+    catch { setError('Could not move this place. Please try again.') } finally { setBusy(null) }
+  }
+  return <div className="border-t border-[#e3dfd2] px-3 py-2.5">
+    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b7285]">Add to a day</p>
+    <div className="flex flex-wrap gap-1.5">
+      {Array.from({ length: days }, (_, index) => index + 1).map(day => <button key={day} type="button" disabled={busy !== null} onClick={() => void move(day)} aria-label={`Move to day ${day}`} className="min-h-9 min-w-12 rounded-full border border-[#c8d2e0] bg-[#fffdf7] px-3 text-xs font-semibold text-[#243b61] hover:border-[#243b61] hover:bg-[#eaeff6] disabled:opacity-50">{busy === day ? '…' : `Day ${day}`}</button>)}
+      <button type="button" disabled={busy !== null || days >= 365} onClick={() => void move(days + 1)} aria-label={`Add day ${days + 1} for this place`} title="New day" className="flex min-h-9 min-w-9 items-center justify-center rounded-full border border-dashed border-[#a9b6c8] text-[#3f5a80] hover:bg-[#eaeff6] disabled:opacity-50">{busy === days + 1 ? '…' : <Plus size={15} />}</button>
+    </div>
+    {error && <p role="alert" className="mt-1 text-xs text-red-700">{error}</p>}
+  </div>
+}
+
+// Itinerary tab: ask the AI to put the unscheduled places on days, review its plan, then apply it.
+function OrganizeWithAI({ tripId, places }: { tripId: string; places: (Place & { destination: string })[] }) {
+  const router = useRouter()
+  const [state, setState] = useState<'idle' | 'thinking' | 'review' | 'applying'>('idle')
+  const [plan, setPlan] = useState<{ assignments: { id: string; day: number }[]; days: { day: number; theme: string; why: string }[] } | null>(null)
+  const [error, setError] = useState('')
+  const name = (id: string) => places.find(place => place.id === id)?.name ?? ''
+  async function organize() {
+    setState('thinking'); setError('')
+    try {
+      const response = await fetch(`/api/plan/${tripId}/organize`, { method: 'POST' })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Something went wrong.')
+      if (!data.assignments.length) throw new Error('Postcard couldn’t find a good day for these places. Try the day buttons instead.')
+      setPlan(data); setState('review')
+    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Something went wrong.'); setState('idle') }
+  }
+  async function apply() {
+    if (!plan) return
+    setState('applying'); setError('')
+    try { const result = await applyDayPlan(tripId, plan.assignments); if (result.error) { setError(result.error); setState('review') } else { setPlan(null); setState('idle'); router.refresh() } }
+    catch { setError('Could not apply the plan. Please try again.'); setState('review') }
+  }
+  const byDay = plan ? [...new Set(plan.assignments.map(a => a.day))].sort((a, b) => a - b) : []
+  return <div className="mb-4">
+    {state !== 'review' && state !== 'applying' ? <button type="button" disabled={state === 'thinking'} onClick={() => void organize()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#c8d2e0] bg-[#eaeff6] px-4 text-sm font-semibold text-[#243b61] hover:bg-[#dde5f0] disabled:opacity-70"><Sparkles size={17} />{state === 'thinking' ? 'Organizing your days…' : 'Organize with AI'}</button>
+    : plan && <div className="rounded-2xl border border-[#c8d2e0] bg-[#fffdf7] p-4">
+      <p className="flex items-center gap-2 text-sm font-semibold text-[#1f3354]"><Sparkles size={16} />Suggested days</p>
+      <p className="mt-1 text-xs text-[#6b7285]">Nothing moves until you apply. You can change any day afterwards.</p>
+      <div className="mt-3 space-y-3">{byDay.map(day => { const theme = plan.days.find(d => d.day === day); return <section key={day} className="rounded-xl bg-[#f7f3ec] p-3">
+        <h3 className="text-sm font-semibold normal-case text-[#1f3354]">Day {day}{theme ? ` · ${theme.theme}` : ''}</h3>
+        {theme?.why && <p className="mt-0.5 text-xs text-[#6b7285]">{theme.why}</p>}
+        <ul className="mt-1.5 list-disc pl-5 text-sm text-[#2b4368]">{plan.assignments.filter(a => a.day === day).map(a => <li key={a.id}>{name(a.id)}</li>)}</ul>
+      </section> })}</div>
+      <div className="mt-4 flex gap-2">
+        <button type="button" disabled={state === 'applying'} onClick={() => void apply()} className={`${buttonClass} flex-1`}>{state === 'applying' ? 'Applying…' : 'Apply these days'}</button>
+        <button type="button" disabled={state === 'applying'} onClick={() => { setPlan(null); setState('idle') }} className="min-h-11 rounded-xl border border-[#d7cebc] px-4 text-sm">Cancel</button>
+      </div>
+    </div>}
+    {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+  </div>
 }
