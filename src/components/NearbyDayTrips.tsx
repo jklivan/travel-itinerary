@@ -66,22 +66,22 @@ export default function NearbyDayTrips({ entries }: { entries: Entry[] }) {
   useEffect(() => () => clearTimeout(safetyTimer.current), [])
 
   return <section aria-label="Nearby day trips">
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dfd3c2] bg-[#faf7f1] p-4">
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sand bg-cream p-4">
       <div className="flex items-start gap-3">
         <div>
-          <p className="text-sm font-semibold text-[#1f3354]">Find day trips near you</p>
+          <p className="text-sm font-semibold text-ink">Find day trips near you</p>
         </div>
       </div>
       {position
-        ? <button type="button" onClick={() => setPosition(null)} className="min-h-10 rounded-full border border-[#cbbda8] px-4 text-sm font-medium text-[#2b4368]">Show all trips</button>
-        : <button type="button" onClick={useLocation} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#243b61] px-4 text-sm font-semibold text-white disabled:opacity-60"><LocateFixed size={16} />{loading ? 'Finding you…' : 'Near me'}</button>}
+        ? <button type="button" onClick={() => setPosition(null)} className="min-h-10 rounded-full border border-line px-4 text-sm font-medium text-ink-soft">Show all trips</button>
+        : <button type="button" onClick={useLocation} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-ink px-4 text-sm font-semibold text-white disabled:opacity-60"><LocateFixed size={16} />{loading ? 'Finding you…' : 'Near me'}</button>}
     </div>
-    {position && nearby.length > 0 && <p role="status" className="mb-3 text-sm font-medium text-[#3f5a80]">Showing day trips within 50 miles of you</p>}
-    {error && !browseAll && <div role="alert" className="mb-4 rounded-2xl border border-[#e0c9a6] bg-[#fdf6ea] p-4 text-sm text-[#6b4f2e]"><p>{error}</p><button type="button" onClick={() => setBrowseAll(true)} className="mt-3 min-h-10 rounded-full border border-[#cbbda8] px-4 font-medium text-[#2b4368]">Show all day trips instead</button></div>}
-    {position && nearby.length === 0 && <p role="status" className="rounded-xl border border-dashed border-[#dfd3c2] p-6 text-center text-sm text-[#6b7285]">No day trips within 50 miles yet. Try all trips to explore farther away.</p>}
+    {position && nearby.length > 0 && <p role="status" className="mb-3 text-sm font-medium text-link">Showing day trips within 50 miles of you</p>}
+    {error && !browseAll && <div role="alert" className="mb-4 rounded-2xl border border-[#e0c9a6] bg-cream p-4 text-sm text-[#6b4f2e]"><p>{error}</p><button type="button" onClick={() => setBrowseAll(true)} className="mt-3 min-h-10 rounded-full border border-line px-4 font-medium text-ink-soft">Show all day trips instead</button></div>}
+    {position && nearby.length === 0 && <p role="status" className="rounded-xl border border-dashed border-sand p-6 text-center text-sm text-muted">No day trips within 50 miles yet. Try all trips to explore farther away.</p>}
     <div className="mx-auto flex w-full max-w-xl flex-col gap-3 sm:gap-5">
       {(!error || browseAll) && nearby.map(entry => <div key={entry.id}>
-        {entry.miles !== null && <p className="mb-1 px-1 text-xs font-medium text-[#3f5a80]">{Math.round(entry.miles)} miles from you</p>}
+        {entry.miles !== null && <p className="mb-1 px-1 text-xs font-medium text-link">{Math.round(entry.miles)} miles from you</p>}
         {entry.card}
       </div>)}
     </div>

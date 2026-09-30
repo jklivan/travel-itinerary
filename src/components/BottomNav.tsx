@@ -18,15 +18,15 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
   const isPlanner = pathname === '/plan' || pathname === '/testplan'
 
   function cls(active: boolean) {
-    return `flex min-w-0 flex-col items-center gap-1 px-1 py-2 transition-colors ${active ? 'text-[#1f3354]' : 'text-[#8a7560] hover:text-[#1f3354]'}`
+    return `flex min-w-0 flex-col items-center gap-1 px-1 py-2 transition-colors ${active ? 'text-ink' : 'text-brown hover:text-ink'}`
   }
   function iconClass(active: boolean) {
-    return active ? 'flex size-9 items-center justify-center rounded-full bg-[#243b61] text-white' : 'flex size-9 items-center justify-center'
+    return active ? 'flex size-9 items-center justify-center rounded-full bg-ink text-white' : 'flex size-9 items-center justify-center'
   }
   const label = 'text-[10px] font-medium uppercase tracking-[0.12em]'
 
   return (
-    <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl border-t border-[#e1d8ca] bg-[#fbf8f3] shadow-[0_-4px_18px_rgba(31,51,84,0.08)]">
+    <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl border-t border-line-soft bg-cream shadow-[0_-4px_18px_rgba(31,51,84,0.08)]">
       <div className="max-w-2xl mx-auto grid grid-cols-5 items-center py-2">
         <Link href="/" aria-current={isFeed ? 'page' : undefined} className={cls(isFeed)}>
           <span className={iconClass(isFeed)}><Home className="w-6 h-6" /></span>
@@ -40,7 +40,7 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
 
         {/* Plan sits raised in the middle: a navy disc with the Postcard compass star. */}
         <Link href={userId ? '/plan' : '/login'} aria-current={isPlanner ? 'page' : undefined} className={`${cls(isPlanner)} -mt-7`}>
-          <span className="flex size-[62px] items-center justify-center rounded-full border-4 border-[#fbf8f3] bg-[#243b61] text-white shadow-[0_4px_12px_rgba(31,51,84,0.3)]"><CompassStar /></span>
+          <span className="flex size-[62px] items-center justify-center rounded-full border-4 border-cream bg-ink text-white shadow-[0_4px_12px_rgba(31,51,84,0.3)]"><CompassStar /></span>
           <span className={label}>Plan</span>
         </Link>
 

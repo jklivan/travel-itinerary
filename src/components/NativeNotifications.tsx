@@ -112,17 +112,17 @@ export default function NativeNotifications({ children }: { children: React.Reac
 export function NotificationPreferences() {
   const push = useContext(PushContext)
   if (!push) return null
-  return <section className="mb-5 rounded-xl border border-[#e3dfd2] bg-[#faf7ee] p-4">
-    <h2 className="font-semibold text-[#1f3354]">iPhone notifications</h2>
-    <p className="mt-1 text-sm text-[#5f6780]">Get an alert for forum posts, private messages, new trips from people you follow, and activity on your trips.</p>
-    {!push.native ? <p className="mt-2 text-sm text-[#5f6780]">Open the iPhone app to enable push notifications.</p> :
-      !push.available ? <p className="mt-2 text-sm text-[#5f6780]">Update the iPhone app to enable notifications.</p> :
-        !push.ready ? <p className="mt-2 text-sm text-[#5f6780]">Push notifications are not available yet. You can still check your activity here.</p> :
+  return <section className="mb-5 rounded-xl border border-line-soft bg-cream p-4">
+    <h2 className="font-semibold text-ink">iPhone notifications</h2>
+    <p className="mt-1 text-sm text-muted">Get an alert for forum posts, private messages, new trips from people you follow, and activity on your trips.</p>
+    {!push.native ? <p className="mt-2 text-sm text-muted">Open the iPhone app to enable push notifications.</p> :
+      !push.available ? <p className="mt-2 text-sm text-muted">Update the iPhone app to enable notifications.</p> :
+        !push.ready ? <p className="mt-2 text-sm text-muted">Push notifications are not available yet. You can still check your activity here.</p> :
           <div className="mt-3 flex flex-wrap gap-2">
-            <button onClick={push.toggle} disabled={push.busy} className="rounded-full bg-[#3f5a80] px-4 py-2 text-sm text-white disabled:opacity-50">{push.busy ? 'Updating…' : push.enabled ? 'Turn off on this iPhone' : 'Enable notifications'}</button>
+            <button onClick={push.toggle} disabled={push.busy} className="rounded-full bg-link px-4 py-2 text-sm text-white disabled:opacity-50">{push.busy ? 'Updating…' : push.enabled ? 'Turn off on this iPhone' : 'Enable notifications'}</button>
             {push.enabled && <TestPushButton />}
           </div>}
-    {push.message && <p role="status" className="mt-2 text-sm text-[#5f6780]">{push.message}</p>}
+    {push.message && <p role="status" className="mt-2 text-sm text-muted">{push.message}</p>}
   </section>
 }
 
@@ -137,7 +137,7 @@ function TestPushButton() {
         const response = await sendTestPush()
         setResult('error' in response && response.error ? response.error : 'results' in response ? `Sent to ${response.ok} of ${response.devices} iPhone${response.devices === 1 ? '' : 's'} (${response.environment}): ${response.results?.join(', ')}. ${response.ok ? 'It should arrive in a few seconds; close the app to see it as a banner.' : ''}` : '')
       } catch { setResult('Could not send a test. Please try again.') } finally { setBusy(false) }
-    }} className="rounded-full border border-[#3f5a80] px-4 py-2 text-sm text-[#3f5a80] disabled:opacity-50">{busy ? 'Sending…' : 'Send a test notification'}</button>
-    {result && <p role="status" className="basis-full text-sm text-[#5f6780]">{result}</p>}
+    }} className="rounded-full border border-link px-4 py-2 text-sm text-link disabled:opacity-50">{busy ? 'Sending…' : 'Send a test notification'}</button>
+    {result && <p role="status" className="basis-full text-sm text-muted">{result}</p>}
   </>
 }

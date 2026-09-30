@@ -36,7 +36,7 @@ export default function PlacePhoto({ itemId, name, photos = [], thumbnailClass, 
         <img src={sizedPhoto(displayPhoto.url, fullWidth ? 1080 : 640)} alt={name} className={fullWidth ? 'h-full w-full object-cover' : 'absolute inset-0 h-full w-full object-cover'} onError={() => setFailed(true)} />
       </> : fallback}
     </div>
-    {displayPhoto && !failed && displayPhoto.mapsUrl && <div className="relative z-[2] mt-1 space-y-1 bg-[#fffdf6] p-1 text-xs leading-tight text-[#5e5e5e] [overflow-wrap:anywhere]">
+    {displayPhoto && !failed && displayPhoto.mapsUrl && <div className="relative z-[2] mt-1 space-y-1 bg-card p-1 text-xs leading-tight text-[#5e5e5e] [overflow-wrap:anywhere]">
       <a href={displayPhoto.mapsUrl} target="_blank" rel="noopener noreferrer" aria-label={`View ${name} on Google Maps`} className="block font-normal not-italic tracking-normal">View place on <span translate="no">Google Maps</span></a>
     </div>}
   </div>

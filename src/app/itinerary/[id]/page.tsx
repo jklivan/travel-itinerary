@@ -547,13 +547,13 @@ export default async function ItineraryPage({
   const renderActivityCard = (item: DestItemRow, compact = false) => renderPlaceCard(item, item.type === 'transport' ? 'transport' : 'activity', compact)
 
   return (
-    <div className="min-h-screen bg-[#f7f3ec]">
+    <div className="min-h-screen bg-paper">
       {previewing && <PublishPreviewBar id={it.id} postType={it.postType} budget={it.budget} tripRating={it.tripRating} tags={it.tags} />}
       <div className={`max-w-4xl mx-auto px-4 ${isOwn ? 'pt-2 pb-6' : 'py-6'}`}>
         <TripBackButton itineraryId={it.id} fallback={isOwn ? `/user/${it.user.id}` : "/"} className={isOwn ? 'mb-1 min-h-9' : ''} />
 
         {previewing ? (
-          <div className="mb-4 rounded-lg border border-[#c8d2e0] bg-[#eaeff6] px-3 py-2 text-xs font-medium text-[#243b61]">
+          <div className="mb-4 rounded-lg border border-mist-line bg-mist px-3 py-2 text-xs font-medium text-ink">
             Preview — only you can see this. It’s how your trip will look once you post it.
           </div>
         ) : it.visibility === 'draft' && (
@@ -564,13 +564,13 @@ export default async function ItineraryPage({
 
         {/* ── Editorial Header ── */}
         <div className="mb-2">
-          <h1 className={`trip-title font-[family-name:var(--font-playfair)] ${isOwn ? 'text-3xl sm:text-4xl' : 'text-4xl md:text-5xl'} text-[#1f3354] leading-tight mb-2 uppercase`}>
+          <h1 className={`trip-title font-[family-name:var(--font-playfair)] ${isOwn ? 'text-3xl sm:text-4xl' : 'text-4xl md:text-5xl'} text-ink leading-tight mb-2 uppercase`}>
             {it.title}
           </h1>
 
           <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3">
             {it.destinations.map((d, i) => (
-              <span key={i} className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold">
+              <span key={i} className="text-xs uppercase tracking-widest text-brown font-semibold">
                 {d.name}{d.country ? `, ${d.country}` : ''}
               </span>
             ))}
@@ -580,38 +580,38 @@ export default async function ItineraryPage({
             {!isOwn && <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />}
             {/* One chip style for everything here; the verdict uses its stamp colour, as on the trip cards. */}
             {stamp && <span className={`${TAG_CHIP} font-semibold text-white`} style={{ backgroundColor: STAMP_COLORS[stamp.value] }}>{stamp.label}</span>}
-            {!!it.budget && it.budget > 0 && <span aria-label={`Budget ${it.budget} out of 5`} className={`${TAG_CHIP} bg-[#ede7dd] font-semibold tracking-tight`}>{[1, 2, 3, 4, 5].map(n => <span key={n} className={n <= it.budget! ? 'text-[#1f3354]' : 'text-[#bfb5a4]'}>$</span>)}</span>}
-            {audienceLabel && <span className={`${TAG_CHIP} bg-[#ede7dd] text-[#1f3354]`}>{audienceLabel}</span>}
+            {!!it.budget && it.budget > 0 && <span aria-label={`Budget ${it.budget} out of 5`} className={`${TAG_CHIP} bg-chip font-semibold tracking-tight`}>{[1, 2, 3, 4, 5].map(n => <span key={n} className={n <= it.budget! ? 'text-ink' : 'text-gold-faint'}>$</span>)}</span>}
+            {audienceLabel && <span className={`${TAG_CHIP} bg-chip text-ink`}>{audienceLabel}</span>}
             {displayTags.map(tag => {
               const meta = tagMeta(tag)
               return meta ? (
-                <span key={tag} className={`${TAG_CHIP} bg-[#ede7dd] text-[#1f3354]`}>
+                <span key={tag} className={`${TAG_CHIP} bg-chip text-ink`}>
                   {meta.emoji} {meta.label}
                 </span>
               ) : null
             })}
             {it.bestMonths && it.bestMonths.length > 0 && it.bestMonths.map(m => (
-              <span key={m} className={`${TAG_CHIP} bg-[#e6ecf4] text-[#243b61]`}>{m}</span>
+              <span key={m} className={`${TAG_CHIP} bg-mist text-ink`}>{m}</span>
             ))}
           </div>
 
           {/* Italic description */}
           {it.description && (
-            <p className="font-[family-name:var(--font-playfair)] italic text-[#2b4368] text-lg mb-3">
+            <p className="font-[family-name:var(--font-playfair)] italic text-ink-soft text-lg mb-3">
               {it.description}
             </p>
           )}
 
           {/* Author / meta / actions row */}
-          <div className="flex items-center justify-between flex-wrap gap-3 border-t border-b border-[#c1ad93] py-3 mb-2">
+          <div className="flex items-center justify-between flex-wrap gap-3 border-t border-b border-line-strong py-3 mb-2">
             <div className="flex items-center gap-3 flex-wrap">
               <Link href={`/user/${it.user.id}`} className="flex items-center gap-2 hover:opacity-80">
                 <UserAvatar name={it.user.name} image={it.user.image} size={32} />
-                <span className="text-sm font-medium text-[#1f3354]">{it.user.name}</span>
+                <span className="text-sm font-medium text-ink">{it.user.name}</span>
               </Link>
-              {isGuide && <span className="text-xs text-[#8B6F4E]">Guide</span>}
+              {isGuide && <span className="text-xs text-brown">Guide</span>}
               {days !== null && (
-                <span className="text-xs text-[#8B6F4E]">
+                <span className="text-xs text-brown">
                   {hasTripDates(it) && `${fmtShort(it.startDate)} – ${fmtShort(it.endDate)} · `}{days} {days === 1 ? 'day' : 'days'}
                 </span>
               )}
@@ -629,7 +629,7 @@ export default async function ItineraryPage({
                       ? 'border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-500'
                       : followStatus === 'pending'
                       ? 'border-amber-300 text-amber-700 hover:border-red-300 hover:text-red-500'
-                      : 'bg-[#1f3354] border-[#1f3354] text-white hover:bg-[#2b4368]'
+                      : 'bg-ink border-ink text-white hover:bg-ink-soft'
                   }`}>
                     {followStatus === 'accepted' ? 'Following' : followStatus === 'pending' ? 'Requested' : '+ Follow'}
                   </button>
@@ -642,8 +642,8 @@ export default async function ItineraryPage({
           {/* Friends who saved this trip */}
           <div className="flex flex-wrap gap-2 items-center">
             {itineraryFriendBucketers.length > 0 && (
-              <span className="text-xs text-[#8B6F4E]">
-                🔖 <span className="font-medium text-[#2b4368]">
+              <span className="text-xs text-brown">
+                🔖 <span className="font-medium text-ink-soft">
                   {itineraryFriendBucketers.slice(0, 3).map(n => n.split(' ')[0]).join(', ')}
                 </span>
                 {itineraryFriendBucketers.length > 3 && ` +${itineraryFriendBucketers.length - 3} more`} saved this
@@ -652,23 +652,23 @@ export default async function ItineraryPage({
           </div>
         </div>
 
-        <nav aria-label="Itinerary view" className="flex flex-wrap gap-1 bg-[#dfd3c2] rounded-xl p-1 text-sm font-medium mb-3 w-fit">
+        <nav aria-label="Itinerary view" className="flex flex-wrap gap-1 bg-sand rounded-xl p-1 text-sm font-medium mb-3 w-fit">
           <Link href={`/itinerary/${it.id}`} scroll={false} aria-current={!showMap && !showDayByDay ? 'page' : undefined}
-            className={`px-4 py-2 rounded-lg transition-colors ${!showMap && !showDayByDay ? 'bg-[#faf7f1] shadow-sm text-[#1f3354]' : 'text-[#8B6F4E] hover:text-[#2b4368]'}`}>
+            className={`px-4 py-2 rounded-lg transition-colors ${!showMap && !showDayByDay ? 'bg-cream shadow-sm text-ink' : 'text-brown hover:text-ink-soft'}`}>
             Trip Summary
           </Link>
           {hasDailyPlan && <Link href={`/itinerary/${it.id}?view=day-by-day`} scroll={false} aria-current={showDayByDay ? 'page' : undefined}
-            className={`px-4 py-2 rounded-lg transition-colors ${showDayByDay ? 'bg-[#faf7f1] shadow-sm text-[#1f3354]' : 'text-[#8B6F4E] hover:text-[#2b4368]'}`}>
+            className={`px-4 py-2 rounded-lg transition-colors ${showDayByDay ? 'bg-cream shadow-sm text-ink' : 'text-brown hover:text-ink-soft'}`}>
             Itinerary View
           </Link>}
           {mapPins.length > 0 && <Link href={`/itinerary/${it.id}?view=map`} scroll={false} aria-current={showMap ? 'page' : undefined}
-            className={`px-4 py-2 rounded-lg transition-colors ${showMap ? 'bg-[#faf7f1] shadow-sm text-[#1f3354]' : 'text-[#8B6F4E] hover:text-[#2b4368]'}`}>
+            className={`px-4 py-2 rounded-lg transition-colors ${showMap ? 'bg-cream shadow-sm text-ink' : 'text-brown hover:text-ink-soft'}`}>
             Map View
           </Link>}
         </nav>
 
         {showMap && (
-          <div className="h-[60vh] rounded-2xl overflow-hidden border border-[#c1ad93] mb-6">
+          <div className="h-[60vh] rounded-2xl overflow-hidden border border-line-strong mb-6">
             <ItineraryMap pins={mapPins} />
           </div>
         )}
@@ -684,8 +684,8 @@ export default async function ItineraryPage({
             {/* ── Day by Day (itineraries) ── */}
             {showDayByDay && !it.isPlan && mainDestinations.length > 0 && (
               <div className="mb-10">
-                <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#1f3354] mb-1">Day by Day</h2>
-                <div className="h-px bg-[#c1ad93] mb-5" />
+                <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-1">Day by Day</h2>
+                <div className="h-px bg-line-strong mb-5" />
                 <div className="space-y-10">
                   {mainDestinations.map((dest) => {
                     const groups = groupItems(dest.items as DestItemRow[])
@@ -697,21 +697,21 @@ export default async function ItineraryPage({
                     return (
                       <div key={dest.id}>
                         {mainDestinations.length > 1 && (
-                          <p className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-2 flex items-center gap-1">
+                          <p className="text-xs uppercase tracking-widest text-brown font-semibold mb-2 flex items-center gap-1">
                             <MapPin size={11} /> {dest.name}{dest.country ? `, ${dest.country}` : ''}
                           </p>
                         )}
                         {(dFriends.length > 0 || dSaved > 0) && (
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3 text-xs text-[#8B6F4E]">
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3 text-xs text-brown">
                             {dFriends.length > 0 && (
-                              <span>👫 <span className="font-medium text-[#2b4368]">{dFriends.slice(0, 3).map(n => n.split(' ')[0]).join(', ')}</span>
+                              <span>👫 <span className="font-medium text-ink-soft">{dFriends.slice(0, 3).map(n => n.split(' ')[0]).join(', ')}</span>
                                 {dFriends.length > 3 && ` +${dFriends.length - 3} more`} also visited
                               </span>
                             )}
                             {dSaved > 0 && <span>🔖 Saved by {dSaved} {dSaved === 1 ? 'traveler' : 'travelers'}</span>}
                           </div>
                         )}
-                        {dest.notes && <p className="text-xs text-[#8B6F4E] italic mb-3 border-l-2 border-[#c1ad93] pl-2">{dest.notes}</p>}
+                        {dest.notes && <p className="text-xs text-brown italic mb-3 border-l-2 border-line-strong pl-2">{dest.notes}</p>}
                         <div className="space-y-5">
                           {groups.map((group, gi) => {
                             if (multiStay) {
@@ -722,7 +722,7 @@ export default async function ItineraryPage({
                                     return (
                                       <div key={di}>
                                         <div className="flex items-center gap-2 mb-2">
-                                          <span className="text-xs font-bold text-[#faf7f1] bg-[#1f3354] px-2.5 py-1 rounded-full">Day {dn}</span>
+                                          <span className="text-xs font-bold text-cream bg-ink px-2.5 py-1 rounded-full">Day {dn}</span>
                                         </div>
                                         {di === 0 && group.hotel && renderHotelCard(group.hotel)}
                                         <div className="space-y-2 mt-2">
@@ -741,7 +741,7 @@ export default async function ItineraryPage({
                                     <div key={di}>
                                       {(group.days.length > 1 || dayNumber(day.dayIndex) > 1) && (
                                         <div className="flex items-center gap-2 mb-2 mt-2">
-                                          <span className="text-xs font-bold text-[#faf7f1] bg-[#1f3354] px-2.5 py-1 rounded-full">Day {dayNumber(day.dayIndex)}</span>
+                                          <span className="text-xs font-bold text-cream bg-ink px-2.5 py-1 rounded-full">Day {dayNumber(day.dayIndex)}</span>
                                         </div>
                                       )}
                                       <div className="space-y-2">
@@ -764,8 +764,8 @@ export default async function ItineraryPage({
             {/* All places grouped by category, for both itineraries and guides. */}
             {!showDayByDay && mainDestinations.length > 0 && (
               <div className="mb-10">
-                <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#1f3354] mb-1">Places from the trip</h2>
-                <div className="h-px bg-[#c1ad93] mb-5" />
+                <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-1">Places from the trip</h2>
+                <div className="h-px bg-line-strong mb-5" />
                 <div className="space-y-10">
                   {mainDestinations.map((dest) => {
                     const dItems = dest.items as DestItemRow[]
@@ -776,11 +776,11 @@ export default async function ItineraryPage({
                     return (
                       <div key={dest.id}>
                         {mainDestinations.length > 1 && (
-                          <p className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-3 flex items-center gap-1">
+                          <p className="text-xs uppercase tracking-widest text-brown font-semibold mb-3 flex items-center gap-1">
                             <MapPin size={11} /> {dest.name}{dest.country ? `, ${dest.country}` : ''}
                           </p>
                         )}
-                        {dest.notes && <p className="text-xs text-[#8B6F4E] italic mb-3 border-l-2 border-[#c1ad93] pl-2">{dest.notes}</p>}
+                        {dest.notes && <p className="text-xs text-brown italic mb-3 border-l-2 border-line-strong pl-2">{dest.notes}</p>}
                         <div className={styles.placeGrid}>
                           {dHotels.length > 0 && (
                             <div>
@@ -798,7 +798,7 @@ export default async function ItineraryPage({
                                   return (
                                     <section key={group.value} aria-label={group.label}>
                                       {/* No heading when no restaurant has a meal type. */}
-                                      {!(group.value === 'other' && meals.length === dFood.length) && <h4 className="text-xs font-semibold uppercase tracking-wider text-[#ad6b57] mb-2">{group.label}</h4>}
+                                      {!(group.value === 'other' && meals.length === dFood.length) && <h4 className="text-xs font-semibold uppercase tracking-wider text-terracotta mb-2">{group.label}</h4>}
                                       <div className="space-y-2">{meals.map(item => renderFoodCard(item))}</div>
                                     </section>
                                   )
@@ -823,12 +823,12 @@ export default async function ItineraryPage({
 
             {alternativeDestinations.length > 0 && (
               <section aria-labelledby="alternatives-heading" className="mb-10">
-                <h2 id="alternatives-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-[#1f3354] mb-1">Alternatives</h2>
-                <p className="text-sm text-[#8B6F4E] mb-5">Other places to consider.</p>
+                <h2 id="alternatives-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-1">Alternatives</h2>
+                <p className="text-sm text-brown mb-5">Other places to consider.</p>
                 <div className="space-y-6">
                   {alternativeDestinations.map(dest => (
                     <div key={dest.id}>
-                      {it.destinations.length > 1 && <p className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-3">{dest.name}{dest.country ? `, ${dest.country}` : ''}</p>}
+                      {it.destinations.length > 1 && <p className="text-xs uppercase tracking-widest text-brown font-semibold mb-3">{dest.name}{dest.country ? `, ${dest.country}` : ''}</p>}
                       <div className={styles.placeGrid}>
                         {dest.items.map(item => renderPlaceCard(item, item.type === 'hotel' ? 'hotel' : item.type === 'food_drink' ? 'food_drink' : item.type === 'transport' ? 'transport' : 'activity'))}
                       </div>
@@ -840,9 +840,9 @@ export default async function ItineraryPage({
 
             {/* The poster's general notes and tips come after the places. */}
             {it.notes && (
-              <section className="mb-10 border-l-2 border-[#c1ad93] pl-4">
-                <h2 className="text-xs uppercase tracking-widest text-[#8B6F4E] font-semibold mb-2">Notes &amp; Tips</h2>
-                <p className="text-sm leading-relaxed text-[#2b4368] whitespace-pre-line break-words">{it.notes}</p>
+              <section className="mb-10 border-l-2 border-line-strong pl-4">
+                <h2 className="text-xs uppercase tracking-widest text-brown font-semibold mb-2">Notes &amp; Tips</h2>
+                <p className="text-sm leading-relaxed text-ink-soft whitespace-pre-line break-words">{it.notes}</p>
               </section>
             )}
 
@@ -852,9 +852,9 @@ export default async function ItineraryPage({
               currentUserId={session?.user?.id}
               isLoggedIn={!!session?.user}
             />}
-            {!isOwn && <div className="mt-6 border-t border-[#c1ad93] pt-6">
+            {!isOwn && <div className="mt-6 border-t border-line-strong pt-6">
               <h2 className="font-semibold mb-2">Have a question about this trip?</h2>
-              <Link href={`/messages/${it.user.id}?trip=${encodeURIComponent(it.id)}`} className="inline-block rounded-full bg-[#3f5a80] px-4 py-2 text-sm text-white">Message {it.user.name} privately</Link>
+              <Link href={`/messages/${it.user.id}?trip=${encodeURIComponent(it.id)}`} className="inline-block rounded-full bg-link px-4 py-2 text-sm text-white">Message {it.user.name} privately</Link>
             </div>}
           </>
         )}
@@ -863,20 +863,20 @@ export default async function ItineraryPage({
           const stockPhoto = it.photos.find(photo => photo.isStock)
           const gallery = photos.length ? photos : stockPhoto ? [stockPhoto] : []
           if (!gallery.length) return null
-          return <section aria-labelledby="trip-photos-heading" className="mt-8 border-t border-[#c1ad93] pt-5">
+          return <section aria-labelledby="trip-photos-heading" className="mt-8 border-t border-line-strong pt-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 id="trip-photos-heading" className="font-[family-name:var(--font-playfair)] text-2xl uppercase text-[#1f3354]">Trip photos</h2>
+              <h2 id="trip-photos-heading" className="font-[family-name:var(--font-playfair)] text-2xl uppercase text-ink">Trip photos</h2>
             </div>
             <PhotoStrip photos={gallery} title={it.title} gallery />
           </section>
         })()}
-        {!isOwn && session?.user && <div className="mt-8 border-t border-[#c1ad93] pt-5">
+        {!isOwn && session?.user && <div className="mt-8 border-t border-line-strong pt-5">
           <CopyTripButton itineraryId={it.id} title={it.title} isOwn={isOwn} />
         </div>}
-        {isOwn && <section aria-label="Manage trip" className="mt-8 border-t border-[#c1ad93] pt-5">
+        {isOwn && <section aria-label="Manage trip" className="mt-8 border-t border-line-strong pt-5">
           <div className="flex flex-wrap items-center gap-2">
-            <Link href={editHref} className="inline-flex min-h-11 items-center rounded-full border border-[#c1ad93] px-4 py-2 text-sm font-medium text-[#2b4368] hover:bg-[#dfd3c2]">Edit</Link>
-            <Link href={`/plan/${it.id}`} className="inline-flex min-h-11 items-center rounded-full bg-[#3f5a80] px-4 py-2 text-sm font-semibold text-white">Add a place</Link>
+            <Link href={editHref} className="inline-flex min-h-11 items-center rounded-full border border-line-strong px-4 py-2 text-sm font-medium text-ink-soft hover:bg-sand">Edit</Link>
+            <Link href={`/plan/${it.id}`} className="inline-flex min-h-11 items-center rounded-full bg-link px-4 py-2 text-sm font-semibold text-white">Add a place</Link>
             <DeleteButton id={it.id} visibility={it.visibility} />
           </div>
         </section>}

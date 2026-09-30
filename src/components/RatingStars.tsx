@@ -5,9 +5,9 @@ export default function RatingStars({ value, label }: { value: number; label?: s
   return (
     <span role="img" aria-label={description} title={description} className="inline-flex shrink-0 items-center gap-0.5 text-[15px] leading-none">
       {Array.from({ length: Math.ceil(rating) }, (_, index) => (
-        <span key={index} aria-hidden="true" className="relative inline-block text-[#ded8c9]">
+        <span key={index} aria-hidden="true" className="relative inline-block text-line-soft">
           ★
-          <span className="absolute inset-y-0 left-0 overflow-hidden text-[#ba9146]" style={{ width: `${Math.min(1, rating - index) * 100}%` }}>★</span>
+          <span className="absolute inset-y-0 left-0 overflow-hidden text-gold" style={{ width: `${Math.min(1, rating - index) * 100}%` }}>★</span>
         </span>
       ))}
     </span>

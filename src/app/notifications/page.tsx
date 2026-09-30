@@ -18,24 +18,24 @@ export default async function NotificationsPage() {
   })
   return <div className="max-w-2xl mx-auto px-4 py-6">
     <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-      <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-[#1f3354]">Notifications</h1>
+      <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-ink">Notifications</h1>
       <MarkNotificationsRead />
     </div>
     <NotificationPreferences />
     <div className="mb-4"><MessageRefresh label="Refresh alerts" /></div>
-    {notifications.length === 0 ? <p className="rounded-xl border border-[#e3dfd2] bg-[#fffdf6] p-6 text-[#5f6780]">Forum posts, private messages, new trips from people you follow, and activity on your trips appear here.</p> :
-      <ul className="overflow-hidden rounded-xl border border-[#e3dfd2] divide-y divide-[#e3dfd2]">
-        {notifications.map(n => <li key={n.id} className={n.readAt ? 'bg-[#faf7ee]' : 'bg-[#fffdf6]'}>
+    {notifications.length === 0 ? <p className="rounded-xl border border-line-soft bg-card p-6 text-muted">Forum posts, private messages, new trips from people you follow, and activity on your trips appear here.</p> :
+      <ul className="overflow-hidden rounded-xl border border-line-soft divide-y divide-line-soft">
+        {notifications.map(n => <li key={n.id} className={n.readAt ? 'bg-cream' : 'bg-card'}>
           <form action={openNotification}>
             <input type="hidden" name="id" value={n.id} />
-            <button className="flex w-full items-start gap-3 p-4 text-left hover:bg-[#eee7d9]">
-              {n.kind === 'published' ? <Plane className="mt-1 shrink-0 text-[#3f5a80]" size={20} /> : (n.kind === 'forum_reply' || n.kind === 'forum' || n.kind === 'comment' || n.kind === 'message') ? <MessageCircle className="mt-1 shrink-0 text-[#3f5a80]" size={20} /> : <Heart className="mt-1 shrink-0 text-[#ad6b57]" size={20} />}
+            <button className="flex w-full items-start gap-3 p-4 text-left hover:bg-chip">
+              {n.kind === 'published' ? <Plane className="mt-1 shrink-0 text-link" size={20} /> : (n.kind === 'forum_reply' || n.kind === 'forum' || n.kind === 'comment' || n.kind === 'message') ? <MessageCircle className="mt-1 shrink-0 text-link" size={20} /> : <Heart className="mt-1 shrink-0 text-terracotta" size={20} />}
               <span className="min-w-0 flex-1">
-                <span className={`block text-sm text-[#1f3354] ${n.readAt ? '' : 'font-semibold'}`}>{notificationText(n.kind, n.actor.name, n.itinerary?.title ?? '')}</span>
-                {n.comment && <span className="mt-1 block line-clamp-2 text-sm text-[#5f6780]">{n.comment.content}</span>}
-                <time className="mt-2 block text-xs text-[#6b7285]" dateTime={n.createdAt.toISOString()}>{n.createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</time>
+                <span className={`block text-sm text-ink ${n.readAt ? '' : 'font-semibold'}`}>{notificationText(n.kind, n.actor.name, n.itinerary?.title ?? '')}</span>
+                {n.comment && <span className="mt-1 block line-clamp-2 text-sm text-muted">{n.comment.content}</span>}
+                <time className="mt-2 block text-xs text-muted" dateTime={n.createdAt.toISOString()}>{n.createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</time>
               </span>
-              {!n.readAt && <span className="mt-2 size-2 shrink-0 rounded-full bg-[#3f5a80]" aria-label="Unread" />}
+              {!n.readAt && <span className="mt-2 size-2 shrink-0 rounded-full bg-link" aria-label="Unread" />}
             </button>
           </form>
         </li>)}

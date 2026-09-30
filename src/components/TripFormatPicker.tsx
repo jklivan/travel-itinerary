@@ -12,23 +12,23 @@ const POLAROIDS: Record<TripFormat, { photo: string; tilt: string }> = {
 export default function TripFormatPicker({ value, onChange, variant = 'compact' }: { value: TripFormat; onChange: (value: TripFormat) => void; variant?: 'compact' | 'polaroid' }) {
   const options = [['guide', 'Guide', 'Places & ideas'], ['day-trip', 'Day trip', 'A short getaway'], ['itinerary', 'Multi-day trip', 'A longer journey']] as const
   if (variant === 'polaroid') return <fieldset>
-    <legend className="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#1f3354]">What are you sharing?</legend>
+    <legend className="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink">What are you sharing?</legend>
     <div className="grid grid-cols-3 gap-3 py-2">
-      {options.map(([format, label, hint]) => <button key={format} type="button" aria-pressed={value === format} onClick={() => onChange(format)} className={`${POLAROIDS[format].tilt} min-w-0 rounded-lg border bg-[#fffdf7] p-1.5 pb-3 shadow-md sm:p-2 ${value === format ? 'border-[#3f5a80] ring-2 ring-[#3f5a80]/20' : 'border-[#e1d8c9]'}`}>
+      {options.map(([format, label, hint]) => <button key={format} type="button" aria-pressed={value === format} onClick={() => onChange(format)} className={`${POLAROIDS[format].tilt} min-w-0 rounded-lg border bg-card p-1.5 pb-3 shadow-md sm:p-2 ${value === format ? 'border-link ring-2 ring-link/20' : 'border-line-soft'}`}>
         <span className="block aspect-[3/4] rounded bg-cover bg-center" style={{ backgroundImage: `url(https://images.unsplash.com/${POLAROIDS[format].photo}?auto=format&fit=crop&w=480&q=85)` }} />
-        <span className="mt-2 block text-[10px] font-semibold uppercase leading-tight tracking-wide text-[#1f3354] sm:text-sm">{label}</span>
-        <span className="mt-1 block text-[7px] uppercase tracking-wide text-[#3f5a80] sm:text-[9px]">{hint}</span>
+        <span className="mt-2 block text-[10px] font-semibold uppercase leading-tight tracking-wide text-ink sm:text-sm">{label}</span>
+        <span className="mt-1 block text-[7px] uppercase tracking-wide text-link sm:text-[9px]">{hint}</span>
       </button>)}
     </div>
-    <p className="mt-2 text-xs text-[#6b7285]">{value === 'guide' ? 'Recommendations without a set duration or daily schedule.' : value === 'day-trip' ? 'A one-day outing.' : 'A trip with a duration or a day-by-day itinerary.'}</p>
+    <p className="mt-2 text-xs text-muted">{value === 'guide' ? 'Recommendations without a set duration or daily schedule.' : value === 'day-trip' ? 'A one-day outing.' : 'A trip with a duration or a day-by-day itinerary.'}</p>
   </fieldset>
   return <fieldset className="space-y-2">
-    <legend className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#3f5a80]">What are you sharing?</legend>
+    <legend className="text-[10px] font-semibold uppercase tracking-[0.18em] text-link">What are you sharing?</legend>
     <div className="grid grid-cols-3 gap-2">
       {([['guide', 'Guide', 'Places & ideas', '0% 0%'], ['day-trip', 'Day trip', 'A short getaway', '100% 0%'], ['itinerary', 'Multi-day trip', 'A longer journey', '0% 100%']] as const).map(([format, label, hint, position]) =>
-        <button key={format} type="button" aria-pressed={value === format} onClick={() => onChange(format)} className={`overflow-hidden rounded-xl border bg-[#fffdf7] text-left shadow-sm ${value === format ? 'border-[#3f5a80] ring-2 ring-[#3f5a80]/20' : 'border-[#e0d7c8]'}`}>
+        <button key={format} type="button" aria-pressed={value === format} onClick={() => onChange(format)} className={`overflow-hidden rounded-xl border bg-card text-left shadow-sm ${value === format ? 'border-link ring-2 ring-link/20' : 'border-line-soft'}`}>
           <span className="block aspect-[1.25] bg-cover" style={{ backgroundImage: "url('/explore-photos.webp')", backgroundPosition: position }} />
-          <span className="block px-2 pb-2 pt-1.5"><span className="block truncate text-[11px] font-[family-name:var(--font-playfair)] text-[#1f3354]">{label}</span><span className="mt-0.5 block truncate text-[8px] uppercase tracking-wide text-[#6b7285]">{hint}</span></span>
+          <span className="block px-2 pb-2 pt-1.5"><span className="block truncate text-[11px] font-[family-name:var(--font-playfair)] text-ink">{label}</span><span className="mt-0.5 block truncate text-[8px] uppercase tracking-wide text-muted">{hint}</span></span>
         </button>
       )}
     </div>

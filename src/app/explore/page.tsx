@@ -94,9 +94,9 @@ function ItineraryList({
 }) {
   if (itineraries.length === 0) {
     return (
-      <div className="text-center py-20 bg-[#faf7f1] rounded-xl border border-[#dfd3c2]">
+      <div className="text-center py-20 bg-cream rounded-xl border border-sand">
         <p className="text-4xl mb-4">🌍</p>
-        <p className="text-base font-medium text-[#1f3354]">No trips here yet.</p>
+        <p className="text-base font-medium text-ink">No trips here yet.</p>
       </div>
     )
   }
@@ -155,7 +155,7 @@ function SearchFiltersDisplay({ parsed }: { parsed: ParsedQuery }) {
   return (
     <div className="flex flex-wrap gap-2 mb-4">
       {chips.map((c) => (
-        <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-[#dfd3c2] text-[#2b4368] font-medium">{c}</span>
+        <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-sand text-ink-soft font-medium">{c}</span>
       ))}
     </div>
   )
@@ -234,11 +234,11 @@ const REGION_GRADIENT: Record<string, string> = {
   'United States':        'from-[#7d9990] to-[#365f59]',
   'Europe':               'from-[#9aaa8c] to-[#536c57]',
   'Asia':                 'from-[#c0937d] to-[#825a49]',
-  'Latin America':        'from-[#c1ad93] to-[#876648]',
-  'Caribbean & Bahamas':  'from-[#94b7b0] to-[#3f5a80]',
+  'Latin America':        'from-line-strong to-[#876648]',
+  'Caribbean & Bahamas':  'from-[#94b7b0] to-link',
   'Middle East & Africa': 'from-[#c6b38e] to-[#907450]',
   'Pacific & Oceania':    'from-[#96aaa0] to-[#4e7368]',
-  'Other':                'from-[#b3a591] to-[#7c6f60]',
+  'Other':                'from-gold-faint to-brown',
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────────
@@ -302,10 +302,10 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <BackButton fallback="/explore" className="text-sm text-[#2b4368] hover:underline mb-5 inline-block">← Back</BackButton>
+        <BackButton fallback="/explore" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
         <ExploreSearchBar />
         <SearchFiltersDisplay parsed={parsed} />
-        <p className="text-sm text-[#8B6F4E] mb-4">
+        <p className="text-sm text-brown mb-4">
           {itineraries.length} result{itineraries.length !== 1 ? 's' : ''} for &ldquo;{q}&rdquo;
         </p>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
@@ -319,12 +319,12 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     const { itineraries, bucketSet } = await fetchItineraries({ tags: { has: tag } }, userId)
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <BackButton fallback="/explore?view=tags" className="text-sm text-[#2b4368] hover:underline mb-5 inline-block">← Back</BackButton>
+        <BackButton fallback="/explore?view=tags" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="mb-5">
-          <h1 className="font-[family-name:var(--font-playfair)] text-2xl tracking-wide text-[#1f3354]">
+          <h1 className="font-[family-name:var(--font-playfair)] text-2xl tracking-wide text-ink">
             {meta?.label ?? tag}
           </h1>
-          <p className="text-sm text-[#8B6F4E]">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
+          <p className="text-sm text-brown">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} nearbyDayTrips={tag === DAY_TRIP_TAG} />
       </div>
@@ -351,13 +351,13 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     )
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <BackButton fallback={country === 'United States' ? '/explore?view=destinations' : `/explore?country=${encodeURIComponent(country)}`} className="text-sm text-[#2b4368] hover:underline mb-5 inline-block">← Back</BackButton>
+        <BackButton fallback={country === 'United States' ? '/explore?view=destinations' : `/explore?country=${encodeURIComponent(country)}`} className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="mb-5">
-          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#1f3354] flex items-center gap-2">
-            <MapPin size={18} className="text-[#2b4368]" />
+          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink flex items-center gap-2">
+            <MapPin size={18} className="text-ink-soft" />
             {city}, {country}
           </h2>
-          <p className="text-sm text-[#8B6F4E]">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
+          <p className="text-sm text-brown">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
       </div>
@@ -437,19 +437,19 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
           `
     )
     const cities = destinations.map(d => ({ name: d.name, count: Number(d.count), photoUrl: d.photo_url }))
-    const gradient = REGION_GRADIENT[getRegionLabel(country)] ?? 'from-[#b3a591] to-[#7c6f60]'
+    const gradient = REGION_GRADIENT[getRegionLabel(country)] ?? 'from-gold-faint to-brown'
     const cityHref = (name: string) =>
       `/explore?country=${encodeURIComponent(country)}&city=${encodeURIComponent(name)}`
 
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
-        <BackButton fallback="/explore" className="text-sm text-[#2b4368] hover:underline mb-5 inline-block">← Back</BackButton>
+        <BackButton fallback="/explore" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="mb-5">
-          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#1f3354]">{country}</h2>
-          <p className="text-sm text-[#8B6F4E]">{cities.length} destination{cities.length !== 1 ? 's' : ''}</p>
+          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink">{country}</h2>
+          <p className="text-sm text-brown">{cities.length} destination{cities.length !== 1 ? 's' : ''}</p>
         </div>
         {cities.length === 0 ? (
-          <p className="text-sm text-[#8B6F4E] italic">No destinations yet.</p>
+          <p className="text-sm text-brown italic">No destinations yet.</p>
         ) : (
           <div className="space-y-3">
             {/* Hero — most popular city */}
@@ -504,10 +504,10 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     const meta = TRIP_TYPE_META[type]
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <BackButton fallback="/explore?view=tags" className="text-sm text-[#2b4368] hover:underline mb-5 inline-block">← Back</BackButton>
+        <BackButton fallback="/explore?view=tags" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="mb-5">
-          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#1f3354]">{meta.emoji} {meta.label}</h2>
-          <p className="text-sm text-[#8B6F4E]">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
+          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink">{meta.emoji} {meta.label}</h2>
+          <p className="text-sm text-brown">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
       </div>
@@ -521,11 +521,11 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <BackButton fallback="/explore" className="text-sm text-[#2b4368] hover:underline mb-5 inline-block">← Back</BackButton>
-        <h1 className="font-[family-name:var(--font-playfair)] text-2xl sm:text-3xl tracking-wide text-[#1f3354] mb-5">SEARCH BY TRIP TYPE</h1>
+        <BackButton fallback="/explore" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
+        <h1 className="font-[family-name:var(--font-playfair)] text-2xl sm:text-3xl tracking-wide text-ink mb-5">SEARCH BY TRIP TYPE</h1>
         <ExploreTripFilters key={`${filters.types.join(',')}|${filters.tags.join(',')}|${filters.location}`} types={filters.types} tags={filters.tags} location={filters.location} />
         <div className="mt-7">
-          <p role="status" className="text-sm text-[#8B6F4E] mb-4">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
+          <p role="status" className="text-sm text-brown mb-4">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
           <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
         </div>
       </div>
@@ -536,11 +536,11 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
   if (view === 'hotspots') {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <BackButton fallback="/explore" className="text-sm text-[#2b4368] hover:underline mb-5 inline-block">← Back</BackButton>
+        <BackButton fallback="/explore" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="text-center py-24">
           <p className="text-5xl mb-4">🔥</p>
-          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#1f3354] mb-2">Hot Spots</h2>
-          <p className="text-sm text-[#8B6F4E]">Coming soon</p>
+          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-2">Hot Spots</h2>
+          <p className="text-sm text-brown">Coming soon</p>
         </div>
       </div>
     )
@@ -550,11 +550,11 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
   if (view === 'recs') {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <BackButton fallback="/explore" className="text-sm text-[#2b4368] hover:underline mb-5 inline-block">← Back</BackButton>
+        <BackButton fallback="/explore" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="text-center py-24">
           <p className="text-5xl mb-4">👥</p>
-          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-[#1f3354] mb-2">Friends&apos; Trips</h2>
-          <Link href="/friends" className="text-sm text-[#2b4368] hover:underline">See your friends</Link>
+          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-2">Friends&apos; Trips</h2>
+          <Link href="/friends" className="text-sm text-ink-soft hover:underline">See your friends</Link>
         </div>
       </div>
     )
@@ -585,9 +585,9 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
     return (
       <div className="flex flex-col" style={{ height: 'calc(100dvh - 3.5rem)' }}>
-        <div className="px-4 py-3 flex items-center justify-between border-b border-[#dfd3c2] bg-[#faf7f1] shrink-0">
-          <BackButton fallback="/explore" className="text-sm text-[#2b4368] hover:underline">← Back</BackButton>
-          <span className="text-sm text-[#8B6F4E]">{pins.length} place{pins.length !== 1 ? 's' : ''} mapped</span>
+        <div className="px-4 py-3 flex items-center justify-between border-b border-sand bg-cream shrink-0">
+          <BackButton fallback="/explore" className="text-sm text-ink-soft hover:underline">← Back</BackButton>
+          <span className="text-sm text-brown">{pins.length} place{pins.length !== 1 ? 's' : ''} mapped</span>
         </div>
         <div className="flex-1 min-h-0">
           <ExploreMap pins={pins} />
@@ -604,10 +604,10 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
-        <BackButton fallback="/explore?view=destinations" className="text-sm text-[#2b4368] hover:underline mb-5 inline-block">← Back</BackButton>
-        <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-[#1f3354] mb-5">{region}</h1>
+        <BackButton fallback="/explore?view=destinations" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
+        <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-5">{region}</h1>
         {cards.length === 0 ? (
-          <p className="text-sm text-[#8B6F4E] italic">No destinations yet.</p>
+          <p className="text-sm text-brown italic">No destinations yet.</p>
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {cards.map(c => {
@@ -620,7 +620,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={c.photoUrl} alt={c.displayName} className="w-full h-full object-cover" />
                   ) : (
-                    <div className={`w-full h-full bg-gradient-to-br ${REGION_GRADIENT[region] ?? 'from-[#b3a591] to-[#7c6f60]'}`} />
+                    <div className={`w-full h-full bg-gradient-to-br ${REGION_GRADIENT[region] ?? 'from-gold-faint to-brown'}`} />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-2.5">
@@ -647,27 +647,27 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
-      <BackButton fallback="/explore" className="text-sm text-[#2b4368] hover:underline mb-5 inline-block">← Back</BackButton>
+      <BackButton fallback="/explore" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
       <div className="mb-5">
-        <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-[#1f3354]">Destinations</h1>
+        <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-ink">Destinations</h1>
       </div>
 
       <ExploreSearchBar />
 
       {destRegions.length === 0 ? (
-        <div className="text-center py-20 text-[#8B6F4E] mt-6">
+        <div className="text-center py-20 text-brown mt-6">
           <p className="text-4xl mb-3">🌍</p>
-          <p className="text-sm">No destinations yet. <Link href="/create" className="text-[#2b4368] hover:underline">Add a trip!</Link></p>
+          <p className="text-sm">No destinations yet. <Link href="/create" className="text-ink-soft hover:underline">Add a trip!</Link></p>
         </div>
       ) : (
         <div className="space-y-8 mt-6">
           {destRegions.map(region => (
             <div key={region.label}>
               <div className="flex items-center justify-between mb-3">
-                <Link href={`/explore?region=${encodeURIComponent(region.label)}`} className="font-[family-name:var(--font-playfair)] text-2xl text-[#1f3354] hover:text-[#2b4368] transition-colors">
+                <Link href={`/explore?region=${encodeURIComponent(region.label)}`} className="font-[family-name:var(--font-playfair)] text-2xl text-ink hover:text-ink-soft transition-colors">
                   {region.label}
                 </Link>
-                <Link href={`/explore?region=${encodeURIComponent(region.label)}`} className="text-sm text-[#2b4368] hover:underline">
+                <Link href={`/explore?region=${encodeURIComponent(region.label)}`} className="text-sm text-ink-soft hover:underline">
                   View all
                 </Link>
               </div>
@@ -686,7 +686,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={c.photoUrl} alt={c.displayName} className="w-full h-full object-cover" />
                       ) : (
-                        <div className={`w-full h-full bg-gradient-to-br ${REGION_GRADIENT[region.label] ?? 'from-[#b3a591] to-[#7c6f60]'}`} />
+                        <div className={`w-full h-full bg-gradient-to-br ${REGION_GRADIENT[region.label] ?? 'from-gold-faint to-brown'}`} />
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
                       <div className="absolute bottom-0 left-0 right-0 p-2.5">

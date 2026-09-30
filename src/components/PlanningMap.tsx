@@ -51,13 +51,13 @@ export default function PlanningMap({ places }: { places: PlanningMapPlace[] }) 
     setAttempt(value => value + 1)
   }
 
-  return <section aria-label="Planning map" className="overflow-hidden rounded-2xl border border-[#d7cebc] bg-[#fffdf7]">
-    <div className="px-4 py-3"><h2 className="font-semibold">Your trip on the map</h2><p role="status" className="mt-1 text-sm text-[#6b7285]">{pins.length} of {places.length} places mapped{pending ? ` · Finding ${pending}…` : ''}</p></div>
+  return <section aria-label="Planning map" className="overflow-hidden rounded-2xl border border-line bg-card">
+    <div className="px-4 py-3"><h2 className="font-semibold">Your trip on the map</h2><p role="status" className="mt-1 text-sm text-muted">{pins.length} of {places.length} places mapped{pending ? ` · Finding ${pending}…` : ''}</p></div>
     <div className="relative isolate h-[55dvh] min-h-80 max-h-[650px]">
-      {pins.length ? <ItineraryMap pins={pins} /> : <div className="flex h-full items-center justify-center p-6 text-center text-sm text-[#6b7285]">{pending ? 'Finding your places…' : places.length ? 'Select a Google suggestion or enter a more specific place name to locate your places.' : 'Add places to your plan to see them on the map.'}</div>}
+      {pins.length ? <ItineraryMap pins={pins} /> : <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted">{pending ? 'Finding your places…' : places.length ? 'Select a Google suggestion or enter a more specific place name to locate your places.' : 'Add places to your plan to see them on the map.'}</div>}
     </div>
-    <div className="space-y-2 px-4 py-3 text-sm text-[#6b7285]"><p>Hotels, restaurants, and things to do—including places without a day. Tap a pin for details.</p>
-      {missing.length > 0 && <><p>Couldn’t locate: {missing.map(({ place }) => `${place.name} (${place.city})`).join(', ')}.</p><button type="button" onClick={retry} className="min-h-11 font-semibold text-[#3f5a80]">Retry missing locations</button></>}
+    <div className="space-y-2 px-4 py-3 text-sm text-muted"><p>Hotels, restaurants, and things to do—including places without a day. Tap a pin for details.</p>
+      {missing.length > 0 && <><p>Couldn’t locate: {missing.map(({ place }) => `${place.name} (${place.city})`).join(', ')}.</p><button type="button" onClick={retry} className="min-h-11 font-semibold text-link">Retry missing locations</button></>}
     </div>
   </section>
 }

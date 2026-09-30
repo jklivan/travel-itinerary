@@ -9,7 +9,7 @@ export default async function Navbar() {
   const session = await auth()
 
   return (
-    <header className="app-header postcard-header bg-[#f7f3ec] text-[#1f3354] sticky top-0 z-40">
+    <header className="app-header postcard-header bg-paper text-ink sticky top-0 z-40">
       {/* Signed in: + (post) · centered logo · messages and profile. Signed out: logo left, sign-in right. */}
       <div className={`max-w-5xl mx-auto px-4 py-3 items-center gap-2 ${session?.user ? 'grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'flex flex-wrap justify-between gap-3'}`}>
         {session?.user && <div className="flex justify-start"><HeaderPostButton /></div>}
@@ -22,22 +22,22 @@ export default async function Navbar() {
             <>
               <HeaderMessagesLink />
               <Link href="/settings"
-                className="text-xs text-[#1f3354]/80 hover:text-[#1f3354] px-3 py-1.5 rounded-lg transition-colors hidden sm:block">
+                className="text-xs text-ink/80 hover:text-ink px-3 py-1.5 rounded-lg transition-colors hidden sm:block">
                 Settings
               </Link>
               <Link href="/profile" aria-label="Profile"
-                className="flex size-10 shrink-0 items-center justify-center rounded-full text-[#1f3354] hover:bg-[#1f3354]/10 transition-colors sm:size-11">
+                className="flex size-10 shrink-0 items-center justify-center rounded-full text-ink hover:bg-ink/10 transition-colors sm:size-11">
                 <User size={22} />
               </Link>
             </>
           ) : (
             <>
               <Link href="/login"
-                className="text-xs text-[#1f3354]/80 hover:text-[#1f3354] transition-colors">
+                className="text-xs text-ink/80 hover:text-ink transition-colors">
                 Sign in
               </Link>
               <Link href="/register"
-                className="text-xs bg-[#1f3354] text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-[#2b4368] transition-colors">
+                className="text-xs bg-ink text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-ink-soft transition-colors">
                 Get started
               </Link>
             </>

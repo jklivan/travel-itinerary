@@ -129,14 +129,14 @@ export default async function UserProfilePage({
 
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-      {!isOwn && <BackButton fallback="/friends" className="text-sm text-[#8B6F4E] hover:underline mb-5 inline-block">← Back</BackButton>}
+      {!isOwn && <BackButton fallback="/friends" className="text-sm text-brown hover:underline mb-5 inline-block">← Back</BackButton>}
 
       {/* Public profile header */}
-      {!isOwn && <div className="bg-[#faf7f1] rounded-xl border border-[#dfd3c2] p-5 mb-5 flex items-center gap-4">
+      {!isOwn && <div className="bg-cream rounded-xl border border-sand p-5 mb-5 flex items-center gap-4">
         <UserAvatar name={user.name} image={user.image} size={64} className="text-xl" />
         <div className="flex-1 min-w-0">
-          <h1 className="font-[family-name:var(--font-playfair)] text-xl text-[#1f3354]">{user.name}</h1>
-          <div className="flex items-center gap-3 mt-1 text-xs text-[#8B6F4E]">
+          <h1 className="font-[family-name:var(--font-playfair)] text-xl text-ink">{user.name}</h1>
+          <div className="flex items-center gap-3 mt-1 text-xs text-brown">
             <span className="flex items-center gap-1">
               <Users size={12} />
               {followerCount} follower{followerCount !== 1 ? 's' : ''}
@@ -148,7 +148,7 @@ export default async function UserProfilePage({
             </span>
           </div>
         </div>
-        {isOwn && <Link href="/settings" aria-label="Settings" className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#dfd3c2] text-[#3f5a80] hover:bg-[#e9e3d7]"><Settings size={18} /></Link>}
+        {isOwn && <Link href="/settings" aria-label="Settings" className="flex size-10 shrink-0 items-center justify-center rounded-full border border-sand text-link hover:bg-line-soft"><Settings size={18} /></Link>}
         {session?.user && !isOwn && (
           <form action={async () => {
             'use server'
@@ -159,10 +159,10 @@ export default async function UserProfilePage({
             <button type="submit"
               className={`text-sm font-medium px-4 py-2 rounded-full border transition-colors ${
                 followStatus === 'accepted'
-                  ? 'border-[#c1ad93] text-[#2b4368] hover:border-red-300 hover:text-red-500'
+                  ? 'border-line-strong text-ink-soft hover:border-red-300 hover:text-red-500'
                   : followStatus === 'pending'
                   ? 'border-amber-300 text-amber-700 hover:border-red-300 hover:text-red-500'
-                  : 'bg-[#1f3354] border-[#1f3354] text-white hover:bg-[#2b4368]'
+                  : 'bg-ink border-ink text-white hover:bg-ink-soft'
               }`}>
               {followStatus === 'accepted' ? 'Following' : followStatus === 'pending' ? 'Requested' : '+ Follow'}
             </button>
@@ -170,29 +170,29 @@ export default async function UserProfilePage({
         )}
       </div>}
 
-      {!isOwn && <Link href="/friends" className="group mb-5 flex min-h-20 items-center gap-4 rounded-2xl border border-[#c8d2e0] bg-[#eaeff6] p-4 text-[#1f3354] transition-colors hover:bg-[#dde5f0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3f5a80]">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#3f5a80]/10 text-[#3f5a80]"><Users size={23} /></span>
-        <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-xl">Friends</span><span className="mt-0.5 block text-sm text-[#3f5a80]">{pendingCount ? `${pendingCount} friend request${pendingCount === 1 ? '' : 's'} waiting` : 'Find friends & see who you follow'}</span></span>
-        {pendingCount > 0 && <span className="rounded-full bg-[#3f5a80] px-2 py-1 text-xs font-semibold text-white">{pendingCount}</span>}
-        <ChevronRight size={20} className="shrink-0 text-[#3f5a80] transition-transform group-hover:translate-x-0.5" />
+      {!isOwn && <Link href="/friends" className="group mb-5 flex min-h-20 items-center gap-4 rounded-2xl border border-mist-line bg-mist p-4 text-ink transition-colors hover:bg-mist-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Users size={23} /></span>
+        <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-xl">Friends</span><span className="mt-0.5 block text-sm text-link">{pendingCount ? `${pendingCount} friend request${pendingCount === 1 ? '' : 's'} waiting` : 'Find friends & see who you follow'}</span></span>
+        {pendingCount > 0 && <span className="rounded-full bg-link px-2 py-1 text-xs font-semibold text-white">{pendingCount}</span>}
+        <ChevronRight size={20} className="shrink-0 text-link transition-transform group-hover:translate-x-0.5" />
       </Link>}
 
-      {!isOwn && <Link href={`/messages/${id}`} className="mb-5 inline-block rounded-full bg-[#3f5a80] px-4 py-2 text-sm text-white">Send private message</Link>}
+      {!isOwn && <Link href={`/messages/${id}`} className="mb-5 inline-block rounded-full bg-link px-4 py-2 text-sm text-white">Send private message</Link>}
 
       {isOwn && !showBucket ? (
         <>
           <section aria-labelledby="your-trips-heading">
-            <div><h1 id="your-trips-heading" className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-[#1f3354]">Your trips</h1><Link href="/plan" className="mt-4 inline-flex min-h-10 items-center rounded-full bg-[#243b61] px-4 py-2 text-sm font-semibold text-white">Start planning!</Link></div>
+            <div><h1 id="your-trips-heading" className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-ink">Your trips</h1><Link href="/plan" className="mt-4 inline-flex min-h-10 items-center rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white">Start planning!</Link></div>
             <section className="mt-5" aria-labelledby="private-plans-heading">
-              <div className="mb-4"><h2 id="private-plans-heading" className="font-[family-name:var(--font-playfair)] text-xl uppercase tracking-[0.1em] text-[#9a7358]">Private plans <span className="font-sans text-sm tracking-normal">({drafts.length})</span></h2><p className="mt-1 max-w-sm text-sm leading-snug text-[#6b7285]">Only you can see these. Keep planning or publish whenever you’re ready.</p></div>
-              {drafts.length === 0 ? <div className="rounded-2xl border border-dashed border-[#d7cebc] p-6 text-center text-sm text-[#6b7285]">No private plans yet.</div> : <div className="space-y-4">{drafts.map(trip => {
+              <div className="mb-4"><h2 id="private-plans-heading" className="font-[family-name:var(--font-playfair)] text-xl uppercase tracking-[0.1em] text-brown">Private plans <span className="font-sans text-sm tracking-normal">({drafts.length})</span></h2><p className="mt-1 max-w-sm text-sm leading-snug text-muted">Only you can see these. Keep planning or publish whenever you’re ready.</p></div>
+              {drafts.length === 0 ? <div className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">No private plans yet.</div> : <div className="space-y-4">{drafts.map(trip => {
                 const tripHref = `/plan/${trip.id}`
-                return <article key={trip.id} className="grid grid-cols-[minmax(0,38%)_minmax(0,1fr)] gap-x-4 gap-y-3 rounded-2xl border border-[#e1d8c9] bg-[#fffdf7] p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)]">
-                  <Link href={tripHref} aria-label={`Open ${trip.title}`} className="relative row-span-2 min-h-[210px] rotate-[-3deg] overflow-hidden border-[5px] border-white bg-[#e6ecf4] shadow-[0_2px_5px_rgba(45,38,27,0.18)]">{draftCoverPhotos.get(trip.id) ? <Image src={draftCoverPhotos.get(trip.id)!} alt="" fill sizes="(max-width: 640px) 34vw, 180px" className="object-cover" /> : <span className="grid h-full place-items-center text-center text-[9px] uppercase tracking-wider text-[#3f5a80]">Postcard</span>}</Link>
-                  <Link href={tripHref} className="min-w-0 pt-2"><h3 className="break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-[#1f3354]">{trip.title || 'Untitled trip'}</h3><p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b7285]">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places</p><p className="mt-1 text-sm text-[#6b7285]">Keep planning →</p></Link>
+                return <article key={trip.id} className="grid grid-cols-[minmax(0,38%)_minmax(0,1fr)] gap-x-4 gap-y-3 rounded-2xl border border-line-soft bg-card p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)]">
+                  <Link href={tripHref} aria-label={`Open ${trip.title}`} className="relative row-span-2 min-h-[210px] rotate-[-3deg] overflow-hidden border-[5px] border-white bg-mist shadow-[0_2px_5px_rgba(45,38,27,0.18)]">{draftCoverPhotos.get(trip.id) ? <Image src={draftCoverPhotos.get(trip.id)!} alt="" fill sizes="(max-width: 640px) 34vw, 180px" className="object-cover" /> : <span className="grid h-full place-items-center text-center text-[9px] uppercase tracking-wider text-link">Postcard</span>}</Link>
+                  <Link href={tripHref} className="min-w-0 pt-2"><h3 className="break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-ink">{trip.title || 'Untitled trip'}</h3><p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places</p><p className="mt-1 text-sm text-muted">Keep planning →</p></Link>
                   <div className="flex min-w-0 flex-wrap items-end justify-between gap-2 self-end">
                     <DeleteButton compact id={trip.id} visibility={trip.visibility} returnTo={`/user/${id}`} label={`Delete ${trip.title}`} />
-                    <Link href={trip.isPlan ? `${tripHref}?post=1` : tripHref} aria-label={`Post ${trip.title}`} title="Post trip" className="inline-flex h-12 w-[66px] shrink-0 items-center justify-center transition-transform hover:-rotate-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#243b61]"><Image src="/brand/postcard-stamp-logo.png" alt="" width={52} height={52} /></Link>
+                    <Link href={trip.isPlan ? `${tripHref}?post=1` : tripHref} aria-label={`Post ${trip.title}`} title="Post trip" className="inline-flex h-12 w-[66px] shrink-0 items-center justify-center transition-transform hover:-rotate-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"><Image src="/brand/postcard-stamp-logo.png" alt="" width={52} height={52} /></Link>
                   </div>
                 </article>
               })}</div>}
@@ -202,21 +202,21 @@ export default async function UserProfilePage({
         </>
       ) : showDrafts ? (
         <>
-          <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="font-semibold text-[#1f3354]">In progress</h2><p className="mt-1 text-sm text-[#8B6F4E]">All your unpublished trips, ready to pick up anytime.</p></div></div>
-          {drafts.length === 0 ? <div className="rounded-xl border border-[#dfd3c2] bg-[#faf7f1] p-8 text-center"><p className="text-sm text-[#8B6F4E]">No trips in progress yet.</p><Link href="/plan" className="mt-4 inline-flex min-h-11 items-center rounded-full bg-[#1f3354] px-5 text-sm font-semibold text-white">Start planning</Link></div> : <div className="space-y-3">
-            {drafts.map(trip => <Link key={trip.id} href={`/plan/${trip.id}`} className="flex items-center gap-3 rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4 transition-colors hover:bg-[#eaeff6]">
-              <span className="min-w-0 flex-1"><span className="text-xs font-semibold uppercase tracking-wide text-[#3f5a80]">Only you · Not posted</span><span className="mt-1 block break-words font-[family-name:var(--font-playfair)] text-xl text-[#1f3354]">{trip.title || 'Untitled trip'}</span><span className="mt-1 block text-sm text-[#6b7285]">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places · Open to keep planning</span></span><ChevronRight size={20} className="shrink-0 text-[#3f5a80]" />
+          <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="font-semibold text-ink">In progress</h2><p className="mt-1 text-sm text-brown">All your unpublished trips, ready to pick up anytime.</p></div></div>
+          {drafts.length === 0 ? <div className="rounded-xl border border-sand bg-cream p-8 text-center"><p className="text-sm text-brown">No trips in progress yet.</p><Link href="/plan" className="mt-4 inline-flex min-h-11 items-center rounded-full bg-ink px-5 text-sm font-semibold text-white">Start planning</Link></div> : <div className="space-y-3">
+            {drafts.map(trip => <Link key={trip.id} href={`/plan/${trip.id}`} className="flex items-center gap-3 rounded-2xl border border-line bg-card p-4 transition-colors hover:bg-mist">
+              <span className="min-w-0 flex-1"><span className="text-xs font-semibold uppercase tracking-wide text-link">Only you · Not posted</span><span className="mt-1 block break-words font-[family-name:var(--font-playfair)] text-xl text-ink">{trip.title || 'Untitled trip'}</span><span className="mt-1 block text-sm text-muted">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places · Open to keep planning</span></span><ChevronRight size={20} className="shrink-0 text-link" />
             </Link>)}
           </div>}
         </>
       ) : !showBucket ? (
         <>
-          <h2 className="font-semibold text-[#1f3354] text-sm mb-3">
+          <h2 className="font-semibold text-ink text-sm mb-3">
             {isOwn ? 'Your itineraries' : 'Itineraries'}
           </h2>
           {itineraries.length === 0 ? (
-            <div className="bg-[#faf7f1] rounded-xl border border-[#dfd3c2] p-8 text-center">
-              <p className="text-[#8B6F4E] italic text-sm">No public itineraries yet.</p>
+            <div className="bg-cream rounded-xl border border-sand p-8 text-center">
+              <p className="text-brown italic text-sm">No public itineraries yet.</p>
             </div>
           ) : (
             <div className="mx-auto flex w-full max-w-xl flex-col gap-3 sm:gap-5">
@@ -253,14 +253,14 @@ export default async function UserProfilePage({
         </>
       ) : (
         <>
-          <h1 className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-[#1f3354]">Saved Trips</h1>
-          <p className="mb-5 mt-2 text-sm text-[#6b7285]">All your saved trips and folders, ready for your next adventure.</p>
+          <h1 className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-ink">Saved Trips</h1>
+          <p className="mb-5 mt-2 text-sm text-muted">All your saved trips and folders, ready for your next adventure.</p>
           {isOwn && <SavedFolders key={selectedFolder} userId={id} folders={folders.map(f => ({ ...f, count: bucketItems.filter(item => item.folderId === f.id).length }))} selected={selectedFolder} total={bucketItems.length} />}
           {visibleBucketItems.length === 0 ? (
-            <div className="bg-[#faf7f1] rounded-xl border border-[#dfd3c2] p-8 text-center">
+            <div className="bg-cream rounded-xl border border-sand p-8 text-center">
               <p className="text-4xl mb-3">❤️</p>
-              <p className="text-[#8B6F4E] text-sm">{selectedFolder ? 'No trips in this folder yet.' : 'Nothing saved yet.'}</p>
-              <p className="text-[#8B6F4E] text-xs mt-1">
+              <p className="text-brown text-sm">{selectedFolder ? 'No trips in this folder yet.' : 'Nothing saved yet.'}</p>
+              <p className="text-brown text-xs mt-1">
                 {selectedFolder ? 'Use Save to folder on an itinerary, or organize trips from All saved.' : 'Tap the ❤️ on any itinerary to save it.'}
               </p>
             </div>

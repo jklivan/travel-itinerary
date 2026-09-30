@@ -145,24 +145,24 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
     finally { setAdding(null) }
   }
 
-  return <div className={`mx-auto grid max-w-[1440px] gap-4 px-4 pt-4 text-[#1f3354] lg:h-[calc(100dvh-4.5rem-var(--app-bottom-clearance))] ${mapView === 'hidden' ? 'lg:grid-cols-[220px_minmax(0,1fr)]' : mapView === 'small' ? 'lg:grid-cols-[220px_minmax(0,1fr)_320px]' : 'lg:grid-cols-[220px_minmax(0,1fr)_minmax(0,1.1fr)]'}`}>
+  return <div className={`mx-auto grid max-w-[1440px] gap-4 px-4 pt-4 text-ink lg:h-[calc(100dvh-4.5rem-var(--app-bottom-clearance))] ${mapView === 'hidden' ? 'lg:grid-cols-[220px_minmax(0,1fr)]' : mapView === 'small' ? 'lg:grid-cols-[220px_minmax(0,1fr)_320px]' : 'lg:grid-cols-[220px_minmax(0,1fr)_minmax(0,1.1fr)]'}`}>
     {/* Desktop: past conversations down the left. */}
-    <aside aria-label="Past chats" className="hidden min-h-0 flex-col overflow-hidden rounded-2xl border border-[#d7cebc] bg-[#fffdf7] lg:flex">
-      <p className="flex items-center gap-2 border-b border-[#e6dfd1] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#3f5a80]"><History size={14} />Past chats</p>
-      {history.length ? <div className="min-h-0 overflow-y-auto p-2"><PastChats history={history} currentId={chat?.id} /></div> : <p className="p-4 text-sm text-[#6b7285]">Your conversations will appear here.</p>}
+    <aside aria-label="Past chats" className="hidden min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-card lg:flex">
+      <p className="flex items-center gap-2 border-b border-line-soft px-4 py-3 text-xs font-semibold uppercase tracking-wide text-link"><History size={14} />Past chats</p>
+      {history.length ? <div className="min-h-0 overflow-y-auto p-2"><PastChats history={history} currentId={chat?.id} /></div> : <p className="p-4 text-sm text-muted">Your conversations will appear here.</p>}
     </aside>
     <div className="flex min-h-0 flex-col gap-4">
-      <section aria-label="New trip" className={`min-h-0 overflow-y-auto rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-4 ${places.length ? 'lg:flex-1' : 'lg:flex-none'}`}>
-        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#3f5a80]"><Sparkles size={14} />Plan with Postcard</p>
+      <section aria-label="New trip" className={`min-h-0 overflow-y-auto rounded-2xl border border-line bg-card p-4 ${places.length ? 'lg:flex-1' : 'lg:flex-none'}`}>
+        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><Sparkles size={14} />Plan with Postcard</p>
         <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="font-[family-name:var(--font-playfair)] text-2xl">{trip?.title ?? 'Your next trip'}</h1>
-          <div className="flex items-center gap-4 text-sm font-semibold text-[#3f5a80]">
+          <div className="flex items-center gap-4 text-sm font-semibold text-link">
             {/* From the planner this goes back where you came from; for a trip the chat built, it opens it. */}
             {trip && <Link href={`/plan/${trip.id}`}>{fromPlanner ? '← Back to your trip' : 'Open in planner →'}</Link>}
             {mapView === 'hidden' && <button type="button" onClick={() => setMapView('normal')} className="inline-flex items-center gap-1"><MapIcon size={14} />Show map</button>}
           </div>
         </div>
-        {!places.length ? <p className="mt-3 text-sm text-[#6b7285]">Ask Postcard where to go. Places you add from its suggestions will build your itinerary here.</p>
+        {!places.length ? <p className="mt-3 text-sm text-muted">Ask Postcard where to go. Places you add from its suggestions will build your itinerary here.</p>
           : categories.map(category => { const items = places.filter(place => place.type === category.value); return items.length > 0 && <section key={category.value} className="mt-5"><div className={`${styles.categoryHeading} ${styles[category.value]}`}><h3><span className={styles.categoryIcon}><category.Icon size={17} /></span>{category.label}</h3><span className={styles.count}>{items.length} {items.length === 1 ? 'place' : 'places'}</span></div><div className="space-y-3">{items.map(place => <article key={place.id} className={`${planningStyles.place} ${styles[category.value]}`}><div className={`${styles.card} ${planningStyles.card}`}>
             <PlacePhoto itemId={place.id} name={place.name} photos={place.photos} thumbnailClass={styles.thumbnail} fallback={<div className={styles.keepsake} aria-hidden="true"><span>{category.eyebrow}</span><category.Icon size={25} strokeWidth={1} /><span>{place.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span></div>} />
             <div className={styles.cardBody}><p className={styles.eyebrow}>{category.eyebrow}{place.day !== null && ` · Day ${place.day}`}</p><h3 className={styles.placeName}>{place.name}</h3><p className={planningStyles.location}>{place.destination}</p>{place.notes && <p className={styles.note}>{place.notes}</p>}</div>
@@ -171,49 +171,49 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
 
       {/* Between the trip card and the chat: start over, or (on phones) open a past conversation. */}
       <div ref={chatControls} className="flex scroll-mt-24 gap-2">
-        <button type="button" disabled={thinking || !turns.length} onClick={startNewChat} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#a9b6c8] bg-[#fffdf7] px-4 text-sm font-semibold text-[#243b61] disabled:opacity-50"><SquarePen size={16} />Start a new chat</button>
-        {history.length > 0 && <button type="button" onClick={() => setShowHistory(value => !value)} aria-expanded={showHistory} aria-controls="past-chats-phone" className="flex min-h-11 items-center gap-2 rounded-xl border border-[#d7cebc] bg-[#fffdf7] px-4 text-sm font-semibold text-[#3f5a80] lg:hidden"><History size={16} />Past chats</button>}
+        <button type="button" disabled={thinking || !turns.length} onClick={startNewChat} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-mist-edge bg-card px-4 text-sm font-semibold text-ink disabled:opacity-50"><SquarePen size={16} />Start a new chat</button>
+        {history.length > 0 && <button type="button" onClick={() => setShowHistory(value => !value)} aria-expanded={showHistory} aria-controls="past-chats-phone" className="flex min-h-11 items-center gap-2 rounded-xl border border-line bg-card px-4 text-sm font-semibold text-link lg:hidden"><History size={16} />Past chats</button>}
       </div>
-      {showHistory && <div id="past-chats-phone" className="rounded-2xl border border-[#d7cebc] bg-[#fffdf7] p-2 lg:hidden"><PastChats history={history} currentId={chat?.id} /></div>}
+      {showHistory && <div id="past-chats-phone" className="rounded-2xl border border-line bg-card p-2 lg:hidden"><PastChats history={history} currentId={chat?.id} /></div>}
 
-      <section aria-label="Chat with Postcard" className="flex min-h-0 flex-col rounded-2xl border border-[#d7cebc] bg-[#fffdf7] lg:h-auto lg:flex-[1.2]">
+      <section aria-label="Chat with Postcard" className="flex min-h-0 flex-col rounded-2xl border border-line bg-card lg:h-auto lg:flex-[1.2]">
         <div ref={scroller} className="min-h-0 flex-1 space-y-4 p-4 lg:overflow-y-auto" aria-live="polite">
           {!turns.length && !skippedSetup && <TripSetup hasOwnTrips={hasOwnTrips} initial={lastPreferences} disabled={thinking} onSubmit={preferences => void send(SETUP_MESSAGE, preferences)} onSkip={() => setSkippedSetup(true)} />}
-          {!turns.length && skippedSetup && <div className="text-sm text-[#6b7285]"><p>Postcard uses your trips and your friends’ trips—their ratings and notes—plus its own picks. Try:</p><div className="mt-3 flex flex-wrap gap-2">{starters.map(starter => <button key={starter} type="button" onClick={() => void send(starter)} className="rounded-full border border-[#d7cebc] px-3 py-1.5 text-left text-xs text-[#3f5a80] hover:bg-[#f7f3ec]">{starter}</button>)}</div></div>}
+          {!turns.length && skippedSetup && <div className="text-sm text-muted"><p>Postcard uses your trips and your friends’ trips—their ratings and notes—plus its own picks. Try:</p><div className="mt-3 flex flex-wrap gap-2">{starters.map(starter => <button key={starter} type="button" onClick={() => void send(starter)} className="rounded-full border border-line px-3 py-1.5 text-left text-xs text-link hover:bg-paper">{starter}</button>)}</div></div>}
           {turns.map((turn, index) => turn.role === 'preferences'
             ? <PreferencesSummary key={index} preferences={turn.preferences} />
             : turn.role === 'user'
-            ? <p key={index} className="ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-[#243b61] px-4 py-2 text-sm text-white">{turn.text}</p>
+            ? <p key={index} className="ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-ink px-4 py-2 text-sm text-white">{turn.text}</p>
             : <div key={index} className="space-y-3"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed">{turn.text}</p>
-              {groupByOption(turn.recommendations).map(([option, recs]) => <section key={option} aria-label={option} className="rounded-xl border-l-4 bg-[#faf7f1] py-3 pl-3 pr-2" style={{ borderColor: colorOf(recs[0]) }}>
+              {groupByOption(turn.recommendations).map(([option, recs]) => <section key={option} aria-label={option} className="rounded-xl border-l-4 bg-cream py-3 pl-3 pr-2" style={{ borderColor: colorOf(recs[0]) }}>
                 <h3 className="font-[family-name:var(--font-playfair)] text-lg leading-tight" style={{ color: colorOf(recs[0]) }}>{option}</h3>
-                <p className="text-xs text-[#6b7285]">{[...new Set(recs.map(rec => [rec.destination, rec.country].filter(Boolean).join(', ')))].join(' · ')}</p>
+                <p className="text-xs text-muted">{[...new Set(recs.map(rec => [rec.destination, rec.country].filter(Boolean).join(', ')))].join(' · ')}</p>
                 {sectionOrder.map(({ type, label, Icon }) => { const items = recs.filter(rec => rec.type === type); return items.length > 0 && <div key={type} className="mt-3">
-                  <h4 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#3f5a80]"><Icon size={13} />{label}</h4>
+                  <h4 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-link"><Icon size={13} />{label}</h4>
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-2">{items.map(rec => <RecommendationCard key={rec.key} rec={rec} color={colorOf(rec)} grouped added={inTrip(rec)} busy={adding === rec.key} disabled={adding !== null} onAdd={() => void add(rec)} />)}</div>
                 </div> })}
               </section>)}
             </div>)}
-          {thinking && <p className="text-sm text-[#6b7285]">Postcard is looking through your trips…</p>}
+          {thinking && <p className="text-sm text-muted">Postcard is looking through your trips…</p>}
         </div>
         {error && <p role="alert" className="px-4 pb-2 text-sm text-red-700">{error}</p>}
         <div ref={endOfChat} aria-hidden="true" style={{ scrollMarginBottom: 'calc(var(--app-bottom-clearance) + 4.5rem)' }} />
         {/* On phones the composer sticks just above the bottom navigation so it is always reachable. */}
-        <form className="sticky bottom-[calc(var(--app-bottom-clearance)-0.75rem)] z-10 flex items-end gap-2 rounded-b-2xl border-t border-[#e6dfd1] bg-[#fffdf7] p-3 lg:static" onSubmit={event => { event.preventDefault(); void send(draft) }}>
-          <textarea ref={composer} autoFocus={!!initialDraft} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(draft) } }} rows={1} maxLength={4000} placeholder="Ask about a place or a trip…" aria-label="Message Postcard" className="max-h-40 min-h-11 flex-1 resize-none overflow-y-auto rounded-xl border border-[#d7cebc] bg-white px-3 py-2.5 text-base lg:text-sm outline-none focus:border-[#3f5a80]" />
-          <button type="submit" disabled={thinking || !draft.trim()} aria-label="Send" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#243b61] text-white disabled:opacity-40"><ArrowUp size={18} /></button>
+        <form className="sticky bottom-[calc(var(--app-bottom-clearance)-0.75rem)] z-10 flex items-end gap-2 rounded-b-2xl border-t border-line-soft bg-card p-3 lg:static" onSubmit={event => { event.preventDefault(); void send(draft) }}>
+          <textarea ref={composer} autoFocus={!!initialDraft} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(draft) } }} rows={1} maxLength={4000} placeholder="Ask about a place or a trip…" aria-label="Message Postcard" className="max-h-40 min-h-11 flex-1 resize-none overflow-y-auto rounded-xl border border-line bg-white px-3 py-2.5 text-base lg:text-sm outline-none focus:border-link" />
+          <button type="submit" disabled={thinking || !draft.trim()} aria-label="Send" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ink text-white disabled:opacity-40"><ArrowUp size={18} /></button>
         </form>
       </section>
     </div>
 
     {mapView === 'hidden' ? null
-    : <section aria-label="Map" className={`relative isolate order-first overflow-hidden rounded-2xl border border-[#d7cebc] bg-[#fffdf7] lg:order-none lg:h-auto ${mapView === 'small' ? 'h-[22dvh]' : 'h-[32dvh]'}`}>
+    : <section aria-label="Map" className={`relative isolate order-first overflow-hidden rounded-2xl border border-line bg-card lg:order-none lg:h-auto ${mapView === 'small' ? 'h-[22dvh]' : 'h-[32dvh]'}`}>
       <div className="absolute right-3 top-3 z-[1000] flex gap-1.5">
-        <button type="button" onClick={() => setMapView(mapView === 'small' ? 'normal' : 'small')} aria-label={mapView === 'small' ? 'Restore map size' : 'Shrink map'} title={mapView === 'small' ? 'Restore map size' : 'Shrink map'} className="flex size-9 items-center justify-center rounded-lg border border-[#d7cebc] bg-[#fffdf7]/95 text-[#243b61] shadow-sm hover:bg-white">{mapView === 'small' ? <Maximize2 size={16} /> : <Minimize2 size={16} />}</button>
-        <button type="button" onClick={() => setMapView('hidden')} aria-label="Hide map" title="Hide map" className="flex size-9 items-center justify-center rounded-lg border border-[#d7cebc] bg-[#fffdf7]/95 text-[#243b61] shadow-sm hover:bg-white"><EyeOff size={16} /></button>
+        <button type="button" onClick={() => setMapView(mapView === 'small' ? 'normal' : 'small')} aria-label={mapView === 'small' ? 'Restore map size' : 'Shrink map'} title={mapView === 'small' ? 'Restore map size' : 'Shrink map'} className="flex size-9 items-center justify-center rounded-lg border border-line bg-card/95 text-ink shadow-sm hover:bg-white">{mapView === 'small' ? <Maximize2 size={16} /> : <Minimize2 size={16} />}</button>
+        <button type="button" onClick={() => setMapView('hidden')} aria-label="Hide map" title="Hide map" className="flex size-9 items-center justify-center rounded-lg border border-line bg-card/95 text-ink shadow-sm hover:bg-white"><EyeOff size={16} /></button>
       </div>
       <TripMap places={mapPlaces} />
-      {legend.length > 0 && <div aria-label="Trip ideas on the map" className="absolute bottom-3 left-3 z-[1000] max-w-[70%] space-y-1 rounded-xl bg-[#fffdf7]/95 px-3 py-2 text-xs shadow-md">
+      {legend.length > 0 && <div aria-label="Trip ideas on the map" className="absolute bottom-3 left-3 z-[1000] max-w-[70%] space-y-1 rounded-xl bg-card/95 px-3 py-2 text-xs shadow-md">
         {legend.map(option => <p key={option} className="flex items-center gap-2"><span aria-hidden="true" className="size-3 shrink-0 rounded-full border-2 border-white shadow" style={{ background: optionColors[options.indexOf(option) % optionColors.length] }} /><span className="truncate">{option}</span></p>)}
       </div>}
     </section>}
@@ -223,15 +223,15 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
 function RecommendationCard({ rec, color, grouped = false, added, busy, disabled, onAdd }: { rec: Recommendation; color: string; grouped?: boolean; added: boolean; busy: boolean; disabled: boolean; onAdd: () => void }) {
   const category = categories.find(category => category.value === rec.type) ?? categories[2]
   const [open, setOpen] = useState(false)
-  const addButton = <button type="button" onClick={onAdd} disabled={added || disabled} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-[#a9b6c8] bg-white px-3 text-xs font-semibold text-[#243b61] disabled:opacity-60">{added ? <><Check size={14} />Added</> : busy ? 'Adding…' : <><Plus size={14} />Add to trip</>}</button>
-  return <article className="flex flex-col rounded-xl border border-[#e6dfd1] bg-white p-3 transition-shadow hover:shadow-md">
+  const addButton = <button type="button" onClick={onAdd} disabled={added || disabled} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-mist-edge bg-white px-3 text-xs font-semibold text-ink disabled:opacity-60">{added ? <><Check size={14} />Added</> : busy ? 'Adding…' : <><Plus size={14} />Add to trip</>}</button>
+  return <article className="flex flex-col rounded-xl border border-line-soft bg-white p-3 transition-shadow hover:shadow-md">
     <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={`View details for ${rec.name}`} className="flex flex-1 flex-col text-left">
       {/* In a grouped reply the idea and category are already in the headings above. */}
-      {!grouped && <p className="mb-1 flex w-full items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#6b7285]"><span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: color }} /><span className="min-w-0 truncate" style={{ color }}>{optionOf(rec)}</span><span aria-hidden="true">·</span><category.Icon size={12} className="shrink-0" />{category.eyebrow}</p>}
+      {!grouped && <p className="mb-1 flex w-full items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted"><span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: color }} /><span className="min-w-0 truncate" style={{ color }}>{optionOf(rec)}</span><span aria-hidden="true">·</span><category.Icon size={12} className="shrink-0" />{category.eyebrow}</p>}
       <h3 className="font-semibold leading-snug">{rec.name}</h3>
-      <p className="text-xs text-[#6b7285]">{[rec.destination, rec.country].filter(Boolean).join(', ')}</p>
+      <p className="text-xs text-muted">{[rec.destination, rec.country].filter(Boolean).join(', ')}</p>
       <p className="mt-2 flex-1 text-sm">{rec.why}</p>
-      <span className="mt-2 text-xs font-semibold text-[#3f5a80]">{rec.source === 'claude' ? 'Photos & details →' : rec.source === 'you' ? 'Your notes & photos →' : `${rec.friendName}’s notes & photos →`}</span>
+      <span className="mt-2 text-xs font-semibold text-link">{rec.source === 'claude' ? 'Photos & details →' : rec.source === 'you' ? 'Your notes & photos →' : `${rec.friendName}’s notes & photos →`}</span>
     </button>
     <div className="mt-3 flex items-center justify-between gap-2">
       <SourceBadge rec={rec} />
@@ -242,7 +242,7 @@ function RecommendationCard({ rec, color, grouped = false, added, busy, disabled
 }
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
-  return <fieldset className="mt-4"><legend className="mb-2 text-sm font-semibold text-[#1f3354]">{title}</legend><div className="flex flex-wrap gap-2">{children}</div></fieldset>
+  return <fieldset className="mt-4"><legend className="mb-2 text-sm font-semibold text-ink">{title}</legend><div className="flex flex-wrap gap-2">{children}</div></fieldset>
 }
 
 // Asked before the first recommendation. What the trip is now is always asked; budget, destination
@@ -256,20 +256,20 @@ function TripSetup({ hasOwnTrips, initial, disabled, onSubmit, onSkip }: { hasOw
   const askTaste = !hasOwnTrips
   const ready = !!travelers && !!length && (!askTaste || (!!budget && destinationTypes.length > 0 && activities.length > 0))
   const toggle = (list: string[], value: string) => list.includes(value) ? list.filter(item => item !== value) : [...list, value]
-  const chip = (selected: boolean) => `min-h-10 rounded-full border px-3 text-sm ${selected ? 'border-[#3f5a80] bg-[#e4eaf3] font-semibold text-[#1f3354]' : 'border-[#d7cebc] text-[#3f5a80] hover:bg-[#f7f3ec]'}`
-  return <section aria-label="Tell us about this trip" className="rounded-xl bg-[#faf7f1] p-4">
+  const chip = (selected: boolean) => `min-h-10 rounded-full border px-3 text-sm ${selected ? 'border-link bg-mist font-semibold text-ink' : 'border-line text-link hover:bg-paper'}`
+  return <section aria-label="Tell us about this trip" className="rounded-xl bg-cream p-4">
     <h2 className="font-[family-name:var(--font-playfair)] text-xl">Tell us about this trip</h2>
-    <p className="mt-1 text-sm text-[#6b7285]">{askTaste ? 'A few quick picks so the ideas actually fit you.' : 'We’ll use your past trips for your budget and taste—just tell us about this one.'}</p>
+    <p className="mt-1 text-sm text-muted">{askTaste ? 'A few quick picks so the ideas actually fit you.' : 'We’ll use your past trips for your budget and taste—just tell us about this one.'}</p>
     <Group title="Who’s going?">{TRAVELERS.map(option => <button key={option} type="button" aria-pressed={travelers === option} onClick={() => setTravelers(option)} className={chip(travelers === option)}>{option}</button>)}</Group>
     <Group title="How long?">{TRIP_LENGTHS.map(option => <button key={option} type="button" aria-pressed={length === option} onClick={() => setLength(option)} className={chip(length === option)}>{option}</button>)}</Group>
     {askTaste && <>
-      <Group title="Budget">{BUDGETS.map(option => <button key={option.value} type="button" aria-pressed={budget === option.value} onClick={() => setBudget(option.value)} className={chip(budget === option.value)}>{option.label} <span className="font-normal text-[#6b7285]">{option.hint}</span></button>)}</Group>
+      <Group title="Budget">{BUDGETS.map(option => <button key={option.value} type="button" aria-pressed={budget === option.value} onClick={() => setBudget(option.value)} className={chip(budget === option.value)}>{option.label} <span className="font-normal text-muted">{option.hint}</span></button>)}</Group>
       <Group title="Types of destination (pick any)">{DESTINATION_TYPES.map(option => <button key={option} type="button" aria-pressed={destinationTypes.includes(option)} onClick={() => setDestinationTypes(list => toggle(list, option))} className={chip(destinationTypes.includes(option))}>{option}</button>)}</Group>
       <Group title="Things you like to do (pick any)">{ACTIVITIES.map(option => <button key={option} type="button" aria-pressed={activities.includes(option)} onClick={() => setActivities(list => toggle(list, option))} className={chip(activities.includes(option))}>{option}</button>)}</Group>
     </>}
     <div className="mt-5 flex flex-wrap items-center gap-3">
-      <button type="button" disabled={!ready || disabled} onClick={() => onSubmit({ travelers, length, budget: askTaste ? budget : null, destinationTypes: askTaste ? destinationTypes : [], activities: askTaste ? activities : [] })} className="min-h-11 rounded-xl bg-[#243b61] px-5 text-sm font-semibold text-white disabled:opacity-40">Show me ideas →</button>
-      <button type="button" onClick={onSkip} className="min-h-11 text-sm text-[#3f5a80] underline">Skip, I’ll just ask</button>
+      <button type="button" disabled={!ready || disabled} onClick={() => onSubmit({ travelers, length, budget: askTaste ? budget : null, destinationTypes: askTaste ? destinationTypes : [], activities: askTaste ? activities : [] })} className="min-h-11 rounded-xl bg-ink px-5 text-sm font-semibold text-white disabled:opacity-40">Show me ideas →</button>
+      <button type="button" onClick={onSkip} className="min-h-11 text-sm text-link underline">Skip, I’ll just ask</button>
     </div>
   </section>
 }
@@ -277,11 +277,11 @@ function TripSetup({ hasOwnTrips, initial, disabled, onSubmit, onSkip }: { hasOw
 function PreferencesSummary({ preferences }: { preferences: TravelPreferences }) {
   const budget = BUDGETS.find(option => option.value === preferences.budget)
   const parts = [preferences.travelers, preferences.length, budget?.label, preferences.destinationTypes.join(', '), preferences.activities.join(', ')].filter(Boolean)
-  return <p className="ml-auto w-fit max-w-[85%] rounded-2xl border border-[#c8d2e0] bg-[#eaeff6] px-4 py-2 text-xs text-[#243b61]"><span className="font-semibold">This trip:</span> {parts.join(' · ')}</p>
+  return <p className="ml-auto w-fit max-w-[85%] rounded-2xl border border-mist-line bg-mist px-4 py-2 text-xs text-ink"><span className="font-semibold">This trip:</span> {parts.join(' · ')}</p>
 }
 
 function SourceBadge({ rec }: { rec: Recommendation }) {
-  return <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${rec.source === 'claude' ? 'bg-[#eef0f6] text-[#465e7a]' : 'bg-[#eaeff6] text-[#3f5a80]'}`}>{rec.source === 'claude' ? <><Sparkles size={11} />Postcard’s pick</> : rec.source === 'you' ? <><MapPin size={11} />Your past trip</> : <><Users size={11} />{rec.friendName}</>}</span>
+  return <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${rec.source === 'claude' ? 'bg-mist text-link' : 'bg-mist text-link'}`}>{rec.source === 'claude' ? <><Sparkles size={11} />Postcard’s pick</> : rec.source === 'you' ? <><MapPin size={11} />Your past trip</> : <><Users size={11} />{rec.friendName}</>}</span>
 }
 
 type PickInfo = { author: string | null; notes: string | null; rating: number | null; description: string | null; googleRating?: { value: number; count: number } | null; photos: { url: string; credit: string | null }[]; photosFromGoogle: boolean; address: string | null; website: string | null; placeId: string | null; trip: { title: string; href: string } | null }
@@ -339,26 +339,26 @@ function PickDetails({ rec, color, addButton, onClose }: { rec: Recommendation; 
       </header>
 
       {rec.source !== 'claude' && <section>
-        <h3 className={detailStyles.sectionTitle}>{who} notes{info?.rating ? <span className="ml-2 font-normal text-[#a27e3b]">{'★'.repeat(info.rating)}{'☆'.repeat(5 - info.rating)}</span> : null}</h3>
+        <h3 className={detailStyles.sectionTitle}>{who} notes{info?.rating ? <span className="ml-2 font-normal text-gold">{'★'.repeat(info.rating)}{'☆'.repeat(5 - info.rating)}</span> : null}</h3>
         {!info && !failed ? <p className={detailStyles.muted}>Loading…</p> : info?.notes ? <p className={detailStyles.text}>{info.notes}</p> : <p className={detailStyles.muted}>{rec.source === 'you' ? 'You didn’t add notes for this place.' : `${rec.friendName} didn’t add notes for this place.`}</p>}
-        {info?.trip && <Link href={info.trip.href} className="mt-2 inline-block text-sm font-semibold text-[#3f5a80]">From {rec.source === 'you' ? 'your' : `${rec.friendName}’s`} trip “{info.trip.title}” →</Link>}
+        {info?.trip && <Link href={info.trip.href} className="mt-2 inline-block text-sm font-semibold text-link">From {rec.source === 'you' ? 'your' : `${rec.friendName}’s`} trip “{info.trip.title}” →</Link>}
       </section>}
 
-      {!info && !failed ? <div className="h-56 animate-pulse rounded-lg bg-[#ece5d8]" aria-hidden="true" />
+      {!info && !failed ? <div className="h-56 animate-pulse rounded-lg bg-chip" aria-hidden="true" />
         : info && info.photos.length > 0 && <section>
-          <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto rounded-lg">{info.photos.map(photo => <figure key={photo.url} className="relative h-56 w-[85%] shrink-0 snap-center overflow-hidden rounded-lg bg-[#ece5d8] sm:w-[70%]">
+          <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto rounded-lg">{info.photos.map(photo => <figure key={photo.url} className="relative h-56 w-[85%] shrink-0 snap-center overflow-hidden rounded-lg bg-chip sm:w-[70%]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photo.url} alt="" loading="lazy" className="h-full w-full object-cover" />
             {photo.credit && <figcaption className="absolute bottom-1 right-2 rounded bg-black/50 px-1.5 text-[10px] text-white">{photo.credit}</figcaption>}
           </figure>)}</div>
-          {info.photosFromGoogle && <p className="mt-1 text-[11px] text-[#6b7285]">Photos from Google{rec.source !== 'claude' ? ` · ${rec.source === 'you' ? 'you' : rec.friendName} didn’t add any` : ''}</p>}
+          {info.photosFromGoogle && <p className="mt-1 text-[11px] text-muted">Photos from Google{rec.source !== 'claude' ? ` · ${rec.source === 'you' ? 'you' : rec.friendName} didn’t add any` : ''}</p>}
         </section>}
 
       <section><h3 className={detailStyles.sectionTitle}>Why Postcard suggested it</h3><p className={detailStyles.text}>{rec.why}</p></section>
       {(rec.description || info?.description) && <section><h3 className={detailStyles.sectionTitle}>About</h3>
         {rec.description && <p className={detailStyles.text}>{rec.description}</p>}
-        {info?.description && info.description !== rec.description && <p className={`${detailStyles.text} ${rec.description ? 'mt-2 text-[#6b7285]' : ''}`}>{info.description}</p>}
-        {info?.googleRating && <p className="mt-2 text-sm text-[#6b7285]">★ {info.googleRating.value.toFixed(1)} on Google · {info.googleRating.count.toLocaleString()} reviews</p>}
+        {info?.description && info.description !== rec.description && <p className={`${detailStyles.text} ${rec.description ? 'mt-2 text-muted' : ''}`}>{info.description}</p>}
+        {info?.googleRating && <p className="mt-2 text-sm text-muted">★ {info.googleRating.value.toFixed(1)} on Google · {info.googleRating.count.toLocaleString()} reviews</p>}
       </section>}
       {info?.address && <section><h3 className={detailStyles.sectionTitle}>Address</h3><p className={detailStyles.address}><MapPin size={17} />{info.address}</p></section>}
       {failed && <p className={detailStyles.muted}>Couldn’t load photos and details right now.</p>}
@@ -401,16 +401,16 @@ function TripMap({ places }: { places: MapPlace[] }) {
     const location = validMapLocation(place) ? { lat: place.lat, lng: place.lng } : locations[tripMapLookupKey(place)]
     return location ? [{ id: place.id, name: place.name, type: place.type, day: place.day, recommendation: 'none' as const, color: place.color, label: place.label, ...location }] : []
   })
-  return pins.length ? <ItineraryMap pins={pins} /> : <div className="flex h-full items-center justify-center p-6 text-center text-sm text-[#6b7285]">{places.length ? 'Finding places on the map…' : 'Suggestions and the places in your trip will appear here.'}</div>
+  return pins.length ? <ItineraryMap pins={pins} /> : <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted">{places.length ? 'Finding places on the map…' : 'Suggestions and the places in your trip will appear here.'}</div>
 }
 
 // Past conversations, newest first, each labelled by its topic.
 function PastChats({ history, currentId }: { history: PastChat[]; currentId?: string }) {
   return <ul className="space-y-1">{history.map(past => <li key={past.id}>
     <Link href={`/testplan?chat=${past.id}`} aria-current={past.id === currentId ? 'page' : undefined}
-      className={`block rounded-xl px-3 py-2 text-sm hover:bg-[#f7f3ec] ${past.id === currentId ? 'bg-[#eaeff6] font-semibold text-[#243b61]' : 'text-[#1f3354]'}`}>
+      className={`block rounded-xl px-3 py-2 text-sm hover:bg-paper ${past.id === currentId ? 'bg-mist font-semibold text-ink' : 'text-ink'}`}>
       <span className="block [overflow-wrap:anywhere]">{past.topic}</span>
-      <span className="block text-xs font-normal text-[#6b7285]">{new Date(past.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>
+      <span className="block text-xs font-normal text-muted">{new Date(past.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>
     </Link>
   </li>)}</ul>
 }

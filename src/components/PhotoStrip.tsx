@@ -100,7 +100,7 @@ export default function PhotoStrip({ photos, title, contain = false, fillContain
         </div>
       )}
     </div>
-    {gallery && photos[current]?.caption && <p className="px-1 pb-1 pt-3 text-sm text-[#6b7285]">{photos[current].caption}</p>}
+    {gallery && photos[current]?.caption && <p className="px-1 pb-1 pt-3 text-sm text-muted">{photos[current].caption}</p>}
     </>
   )
 }

@@ -1,17 +1,17 @@
-.transport { --place-accent: #687e9b; --place-tint: #edf1f5; }
+.transport { --place-accent: var(--color-link); --place-tint: var(--color-mist); }
 .hotel {
-  --place-accent: #3f5a80;
-  --place-tint: #e4eaf3;
+  --place-accent: var(--color-link);
+  --place-tint: var(--color-mist);
 }
 
 .food_drink {
-  --place-accent: #ad6b57;
+  --place-accent: var(--color-terracotta);
   --place-tint: #f2e5d9;
 }
 
 .activity {
-  --place-accent: #a27e3b;
-  --place-tint: #eee7d3;
+  --place-accent: var(--color-gold);
+  --place-tint: var(--color-chip);
 }
 
 .placeGrid {
@@ -33,7 +33,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #1f3354;
+  color: var(--color-ink);
   font-family: var(--font-playfair), Georgia, serif;
   font-size: 18px;
 }
@@ -63,8 +63,8 @@
   align-items: flex-start;
   gap: 11px;
   padding: 7px;
-  background: linear-gradient(115deg, #fffdf6, #faf7ee);
-  border: 1px solid #e3dfd2;
+  background: linear-gradient(115deg, var(--color-card), var(--color-cream));
+  border: 1px solid var(--color-line-soft);
   border-radius: 1px;
   box-shadow: 0 3px 10px #403b2910;
   transition: border-color 160ms ease, box-shadow 160ms ease;
@@ -86,7 +86,7 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  color: #3f5a80;
+  color: var(--color-link);
   font-size: 8px;
   font-weight: 800;
   font-style: italic;
@@ -96,7 +96,7 @@
   padding-bottom: 3px;
 }
 
-.avoidStamp { color: #a44138; }
+.avoidStamp { color: var(--color-danger); }
 
 .stamped .eyebrow,
 .stamped .placeName {
@@ -129,8 +129,8 @@
   align-items: flex-start;
   gap: 12px;
   padding: 9px;
-  background: #fffdf7;
-  border: 1px solid #e3dfd2;
+  background: var(--color-card);
+  border: 1px solid var(--color-line-soft);
   box-shadow: 0 4px 12px #403b2912;
 }
 
@@ -144,7 +144,7 @@
   padding: 5px 5px 20px;
   align-self: flex-start;
   overflow: hidden;
-  border: 1px solid #e5e0d5;
+  border: 1px solid var(--color-line-soft);
   background: #fff;
   box-shadow: 0 2px 5px #1f335418;
 }
@@ -216,7 +216,7 @@
   -webkit-line-clamp: 2;
   overflow: hidden;
   margin-top: 3px;
-  color: #1f3354;
+  color: var(--color-ink);
   font-family: var(--font-playfair), Georgia, serif;
   font-size: 15px;
   font-weight: 500;
@@ -258,17 +258,17 @@
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 6px;
-  color: #64706d;
+  color: var(--color-muted);
   font-size: 10px;
 }
 
 .rating svg {
-  color: #ba9146;
-  fill: #ba9146;
+  color: var(--color-gold);
+  fill: var(--color-gold);
 }
 
 .price {
-  color: #3f5a80;
+  color: var(--color-link);
   letter-spacing: 0.08em;
 }
 
@@ -278,7 +278,7 @@
   -webkit-line-clamp: 3;
   overflow: hidden;
   margin-top: 7px;
-  color: #6b7285;
+  color: var(--color-muted);
   font-size: 11px;
   line-height: 1.5;
   overflow-wrap: anywhere;
@@ -286,12 +286,12 @@
 
 .recommendation {
   margin-top: 9px;
-  color: #3f5a80;
+  color: var(--color-link);
   font-size: 9px;
 }
 
 .ratingLabel {
-  color: #6b7285;
+  color: var(--color-muted);
   font-size: 9px;
 }
 
@@ -301,8 +301,8 @@
   pointer-events: none;
   margin-top: 8px;
   padding-top: 6px;
-  border-top: 1px solid #e8e3d7;
-  color: #5f6780;
+  border-top: 1px solid var(--color-line-soft);
+  color: var(--color-muted);
   font-size: 10px;
   line-height: 1.5;
 }
@@ -315,7 +315,7 @@
 }
 
 .friendName {
-  color: #3f5a80;
+  color: var(--color-link);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -324,11 +324,11 @@
 .ratingsDetails { display: grid; gap: 8px; }
 .ratingsDetails h3 { font-weight: 600; font-size: 14px; text-transform: none; }
 .ratingsGroup { display: grid; gap: 6px; }
-.ratingsGroupTitle { font-size: 12px; color: #6b7285; }
+.ratingsGroupTitle { font-size: 12px; color: var(--color-muted); }
 .ratingsRow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 14px; color: #4f5a53; }
 .communityLink { color: inherit; border-radius: 8px; }
-.communityLink:hover .ratingsTripLink { color: #243b61; }
-.ratingsTripLink { margin-left: auto; color: #3f5a80; font-size: 13px; text-decoration: underline; text-underline-offset: 2px; }
+.communityLink:hover .ratingsTripLink { color: var(--color-ink); }
+.ratingsTripLink { margin-left: auto; color: var(--color-link); font-size: 13px; text-decoration: underline; text-underline-offset: 2px; }
 
 @media (min-width: 768px) {
   .placeGrid {

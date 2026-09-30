@@ -38,7 +38,7 @@ export function StarRating({ value, onChange }: { value: number; onChange: (v: n
     <div className="flex gap-1">
       {[1, 2, 3, 4, 5].map((s) => (
         <button key={s} type="button" aria-label={`Rate ${s} out of 5`} aria-pressed={value === s} onClick={() => onChange(value === s ? 0 : s)} className="focus:outline-none">
-          <Star size={24} strokeWidth={1.6} className={s <= value ? 'fill-[#ba9146] text-[#ba9146]' : 'fill-none text-[#b3a78e]'} />
+          <Star size={24} strokeWidth={1.6} className={s <= value ? 'fill-gold text-gold' : 'fill-none text-gold-faint'} />
         </button>
       ))}
     </div>
@@ -75,7 +75,7 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
     hotel:     { color: 'bg-blue-50 border-blue-200',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
     food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const, notesPh: 'e.g. Order the truffle pasta, great for groups…'           },
     activity:  { color: 'bg-green-50 border-green-200',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const,   notesPh: 'e.g. Book tickets online, go early to beat the crowds…'   },
-    transport: { color: 'bg-[#edf1f5] border-[#c5cfdb]', label: 'Transportation', placeholder: 'e.g. Ferry to Nantucket, car rental, Uber tips…', placeType: 'activity' as const, notesPh: 'Flight or ferry details, routes, times, booking tips, car rentals, or taxi / Uber availability…' },
+    transport: { color: 'bg-mist border-mist-line', label: 'Transportation', placeholder: 'e.g. Ferry to Nantucket, car rental, Uber tips…', placeType: 'activity' as const, notesPh: 'Flight or ferry details, routes, times, booking tips, car rentals, or taxi / Uber availability…' },
   }[type]
 
   function toggleTag(tag: string) {
@@ -94,16 +94,16 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
   }
 
   return (
-    <fieldset disabled={busy} className={`min-w-0 rounded-2xl border ${planning ? 'border-[#d7cebc] bg-[#faf7f1]' : cfg.color} p-4 space-y-3`}>
+    <fieldset disabled={busy} className={`min-w-0 rounded-2xl border ${planning ? 'border-line bg-cream' : cfg.color} p-4 space-y-3`}>
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{cfg.label}</p>
         <button type="button" aria-label="Close place form" disabled={photoUploading || busy} onClick={onClose} className="text-gray-400 hover:text-gray-600">
           <X size={16} />
         </button>
       </div>
-      {type === 'transport' ? <input aria-label="Transport name" maxLength={240} value={name} onChange={event => setName(event.target.value)} placeholder={cfg.placeholder} className={planning ? `${inputCls} !border-[#d7cebc] focus:!ring-[#3f5a80]` : inputCls} /> : <PlacesAutocomplete value={name} onChange={v => { setName(v); setPlaceId('') }}
+      {type === 'transport' ? <input aria-label="Transport name" maxLength={240} value={name} onChange={event => setName(event.target.value)} placeholder={cfg.placeholder} className={planning ? `${inputCls} !border-line focus:!ring-link` : inputCls} /> : <PlacesAutocomplete value={name} onChange={v => { setName(v); setPlaceId('') }}
         onSelect={(_m, _s, pid) => { setPlaceId(pid ?? ''); setPlaceLocation(_s); setPlaceContext(JSON.stringify([city, type])) }}
-        aria-label="Place name" maxLength={240} type={cfg.placeType} placeholder={cfg.placeholder} className={planning ? `${inputCls} !border-[#d7cebc] focus:!ring-[#3f5a80]` : inputCls} city={city} />}
+        aria-label="Place name" maxLength={240} type={cfg.placeType} placeholder={cfg.placeholder} className={planning ? `${inputCls} !border-line focus:!ring-link` : inputCls} city={city} />}
       {type !== 'transport' && placeId && placeContext === JSON.stringify([city, type]) && <PlacePeople key={placeId} placeId={placeId} name={name} location={[city, placeLocation].filter(Boolean).join(', ')} />}
       {type === 'food_drink' && (
         <div className="flex flex-wrap gap-1.5">
@@ -128,7 +128,7 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
       <div className="space-y-1">
         <p className="text-xs text-gray-500">Notes</p>
         <textarea aria-label="Notes" maxLength={8000} rows={4} value={notes} onChange={e => setNotes(e.target.value)}
-          placeholder={cfg.notesPh} className={planning ? `${inputCls} !border-[#d7cebc] focus:!ring-[#3f5a80]` : inputCls} />
+          placeholder={cfg.notesPh} className={planning ? `${inputCls} !border-line focus:!ring-link` : inputCls} />
       </div>
       {/* Planning: rating and Must do / Avoid are optional here too, for places you've already been. */}
       {planning && <>
@@ -169,7 +169,7 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
       {children}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <button type="button" onClick={() => void submit()} disabled={!name.trim() || photoUploading}
-        className="w-full py-2.5 rounded-xl bg-[#1f3354] text-white text-sm font-semibold hover:bg-[#2b4368] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+        className="w-full py-2.5 rounded-xl bg-ink text-white text-sm font-semibold hover:bg-ink-soft transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
         <Check size={14} /> {busy ? 'Saving…' : planning ? 'Save Place' : 'Add'}
       </button>
     </fieldset>

@@ -8,5 +8,5 @@ export default function UserAvatar({ name, image, size = 32, className = '' }: {
     {/* eslint-disable-next-line @next/next/no-img-element */}
     <img src={sizedPhoto(image, 256)} alt="" style={style} className={`shrink-0 rounded-full object-cover ${className}`} />
   </>
-  return <span aria-hidden="true" style={style} className={`flex shrink-0 items-center justify-center rounded-full bg-[#4d6a8c] font-semibold text-white ${className}`}>{initials}</span>
+  return <span aria-hidden="true" style={style} className={`flex shrink-0 items-center justify-center rounded-full bg-slate font-semibold text-white ${className}`}>{initials}</span>
 }

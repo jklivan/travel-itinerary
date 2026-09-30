@@ -31,11 +31,11 @@ export default async function SavedPage({ searchParams }: { searchParams: Promis
   const visibleItems = bucketItems.filter(item => !selectedFolder || item.folderId === selectedFolder)
 
   return <div className="mx-auto max-w-xl px-5 pb-10 pt-6 sm:px-8">
-    <Link href="/saved" className="text-sm text-[#2b4368] hover:underline">← All folders</Link>
-    <h1 className="mt-3 font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-[#1f3354] [overflow-wrap:anywhere]">{openFolder.name}</h1>
-    <p className="mb-3 mt-1 text-xs uppercase tracking-[0.16em] text-[#6b7285]">{visibleItems.length} {visibleItems.length === 1 ? 'trip' : 'trips'}</p>
+    <Link href="/saved" className="text-sm text-ink-soft hover:underline">← All folders</Link>
+    <h1 className="mt-3 font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-ink [overflow-wrap:anywhere]">{openFolder.name}</h1>
+    <p className="mb-3 mt-1 text-xs uppercase tracking-[0.16em] text-muted">{visibleItems.length} {visibleItems.length === 1 ? 'trip' : 'trips'}</p>
     {selectedFolder && <SavedFolderActions key={selectedFolder} folder={openFolder} />}
-    {visibleItems.length === 0 ? <div className="rounded-xl border border-[#dfd3c2] bg-[#faf7f1] p-8 text-center text-sm text-[#8B6F4E]">{selectedFolder ? 'No trips in this folder yet. Use Save to folder on a saved trip.' : 'Nothing saved yet. Tap the ❤️ on any trip to save it.'}</div>
+    {visibleItems.length === 0 ? <div className="rounded-xl border border-sand bg-cream p-8 text-center text-sm text-brown">{selectedFolder ? 'No trips in this folder yet. Use Save to folder on a saved trip.' : 'Nothing saved yet. Tap the ❤️ on any trip to save it.'}</div>
       : <div className="flex flex-col gap-3 sm:gap-5">{visibleItems.map(item => <div key={item.id} className="min-w-0">
         <ItineraryCard fullWidth id={item.itinerary.id} postType={item.itinerary.postType} tags={item.itinerary.tags} durationDays={item.itinerary.durationDays} title={item.itinerary.title} bestMonths={item.itinerary.bestMonths} datesFlexible={item.itinerary.datesFlexible} startDate={item.itinerary.startDate} endDate={item.itinerary.endDate} audience={item.itinerary.audience} budget={item.itinerary.budget} tripRating={item.itinerary.tripRating} authorName={item.itinerary.user.name} authorImage={item.itinerary.user.image} authorId={item.itinerary.user.id} destinations={item.itinerary.destinations} coverPhoto={item.itinerary.photos[0]?.url ?? null} photos={tripPhotoGallery(item.itinerary.photos, item.itinerary.destinations.flatMap(destination => destination.items))} currentUserId={userId} isOwn={item.itinerary.user.id === userId} isBucketed={savedIds.has(item.itinerary.id)} saveCount={item.itinerary._count.bucketedBy} />
         <div className="mt-3"><SavedFolderPicker itineraryId={item.itinerary.id} label={folders.find(f => f.id === item.folderId)?.name ?? 'Save to folder'} /></div>

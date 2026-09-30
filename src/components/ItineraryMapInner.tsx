@@ -75,7 +75,7 @@ export function MapDayLegend({ pins }: { pins: ItemPin[] }) {
   const hasHotels = dayPins.some(pin => pin.type === 'hotel' && pin.day === null)
   const hasUndatedPlaces = dayPins.some(pin => pin.type !== 'hotel' && pin.day === null)
   if (!dayPins.length) return null
-  return <div aria-label="Map day legend" className="flex max-h-28 shrink-0 flex-wrap gap-x-4 gap-y-2 overflow-y-auto border-b border-[#d7cebc] bg-[#faf7ee] px-4 py-3 text-xs text-[#1f3354]">
+  return <div aria-label="Map day legend" className="flex max-h-28 shrink-0 flex-wrap gap-x-4 gap-y-2 overflow-y-auto border-b border-line bg-cream px-4 py-3 text-xs text-ink">
     {days.map(day => <span key={day} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ background: mapDayColor(day) }} />Day {day}</span>)}
     {hasHotels && <span className="inline-flex items-center gap-1.5"><span aria-hidden="true">🏨</span>Hotels</span>}
     {hasUndatedPlaces && <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ background: mapDayColor(null) }} />No day assigned</span>}

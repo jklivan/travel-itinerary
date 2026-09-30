@@ -38,8 +38,8 @@ export default async function MyTripsPage() {
   const cover = (trip: Trip) => ({ saved: savedCover(trip), itemId: trip.destinations.flatMap(d => d.items).find(item => item.type !== 'transport')?.id ?? null, stock: stock.get(trip.id) ?? null })
 
   return <div className="mx-auto max-w-xl px-5 pb-10 pt-6 sm:px-8">
-    <h1 className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-[#1f3354]">My trips</h1>
-    <TripSection title="Private plans" description="Only you can see these. Keep planning, then post when you’re ready." empty="No private plans yet." action={<Link href="/plan" className="shrink-0 whitespace-nowrap text-sm font-semibold text-[#3f5a80]">+ New plan</Link>}>
+    <h1 className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-ink">My trips</h1>
+    <TripSection title="Private plans" description="Only you can see these. Keep planning, then post when you’re ready." empty="No private plans yet." action={<Link href="/plan" className="shrink-0 whitespace-nowrap text-sm font-semibold text-link">+ New plan</Link>}>
       {/* Plans go straight to /plan: the trip editor's redirect there fails during in-app navigation. */}
       {plans.map(trip => <TripRow key={trip.id} href={`/plan/${trip.id}`} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={`${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}`} cta="Keep planning →" />)}
     </TripSection>
@@ -52,16 +52,16 @@ export default async function MyTripsPage() {
 function TripSection({ title, description, empty, action, children }: { title: string; description: string; empty: string; action?: React.ReactNode; children: React.ReactNode[] }) {
   return <section className="mt-7" aria-label={title}>
     <div className="mb-4 flex items-end justify-between gap-3">
-      <div><h2 className="font-[family-name:var(--font-playfair)] text-xl uppercase tracking-[0.1em] text-[#9a7358]">{title} <span className="font-sans text-sm tracking-normal">({children.length})</span></h2><p className="mt-1 max-w-sm text-sm leading-snug text-[#6b7285]">{description}</p></div>
+      <div><h2 className="font-[family-name:var(--font-playfair)] text-xl uppercase tracking-[0.1em] text-brown">{title} <span className="font-sans text-sm tracking-normal">({children.length})</span></h2><p className="mt-1 max-w-sm text-sm leading-snug text-muted">{description}</p></div>
       {action}
     </div>
-    {children.length ? <div className="space-y-3">{children}</div> : <div className="rounded-2xl border border-dashed border-[#d7cebc] p-6 text-center text-sm text-[#6b7285]">{empty}</div>}
+    {children.length ? <div className="space-y-3">{children}</div> : <div className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">{empty}</div>}
   </section>
 }
 
 function TripRow({ href, title, photo, detail, cta }: { href: string; title: string; photo: { saved: string | null; itemId: string | null; stock: string | null }; detail: string; cta: string }) {
-  return <Link href={href} className="flex items-center gap-4 rounded-2xl border border-[#e1d8c9] bg-[#fffdf7] p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)] transition-colors hover:bg-[#f6f2ea]">
-    <span className="relative aspect-[3/4] w-24 shrink-0 rotate-[-3deg] overflow-hidden border-[4px] border-white bg-[#e6ecf4] shadow-[0_2px_5px_rgba(45,38,27,0.18)]"><TripCover {...photo} /></span>
-    <span className="min-w-0 flex-1"><span className="block break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-[#1f3354]">{title}</span><span className="mt-2 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b7285]">{detail}</span><span className="mt-1 block text-sm text-[#3f5a80]">{cta}</span></span>
+  return <Link href={href} className="flex items-center gap-4 rounded-2xl border border-line-soft bg-card p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)] transition-colors hover:bg-chip">
+    <span className="relative aspect-[3/4] w-24 shrink-0 rotate-[-3deg] overflow-hidden border-[4px] border-white bg-mist shadow-[0_2px_5px_rgba(45,38,27,0.18)]"><TripCover {...photo} /></span>
+    <span className="min-w-0 flex-1"><span className="block break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-ink">{title}</span><span className="mt-2 block text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">{detail}</span><span className="mt-1 block text-sm text-link">{cta}</span></span>
   </Link>
 }

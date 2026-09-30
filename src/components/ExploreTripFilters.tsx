@@ -56,40 +56,40 @@ export default function ExploreTripFilters({
   ]
 
   return (
-    <div className="rounded-2xl border border-[#c1ad93] bg-[#faf7f1] overflow-hidden">
+    <div className="rounded-2xl border border-line-strong bg-cream overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-5 py-4 text-left gap-3"
       >
         <div className="min-w-0">
-          <span className="font-[family-name:var(--font-playfair)] text-lg text-[#1f3354]">
+          <span className="font-[family-name:var(--font-playfair)] text-lg text-ink">
             {hasActive ? 'Your filters' : 'Filter trips'}
           </span>
           {!open && activeLabels.length > 0 && (
-            <p className="text-sm text-[#8B6F4E] mt-0.5 truncate">
+            <p className="text-sm text-brown mt-0.5 truncate">
               {activeLabels.slice(0, 4).join(' · ')}{activeLabels.length > 4 ? ` +${activeLabels.length - 4} more` : ''}
             </p>
           )}
         </div>
         <ChevronDown
-          className="shrink-0 h-5 w-5 text-[#8B6F4E] transition-transform duration-200"
+          className="shrink-0 h-5 w-5 text-brown transition-transform duration-200"
           style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
         />
       </button>
 
       {open && (
         <form
-          className="px-5 pb-5 sm:px-6 sm:pb-6 border-t border-[#dfd3c2]"
+          className="px-5 pb-5 sm:px-6 sm:pb-6 border-t border-sand"
           onSubmit={e => { e.preventDefault(); submit() }}
         >
-          <p className="mt-4 mb-5 text-sm leading-relaxed text-[#8B6F4E]">
+          <p className="mt-4 mb-5 text-sm leading-relaxed text-brown">
             Choose as many as you like. We&apos;ll find trips for any selected group with at least one of your selected vibes.
           </p>
 
           {groups.map(group => (
             <fieldset key={group.name} disabled={pending} className="mb-6">
-              <legend className="mb-3 font-[family-name:var(--font-playfair)] text-xl text-[#1f3354]">
+              <legend className="mb-3 font-[family-name:var(--font-playfair)] text-xl text-ink">
                 {group.title}
               </legend>
               <div className="grid grid-cols-4 gap-2">
@@ -114,14 +114,14 @@ export default function ExploreTripFilters({
                         className="sr-only"
                       />
                       <div className={[
-                        'flex flex-col items-center overflow-hidden rounded-xl border-2 bg-[#FFFCF7] text-center transition-all select-none',
+                        'flex flex-col items-center overflow-hidden rounded-xl border-2 bg-card text-center transition-all select-none',
                         isChecked
-                          ? 'border-[#3f5a80] shadow-sm'
-                          : 'border-[#e0d5c5] hover:bg-[#f0e8db]',
+                          ? 'border-link shadow-sm'
+                          : 'border-line-soft hover:bg-chip',
                         pending ? 'opacity-60' : '',
                       ].join(' ')}>
                         <span className="block aspect-[1.35] w-full bg-cover bg-center" style={{ backgroundImage: `url(${tilePhoto(option.id)})` }} aria-hidden="true" />
-                        <span className="flex w-full items-center justify-center gap-1 px-1 py-1.5"><span className="text-[10px] font-medium leading-tight text-[#2b4368]">{option.label}</span><span className={`grid size-4 shrink-0 place-items-center rounded-full border ${isChecked ? 'border-[#3f5a80] bg-[#3f5a80] text-white' : 'border-[#2b4368] text-transparent'}`}><Check size={10} strokeWidth={3} /></span></span>
+                        <span className="flex w-full items-center justify-center gap-1 px-1 py-1.5"><span className="text-[10px] font-medium leading-tight text-ink-soft">{option.label}</span><span className={`grid size-4 shrink-0 place-items-center rounded-full border ${isChecked ? 'border-link bg-link text-white' : 'border-ink-soft text-transparent'}`}><Check size={10} strokeWidth={3} /></span></span>
                       </div>
                     </label>
                   )
@@ -131,25 +131,25 @@ export default function ExploreTripFilters({
           ))}
 
           <div className="mb-6">
-            <p className="mb-3 font-[family-name:var(--font-playfair)] text-xl text-[#1f3354]">Where?</p>
+            <p className="mb-3 font-[family-name:var(--font-playfair)] text-xl text-ink">Where?</p>
             <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8B6F4E] pointer-events-none" />
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-brown pointer-events-none" />
               <input
                 type="text"
                 value={location}
                 onChange={e => setLocation(e.target.value)}
                 placeholder="e.g. Europe, Japan, beach…"
                 disabled={pending}
-                className="w-full rounded-full border border-[#c1ad93] bg-[#FFFCF7] pl-9 pr-4 py-2.5 text-sm text-[#1f3354] placeholder:text-[#c1ad93] focus:outline-2 focus:outline-[#3f5a80] disabled:opacity-60"
+                className="w-full rounded-full border border-line-strong bg-card pl-9 pr-4 py-2.5 text-sm text-ink placeholder:text-line-strong focus:outline-2 focus:outline-link disabled:opacity-60"
               />
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 border-t border-[#dfd3c2] pt-4">
+          <div className="flex flex-wrap items-center gap-4 border-t border-sand pt-4">
             <button
               type="submit"
               disabled={pending}
-              className="min-h-11 rounded-full bg-[#1f3354] px-6 py-2.5 text-sm font-medium text-[#faf7f1] transition-colors hover:bg-[#2b4368] disabled:opacity-60"
+              className="min-h-11 rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-cream transition-colors hover:bg-ink-soft disabled:opacity-60"
             >
               {pending ? 'Finding trips\u2026' : 'Find trips'}
             </button>
@@ -161,7 +161,7 @@ export default function ExploreTripFilters({
                 setLocation('')
                 startTransition(() => router.push('/explore?view=tags', { scroll: false }))
               }}
-              className="text-sm text-[#8B6F4E] underline underline-offset-4"
+              className="text-sm text-brown underline underline-offset-4"
             >
               Clear all
             </button>

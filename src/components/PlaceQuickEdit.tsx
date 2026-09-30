@@ -66,19 +66,19 @@ export default function PlaceQuickEdit({ itemId, name, type, tags, rating, photo
     finally { savingRef.current = false; setSaving(false) }
   }
 
-  return <section aria-label={`Edit ${name}`} className={compact ? `text-sm ${row ? 'w-full' : ''} ${mode ? 'w-full border-t border-[#e3dfd2] pt-3' : ''}` : 'mt-2 rounded-lg border border-[#d7cebc] bg-[#faf7ee] p-2 text-sm'}>
+  return <section aria-label={`Edit ${name}`} className={compact ? `text-sm ${row ? 'w-full' : ''} ${mode ? 'w-full border-t border-line-soft pt-3' : ''}` : 'mt-2 rounded-lg border border-line bg-cream p-2 text-sm'}>
     {!mode ? <>
-    <div className={row ? 'grid grid-cols-3 divide-x divide-[#e3dfd2]' : 'flex flex-wrap gap-2'}>
+    <div className={row ? 'grid grid-cols-3 divide-x divide-line-soft' : 'flex flex-wrap gap-2'}>
       {leading}
-      <button type="button" onClick={() => open('photos')} aria-label={`Edit photos for ${name}`} className={`inline-flex min-h-11 items-center gap-1.5 px-2 text-[#3f5a80] ${row ? 'justify-center text-xs sm:text-sm' : ''}`}><Camera size={15} />{photos.length ? 'Edit photos' : 'Add photos'}</button>
-      <button type="button" onClick={() => open('rating')} aria-label={`Change rating for ${name}`} className={`inline-flex min-h-11 items-center gap-1.5 px-2 text-[#3f5a80] ${row ? 'justify-center text-xs sm:text-sm' : ''}`}><Star size={15} />{rating ? 'Change rating' : 'Add rating'}</button>
+      <button type="button" onClick={() => open('photos')} aria-label={`Edit photos for ${name}`} className={`inline-flex min-h-11 items-center gap-1.5 px-2 text-link ${row ? 'justify-center text-xs sm:text-sm' : ''}`}><Camera size={15} />{photos.length ? 'Edit photos' : 'Add photos'}</button>
+      <button type="button" onClick={() => open('rating')} aria-label={`Change rating for ${name}`} className={`inline-flex min-h-11 items-center gap-1.5 px-2 text-link ${row ? 'justify-center text-xs sm:text-sm' : ''}`}><Star size={15} />{rating ? 'Change rating' : 'Add rating'}</button>
     </div>
     </> : <>
-      <p className="px-2 py-1 font-medium text-[#1f3354]">{mode === 'photos' ? 'Photos' : 'Rating & status'} · {name}</p>
+      <p className="px-2 py-1 font-medium text-ink">{mode === 'photos' ? 'Photos' : 'Rating & status'} · {name}</p>
       <fieldset disabled={saving || uploading}>
         {mode === 'photos' ? <EventPhotoInput photos={draftPhotos} name={name} onChange={setDraftPhotos} onBusyChange={setUploading} /> : <div className="space-y-3 px-1">
           <div className="flex flex-wrap items-center">
-            {[1, 2, 3, 4, 5].map(value => <button key={value} type="button" aria-label={`Rate ${name} ${value} out of 5`} aria-pressed={draftRating === value} onClick={() => void saveRating(value, draftRecommendation)} className="flex min-h-11 min-w-11 items-center justify-center"><Star size={26} strokeWidth={1.6} className={value <= draftRating ? 'fill-[#ba9146] text-[#ba9146]' : 'fill-none text-[#b3a78e]'} /></button>)}
+            {[1, 2, 3, 4, 5].map(value => <button key={value} type="button" aria-label={`Rate ${name} ${value} out of 5`} aria-pressed={draftRating === value} onClick={() => void saveRating(value, draftRecommendation)} className="flex min-h-11 min-w-11 items-center justify-center"><Star size={26} strokeWidth={1.6} className={value <= draftRating ? 'fill-gold text-gold' : 'fill-none text-gold-faint'} /></button>)}
             {draftRating > 0 && <button type="button" onClick={() => void saveRating(0, draftRecommendation)} className="min-h-11 px-2 text-xs underline">Clear rating</button>}
           </div>
           <RecommendationPicker type={type} value={draftRecommendation} onChange={value => void saveRating(draftRating, value)} allowAlternative={false} />
@@ -86,13 +86,13 @@ export default function PlaceQuickEdit({ itemId, name, type, tags, rating, photo
       </fieldset>
       {error && <p role="alert" className="px-2 py-1 text-red-700">{error}</p>}
       {mode === 'rating' ? <div className="flex items-center justify-end gap-3 pt-2">
-        <p role="status" className="text-xs text-[#3f5a80]">{saving ? 'Saving…' : saved}</p>
-        <button type="button" disabled={saving} onClick={() => { setMode(null); setError(''); setSaved('') }} className="min-h-11 rounded-lg bg-[#3f5a80] px-4 text-white disabled:opacity-50">Done</button>
+        <p role="status" className="text-xs text-link">{saving ? 'Saving…' : saved}</p>
+        <button type="button" disabled={saving} onClick={() => { setMode(null); setError(''); setSaved('') }} className="min-h-11 rounded-lg bg-link px-4 text-white disabled:opacity-50">Done</button>
       </div> : <div className="flex justify-end gap-2 pt-2">
         <button type="button" disabled={saving || uploading} onClick={() => { setMode(null); setError('') }} className="min-h-11 px-3 disabled:opacity-50">Cancel</button>
-        <button type="button" disabled={saving || uploading} onClick={() => void save()} className="min-h-11 rounded-lg bg-[#3f5a80] px-4 text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>
+        <button type="button" disabled={saving || uploading} onClick={() => void save()} className="min-h-11 rounded-lg bg-link px-4 text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>
       </div>}
     </>}
-    {saved && !mode && <p role="status" className="px-2 text-xs text-[#3f5a80]">{saved}</p>}
+    {saved && !mode && <p role="status" className="px-2 text-xs text-link">{saved}</p>}
   </section>
 }

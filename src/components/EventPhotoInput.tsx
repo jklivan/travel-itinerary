@@ -53,10 +53,10 @@ export default function EventPhotoInput({ photos, name, onChange, onBusyChange, 
       {photos.map((url, index) => <div key={url} className="relative">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={sizedPhoto(url, 256)} alt={`${name}, photo ${index + 1}`} className="h-16 w-16 rounded-lg object-cover" />
-        <button type="button" disabled={busy} onClick={() => onChange(photos.filter(photo => photo !== url))} aria-label={`Remove photo ${index + 1} for ${name}`} className="absolute -top-1 -right-1 rounded-full bg-[#1f3354] p-1 text-white disabled:opacity-50"><X size={12} /></button>
+        <button type="button" disabled={busy} onClick={() => onChange(photos.filter(photo => photo !== url))} aria-label={`Remove photo ${index + 1} for ${name}`} className="absolute -top-1 -right-1 rounded-full bg-ink p-1 text-white disabled:opacity-50"><X size={12} /></button>
       </div>)}
     </div>}
-    <label className={`inline-flex items-center gap-1.5 text-xs font-medium text-[#3f5a80] ${busy ? 'opacity-50' : 'cursor-pointer'}`}>
+    <label className={`inline-flex items-center gap-1.5 text-xs font-medium text-link ${busy ? 'opacity-50' : 'cursor-pointer'}`}>
       <ImageIcon size={14} />{busy ? 'Uploading…' : photos.length ? 'Add more photos' : 'Add photos'}
       <input type="file" multiple accept="image/*" className="sr-only" disabled={busy} aria-label={`Add photos for ${name}`} onChange={event => {
         const files = Array.from(event.target.files ?? [])

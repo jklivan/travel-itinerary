@@ -103,22 +103,22 @@ export default function BucketButton({
     })
   }
 
-  const folderDialog = choosing && typeof document !== 'undefined' ? createPortal(<dialog ref={dialog} onClose={() => setChoosing(false)} onClick={event => event.stopPropagation()} onCancel={event => { if (pending) event.preventDefault() }} aria-labelledby={titleId} className="m-auto w-[calc(100%_-_2rem)] max-w-sm rounded-2xl bg-[#faf7f1] p-5 text-[#1f3354] shadow-xl backdrop:bg-black/40">
+  const folderDialog = choosing && typeof document !== 'undefined' ? createPortal(<dialog ref={dialog} onClose={() => setChoosing(false)} onClick={event => event.stopPropagation()} onCancel={event => { if (pending) event.preventDefault() }} aria-labelledby={titleId} className="m-auto w-[calc(100%_-_2rem)] max-w-sm rounded-2xl bg-cream p-5 text-ink shadow-xl backdrop:bg-black/40">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 id={titleId} className="text-lg font-semibold">Like this trip</h2>
             <button type="button" aria-label="Close" disabled={pending} onClick={() => dialog.current?.close()} className="p-2"><X size={18} /></button>
           </div>
           <form onSubmit={saveWithFolder}>
-            <label className="block text-sm">Save to folder <span className="text-[#8B6F4E]">(optional)</span>
-              <select value={folderId} onChange={event => setFolderId(event.target.value)} disabled={!foldersLoaded || pending} className="mt-2 w-full rounded-lg border border-[#c1ad93] bg-white p-3">
+            <label className="block text-sm">Save to folder <span className="text-brown">(optional)</span>
+              <select value={folderId} onChange={event => setFolderId(event.target.value)} disabled={!foldersLoaded || pending} className="mt-2 w-full rounded-lg border border-line-strong bg-white p-3">
                 <option value="">All saved</option>
                 {folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
               </select>
             </label>
-            <p className="mt-3 text-xs text-[#8B6F4E]">Liked trips appear in All saved. Choose a folder to organize this trip.</p>
+            <p className="mt-3 text-xs text-brown">Liked trips appear in All saved. Choose a folder to organize this trip.</p>
             {folderError && <p role="alert" className="mt-3 text-sm text-red-700">{folderError}</p>}
             <div className="mt-5 flex flex-wrap gap-2">
-              <button type="submit" disabled={pending || !foldersLoaded} className="min-h-11 flex-1 rounded-lg bg-[#1f3354] px-4 py-3 text-sm font-medium text-white disabled:opacity-50">{pending ? 'Please wait…' : bucketed ? 'Update saved trip' : 'Like & save'}</button>
+              <button type="submit" disabled={pending || !foldersLoaded} className="min-h-11 flex-1 rounded-lg bg-ink px-4 py-3 text-sm font-medium text-white disabled:opacity-50">{pending ? 'Please wait…' : bucketed ? 'Update saved trip' : 'Like & save'}</button>
               {bucketed && <button type="button" onClick={unlikeTrip} disabled={pending} className="min-h-11 rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-700 disabled:opacity-50">Unlike</button>}
             </div>
           </form>
