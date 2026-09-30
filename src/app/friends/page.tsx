@@ -11,19 +11,19 @@ export default async function FriendsPage() {
     // People I follow (accepted)
     prisma.follow.findMany({
       where: { followerId: session.user.id, status: 'accepted' },
-      include: { following: { select: { id: true, name: true } } },
+      include: { following: { select: { id: true, name: true, image: true } } },
       orderBy: { createdAt: 'desc' },
     }),
     // Requests I've sent that haven't been accepted yet
     prisma.follow.findMany({
       where: { followerId: session.user.id, status: 'pending' },
-      include: { following: { select: { id: true, name: true } } },
+      include: { following: { select: { id: true, name: true, image: true } } },
       orderBy: { createdAt: 'desc' },
     }),
     // Requests others have sent me
     prisma.follow.findMany({
       where: { followingId: session.user.id, status: 'pending' },
-      include: { follower: { select: { id: true, name: true } } },
+      include: { follower: { select: { id: true, name: true, image: true } } },
       orderBy: { createdAt: 'desc' },
     }),
   ])

@@ -27,8 +27,9 @@ export default function PlacePhoto({ itemId, name, photos = [], thumbnailClass, 
     return () => { observer.disconnect(); controller.abort() }
   }, [itemId])
   const displayPhoto = storedPhoto ? { url: storedPhoto, mapsUrl: '' } : photo
-  return <div ref={element} className="shrink-0" style={displayPhoto && !failed && fullWidth ? { width: '100%' } : fullWidth ? { minHeight: 1 } : undefined}>
-    <div className={thumbnailClass} style={displayPhoto && !failed ? { width: '100%' } : fullWidth ? { display: 'none' } : undefined}>
+  // Card thumbnails keep their width with or without a photo, so the illustrated fallback always has room.
+  return <div ref={element} className="shrink-0" style={displayPhoto && !failed && fullWidth ? { width: '100%' } : fullWidth ? { minHeight: 1 } : { width: '36%', maxWidth: 132 }}>
+    <div className={thumbnailClass} style={displayPhoto && !failed || !fullWidth ? { width: '100%' } : { display: 'none' }}>
       {displayPhoto && !failed ? <>
         {/* Card thumbnails fill their box (it has a minimum height, not a fixed one), cropped to fit. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}

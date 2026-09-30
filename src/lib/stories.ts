@@ -2,7 +2,7 @@ import type { Prisma } from '@/generated/prisma/client'
 
 export const STORY_LIFETIME_MS = 24 * 60 * 60 * 1000
 export type StoryCard = {
-  id: string; authorId: string; authorName: string; placeName: string; destination: string; hasTrip: boolean;
+  id: string; authorId: string; authorName: string; authorImage: string | null; placeName: string; destination: string; hasTrip: boolean;
   type: string; photoUrl: string; caption: string; createdAt: string; expiresAt: string; tripHref: string | null
   // Owner only: deleting this snapshot also takes its photo off the place in the trip.
   removesTripPhoto?: boolean

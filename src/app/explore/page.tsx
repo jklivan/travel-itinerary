@@ -70,7 +70,7 @@ async function fetchItineraries(where: ItineraryWhereInput, userId: string | nul
       where: { visibility: { not: 'draft' }, destinations: { some: { items: { some: {} } } }, ...queryWhere },
       orderBy: { createdAt: 'desc' },
       include: {
-        user: { select: { name: true, id: true } },
+        user: { select: { name: true, id: true, image: true } },
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
         photos: { orderBy: { isStock: 'asc' } },
         _count: { select: { bucketedBy: true } },
@@ -117,6 +117,7 @@ function ItineraryList({
           budget={it.budget}
           tripRating={it.tripRating}
           authorName={it.user.name}
+          authorImage={it.user.image}
           authorId={it.user.id}
           destinations={it.destinations}
           coverPhoto={it.photos[0]?.url ?? null}

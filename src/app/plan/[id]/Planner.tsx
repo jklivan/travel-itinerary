@@ -203,14 +203,15 @@ function PlaceRow({ tripId, place, maxDay, dayChips }: { tripId: string; place: 
   const [placeId, setPlaceId] = useState(place.placeId ?? '')
   const [photos, setPhotos] = useState(place.photos)
   const [day, setDay] = useState(place.day === null ? '' : String(place.day))
+  const [type, setType] = useState(place.type)
   const [uploading, setUploading] = useState(false)
   const category = categories.find(category => category.value === place.type) ?? categories[2]
-  function openEditor() { setPlaceId(place.placeId ?? ''); setPhotos(place.photos); setDay(place.day === null ? '' : String(place.day)); setEditing(true); setError(''); setSaved(false) }
+  function openEditor() { setType(place.type); setPlaceId(place.placeId ?? ''); setPhotos(place.photos); setDay(place.day === null ? '' : String(place.day)); setEditing(true); setError(''); setSaved(false) }
   async function save(values: PlaceEditValues) {
     if (saving.current || uploading) return
     saving.current = true; setBusy(true); setError('')
     const data = new FormData()
-    for (const [key, value] of Object.entries({ name: values.name, placeId, status: place.status, notes: values.notes, day, mealType: values.mealType,
+    for (const [key, value] of Object.entries({ name: values.name, category: type, placeId, status: place.status, notes: values.notes, day, mealType: values.mealType,
       tags: JSON.stringify(values.tags), alternative: values.alternative, description: values.description, link: values.link, address: values.address, photos: JSON.stringify(photos) })) data.set(key, value)
     try { const result = await editPlanPlace(place.id, data); if (result.error) setError(result.error); else { setEditing(false); setSaved(true); router.refresh() } }
     catch { setError('Could not save. Your changes are still here; try again.') }
@@ -241,9 +242,10 @@ function PlaceRow({ tripId, place, maxDay, dayChips }: { tripId: string; place: 
         leading={<button onClick={openEditor} type="button" className="inline-flex min-h-11 items-center justify-center gap-1.5 px-2 text-xs text-[#3f5a80] sm:text-sm"><Pencil size={15} />Edit details</button>} />
       : <div className="w-full">
         {/* Same fields as the trip editor, plus photos and the day for this plan. */}
-        <PlaceEditForm type={category.value as PlaceType} city={place.destination} busy={busy || uploading} saveLabel="Save changes" showRating={false} onPlaceIdChange={setPlaceId} onClose={() => setEditing(false)} onSave={values => void save(values)}
+        <PlaceEditForm key={type} type={type as PlaceType} city={place.destination} busy={busy || uploading} saveLabel="Save changes" showRating={false} onPlaceIdChange={setPlaceId} onClose={() => setEditing(false)} onSave={values => void save(values)}
           initial={{ name: place.name, mealType: place.mealType ?? '', rating: place.rating ?? 0, notes: place.notes ?? '', tags: place.tags, isHighlight: false, alternative: place.alternative ?? '', description: place.description ?? '', link: place.link ?? '', address: place.address ?? '' }}>
           <div className="space-y-1"><p className="text-xs text-[#6b7285]">Photos</p><EventPhotoInput photos={photos} name={place.name} onChange={setPhotos} onBusyChange={setUploading} /></div>
+          <fieldset><legend className="mb-1 text-xs text-[#6b7285]">Category</legend><div className="flex flex-wrap gap-1.5">{categories.map(option => <button key={option.value} type="button" aria-pressed={type === option.value} onClick={() => setType(option.value)} className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium ${type === option.value ? 'border-[#243b61] bg-[#243b61] text-white' : 'border-[#d7cebc] text-[#3f5a80]'}`}><option.Icon size={14} />{option.label}</button>)}</div></fieldset>
           <label className="block text-xs text-[#6b7285]">Day (optional)<select value={day} onChange={event => setDay(event.target.value)} className={inputClass}><option value="">Unscheduled</option>{Array.from({ length: maxDay }, (_, index) => index + 1).map(value => <option key={value} value={value}>Day {value}</option>)}</select></label>
         </PlaceEditForm>
         {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}

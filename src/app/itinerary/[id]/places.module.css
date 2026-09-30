@@ -159,6 +159,10 @@
   background: var(--place-tint);
 }
 
+.thumbnail:has([data-place-photo]) .keepsake {
+  display: none;
+}
+
 .polaroidPhoto .keepsake {
   inset: 5px 5px 20px;
 }

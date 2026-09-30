@@ -4,6 +4,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { ChevronRight, Settings, Users, Map } from 'lucide-react'
 import ItineraryCard from '@/components/ItineraryCard'
+import ProfilePhotoPicker from '@/components/ProfilePhotoPicker'
 import { tripPhotoGallery } from '@/lib/eventPhotos'
 
 export default async function ProfilePage() {
@@ -11,18 +12,17 @@ export default async function ProfilePage() {
   const userId = session?.user?.id
   if (!userId) redirect('/login?callbackUrl=%2Fprofile')
   const [user, followers, following, pending, sharedTrips] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, image: true } }),
     prisma.follow.count({ where: { followingId: userId, status: 'accepted' } }),
     prisma.follow.count({ where: { followerId: userId, status: 'accepted' } }),
     prisma.follow.count({ where: { followingId: userId, status: 'pending' } }),
     prisma.itinerary.findMany({ where: { userId, visibility: 'public' }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], include: { destinations: { orderBy: { order: 'asc' }, include: { items: true } }, photos: { orderBy: { isStock: 'asc' } }, _count: { select: { bucketedBy: true } } } }),
   ])
   if (!user) redirect('/login')
-  const initials = user.name.split(' ').filter(Boolean).map(word => word[0]).join('').slice(0, 2).toUpperCase()
   return <main className="mx-auto max-w-xl px-5 py-7 text-[#1f3354] sm:px-8">
     <section className="rounded-2xl border border-[#c8d2e0] bg-[#eaeff6] p-5">
       <div className="flex items-center gap-4">
-        <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-[#3f5a80] text-xl font-bold text-white">{initials}</div>
+        <ProfilePhotoPicker name={user.name} image={user.image} />
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#3f5a80]">Profile</p>
           <h1 className="mt-1 break-words font-[family-name:var(--font-playfair)] text-2xl text-[#1f3354]">{user.name}</h1>
@@ -47,7 +47,7 @@ export default async function ProfilePage() {
     </div>
     <section className="mt-6" aria-labelledby="shared-trips-heading">
       <div className="mb-3"><h2 id="shared-trips-heading" className="font-[family-name:var(--font-playfair)] text-xl uppercase tracking-wide text-[#8B6F4E]">Shared trips <span className="font-sans text-sm">({sharedTrips.length})</span></h2><p className="mt-1 text-sm text-[#6b7285]">Trips you’ve published for others to explore.</p></div>
-      {sharedTrips.length === 0 ? <div className="rounded-2xl border border-dashed border-[#d7cebc] p-6 text-center text-sm text-[#6b7285]">No shared trips yet.</div> : <div className="space-y-4">{sharedTrips.map(it => <ItineraryCard fullWidth key={it.id} id={it.id} postType={it.postType} tags={it.tags} durationDays={it.durationDays} title={it.title} bestMonths={it.bestMonths} datesFlexible={it.datesFlexible} startDate={it.startDate} endDate={it.endDate} audience={it.audience} budget={it.budget} tripRating={it.tripRating} authorName={user.name} authorId={user.id} destinations={it.destinations} coverPhoto={it.photos[0]?.url ?? null} photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items))} currentUserId={userId} isOwn isBucketed={false} saveCount={it._count.bucketedBy} />)}</div>}
+      {sharedTrips.length === 0 ? <div className="rounded-2xl border border-dashed border-[#d7cebc] p-6 text-center text-sm text-[#6b7285]">No shared trips yet.</div> : <div className="space-y-4">{sharedTrips.map(it => <ItineraryCard fullWidth key={it.id} id={it.id} postType={it.postType} tags={it.tags} durationDays={it.durationDays} title={it.title} bestMonths={it.bestMonths} datesFlexible={it.datesFlexible} startDate={it.startDate} endDate={it.endDate} audience={it.audience} budget={it.budget} tripRating={it.tripRating} authorName={user.name} authorImage={user.image} authorId={user.id} destinations={it.destinations} coverPhoto={it.photos[0]?.url ?? null} photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items))} currentUserId={userId} isOwn isBucketed={false} saveCount={it._count.bucketedBy} />)}</div>}
     </section>
   </main>
 }

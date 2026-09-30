@@ -71,12 +71,12 @@ export async function unfollowUser(userId: string) {
   revalidatePath('/')
 }
 
-export async function searchUsers(query: string): Promise<{ id: string; name: string }[]> {
+export async function searchUsers(query: string): Promise<{ id: string; name: string; image: string | null }[]> {
   const session = await auth()
   if (!session?.user?.id || !query.trim()) return []
   return prisma.user.findMany({
     where: { name: { contains: query.trim(), mode: 'insensitive' }, NOT: { id: session.user.id } },
-    select: { id: true, name: true },
+    select: { id: true, name: true, image: true },
     take: 10,
   })
 }

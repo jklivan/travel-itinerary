@@ -1,5 +1,6 @@
 'use client'
 
+import UserAvatar from './UserAvatar'
 import { useState, useTransition } from 'react'
 import { addComment, deleteComment } from '@/actions/comments'
 import { Trash2 } from 'lucide-react'
@@ -8,22 +9,17 @@ type Comment = {
   id: string
   content: string
   createdAt: Date
-  user: { id: string; name: string }
+  user: { id: string; name: string; image?: string | null }
   replies: {
     id: string
     content: string
     createdAt: Date
-    user: { id: string; name: string }
+    user: { id: string; name: string; image?: string | null }
   }[]
 }
 
-function Avatar({ name }: { name: string }) {
-  const initials = name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
-  return (
-    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-      {initials}
-    </div>
-  )
+function Avatar({ name, image }: { name: string; image?: string | null }) {
+  return <UserAvatar name={name} image={image} size={28} />
 }
 
 function fmtDate(d: Date) {
@@ -116,7 +112,7 @@ function CommentRow({
 
   return (
     <div className={`flex gap-2.5 ${isReply ? 'pl-9' : ''}`}>
-      <Avatar name={comment.user.name} />
+      <Avatar name={comment.user.name} image={comment.user.image} />
       <div className="flex-1 min-w-0">
         <div className="bg-gray-50 rounded-xl px-3 py-2">
           <div className="flex items-center justify-between gap-2 mb-0.5">

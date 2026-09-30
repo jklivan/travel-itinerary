@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import ItineraryCard from '@/components/ItineraryCard'
+import UserAvatar from '@/components/UserAvatar'
 import SavedFolders from '@/components/SavedFolders'
 import SavedFolderPicker from '@/components/SavedFolderPicker'
 import DeleteButton from '@/components/DeleteButton'
@@ -13,20 +14,6 @@ import { tripPhotoGallery } from '@/lib/eventPhotos'
 import { fetchStockPhoto } from '@/lib/stockPhoto'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
 import { MapPin, Users, ChevronRight, Settings } from 'lucide-react'
-
-function getInitials(name: string) {
-  return name.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
-}
-
-const AVATAR_COLORS = [
-  '#6366F1', '#8B5CF6', '#EC4899', '#14B8A6',
-  '#F59E0B', '#EF4444', '#10B981', '#3B82F6',
-]
-function hashPick(str: string, arr: string[]) {
-  let h = 0
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0
-  return arr[Math.abs(h) % arr.length]
-}
 
 function destinationStockFallback(destination: string, country: string | null) {
   const query = `${destination} ${country ?? ''}`.toLowerCase()
@@ -53,7 +40,7 @@ export default async function UserProfilePage({
 
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, name: true, createdAt: true },
+    select: { id: true, name: true, image: true, createdAt: true },
   })
   if (!user) notFound()
 
@@ -90,7 +77,7 @@ export default async function UserProfilePage({
           include: {
             itinerary: {
               include: {
-                user: { select: { id: true, name: true } },
+                user: { select: { id: true, name: true, image: true } },
                 destinations: { orderBy: { order: 'asc' }, include: { items: true } },
                 photos: { orderBy: { isStock: 'asc' } },
                 _count: { select: { bucketedBy: true } },
@@ -119,8 +106,6 @@ export default async function UserProfilePage({
   const visibleBucketItems = bucketItems.filter(item => !selectedFolder || item.folderId === selectedFolder)
 
   const followStatus = followRecord?.status ?? 'none'
-  const avatarColor = hashPick(user.name, AVATAR_COLORS)
-  const initials = getInitials(user.name)
 
   const viewerBucketSet = new Set(viewerBucketIds.map((b) => b.itineraryId))
   const ownBucketSet = new Set(bucketItems.map((b) => b.itineraryId))
@@ -148,12 +133,7 @@ export default async function UserProfilePage({
 
       {/* Public profile header */}
       {!isOwn && <div className="bg-[#faf7f1] rounded-xl border border-[#dfd3c2] p-5 mb-5 flex items-center gap-4">
-        <div
-          className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold shrink-0"
-          style={{ backgroundColor: avatarColor }}
-        >
-          {initials}
-        </div>
+        <UserAvatar name={user.name} image={user.image} size={64} className="text-xl" />
         <div className="flex-1 min-w-0">
           <h1 className="font-[family-name:var(--font-playfair)] text-xl text-[#1f3354]">{user.name}</h1>
           <div className="flex items-center gap-3 mt-1 text-xs text-[#8B6F4E]">
@@ -257,6 +237,7 @@ export default async function UserProfilePage({
                   budget={it.budget}
                   tripRating={it.tripRating}
                   authorName={user.name}
+                  authorImage={user.image}
                   authorId={user.id}
                   destinations={it.destinations}
                   coverPhoto={it.photos[0]?.url ?? null}
@@ -302,6 +283,7 @@ export default async function UserProfilePage({
                     budget={item.itinerary.budget}
                     tripRating={item.itinerary.tripRating}
                     authorName={item.itinerary.user.name}
+                    authorImage={item.itinerary.user.image}
                     authorId={item.itinerary.user.id}
                     destinations={item.itinerary.destinations}
                     coverPhoto={item.itinerary.photos[0]?.url ?? null}

@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Users, Search, UserPlus } from 'lucide-react'
+import UserAvatar from '@/components/UserAvatar'
 import {
   searchUsers,
   sendFollowRequest,
@@ -12,30 +13,10 @@ import {
   unfollowUser,
 } from '@/actions/friends'
 
-type User = { id: string; name: string }
+type User = { id: string; name: string; image?: string | null }
 
-const AVATAR_COLORS = [
-  '#6366F1', '#8B5CF6', '#EC4899', '#14B8A6',
-  '#F59E0B', '#EF4444', '#10B981', '#3B82F6',
-]
-function hashPick(str: string, arr: string[]) {
-  let h = 0
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0
-  return arr[Math.abs(h) % arr.length]
-}
-function getInitials(name: string) {
-  return name.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
-}
-
-function Avatar({ name }: { name: string }) {
-  return (
-    <div
-      className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold shrink-0"
-      style={{ backgroundColor: hashPick(name, AVATAR_COLORS) }}
-    >
-      {getInitials(name)}
-    </div>
-  )
+function Avatar({ name, image }: { name: string; image?: string | null }) {
+  return <UserAvatar name={name} image={image} size={48} />
 }
 
 function FollowButton({
@@ -157,7 +138,7 @@ export default function FriendsUI({
             {requests.map((user) => (
               <li key={user.id} className="flex items-center justify-between px-5 py-3">
                 <Link href={`/user/${user.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                  <Avatar name={user.name} />
+                  <Avatar name={user.name} image={user.image} />
                   <p className="text-sm font-medium text-[#1f3354]">{user.name}</p>
                 </Link>
                 <div className="flex gap-2">
@@ -201,7 +182,7 @@ export default function FriendsUI({
               {nameResults.map((user) => (
                 <li key={user.id} className="flex items-center justify-between py-3">
                   <Link href={`/user/${user.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                    <Avatar name={user.name} />
+                    <Avatar name={user.name} image={user.image} />
                     <p className="text-sm font-medium text-[#1f3354]">{user.name}</p>
                   </Link>
                   <FollowButton userId={user.id} status={followStatus(user.id)}
@@ -233,7 +214,7 @@ export default function FriendsUI({
             {followingList.map((user) => (
               <li key={user.id} className="flex items-center justify-between px-5 py-3">
                 <Link href={`/user/${user.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                  <Avatar name={user.name} />
+                  <Avatar name={user.name} image={user.image} />
                   <p className="text-sm font-medium text-[#1f3354]">{user.name}</p>
                 </Link>
                 <button onClick={() => handleUnfollow(user.id)}

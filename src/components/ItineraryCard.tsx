@@ -3,14 +3,13 @@ import Image from 'next/image'
 import { Heart, MapPin, MessageCircle } from 'lucide-react'
 import { hasTripDates, tripDuration } from '@/lib/dayTrips'
 import { tripSeason } from '@/lib/tripSeason'
-import { TRIP_STAMPS } from '@/lib/tripStamps'
+import { TRIP_STAMPS, STAMP_COLORS } from '@/lib/tripStamps'
 import PhotoStrip from './PhotoStrip'
 import BucketButton from './BucketButton'
+import UserAvatar from './UserAvatar'
 
 
 const AUDIENCE_CHIP = 'w-fit rounded-md bg-[#fbf8f3]/95 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[#1f3354]'
-// Muted postage-stamp colours for the author's verdict (1 Hard pass … 5 Must go!).
-const STAMP_COLORS: Record<number, string> = { 1: '#8c7b72', 2: '#b3955f', 3: '#8e9b6c', 4: '#4d6a8c', 5: '#6f8b6e' }
 
 type DestItem = { type: string; name: string; dayIndex?: number | null }
 type Destination = { lat?: number | null; name: string; country: string | null; items: DestItem[] }
@@ -26,6 +25,7 @@ type Props = {
   budget?: number | null
   tripRating: number | null
   authorName: string
+  authorImage?: string | null
   destinations: Destination[]
   coverPhoto: string | null
   photos?: { id: string; url: string; caption: string | null }[]
@@ -52,12 +52,9 @@ function hashPick(str: string, arr: string[]) {
   return arr[Math.abs(h) % arr.length]
 }
 
-function getInitials(name: string) {
-  return name.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
-}
 
 export default function ItineraryCard({
-  id, postType, title, startDate, endDate, audience, budget, tripRating, authorName, authorId, destinations, coverPhoto, photos = [],
+  id, postType, title, startDate, endDate, audience, budget, tripRating, authorName, authorImage, authorId, destinations, coverPhoto, photos = [],
   currentUserId, isOwn, isBucketed = false, saveCount, fullWidth = false, datesFlexible = false, bestMonths = [], tags = [], durationDays,
   // Budget shows on the trip page, not on cards.
   commentCount = 0, showBudget = false,
@@ -66,7 +63,6 @@ export default function ItineraryCard({
   const isGuide = days === null
   const stamp = TRIP_STAMPS.find(stamp => stamp.value === tripRating)
   const coverColor = hashPick(title, COVER_COLORS)
-  const initials = getInitials(authorName)
   const season = tripSeason({ startDate, endDate, datesFlexible: !hasTripDates({ startDate, endDate, datesFlexible, postType }), postType: isGuide ? 'guide' : postType, bestMonths, latitude: destinations.find(destination => destination.lat != null)?.lat })
 
   function locationLabel(dests: Destination[]): string | null {
@@ -124,10 +120,10 @@ export default function ItineraryCard({
 
         <div className={`mt-2 flex min-h-11 items-center justify-between gap-2 border-t border-[#efe9df] px-1 pt-2 ${fullWidth ? 'sm:px-1.5' : ''}`}>
           {authorId ? <Link href={`/user/${authorId}`} className="flex min-w-0 items-center gap-2 hover:opacity-80">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#4d6a8c] text-[10px] font-semibold text-white">{initials}</span>
+            <UserAvatar name={authorName} image={authorImage} size={32} />
             <span className="truncate font-[family-name:var(--font-playfair)] text-[11px] uppercase tracking-[0.18em] text-[#3f5270]">{authorName}</span>
           </Link> : <div className="flex min-w-0 items-center gap-2">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#4d6a8c] text-[10px] font-semibold text-white">{initials}</span>
+            <UserAvatar name={authorName} image={authorImage} size={32} />
             <span className="truncate font-[family-name:var(--font-playfair)] text-[11px] uppercase tracking-[0.18em] text-[#3f5270]">{authorName}</span>
           </div>}
           <div className="flex shrink-0 items-center gap-2.5 text-[#1f3354]">

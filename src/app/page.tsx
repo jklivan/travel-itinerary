@@ -6,6 +6,7 @@ import ItineraryCard from '@/components/ItineraryCard'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import FeedTabs from '@/components/FeedTabs'
+import WelcomeScreen from '@/components/WelcomeScreen'
 
 export default async function FeedPage({
   searchParams,
@@ -23,6 +24,8 @@ export default async function FeedPage({
 async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string; feed: string; posted?: string }) {
   const session = await auth()
   const userId = session?.user?.id ?? null
+  // Signed out: the welcome screen instead of the feed.
+  if (!userId) return <WelcomeScreen />
 
   const [itineraries, bucketIds] = await Promise.all([
     prisma.itinerary.findMany({
@@ -47,7 +50,7 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
         { id: 'desc' },
       ],
       include: {
-        user: { select: { name: true, id: true } },
+        user: { select: { name: true, id: true, image: true } },
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
         photos: { orderBy: { isStock: 'asc' } },
         _count: { select: { bucketedBy: true, comments: true } },
@@ -110,6 +113,7 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
               budget={it.budget}
               tripRating={it.tripRating}
               authorName={it.user.name}
+              authorImage={it.user.image}
               authorId={it.user.id}
               destinations={it.destinations}
               coverPhoto={it.photos[0]?.url ?? null}

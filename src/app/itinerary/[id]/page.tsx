@@ -16,13 +16,14 @@ import BucketButton from '@/components/BucketButton'
 import { eventPhotos, pickEventPhoto, tripPhotoGallery } from '@/lib/eventPhotos'
 import { tagMeta } from '@/lib/tags'
 import DeleteButton from '@/components/DeleteButton'
-import { TRIP_STAMPS } from '@/lib/tripStamps'
+import { TRIP_STAMPS, STAMP_COLORS } from '@/lib/tripStamps'
 import ItineraryMap from '@/components/ItineraryMap'
 import type { ItemPin } from '@/components/ItineraryMapInner'
 import styles from './places.module.css'
 import PlaceDetailsCard from '@/components/PlaceDetailsCard'
 import PublishPreviewBar from '@/components/PublishPreviewBar'
 import GooglePlaceThumb from '@/components/GooglePlaceThumb'
+import UserAvatar from '@/components/UserAvatar'
 import FriendRatingsButton from '@/components/FriendRatingsButton'
 import { getRecommendation, partitionPlaces } from '@/lib/placeRecommendation'
 import { mapDayNumber } from '@/lib/mapDays'
@@ -155,6 +156,8 @@ const PLACE_CATEGORIES = {
 
 type PlaceCategory = keyof typeof PLACE_CATEGORIES
 
+const TAG_CHIP = 'inline-flex h-7 items-center gap-1 rounded-full px-3 text-xs font-medium'
+
 const MEAL_GROUPS = [
   { value: 'breakfast', label: 'Breakfast' },
   { value: 'lunch', label: 'Lunch' },
@@ -195,7 +198,7 @@ export default async function ItineraryPage({
   const it = await prisma.itinerary.findUnique({
     where: { id },
     include: {
-      user: { select: { id: true, name: true } },
+      user: { select: { id: true, name: true, image: true } },
       destinations: {
         orderBy: { order: 'asc' },
         include: { items: { orderBy: { order: 'asc' } } },
@@ -205,8 +208,8 @@ export default async function ItineraryPage({
         where: { parentId: null },
         orderBy: { createdAt: 'desc' },
         include: {
-          user: { select: { id: true, name: true } },
-          replies: { orderBy: { createdAt: 'asc' }, include: { user: { select: { id: true, name: true } } } },
+          user: { select: { id: true, name: true, image: true } },
+          replies: { orderBy: { createdAt: 'asc' }, include: { user: { select: { id: true, name: true, image: true } } } },
         },
       },
     },
@@ -575,23 +578,20 @@ export default async function ItineraryPage({
 
           <div aria-label="Trip tags" className="flex flex-wrap gap-2 items-center mb-4">
             {!isOwn && <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />}
-            {stamp && <span className={`-rotate-2 rounded-full px-3 py-1 text-xs font-bold text-white shadow-sm ${stamp.bg}`}>{stamp.label}</span>}
-            {!!it.budget && it.budget > 0 && <span aria-label={`Budget ${it.budget} out of 5`} className="rounded-full bg-[#e6ecf4] px-2.5 py-1 text-xs font-semibold tracking-tight">{[1, 2, 3, 4, 5].map(n => <span key={n} className={n <= it.budget! ? 'text-[#243b61]' : 'text-[#b9c4b8]'}>$</span>)}</span>}
-            {audienceLabel && (
-              <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-[#e6ecf4] text-[#1f3354]">
-                {audienceLabel}
-              </span>
-            )}
+            {/* One chip style for everything here; the verdict uses its stamp colour, as on the trip cards. */}
+            {stamp && <span className={`${TAG_CHIP} font-semibold text-white`} style={{ backgroundColor: STAMP_COLORS[stamp.value] }}>{stamp.label}</span>}
+            {!!it.budget && it.budget > 0 && <span aria-label={`Budget ${it.budget} out of 5`} className={`${TAG_CHIP} bg-[#ede7dd] font-semibold tracking-tight`}>{[1, 2, 3, 4, 5].map(n => <span key={n} className={n <= it.budget! ? 'text-[#1f3354]' : 'text-[#bfb5a4]'}>$</span>)}</span>}
+            {audienceLabel && <span className={`${TAG_CHIP} bg-[#ede7dd] text-[#1f3354]`}>{audienceLabel}</span>}
             {displayTags.map(tag => {
               const meta = tagMeta(tag)
               return meta ? (
-                <span key={tag} className="inline-flex items-center gap-1 text-xs bg-[#dfd3c2] text-[#2b4368] px-2.5 py-1 rounded-full font-medium">
+                <span key={tag} className={`${TAG_CHIP} bg-[#ede7dd] text-[#1f3354]`}>
                   {meta.emoji} {meta.label}
                 </span>
               ) : null
             })}
             {it.bestMonths && it.bestMonths.length > 0 && it.bestMonths.map(m => (
-              <span key={m} className="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 font-medium">{m}</span>
+              <span key={m} className={`${TAG_CHIP} bg-[#e6ecf4] text-[#243b61]`}>{m}</span>
             ))}
           </div>
 
@@ -606,9 +606,7 @@ export default async function ItineraryPage({
           <div className="flex items-center justify-between flex-wrap gap-3 border-t border-b border-[#c1ad93] py-3 mb-2">
             <div className="flex items-center gap-3 flex-wrap">
               <Link href={`/user/${it.user.id}`} className="flex items-center gap-2 hover:opacity-80">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold shrink-0">
-                  {it.user.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
-                </div>
+                <UserAvatar name={it.user.name} image={it.user.image} size={32} />
                 <span className="text-sm font-medium text-[#1f3354]">{it.user.name}</span>
               </Link>
               {isGuide && <span className="text-xs text-[#8B6F4E]">Guide</span>}

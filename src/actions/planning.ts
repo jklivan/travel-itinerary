@@ -249,7 +249,10 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     if (rating !== undefined && (!Number.isInteger(rating) || rating < 0 || rating > 5)) throw new InputError('Choose a rating from 1 to 5, or leave it blank.')
     const day = text(form, 'day', 4)
     // The rest match the trip editor's fields; each is only changed when the form sends it.
-    const extra: { mealType?: string | null; tags?: string[]; alternative?: string | null; description?: string | null; link?: string | null; address?: string | null; photoUrls?: string[]; photoUrl?: string | null } = {}
+    const extra: { type?: string; groupIndex?: number; mealType?: string | null; tags?: string[]; alternative?: string | null; description?: string | null; link?: string | null; address?: string | null; photoUrls?: string[]; photoUrl?: string | null } = {}
+    // Category can be corrected (e.g. a restaurant posted as an activity from a snapshot).
+    const nextType = form.has('category') ? text(form, 'category', 20) : ''
+    if (nextType && !['hotel', 'food_drink', 'activity', 'transport'].includes(nextType)) throw new InputError('Choose a category.')
     if (form.has('mealType')) {
       const mealType = text(form, 'mealType', 100)
       if (mealType && mealType.split(',').some(value => !MEAL_TYPES.includes(value))) throw new InputError('Choose a meal type from the available tags.')
@@ -272,8 +275,14 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     if (!name || !['considering', 'booked', 'visited'].includes(status)) return { error: 'Enter a place name and choose a status.' }
     if (day && (!/^\d+$/.test(day) || Number(day) < 1 || Number(day) > 365)) return { error: 'Choose a day from 1 to 365, or leave it unscheduled.' }
     const owned = { id: itemId, destination: { itinerary: { userId } } }
-    const item = await prisma.destItem.findFirst({ where: owned, select: { name: true, placeId: true, destinationId: true, destination: { select: { itineraryId: true } } } })
+    const item = await prisma.destItem.findFirst({ where: owned, select: { name: true, type: true, placeId: true, destinationId: true, destination: { select: { itineraryId: true } } } })
     if (!item) return { error: unavailable }
+    if (nextType && nextType !== item.type) {
+      extra.type = nextType
+      // Hotels each get their own stay group; meal types only apply to restaurants.
+      if (nextType === 'hotel') { const last = await prisma.destItem.aggregate({ where: { destinationId: item.destinationId }, _max: { groupIndex: true } }); extra.groupIndex = (last._max.groupIndex ?? -1) + 1 } else extra.groupIndex = 0
+      if (nextType !== 'food_drink') extra.mealType = null
+    }
     const nextPlaceId = placeId === undefined ? (name === item.name ? item.placeId : null) : placeId
     const identityChanged = nextPlaceId !== item.placeId || name !== item.name
     await prisma.$transaction(async tx => {

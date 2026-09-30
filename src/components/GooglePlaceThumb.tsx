@@ -25,7 +25,7 @@ export default function GooglePlaceThumb({ itemId }: { itemId: string }) {
   return <span ref={element} className="absolute inset-0 z-[1]" style={{ pointerEvents: 'none' }}>
     {url && !failed && <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={sizedPhoto(url, 256)} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />
+      <img data-place-photo src={sizedPhoto(url, 256)} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />
     </>}
   </span>
 }

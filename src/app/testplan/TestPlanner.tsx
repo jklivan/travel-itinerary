@@ -54,14 +54,30 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
   const [showHistory, setShowHistory] = useState(false)
   const tripId = useRef(trip?.id ?? '')
   const scroller = useRef<HTMLDivElement>(null)
+  const composer = useRef<HTMLTextAreaElement>(null)
+  // The message box grows with what's typed (up to its max height), then scrolls.
+  useEffect(() => {
+    const box = composer.current
+    if (!box) return
+    box.style.height = 'auto'
+    box.style.height = `${box.scrollHeight + 2}px`
+  }, [draft])
+  // Arriving with a question started: put the cursor at the end, ready to finish it.
+  useEffect(() => {
+    const box = composer.current
+    if (box && initialDraft) box.setSelectionRange(box.value.length, box.value.length)
+  }, [initialDraft])
   const endOfChat = useRef<HTMLDivElement>(null)
+  const chatControls = useRef<HTMLDivElement>(null)
   const firstRender = useRef(true)
   useEffect(() => {
     const box = scroller.current
     // Desktop: the messages scroll inside their panel. Phones: they flow with the page.
     if (box && box.scrollHeight > box.clientHeight) box.scrollTo({ top: box.scrollHeight, behavior: firstRender.current ? 'auto' : 'smooth' })
-    // Phones: bring the newest message into view, including when reopening a past conversation.
-    else if (!firstRender.current || turns.length) endOfChat.current?.scrollIntoView({ behavior: firstRender.current ? 'auto' : 'smooth', block: 'end' })
+    // Phones: opening a conversation lands on the chat controls (new chat, past chats) just above it;
+    // after that, each new message scrolls into view.
+    else if (firstRender.current) { if (turns.length) chatControls.current?.scrollIntoView({ behavior: 'auto', block: 'start' }) }
+    else endOfChat.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
     firstRender.current = false
   }, [turns, thinking])
 
@@ -154,7 +170,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
       </section>
 
       {/* Between the trip card and the chat: start over, or (on phones) open a past conversation. */}
-      <div className="flex gap-2">
+      <div ref={chatControls} className="flex scroll-mt-24 gap-2">
         <button type="button" disabled={thinking || !turns.length} onClick={startNewChat} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#a9b6c8] bg-[#fffdf7] px-4 text-sm font-semibold text-[#243b61] disabled:opacity-50"><SquarePen size={16} />Start a new chat</button>
         {history.length > 0 && <button type="button" onClick={() => setShowHistory(value => !value)} aria-expanded={showHistory} aria-controls="past-chats-phone" className="flex min-h-11 items-center gap-2 rounded-xl border border-[#d7cebc] bg-[#fffdf7] px-4 text-sm font-semibold text-[#3f5a80] lg:hidden"><History size={16} />Past chats</button>}
       </div>
@@ -183,8 +199,8 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
         {error && <p role="alert" className="px-4 pb-2 text-sm text-red-700">{error}</p>}
         <div ref={endOfChat} aria-hidden="true" style={{ scrollMarginBottom: 'calc(var(--app-bottom-clearance) + 4.5rem)' }} />
         {/* On phones the composer sticks just above the bottom navigation so it is always reachable. */}
-        <form className="sticky bottom-[calc(var(--app-bottom-clearance)-2.1rem)] z-10 flex items-end gap-2 rounded-b-2xl border-t border-[#e6dfd1] bg-[#fffdf7] p-3 lg:static" onSubmit={event => { event.preventDefault(); void send(draft) }}>
-          <textarea autoFocus={!!initialDraft} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(draft) } }} rows={1} maxLength={4000} placeholder="Ask about a place or a trip…" aria-label="Message Postcard" className="max-h-32 min-h-11 flex-1 resize-none rounded-xl border border-[#d7cebc] bg-white px-3 py-2.5 text-base lg:text-sm outline-none focus:border-[#3f5a80]" />
+        <form className="sticky bottom-[calc(var(--app-bottom-clearance)-0.75rem)] z-10 flex items-end gap-2 rounded-b-2xl border-t border-[#e6dfd1] bg-[#fffdf7] p-3 lg:static" onSubmit={event => { event.preventDefault(); void send(draft) }}>
+          <textarea ref={composer} autoFocus={!!initialDraft} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(draft) } }} rows={1} maxLength={4000} placeholder="Ask about a place or a trip…" aria-label="Message Postcard" className="max-h-40 min-h-11 flex-1 resize-none overflow-y-auto rounded-xl border border-[#d7cebc] bg-white px-3 py-2.5 text-base lg:text-sm outline-none focus:border-[#3f5a80]" />
           <button type="submit" disabled={thinking || !draft.trim()} aria-label="Send" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#243b61] text-white disabled:opacity-40"><ArrowUp size={18} /></button>
         </form>
       </section>

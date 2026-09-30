@@ -9,6 +9,7 @@ import { groupStories, type StoryCard } from '@/lib/stories'
 import StoryComposer from './StoryComposer'
 import { sizedPhoto } from '@/lib/photoSizing'
 import SavePlaceToPlan from './SavePlaceToPlan'
+import UserAvatar from './UserAvatar'
 import styles from './Stories.module.css'
 
 export default function StoriesBar({ stories, userId, following, serverTime }: { stories: StoryCard[]; userId: string | null; following: boolean; serverTime: number }) {
@@ -96,7 +97,7 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
       if (event.key === 'ArrowLeft') { event.preventDefault(); move(-1) }
     }}>
       <div className={styles.viewerInner}>
-        <header className={styles.viewerHeader}><div className={styles.viewerAuthor}>{story && <span className={styles.avatar} aria-hidden="true">{story.authorName.split(/\s+/).filter(Boolean).map(word => word[0]).join('').slice(0, 2).toUpperCase()}</span>}<div><h2 id={titleId}>{story?.authorName ?? 'Story expired'}</h2><p>{story ? age : 'Stories disappear after 24 hours.'}</p></div></div><button type="button" autoFocus className={styles.viewerClose} aria-label="Close story" onClick={() => dialog.current?.close()}><X size={22} /></button></header>
+        <header className={styles.viewerHeader}><div className={styles.viewerAuthor}>{story && <UserAvatar name={story.authorName} image={story.authorImage} size={34} />}<div><h2 id={titleId}>{story?.authorName ?? 'Story expired'}</h2><p>{story ? age : 'Stories disappear after 24 hours.'}</p></div></div><button type="button" autoFocus className={styles.viewerClose} aria-label="Close story" onClick={() => dialog.current?.close()}><X size={22} /></button></header>
         {story ? <>
           <StoryProgress key={story.id} stories={authorStories} selected={story.id} paused={paused || holding || saveOpen || confirmDelete || deleting || loaded !== story.id} onComplete={() => move(1)} />
           <div className={styles.storyContent} onContextMenu={event => event.preventDefault()} onPointerDown={event => {

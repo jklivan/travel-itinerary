@@ -12,11 +12,11 @@ type Result = { error?: string; success?: boolean }
 export async function activeStories(following = false): Promise<StoryCard[]> {
   const userId = (await auth())?.user?.id ?? null
   const rows = await prisma.story.findMany({ where: visibleStoriesWhere(userId, following), orderBy: { createdAt: 'desc' }, take: 200,
-    include: { user: { select: { id: true, name: true } }, sourceItinerary: { select: { id: true, visibility: true, isPlan: true } } },
+    include: { user: { select: { id: true, name: true, image: true } }, sourceItinerary: { select: { id: true, visibility: true, isPlan: true } } },
   })
   // Only a public trip link or the owner's private plan link is sent to viewers.
   // Trip notes, titles, photos and other places are never serialized with a story.
-  return rows.map(row => ({ id: row.id, authorId: row.user.id, authorName: row.user.name, placeName: row.placeName,
+  return rows.map(row => ({ id: row.id, authorId: row.user.id, authorName: row.user.name, authorImage: row.user.image, placeName: row.placeName,
     destination: [row.destination, row.country].filter(Boolean).join(', '), hasTrip: !!row.sourceItinerary, type: row.type, photoUrl: row.photoUrl, caption: row.caption,
     createdAt: row.createdAt.toISOString(), expiresAt: row.expiresAt.toISOString(),
     tripHref: row.sourceItinerary?.visibility === 'public' ? `/itinerary/${row.sourceItinerary.id}` : row.user.id === userId && row.sourceItinerary ? `/plan/${row.sourceItinerary.id}` : null,
