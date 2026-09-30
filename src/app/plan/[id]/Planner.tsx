@@ -79,7 +79,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       <Link href={`/plan/${trip.id}/friends`} className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-[#a9b6c8] bg-[#fffdf7] text-[#3f5a80]"><Users size={18} />Browse friends’ places</Link>
       <button type="button" onClick={() => { setAdding(false); setImporting(true) }} aria-expanded={importing} aria-controls="plan-import-panel" className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-[#a9b6c8] bg-[#fffdf7] text-[#3f5a80]"><Upload size={18} />Import notes or files</button>
       {/* This trip's AI chat: it sees the trip's places and can add its picks here. */}
-      <Link href={`/testplan?trip=${trip.id}`} className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-[#c8d2e0] bg-[#eaeff6] text-[#243b61]"><Sparkles size={18} />Plan with AI</Link>
+      <Link href={`/testplan?trip=${trip.id}&from=planner`} className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-[#c8d2e0] bg-[#eaeff6] text-[#243b61]"><Sparkles size={18} />Plan with AI</Link>
     </div>
     {adding && <div hidden={importing}><AddPlace trip={trip} maxDay={maxDay} onClose={() => setAdding(false)} /></div>}
     {importing && <div id="plan-import-panel"><PlanImport tripId={trip.id} onClose={() => setImporting(false)} /></div>}
@@ -231,7 +231,7 @@ function PlaceRow({ tripId, place, maxDay, dayChips }: { tripId: string; place: 
         {!!place.rating && <p className="text-sm text-[#a27e3b]" aria-label={`Your rating: ${place.rating} out of 5`}>{'★'.repeat(place.rating)}{'☆'.repeat(5 - place.rating)}</p>}
         {place.notes && <p className={styles.note}>{place.notes}</p>}
         {/* Opens this trip's AI chat with a question about this place ready to finish. */}
-        <Link href={`/testplan?trip=${tripId}&ask=${place.id}`} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} className="relative z-[2] mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#3f5a80] underline-offset-2 hover:underline"><Sparkles size={13} />Ask AI about this place</Link>
+        <Link href={`/testplan?trip=${tripId}&ask=${place.id}&from=planner`} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} className="relative z-[2] mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#3f5a80] underline-offset-2 hover:underline"><Sparkles size={13} />Ask AI about this place</Link>
       </div>
     </div>
     {!!dayChips && <DayChips itemId={place.id} days={dayChips} />}

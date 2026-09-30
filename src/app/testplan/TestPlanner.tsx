@@ -39,7 +39,7 @@ type PastChat = { id: string; topic: string; updatedAt: string }
 
 const starters = ['Surprise me with a long weekend', 'Where should we go this spring?', 'Somewhere new my friends haven’t been']
 
-export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPreferences, initialDraft = '' }: { initialDraft?: string; trip: Trip | null; chat: { id: string; turns: Turn[] } | null; history: PastChat[]; hasOwnTrips: boolean; lastPreferences: TravelPreferences | null }) {
+export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPreferences, initialDraft = '', fromPlanner = false }: { fromPlanner?: boolean; initialDraft?: string; trip: Trip | null; chat: { id: string; turns: Turn[] } | null; history: PastChat[]; hasOwnTrips: boolean; lastPreferences: TravelPreferences | null }) {
   const router = useRouter()
   const [turns, setTurns] = useState<Turn[]>(chat?.turns ?? [])
   const chatId = useRef(chat?.id ?? '')
@@ -141,7 +141,8 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
         <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="font-[family-name:var(--font-playfair)] text-2xl">{trip?.title ?? 'Your next trip'}</h1>
           <div className="flex items-center gap-4 text-sm font-semibold text-[#3f5a80]">
-            {trip && <Link href={`/plan/${trip.id}`}>Open in planner →</Link>}
+            {/* From the planner this goes back where you came from; for a trip the chat built, it opens it. */}
+            {trip && <Link href={`/plan/${trip.id}`}>{fromPlanner ? '← Back to your trip' : 'Open in planner →'}</Link>}
             {mapView === 'hidden' && <button type="button" onClick={() => setMapView('normal')} className="inline-flex items-center gap-1"><MapIcon size={14} />Show map</button>}
           </div>
         </div>

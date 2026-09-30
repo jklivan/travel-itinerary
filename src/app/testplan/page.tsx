@@ -20,8 +20,8 @@ function chatTopic(turns: Turn[], tripTitle: string | null | undefined) {
   return kinds.length ? `${kinds.slice(0, 3).join(' · ')} ideas` : 'Trip ideas'
 }
 
-export default async function TestPlanPage({ searchParams }: { searchParams: Promise<{ trip?: string; new?: string; chat?: string; ask?: string }> }) {
-  const { trip: tripParam, new: fresh, chat: chatParam, ask } = await searchParams
+export default async function TestPlanPage({ searchParams }: { searchParams: Promise<{ trip?: string; new?: string; chat?: string; ask?: string; from?: string }> }) {
+  const { trip: tripParam, new: fresh, chat: chatParam, ask, from } = await searchParams
   const userId = (await auth())?.user?.id
   if (!userId) redirect(`/login?callbackUrl=${encodeURIComponent(tripParam ? `/testplan?trip=${tripParam}` : '/testplan')}`)
   // ?chat= opens a past conversation from the sidebar; ?trip= the latest one about that trip.
@@ -43,7 +43,7 @@ export default async function TestPlanPage({ searchParams }: { searchParams: Pro
   // ?ask= (from "Ask AI about this place" in the planner): start a question about that place.
   const askPlace = ask ? trip?.destinations.flatMap(d => d.items.map(item => ({ item, d }))).find(({ item }) => item.id === ask) : undefined
   const initialDraft = askPlace ? `Tell me more about ${askPlace.item.name} (${[askPlace.d.name, askPlace.d.country].filter(Boolean).join(', ')}): ` : ''
-  return <TestPlanner key={`${chat?.id ?? `new:${tripId ?? ''}`}:${ask ?? ''}`} initialDraft={initialDraft} history={history} hasOwnTrips={ownTrips > 0} lastPreferences={lastPreferences} chat={chat && { id: chat.id, turns: chat.turns as unknown as Turn[] }} trip={trip && { id: trip.id, title: trip.title,
+  return <TestPlanner key={`${chat?.id ?? `new:${tripId ?? ''}`}:${ask ?? ''}`} initialDraft={initialDraft} fromPlanner={from === 'planner'} history={history} hasOwnTrips={ownTrips > 0} lastPreferences={lastPreferences} chat={chat && { id: chat.id, turns: chat.turns as unknown as Turn[] }} trip={trip && { id: trip.id, title: trip.title,
     places: trip.destinations.flatMap(d => d.items.map(item => ({ id: item.id, name: item.name, type: item.type, notes: item.notes, placeId: item.placeId, lat: item.lat, lng: item.lng,
       day: item.dayIndex === null ? null : item.dayIndex + (d.items.some(i => i.type !== 'hotel' && i.dayIndex === 0) ? 1 : 0),
       photos: item.photoUrls.length ? item.photoUrls : item.photoUrl ? [item.photoUrl] : [],
