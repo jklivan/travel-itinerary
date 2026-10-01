@@ -88,6 +88,7 @@ function RegisterForm() {
             >
               {pending ? 'Creating account…' : 'Create account'}
             </button>
+            <p className="text-center text-xs text-[#8B6F4E]">By creating an account you agree to our <Link href="/privacy" className="underline">Privacy Policy</Link>.</p>
           </form>
         </div>
 
