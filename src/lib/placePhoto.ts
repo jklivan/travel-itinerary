@@ -1,5 +1,5 @@
 export type PhotoAttribution = { displayName: string; uri?: string }
-export type PlacePhoto = { url: string; authors: PhotoAttribution[]; mapsUrl: string; placeId: string }
+export type PlacePhoto = { url: string; authors: PhotoAttribution[]; mapsUrl: string; placeId: string; address?: string }
 type Candidate = { id?: string; displayName?: { text?: string }; formattedAddress?: string; photos?: { name?: string; authorAttributions?: PhotoAttribution[] }[] }
 const words = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 
@@ -32,7 +32,7 @@ export async function findPlacePhoto(place: { name: string; city: string; countr
     let candidate: Candidate | undefined
     if (place.placeId) {
       const response = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(place.placeId)}`, {
-        headers: { ...headers, 'X-Goog-FieldMask': 'id,photos' }, cache: 'no-store', signal,
+        headers: { ...headers, 'X-Goog-FieldMask': 'id,photos,formattedAddress' }, cache: 'no-store', signal,
       })
       if (!response.ok) return null
       candidate = await response.json()
@@ -55,6 +55,17 @@ export async function findPlacePhoto(place: { name: string; city: string; countr
     if (!response.ok) return null
     const data = await response.json() as { photoUri?: string }
     if (!data.photoUri || !data.photoUri.startsWith('https://')) return null
-    return { url: data.photoUri, authors: (photo.authorAttributions ?? []).map(author => ({ displayName: author.displayName, uri: author.uri?.startsWith('https://') ? author.uri : undefined })), mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${encodeURIComponent(candidate.id)}`, placeId: candidate.id }
+    return { url: data.photoUri, authors: (photo.authorAttributions ?? []).map(author => ({ displayName: author.displayName, uri: author.uri?.startsWith('https://') ? author.uri : undefined })), mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${encodeURIComponent(candidate.id)}`, placeId: candidate.id, address: candidate.formattedAddress }
+  } catch { return null }
+}
+
+// Google's address for a place, for places that already have their own photos (so skip the photo lookup).
+export async function findPlaceAddress(placeId: string, apiKey: string) {
+  try {
+    const response = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
+      headers: { 'X-Goog-Api-Key': apiKey, 'X-Goog-FieldMask': 'formattedAddress' }, cache: 'no-store', signal: AbortSignal.timeout(8000),
+    })
+    if (!response.ok) return null
+    return ((await response.json()) as { formattedAddress?: string }).formattedAddress?.slice(0, 500) || null
   } catch { return null }
 }
