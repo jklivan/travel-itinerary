@@ -252,6 +252,7 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     const extra: { type?: string; groupIndex?: number; mealType?: string | null; tags?: string[]; alternative?: string | null; description?: string | null; link?: string | null; address?: string | null; photoUrls?: string[]; photoUrl?: string | null } = {}
     // Category can be corrected (e.g. a restaurant posted as an activity from a snapshot).
     const nextType = form.has('category') ? text(form, 'category', 20) : ''
+    const nextDestination = form.has('destination') ? text(form, 'destination', 160) : ''
     if (nextType && !['hotel', 'food_drink', 'activity', 'transport'].includes(nextType)) throw new InputError('Choose a category.')
     if (form.has('mealType')) {
       const mealType = text(form, 'mealType', 100)
@@ -275,7 +276,7 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     if (!name || !['considering', 'booked', 'visited'].includes(status)) return { error: 'Enter a place name and choose a status.' }
     if (day && (!/^\d+$/.test(day) || Number(day) < 1 || Number(day) > 365)) return { error: 'Choose a day from 1 to 365, or leave it unscheduled.' }
     const owned = { id: itemId, destination: { itinerary: { userId } } }
-    const item = await prisma.destItem.findFirst({ where: owned, select: { name: true, type: true, placeId: true, destinationId: true, destination: { select: { itineraryId: true } } } })
+    const item = await prisma.destItem.findFirst({ where: owned, select: { name: true, type: true, placeId: true, destinationId: true, destination: { select: { itineraryId: true, name: true, country: true } } } })
     if (!item) return { error: unavailable }
     if (nextType && nextType !== item.type) {
       extra.type = nextType
@@ -285,11 +286,26 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     }
     const nextPlaceId = placeId === undefined ? (name === item.name ? item.placeId : null) : placeId
     const identityChanged = nextPlaceId !== item.placeId || name !== item.name
+    const moving = !!nextDestination && !samePlanDestination(item.destination, { name: nextDestination })
     await prisma.$transaction(async tx => {
-      const zeroBased = await tx.destItem.count({ where: { destinationId: item.destinationId, dayIndex: 0, type: { not: 'hotel' } } })
-      if (zeroBased) await tx.destItem.updateMany({ where: { destinationId: item.destinationId, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
-      const result = await tx.destItem.updateMany({ where: owned, data: { name, placeId: nextPlaceId, ...(identityChanged ? { lat: null, lng: null, address: null, link: null, description: null } : {}), ...extra, notes: notes || null, ...(rating === undefined ? {} : { rating: rating || null }), planningStatus: status, dayIndex: day ? Number(day) : null } })
+      // Moving to another destination: an existing one with that name, or a new one at the end of the trip.
+      let moveTo: { destinationId: string; order: number; groupIndex?: number } | null = null
+      if (moving) {
+        const tripId = item.destination.itineraryId
+        const destinations = await tx.destination.findMany({ where: { itineraryId: tripId }, orderBy: { order: 'asc' } })
+        const target = destinations.find(d => samePlanDestination(d, { name: nextDestination }))
+          ?? await tx.destination.create({ data: { itineraryId: tripId, name: nextDestination, order: Math.max(-1, ...destinations.map(d => d.order)) + 1 } })
+        const last = await tx.destItem.aggregate({ where: { destinationId: target.id }, _max: { order: true, groupIndex: true } })
+        moveTo = { destinationId: target.id, order: (last._max.order ?? -1) + 1, ...((extra.type ?? item.type) === 'hotel' ? { groupIndex: (last._max.groupIndex ?? -1) + 1 } : {}) }
+      }
+      for (const destinationId of new Set([item.destinationId, moveTo?.destinationId].filter((id): id is string => !!id))) {
+        const zeroBased = await tx.destItem.count({ where: { destinationId, dayIndex: 0, type: { not: 'hotel' } } })
+        if (zeroBased) await tx.destItem.updateMany({ where: { destinationId, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
+      }
+      const result = await tx.destItem.updateMany({ where: owned, data: { name, placeId: nextPlaceId, ...(identityChanged ? { lat: null, lng: null, address: null, link: null, description: null } : {}), ...extra, ...(moveTo ?? {}), notes: notes || null, ...(rating === undefined ? {} : { rating: rating || null }), planningStatus: status, dayIndex: day ? Number(day) : null } })
       if (!result.count) throw new InputError(unavailable)
+      // The destination it left goes away once it's empty, unless it has its own notes.
+      if (moveTo) await tx.destination.deleteMany({ where: { id: item.destinationId, notes: null, items: { none: {} } } })
     })
     refresh(item.destination.itineraryId, userId)
     return { success: true }
