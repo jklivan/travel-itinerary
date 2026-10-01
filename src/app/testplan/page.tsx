@@ -1,3 +1,4 @@
+import { placeTown } from '@/lib/placeTown'
 import type { Metadata } from 'next'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
@@ -47,6 +48,6 @@ export default async function TestPlanPage({ searchParams }: { searchParams: Pro
     places: trip.destinations.flatMap(d => d.items.map(item => ({ id: item.id, name: item.name, type: item.type, notes: item.notes, placeId: item.placeId, lat: item.lat, lng: item.lng,
       day: item.dayIndex === null ? null : item.dayIndex + (d.items.some(i => i.type !== 'hotel' && i.dayIndex === 0) ? 1 : 0),
       photos: item.photoUrls.length ? item.photoUrls : item.photoUrl ? [item.photoUrl] : [],
-      destination: [d.name, d.country].filter(Boolean).join(', ') }))),
+      destination: item.address ? placeTown(item.address) : [d.name, d.country].filter(Boolean).join(', ') }))),
   }} />
 }

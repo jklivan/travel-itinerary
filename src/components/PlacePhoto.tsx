@@ -4,10 +4,12 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { PlacePhoto as Photo } from '@/lib/placePhoto'
 import { sizedPhoto } from '@/lib/photoSizing'
 
-export default function PlacePhoto({ itemId, name, photos = [], thumbnailClass, fallback, fullWidth = false }: { itemId: string; name: string; photos?: string[]; thumbnailClass: string; fallback: ReactNode; fullWidth?: boolean }) {
+export default function PlacePhoto({ itemId, name, photos = [], thumbnailClass, fallback, fullWidth = false, onAddress }: { itemId: string; name: string; photos?: string[]; thumbnailClass: string; fallback: ReactNode; fullWidth?: boolean; onAddress?: (address: string) => void }) {
   const element = useRef<HTMLDivElement>(null)
   const [photo, setPhoto] = useState<Photo | null>(null)
   const [failed, setFailed] = useState(false)
+  const addressFound = useRef(onAddress)
+  useEffect(() => { addressFound.current = onAddress })
   const storedPhoto = photos.find(Boolean) ?? null
   useEffect(() => {
     const controller = new AbortController()
@@ -17,7 +19,10 @@ export default function PlacePhoto({ itemId, name, photos = [], thumbnailClass, 
       started = true
       try {
         const response = await fetch(`/api/place-photo?item=${encodeURIComponent(itemId)}`, { cache: 'no-store', signal: controller.signal })
-        if (response.ok) setPhoto(await response.json())
+        if (!response.ok) return
+        const found = await response.json() as Photo | { address: string } | null
+        if (found && 'url' in found) setPhoto(found)
+        if (found?.address) addressFound.current?.(found.address)
       } catch { /* Keep the illustrated placeholder. */ }
     }
     const observer = new IntersectionObserver(entries => {

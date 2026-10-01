@@ -23,6 +23,7 @@ import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import PlanningMap from '@/components/PlanningMap'
 import PlacePeople from '@/components/PlacePeople'
 import PlacePhoto from '@/components/PlacePhoto'
+import { placeTown } from '@/lib/placeTown'
 import { DateFields, inputClass, buttonClass } from '../NewPlanForm'
 import { TAGS } from '@/lib/tags'
 import { getRecommendation } from '@/lib/placeRecommendation'
@@ -207,6 +208,7 @@ function PlaceRow({ tripId, place, maxDay, dayChips }: { tripId: string; place: 
   const [day, setDay] = useState(place.day === null ? '' : String(place.day))
   const [type, setType] = useState(place.type)
   const [uploading, setUploading] = useState(false)
+  const [foundAddress, setFoundAddress] = useState<string | null>(null)
   const category = categories.find(category => category.value === place.type) ?? categories[2]
   function openEditor() { setType(place.type); setPlaceId(place.placeId ?? ''); setPhotos(place.photos); setDay(place.day === null ? '' : String(place.day)); setEditing(true); setError(''); setSaved(false) }
   async function save(values: PlaceEditValues) {
@@ -223,14 +225,15 @@ function PlaceRow({ tripId, place, maxDay, dayChips }: { tripId: string; place: 
   return <article id={`place-${place.id}`} className={`${planningStyles.place} ${styles[category.value]} scroll-mt-40`}>
       {/* Tapping the photo or text opens the place with its full notes and details. */}
       <div role="button" tabIndex={0} aria-label={`Open ${place.name}`} onClick={() => { if (!editing) openEditor() }} onKeyDown={event => { if (!editing && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); openEditor() } }} className={`${styles.card} ${planningStyles.card} cursor-pointer`}>
-      <PlacePhoto itemId={place.id} name={place.name} photos={place.photos} thumbnailClass={styles.thumbnail} fallback={<div className={styles.keepsake} aria-hidden="true"><span>{category.eyebrow}</span><Icon size={25} strokeWidth={1} /><span>{place.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span></div>} />
+      <PlacePhoto itemId={place.id} name={place.name} photos={place.photos} onAddress={setFoundAddress} thumbnailClass={styles.thumbnail} fallback={<div className={styles.keepsake} aria-hidden="true"><span>{category.eyebrow}</span><Icon size={25} strokeWidth={1} /><span>{place.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span></div>} />
       <div className={styles.cardBody}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className={styles.eyebrow}>{category.eyebrow}</p>
           {getRecommendation(place.tags) === 'option' && <span className="rounded-full border border-mist-line bg-mist px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-link">Alternative</span>}
         </div>
         <h3 className={styles.placeName}>{place.name}</h3>
-        <p className={planningStyles.location}>{place.destination}</p>
+        {/* The place's own town once Google has it; until then, the destination it's filed under. */}
+        <p className={planningStyles.location}>{place.address || foundAddress ? placeTown(place.address || foundAddress!) : place.destination}</p>
         {!!place.rating && <p className="mt-1"><RatingStars value={place.rating} label={`Your rating: ${place.rating} out of 5`} /></p>}
         {place.notes && <p className={styles.note}>{place.notes}</p>}
         {/* Opens this trip's AI chat with a question about this place ready to finish. */}

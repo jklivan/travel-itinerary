@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
-import { findPlacePhoto } from '@/lib/placePhoto'
+import { findPlaceAddress, findPlacePhoto } from '@/lib/placePhoto'
 import { eventPhotos } from '@/lib/eventPhotos'
 
 export async function GET(request: NextRequest) {
@@ -12,14 +12,24 @@ export async function GET(request: NextRequest) {
   const fallback = request.nextUrl.searchParams.get('fallback') === '1'
   if (!apiKey || !id || !/^[a-zA-Z0-9_-]{1,128}$/.test(id)) return reply(null)
   const item = await prisma.destItem.findUnique({ where: { id }, include: { destination: { include: { itinerary: { select: { visibility: true, userId: true } } } } } })
-  if (!item || (eventPhotos(item.photoUrls, item.photoUrl).length && !fallback)) return reply(null)
+  if (!item) return reply(null)
   const viewerId = (await auth())?.user?.id
   const isOwner = viewerId === item.destination.itinerary.userId
   if (item.destination.itinerary.visibility !== 'public' && !isOwner) return reply(null)
+  // Your own places save Google's address, so the planner shows the place's real town rather than the
+  // destination it was filed under (an AI pick in Rowayton can land under "Greenwich").
+  const saveAddress = (address: string | null | undefined) => isOwner && !item.address && address
+    ? prisma.destItem.updateMany({ where: { id: item.id, address: null }, data: { address: address.slice(0, 500) } }).catch(() => {}) : null
+  if (eventPhotos(item.photoUrls, item.photoUrl).length && !fallback) {
+    const address = isOwner && !item.address && item.placeId ? await findPlaceAddress(item.placeId, apiKey) : null
+    await saveAddress(address)
+    return reply(address ? { address } : null)
+  }
   // In your own trip, a place with no Google ID gets a looser match, and the ID it finds is saved so the
   // photo, map pin and Google Maps link keep working. Other people's places keep the strict match.
   const loose = isOwner && !item.placeId
   const photo = await findPlacePhoto({ name: item.name, placeId: item.placeId, city: item.destination.name, country: item.destination.country, loose }, apiKey)
   if (photo && loose) await prisma.destItem.updateMany({ where: { id: item.id, placeId: null }, data: { placeId: photo.placeId } }).catch(() => {})
+  await saveAddress(photo?.address)
   return reply(photo)
 }
