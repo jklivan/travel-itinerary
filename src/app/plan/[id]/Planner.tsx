@@ -36,7 +36,8 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const router = useRouter()
   const [tab, setTab] = useState<'places' | 'itinerary' | 'map'>('places')
   const [mapOpened, setMapOpened] = useState(false)
-  const [adding, setAdding] = useState(false)
+  // Where the add-a-place form is open: the top button, under a destination's heading, or on an empty day.
+  const [adding, setAdding] = useState<{ at: string; destination?: string; day?: number } | null>(null)
   const [importing, setImporting] = useState(initialImport)
   const [publishing, setPublishing] = useState(false)
   const [publishFormat, setPublishFormat] = useState<'guide' | 'day-trip' | 'itinerary' | null>(initialPost ? (trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary') : null)
@@ -49,11 +50,20 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   // After Continue: offer to rate places without a rating (not transport or alternatives) before the preview.
   // The places listed when the prompt opened; they stay listed (showing their new stars) as they're rated.
   const [unratedPrompt, setUnratedPrompt] = useState<string[] | null>(null)
-  const places = trip.destinations.flatMap(d => d.items.map(item => ({ ...item, destination: [d.name, d.country].filter(Boolean).join(', ') })))
+  const places = trip.destinations.flatMap(d => d.items.map(item => ({ ...item, destinationId: d.id, destinationName: d.name, destination: [d.name, d.country].filter(Boolean).join(', ') })))
+  // Trips with more than one destination split their places under a heading for each.
+  const destinations = trip.destinations.filter(d => d.items.length || d.name !== 'Destination to decide')
+  const multiDestination = destinations.length > 1
   const scheduled = [...new Set(places.flatMap(p => p.day === null ? [] : [p.day]))].sort((a, b) => a - b)
   const maxDay = Math.max(trip.durationDays ?? 0, ...scheduled, 1)
   const unrated = places.filter(place => place.type !== 'transport' && !place.rating && getRecommendation(place.tags) !== 'option')
-  function renderPlace(place: Place & { destination: string }) { return <PlaceRow key={place.id} tripId={trip.id} place={place} maxDay={maxDay} /> }
+  function renderPlace(place: Place & { destination: string; destinationName: string }) { return <PlaceRow key={place.id} tripId={trip.id} place={place} maxDay={maxDay} destinationNames={destinations.map(d => d.name)} /> }
+  function addForm(at: string) { return adding?.at === at && !importing ? <AddPlace key={at} trip={trip} maxDay={maxDay} initialDestination={adding.destination} initialDay={adding.day} onClose={() => setAdding(null)} /> : null }
+  function categorySections(items: typeof places) {
+    return categories.map(category => { const inCategory = items.filter(p => p.type === category.value); return inCategory.length > 0 && <section key={category.value} className="mb-7"><div className={`${styles.categoryHeading} ${styles[category.value]}`}><h3><span className={styles.categoryIcon}><category.Icon size={17} /></span>{category.label}</h3><span className={styles.count}>{inCategory.length} {inCategory.length === 1 ? 'place' : 'places'}</span></div><div className="space-y-3">{inCategory.map(renderPlace)}</div></section> })
+  }
+  // An empty day suggests the destination of the closest earlier day that has places.
+  function dayDestination(day: number) { return places.filter(p => p.day !== null && p.day < day).sort((a, b) => b.day! - a.day!)[0]?.destinationName }
   function showPreview() { setUnratedPrompt(null); router.push(`/itinerary/${trip.id}?preview=1`) }
   // Continue saves these details on the still-private plan, then shows the trip exactly as it will be posted.
   // Posting happens from that preview.
@@ -78,13 +88,13 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     </div>}
     {/* One row of compact actions, so the places start higher up the screen. */}
     <div className="sticky top-0 z-20 -mx-1 mt-3 grid grid-cols-4 gap-2 bg-paper px-1 py-3">
-      <button type="button" onClick={() => { setImporting(false); setAdding(true) }} className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-ink bg-ink text-white"><Plus size={20} />Add a place</button>
+      <button type="button" onClick={() => { setImporting(false); setAdding({ at: 'top' }) }} className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-ink bg-ink text-white"><Plus size={20} />Add a place</button>
       <Link href={`/plan/${trip.id}/friends`} className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-mist-edge bg-card text-link"><Users size={18} />Browse friends’ places</Link>
-      <button type="button" onClick={() => { setAdding(false); setImporting(true) }} aria-expanded={importing} aria-controls="plan-import-panel" className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-mist-edge bg-card text-link"><Upload size={18} />Import notes or files</button>
+      <button type="button" onClick={() => { setAdding(null); setImporting(true) }} aria-expanded={importing} aria-controls="plan-import-panel" className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-mist-edge bg-card text-link"><Upload size={18} />Import notes or files</button>
       {/* This trip's AI chat: it sees the trip's places and can add its picks here. */}
       <Link href={`/testplan?trip=${trip.id}&from=planner`} className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-mist-line bg-mist text-ink"><Sparkles size={18} />Plan with AI</Link>
     </div>
-    {adding && <div hidden={importing}><AddPlace trip={trip} maxDay={maxDay} onClose={() => setAdding(false)} /></div>}
+    {addForm('top')}
     {importing && <div id="plan-import-panel"><PlanImport tripId={trip.id} onClose={() => setImporting(false)} /></div>}
     <div role="tablist" aria-label="Trip view" className="mb-5 mt-3 flex border-b border-line">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className={`min-h-12 flex-1 border-b-2 p-3 font-semibold ${tab === value ? 'border-link text-link' : 'border-transparent text-muted'}`}>{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
     <section role="tabpanel" id="trip-panel" aria-labelledby={`${tab}-tab`}>
@@ -92,14 +102,21 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       {tab === 'itinerary' && !places.length && (trip.durationDays ? <p className="mb-4 text-sm text-muted">Your {trip.durationDays}-day trip. Add places and choose a day for each.</p> : <TripDaysPrompt tripId={trip.id} />)}
       {tab === 'map' ? null : !places.length ? <div className="rounded-2xl border border-dashed border-line p-8 text-center"><MapPin className="mx-auto mb-3 text-link" /><h2 className="text-xl font-semibold">A place to start</h2><p className="mt-2 text-sm text-muted">A hotel you love, a restaurant someone mentioned, something you want to do. Add it now and decide when later.</p></div> : tab === 'places' ? <>
         <p className="mb-5 text-sm text-muted">Everything you’re considering, all in one place. Days are optional.</p>
-        {categories.map(category => { const items = places.filter(p => p.type === category.value); return items.length > 0 && <section key={category.value} className="mb-7"><div className={`${styles.categoryHeading} ${styles[category.value]}`}><h3><span className={styles.categoryIcon}><category.Icon size={17} /></span>{category.label}</h3><span className={styles.count}>{items.length} {items.length === 1 ? 'place' : 'places'}</span></div><div className="space-y-3">{items.map(renderPlace)}</div></section> })}
+        {multiDestination ? destinations.map(destination => { const items = places.filter(p => p.destinationId === destination.id); return <section key={destination.id} aria-label={destination.name} className="mb-10">
+          <div className="mb-3 flex items-baseline justify-between gap-3 border-b-2 border-ink pb-2"><h2 className="flex min-w-0 items-center gap-2 font-[family-name:var(--font-playfair)] text-2xl uppercase [overflow-wrap:anywhere]"><MapPin size={20} className="shrink-0 text-link" />{destination.name}</h2><span className="shrink-0 text-xs font-semibold uppercase tracking-wider text-muted">{items.length} {items.length === 1 ? 'place' : 'places'}</span></div>
+          {/* Adds here search near this destination. */}
+          <button type="button" onClick={() => { setImporting(false); setAdding({ at: `destination:${destination.id}`, destination: destination.name }) }} className="mb-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-link px-4 text-sm font-semibold text-link hover:bg-mist"><Plus size={17} />Add a place in {destination.name}</button>
+          {addForm(`destination:${destination.id}`)}
+          {categorySections(items)}
+        </section> }) : categorySections(places)}
       </> : <>
         {!trip.durationDays && <TripDaysPrompt tripId={trip.id} />}
-        {Array.from({ length: maxDay }, (_, index) => index + 1).filter(day => trip.durationDays || scheduled.includes(day)).map(day => { const dayPlaces = places.filter(p => p.day === day); return <section key={day} className="mb-6"><h2 className="mb-3 text-lg font-semibold">Day {day}</h2>{dayPlaces.length ? <div className="space-y-3">{dayPlaces.map(renderPlace)}</div> : <p className="rounded-xl border border-dashed border-line px-4 py-3 text-sm text-muted">Nothing planned yet.</p>}
+        {Array.from({ length: maxDay }, (_, index) => index + 1).filter(day => trip.durationDays || scheduled.includes(day)).map(day => { const dayPlaces = places.filter(p => p.day === day); const dayLocation = [...new Set(dayPlaces.map(p => p.destinationName))].filter(name => name !== 'Destination to decide').join(' · '); return <section key={day} className="mb-6"><h2 className="mb-3 text-lg font-semibold">Day {day}{dayLocation && <span className="ml-2 text-sm font-normal text-muted">{dayLocation}</span>}</h2>{dayPlaces.length ? <div className="space-y-3">{dayPlaces.map(renderPlace)}</div> : adding?.at !== `day:${day}` && <button type="button" onClick={() => { setImporting(false); setAdding({ at: `day:${day}`, day, destination: dayDestination(day) }) }} className="flex w-full items-center gap-1.5 rounded-xl border border-dashed border-line px-4 py-3 text-sm font-semibold text-link hover:bg-mist"><Plus size={15} />Add a place</button>}
+          {addForm(`day:${day}`)}
           {!!trip.durationDays && trip.durationDays > 1 && <DeleteDay tripId={trip.id} day={day} places={dayPlaces.length} />}</section> })}
         {!!trip.durationDays && <AddDay tripId={trip.id} days={trip.durationDays} />}
         <section><h2 className="mb-3 text-lg font-semibold">Unscheduled</h2>
-          {!!trip.durationDays && places.some(p => p.day === null) && <OrganizeWithAI tripId={trip.id} places={places} />}<div className="space-y-3">{places.filter(p => p.day === null).map(place => trip.durationDays ? <PlaceRow key={place.id} tripId={trip.id} place={place} maxDay={maxDay} dayChips={trip.durationDays} /> : renderPlace(place))}</div>{places.every(p => p.day !== null) && <p className="text-sm text-muted">All your places have a day.</p>}</section>
+          {!!trip.durationDays && places.some(p => p.day === null) && <OrganizeWithAI tripId={trip.id} places={places} />}<div className="space-y-3">{places.filter(p => p.day === null).map(place => trip.durationDays ? <PlaceRow key={place.id} tripId={trip.id} place={place} maxDay={maxDay} destinationNames={destinations.map(d => d.name)} dayChips={trip.durationDays} /> : renderPlace(place))}</div>{places.every(p => p.day !== null) && <p className="text-sm text-muted">All your places have a day.</p>}</section>
       </>}
     </section>
     <div className="mt-8 border-t border-line pt-5"><div className="flex flex-wrap items-center justify-between gap-3"><div className="pointer-events-auto"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div>{trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={() => setPublishFormat(trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary')} aria-label="Post trip" title="Post trip" className="pointer-events-auto relative inline-flex size-20 items-center justify-center transition-transform hover:-rotate-6 hover:scale-105 disabled:opacity-60"><Image src="/brand/postcard-stamp-logo.png" alt="" width={80} height={80} /><span className="sr-only">Post</span></button>}</div></div>
@@ -109,7 +126,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   </div>
 }
 
-function AddPlace({ trip, maxDay, onClose }: { trip: Trip; maxDay: number; onClose: () => void }) {
+function AddPlace({ trip, maxDay, initialDestination, initialDay, onClose }: { trip: Trip; maxDay: number; initialDestination?: string; initialDay?: number; onClose: () => void }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -117,9 +134,9 @@ function AddPlace({ trip, maxDay, onClose }: { trip: Trip; maxDay: number; onClo
   const clientId = useRef('')
   const [category, setCategory] = useState<'hotel' | 'food_drink' | 'activity' | 'transport'>('hotel')
   const [uploading, setUploading] = useState(false)
-  const [day, setDay] = useState('')
+  const [day, setDay] = useState(initialDay ? String(initialDay) : '')
   const [status, setStatus] = useState('considering')
-  const [destination, setDestination] = useState(trip.destinations[0]?.name === 'Destination to decide' ? '' : trip.destinations[0]?.name ?? '')
+  const [destination, setDestination] = useState(initialDestination ?? (trip.destinations[0]?.name === 'Destination to decide' ? '' : trip.destinations[0]?.name ?? ''))
   const selectedDestination = trip.destinations.find(d => d.name === destination)
   const city = [destination, selectedDestination?.country].filter(Boolean).join(', ')
   function changeDestination(value: string) { setDestination(value) }
@@ -195,7 +212,7 @@ function UnratedPrompt({ places, onClose, onPreview }: { places: (Place & { dest
   </div>
 }
 
-function PlaceRow({ tripId, place, maxDay, dayChips }: { tripId: string; place: Place & { destination: string }; maxDay: number; dayChips?: number }) {
+function PlaceRow({ tripId, place, maxDay, destinationNames, dayChips }: { tripId: string; place: Place & { destination: string; destinationName: string }; maxDay: number; destinationNames: string[]; dayChips?: number }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -207,15 +224,16 @@ function PlaceRow({ tripId, place, maxDay, dayChips }: { tripId: string; place: 
   const [photos, setPhotos] = useState(place.photos)
   const [day, setDay] = useState(place.day === null ? '' : String(place.day))
   const [type, setType] = useState(place.type)
+  const [destination, setDestination] = useState(place.destinationName)
   const [uploading, setUploading] = useState(false)
   const [foundAddress, setFoundAddress] = useState<string | null>(null)
   const category = categories.find(category => category.value === place.type) ?? categories[2]
-  function openEditor() { setType(place.type); setPlaceId(place.placeId ?? ''); setPhotos(place.photos); setDay(place.day === null ? '' : String(place.day)); setEditing(true); setError(''); setSaved(false) }
+  function openEditor() { setType(place.type); setDestination(place.destinationName); setPlaceId(place.placeId ?? ''); setPhotos(place.photos); setDay(place.day === null ? '' : String(place.day)); setEditing(true); setError(''); setSaved(false) }
   async function save(values: PlaceEditValues) {
     if (saving.current || uploading) return
     saving.current = true; setBusy(true); setError('')
     const data = new FormData()
-    for (const [key, value] of Object.entries({ name: values.name, category: type, placeId, status: place.status, notes: values.notes, day, mealType: values.mealType,
+    for (const [key, value] of Object.entries({ name: values.name, category: type, destination, placeId, status: place.status, notes: values.notes, day, mealType: values.mealType,
       tags: JSON.stringify(values.tags), alternative: values.alternative, description: values.description, link: values.link, address: values.address, photos: JSON.stringify(photos) })) data.set(key, value)
     try { const result = await editPlanPlace(place.id, data); if (result.error) setError(result.error); else { setEditing(false); setSaved(true); router.refresh() } }
     catch { setError('Could not save. Your changes are still here; try again.') }
@@ -250,6 +268,9 @@ function PlaceRow({ tripId, place, maxDay, dayChips }: { tripId: string; place: 
         <PlaceEditForm key={type} type={type as PlaceType} city={place.destination} busy={busy || uploading} saveLabel="Save changes" showRating={false} onPlaceIdChange={setPlaceId} onClose={() => setEditing(false)} onSave={values => void save(values)}
           initial={{ name: place.name, mealType: place.mealType ?? '', rating: place.rating ?? 0, notes: place.notes ?? '', tags: place.tags, isHighlight: false, alternative: place.alternative ?? '', description: place.description ?? '', link: place.link ?? '', address: place.address ?? '' }}>
           <div className="space-y-1"><p className="text-xs text-muted">Photos</p><EventPhotoInput photos={photos} name={place.name} onChange={setPhotos} onBusyChange={setUploading} /></div>
+          {/* Moving a place to another destination puts it under that destination's heading. */}
+          <div className="space-y-1.5"><label className="block text-xs text-muted">Destination<PlacesAutocomplete maxLength={160} value={destination} onChange={setDestination} onSelect={(main, secondary) => setDestination([main, secondary].filter(Boolean).join(', '))} type="destination" placeholder="City or area" className={inputClass} /></label>
+            {destinationNames.length > 1 && <div className="flex flex-wrap gap-1.5">{destinationNames.filter(name => name !== 'Destination to decide').map(name => <button key={name} type="button" aria-pressed={destination === name} onClick={() => setDestination(name)} className="chip">{name}</button>)}</div>}</div>
           <fieldset><legend className="mb-1 text-xs text-muted">Category</legend><div className="flex flex-wrap gap-1.5">{categories.map(option => <button key={option.value} type="button" aria-pressed={type === option.value} onClick={() => setType(option.value)} className="chip"><option.Icon size={14} />{option.label}</button>)}</div></fieldset>
           <label className="block text-xs text-muted">Day (optional)<select value={day} onChange={event => setDay(event.target.value)} className={inputClass}><option value="">Unscheduled</option>{Array.from({ length: maxDay }, (_, index) => index + 1).map(value => <option key={value} value={value}>Day {value}</option>)}</select></label>
         </PlaceEditForm>
