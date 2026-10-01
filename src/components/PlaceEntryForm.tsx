@@ -155,8 +155,12 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
         </div>
       )}
 
-      <EventPhotoInput photos={photos} name={name || 'new event'} onChange={setPhotos} onBusyChange={busy => { setPhotoUploading(busy); onPhotoBusyChange(busy) }} />
       </>}
+      {/* Photos, in both the planner and the trip forms. */}
+      <div className="space-y-1">
+        {planning && <p className="text-xs text-gray-500">Photos (optional)</p>}
+        <EventPhotoInput photos={photos} name={name || 'new event'} onChange={setPhotos} onBusyChange={busy => { setPhotoUploading(busy); onPhotoBusyChange(busy) }} />
+      </div>
       {children}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <button type="button" onClick={() => void submit()} disabled={!name.trim() || photoUploading}

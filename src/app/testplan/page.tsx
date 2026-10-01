@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import TestPlanner, { type Turn } from './TestPlanner'
 import { cleanPreferences, SETUP_MESSAGE } from '@/lib/travelPreferences'
+import { nameChat } from '@/lib/chatTitle'
 
 export const metadata: Metadata = { title: 'Plan with Postcard', robots: { index: false, follow: false } }
 export const maxDuration = 300
@@ -25,10 +26,8 @@ export default async function TestPlanPage({ searchParams }: { searchParams: Pro
   const { trip: tripParam, new: fresh, chat: chatParam, ask, from } = await searchParams
   const userId = (await auth())?.user?.id
   if (!userId) redirect(`/login?callbackUrl=${encodeURIComponent(tripParam ? `/testplan?trip=${tripParam}` : '/testplan')}`)
-  // ?chat= opens a past conversation from the sidebar; ?trip= the latest one about that trip.
-  const chat = fresh ? null : await prisma.planChat.findFirst({ where: { userId, ...(chatParam ? { id: chatParam } : tripParam ? { tripId: tripParam } : {}) }, orderBy: { updatedAt: 'desc' }, select: { id: true, tripId: true, turns: true } })
-  // Reopening /testplan resumes the latest conversation, on the trip it built.
-  if (!chatParam && !tripParam && chat?.tripId) redirect(`/testplan?trip=${chat.tripId}`)
+  // Plan with AI always opens a blank chat (on the trip, with ?trip=); ?chat= reopens a past conversation.
+  const chat = fresh || !chatParam ? null : await prisma.planChat.findFirst({ where: { userId, id: chatParam }, select: { id: true, tripId: true, turns: true } })
   const tripId = chatParam ? chat?.tripId ?? undefined : tripParam
   // Travelers with no trips of their own are asked about budget, destinations and activities first;
   // answers from their last chat pre-fill the next one.
@@ -37,8 +36,16 @@ export default async function TestPlanPage({ searchParams }: { searchParams: Pro
     prisma.planChat.findFirst({ where: { userId, turns: { array_contains: [{ role: 'preferences' }] } }, orderBy: { updatedAt: 'desc' }, select: { turns: true } }),
     prisma.planChat.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' }, take: 30, select: { id: true, updatedAt: true, turns: true, trip: { select: { title: true } } } }),
   ])
-  const history = pastChats.filter(past => (past.turns as unknown as Turn[]).some(turn => turn.role === 'user'))
-    .map(past => ({ id: past.id, topic: chatTopic(past.turns as unknown as Turn[], past.trip?.title), updatedAt: past.updatedAt.toISOString() }))
+  const history = await Promise.all(pastChats.filter(past => (past.turns as unknown as Turn[]).some(turn => turn.role === 'user'))
+    .map(async past => {
+      // The AI's latest title and summary for the conversation. Chats from before the planner named
+      // itself are named now (once, saved); if that fails they fall back to their topic.
+      const turns = past.turns as unknown as Turn[]
+      const latest = turns.findLast(turn => turn.role === 'assistant' && !!turn.title)
+      const named = latest && latest.role === 'assistant' ? { title: latest.title!, summary: latest.summary ?? '' }
+        : turns.some(turn => turn.role === 'assistant') ? await nameChat(past.id, turns, past.updatedAt) : null
+      return { id: past.id, topic: named?.title || chatTopic(turns, past.trip?.title), summary: named?.summary || undefined, updatedAt: past.updatedAt.toISOString() }
+    }))
   const lastPreferences = cleanPreferences((lastSetup?.turns as unknown as { role: string; preferences?: unknown }[] | undefined)?.findLast(turn => turn.role === 'preferences')?.preferences)
   const trip = tripId ? await prisma.itinerary.findFirst({ where: { id: tripId, userId }, include: { destinations: { orderBy: { order: 'asc' }, include: { items: { orderBy: { order: 'asc' } } } } } }) : null
   // ?ask= (from "Ask AI about this place" in the planner): start a question about that place.

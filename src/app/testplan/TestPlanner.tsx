@@ -19,7 +19,7 @@ import { ACTIVITIES, BUDGETS, DESTINATION_TYPES, SETUP_MESSAGE, TRAVELERS, TRIP_
 type Place = { id: string; name: string; type: string; notes: string | null; placeId: string | null; lat: number | null; lng: number | null; day: number | null; photos: string[]; destination: string }
 type Trip = { id: string; title: string; places: Place[] }
 type Recommendation = { key: string; name: string; type: 'hotel' | 'food_drink' | 'activity'; why: string; destination: string; country: string | null; tripOption?: string; description?: string; source: 'friend' | 'you' | 'claude'; friendName: string; sourceItemId: string; placeId: string | null; lat: number | null; lng: number | null }
-export type Turn = { role: 'user'; text: string } | { role: 'assistant'; text: string; recommendations: Recommendation[] } | { role: 'preferences'; preferences: TravelPreferences }
+export type Turn = { role: 'user'; text: string } | { role: 'assistant'; text: string; recommendations: Recommendation[]; title?: string; summary?: string } | { role: 'preferences'; preferences: TravelPreferences }
 type MapPlace = TripMapPlace & { lat: number | null; lng: number | null; color?: string; label?: string }
 
 const categories = [{ value: 'hotel', label: 'Hotels', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
@@ -36,7 +36,7 @@ function groupByOption(recs: Recommendation[]) {
   return [...groups.entries()]
 }
 
-type PastChat = { id: string; topic: string; updatedAt: string }
+type PastChat = { id: string; topic: string; summary?: string; updatedAt: string }
 
 const starters = ['Surprise me with a long weekend', 'Where should we go this spring?', 'Somewhere new my friends haven’t been']
 
@@ -52,7 +52,8 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
   const [mapView, setMapView] = useState<'normal' | 'small' | 'hidden'>('normal')
   // Arriving with a question about a place skips the setup questions.
   const [skippedSetup, setSkippedSetup] = useState(!!initialDraft)
-  const [showHistory, setShowHistory] = useState(false)
+  // Phones: past chats are listed above a new chat; in a conversation they're behind "Past chats".
+  const [showHistory, setShowHistory] = useState(!chat?.turns.length)
   const tripId = useRef(trip?.id ?? '')
   const scroller = useRef<HTMLDivElement>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
@@ -121,7 +122,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
   async function send(text: string, preferences?: TravelPreferences) {
     const message = text.trim()
     if (!message || thinking) return
-    setThinking(true); setError(''); setDraft('')
+    setThinking(true); setError(''); setDraft(''); setShowHistory(false)
     const pending: Turn[] = [...(preferences ? [{ role: 'preferences' as const, preferences }] : []), { role: 'user', text: message }]
     setTurns(current => [...current, ...pending])
     try {
@@ -195,7 +196,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
         <button type="button" disabled={thinking || !turns.length} onClick={startNewChat} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-mist-edge bg-card px-4 text-sm font-semibold text-ink disabled:opacity-50"><SquarePen size={16} />Start a new chat</button>
         {history.length > 0 && <button type="button" onClick={() => setShowHistory(value => !value)} aria-expanded={showHistory} aria-controls="past-chats-phone" className="btn btn-outline lg:hidden"><History size={16} />Past chats</button>}
       </div>
-      {showHistory && <div id="past-chats-phone" className="panel p-2 lg:hidden"><PastChats history={history} currentId={chat?.id} /></div>}
+      {showHistory && history.length > 0 && <div id="past-chats-phone" className="panel p-2 lg:hidden"><p className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-link">Past chats</p><PastChats history={history} currentId={chat?.id} limit={5} /></div>}
 
       <section aria-label="Chat with Postcard" className="panel flex min-h-0 flex-col lg:h-auto lg:flex-[1.2]">
         <div ref={scroller} className="min-h-0 flex-1 space-y-4 p-4 lg:overflow-y-auto" aria-live="polite">
@@ -426,12 +427,16 @@ function TripMap({ places }: { places: MapPlace[] }) {
 }
 
 // Past conversations, newest first, each labelled by its topic.
-function PastChats({ history, currentId }: { history: PastChat[]; currentId?: string }) {
-  return <ul className="space-y-1">{history.map(past => <li key={past.id}>
+function PastChats({ history, currentId, limit }: { history: PastChat[]; currentId?: string; limit?: number }) {
+  const [all, setAll] = useState(false)
+  const shown = limit && !all ? history.slice(0, limit) : history
+  return <><ul className="space-y-1">{shown.map(past => <li key={past.id}>
     <Link href={`/testplan?chat=${past.id}`} aria-current={past.id === currentId ? 'page' : undefined}
       className={`block rounded-xl px-3 py-2 text-sm hover:bg-paper ${past.id === currentId ? 'bg-mist font-semibold text-ink' : 'text-ink'}`}>
       <span className="block [overflow-wrap:anywhere]">{past.topic}</span>
+      {past.summary && <span className="mt-0.5 line-clamp-2 block text-xs font-normal text-ink-soft">{past.summary}</span>}
       <span className="block text-xs font-normal text-muted">{new Date(past.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>
     </Link>
   </li>)}</ul>
+  {limit && history.length > limit && <button type="button" onClick={() => setAll(value => !value)} className="px-3 py-2 text-xs font-semibold text-link underline">{all ? 'Show fewer' : `Show all ${history.length}`}</button>}</>
 }

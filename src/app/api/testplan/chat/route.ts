@@ -29,14 +29,19 @@ For each recommendation:
 - friendName = the friend's name when source is "friend"; otherwise "".
 - destination = the city or area; country = the country.
 - description = 2-3 sentences describing the place itself (what it is, what it's like, what to order or see). This is separate from "why", which says why it suits this user.
-- tripOption = a short name (2-4 words) for the trip idea this place belongs to, e.g. "Amalfi Coast" or "Greek islands". When you suggest alternative trips, give each its own name and use exactly the same name for every place in it. Reuse a name from earlier in the conversation when adding to that idea.`
+- tripOption = a short name (2-4 words) for the trip idea this place belongs to, e.g. "Amalfi Coast" or "Greek islands". When you suggest alternative trips, give each its own name and use exactly the same name for every place in it. Reuse a name from earlier in the conversation when adding to that idea.
+Also return, for the conversation list:
+- title = a short, evocative title for the whole conversation so far (2-5 words, no quotes or emoji), e.g. "Amalfi coast honeymoon" or "Greenwich dinner favorites". Update it as the conversation develops.
+- summary = one plain sentence (at most 15 words) on what's been discussed or decided so far.`
 
 const schema = {
   type: 'object',
   additionalProperties: false,
-  required: ['reply', 'recommendations'],
+  required: ['reply', 'recommendations', 'title', 'summary'],
   properties: {
     reply: { type: 'string' },
+    title: { type: 'string' },
+    summary: { type: 'string' },
     recommendations: { type: 'array', items: {
       type: 'object',
       additionalProperties: false,
@@ -101,7 +106,7 @@ export async function POST(request: Request) {
 
     if (response.stop_reason === 'refusal') return Response.json({ error: 'Postcard couldn’t answer that one. Try rephrasing.' }, { status: 422 })
     const text = response.content.find(block => block.type === 'text')?.text
-    let parsed: { reply: string; recommendations: RawRecommendation[] }
+    let parsed: { reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string }
     try { parsed = JSON.parse(text ?? '') } catch { return Response.json({ error: 'The answer was cut off. Please try again.' }, { status: 502 }) }
 
     const recommendations = parsed.recommendations.map((rec, index) => {
@@ -115,7 +120,7 @@ export async function POST(request: Request) {
       }
     })
     const nextHistory = [...history, userMessage, { role: 'assistant', content: response.content }] as unknown as Prisma.InputJsonValue
-    const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations }]
+    const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160) }]
     const saved = chat
       ? await prisma.planChat.update({ where: { id: chat.id }, data: { history: nextHistory, turns: [...(chat.turns as Prisma.JsonArray), ...newTurns] as Prisma.InputJsonValue, ...(trip && !chat.tripId ? { tripId } : {}) }, select: { id: true } })
       : await prisma.planChat.create({ data: { userId, tripId: trip ? tripId : null, history: nextHistory, turns: newTurns as Prisma.InputJsonValue }, select: { id: true } })
