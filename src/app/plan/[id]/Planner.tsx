@@ -117,7 +117,8 @@ function AddPlace({ trip, maxDay, onClose }: { trip: Trip; maxDay: number; onClo
   const [category, setCategory] = useState<'hotel' | 'food_drink' | 'activity' | 'transport'>('hotel')
   const [uploading, setUploading] = useState(false)
   const [day, setDay] = useState('')
-  const [status, setStatus] = useState('considering')
+  // New places are saved as "Want to go"; there's no booking-status choice.
+  const status = 'considering'
   const [destination, setDestination] = useState(trip.destinations[0]?.name === 'Destination to decide' ? '' : trip.destinations[0]?.name ?? '')
   const selectedDestination = trip.destinations.find(d => d.name === destination)
   const city = [destination, selectedDestination?.country].filter(Boolean).join(', ')
@@ -152,7 +153,6 @@ function AddPlace({ trip, maxDay, onClose }: { trip: Trip; maxDay: number; onClo
       } catch { setError('Could not save. Your place is still here; try again.'); return false }
       finally { saving.current = false; setBusy(false) }
     }}>
-      <fieldset><legend className="mb-2 text-xs uppercase tracking-wide text-link">Booking status (optional)</legend><div className="flex flex-wrap gap-2">{[['considering', 'Want to go'], ['booked', 'Booked'], ['visited', 'Visited']].map(([value, label]) => <button key={value} type="button" aria-pressed={status === value} onClick={() => setStatus(value)} className="chip">{label}</button>)}</div></fieldset>
       {/* Day-by-day trips ask which day right away; idea lists keep it tucked away. */}
       {trip.durationDays ? <label className="block text-xs uppercase tracking-wide text-link">Which day?<select value={day} onChange={event => setDay(event.target.value)} className={inputClass}><option value="">Unscheduled</option>{Array.from({ length: maxDay }, (_, index) => index + 1).map(value => <option key={value} value={value}>Day {value}</option>)}</select></label>
       : <details><summary className="text-sm text-link">Add a day (optional)</summary>
