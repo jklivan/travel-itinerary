@@ -16,7 +16,8 @@ export default async function PlacePage({ params }: { params: Promise<{ itemId: 
   const item = await prisma.destItem.findUnique({ where: { id: itemId }, select: { name: true, type: true, placeId: true, destination: { select: { name: true, country: true, itinerary: { select: { visibility: true, userId: true } } } } } })
   if (!item || (item.destination.itinerary.visibility === 'draft' && item.destination.itinerary.userId !== userId)) notFound()
 
-  const samePlace = { type: item.type, OR: [...(item.placeId ? [{ placeId: item.placeId }] : []), { name: { equals: item.name, mode: 'insensitive' as const } }] }
+  // The same Google place in any category, or the same name in the same category (as on trip pages).
+  const samePlace = { OR: [...(item.placeId ? [{ placeId: item.placeId }] : []), { type: item.type, name: { equals: item.name, mode: 'insensitive' as const } }] }
   const [trips, bucketIds] = await Promise.all([
     prisma.itinerary.findMany({
       where: { visibility: { not: 'draft' }, destinations: { some: { items: { some: samePlace } } } },
@@ -34,7 +35,7 @@ export default async function PlacePage({ params }: { params: Promise<{ itemId: 
   const lowerName = item.name.toLowerCase()
   // Each trip's own rating for this place (its best, if it lists the place twice).
   const tripRating = (trip: typeof trips[number]) => Math.max(0, ...trip.destinations.flatMap(destination => destination.items)
-    .filter(other => other.type === item.type && ((item.placeId && other.placeId === item.placeId) || other.name.toLowerCase() === lowerName))
+    .filter(other => (item.placeId && other.placeId === item.placeId) || (other.type === item.type && other.name.toLowerCase() === lowerName))
     .map(other => other.rating ?? 0)) || null
   const ratings = trips.map(tripRating).filter((rating): rating is number => !!rating)
   const average = ratings.length ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null

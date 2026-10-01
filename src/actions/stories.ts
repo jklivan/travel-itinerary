@@ -176,6 +176,33 @@ export async function deleteStory(id: string): Promise<Result> {
   } catch { return { error: 'Could not remove your story. Please try again.' } }
 }
 
+// Fix a snapshot's category after posting. The place it added to your trip changes too, along with every
+// other snapshot of that place. Returns the ids of the snapshots that changed.
+export async function setStoryCategory(id: string, type: string): Promise<Result & { ids?: string[] }> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  if (!['hotel', 'food_drink', 'activity', 'transport'].includes(type)) return { error: 'Choose a category.' }
+  try {
+    const story = await prisma.story.findFirst({ where: { id, userId }, select: { sourceItemId: true, sourceItineraryId: true } })
+    if (!story) return { error: 'This story is no longer available.' }
+    const ids = await prisma.$transaction(async tx => {
+      const owned = story.sourceItemId ? { id: story.sourceItemId, destination: { itinerary: { userId } } } : null
+      const item = owned && await tx.destItem.findFirst({ where: owned, select: { type: true, destinationId: true } })
+      if (owned && item && item.type !== type) {
+        // Hotels each get their own stay group; meal types only apply to restaurants.
+        const last = type === 'hotel' ? await tx.destItem.aggregate({ where: { destinationId: item.destinationId }, _max: { groupIndex: true } }) : null
+        await tx.destItem.updateMany({ where: owned, data: { type, groupIndex: last ? (last._max.groupIndex ?? -1) + 1 : 0, ...(type === 'food_drink' ? {} : { mealType: null }) } })
+      }
+      const where = item ? { userId, sourceItemId: story.sourceItemId } : { id, userId }
+      const changed = await tx.story.findMany({ where, select: { id: true } })
+      await tx.story.updateMany({ where, data: { type } })
+      return changed.map(story => story.id)
+    })
+    for (const path of ['/', '/explore', `/user/${userId}`, ...(story.sourceItineraryId ? [`/plan/${story.sourceItineraryId}`, `/itinerary/${story.sourceItineraryId}`] : [])]) revalidatePath(path)
+    return { success: true, ids }
+  } catch { return { error: 'Could not change the category. Please try again.' } }
+}
+
 export async function copyStoryToPlan(storyId: string, planId: string, clientId: string): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }

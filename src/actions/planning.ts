@@ -304,6 +304,8 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
       }
       const result = await tx.destItem.updateMany({ where: owned, data: { name, placeId: nextPlaceId, ...(identityChanged ? { lat: null, lng: null, address: null, link: null, description: null } : {}), ...extra, ...(moveTo ?? {}), notes: notes || null, ...(rating === undefined ? {} : { rating: rating || null }), planningStatus: status, dayIndex: day ? Number(day) : null } })
       if (!result.count) throw new InputError(unavailable)
+      // Snapshots of this place show its corrected category too.
+      if (extra.type) await tx.story.updateMany({ where: { sourceItemId: itemId, userId }, data: { type: extra.type } })
       // The destination it left goes away once it's empty, unless it has its own notes.
       if (moveTo) await tx.destination.deleteMany({ where: { id: item.destinationId, notes: null, items: { none: {} } } })
     })

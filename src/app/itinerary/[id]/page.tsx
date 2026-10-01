@@ -48,15 +48,15 @@ function FriendSummary({ friends, verb, placeName }: { friends: FriendRating[]; 
   )
 }
 
-// In the place's popup: the poster's rating, the community rating (other trips; opens every trip with this
-// place), then each friend's rating with a link to their trip.
+// In the place's popup: the poster's rating, the community rating (every shared trip with this place, this one
+// included, matching "See all trips"; shown once another trip has it), then each friend's rating with a link to their trip.
 function RatingsDetails({ itemId, authorName, authorRating, friends, avg, total, trips }: { itemId: string; authorName: string; authorRating: number | null | undefined; friends: FriendRating[]; avg: number | null; total: number; trips: number }) {
-  if (!authorRating && friends.length === 0 && !trips) return null
+  if (!authorRating && friends.length === 0 && trips < 2) return null
   return (
     <section className={styles.ratingsDetails}>
       <h3>Ratings</h3>
       {!!authorRating && <p className={styles.ratingsRow}><span className={styles.friendName}>{authorName}</span><RatingStars value={authorRating} label={`${authorName} rated it ${authorRating} out of 5`} /></p>}
-      {trips > 0 && <Link href={`/place/${itemId}`} className={`${styles.ratingsRow} ${styles.communityLink}`}>
+      {trips > 1 && <Link href={`/place/${itemId}`} className={`${styles.ratingsRow} ${styles.communityLink}`}>
         <span>Community rating</span>
         {avg !== null && total > 0 ? <><RatingStars value={avg} label={`Community rating ${avg.toFixed(1)} out of 5 from ${total} ratings`} /><span>{avg.toFixed(1)} · {total} {total === 1 ? 'rating' : 'ratings'}</span></> : <span>No ratings yet</span>}
         <span className={styles.ratingsTripLink}>See all trips →</span>
@@ -258,32 +258,11 @@ export default async function ItineraryPage({
 
   // Social proof data
   const destNamesLower = it.destinations.map(d => d.name.toLowerCase())
-  const hotelNamesLower = it.destinations.flatMap(d =>
-    d.items.filter(i => i.type === 'hotel' && i.name).map(i => i.name.toLowerCase())
-  )
-  const foodNamesLower = it.destinations.flatMap(d =>
-    d.items.filter(i => i.type === 'food_drink' && i.name).map(i => i.name.toLowerCase())
-  )
-  const activityNamesLower = it.destinations.flatMap(d =>
-    d.items.filter(i => i.type === 'activity' && i.name).map(i => i.name.toLowerCase())
-  )
-
-  // placeId → canonical name (from this itinerary) for placeId-based matching
-  const hotelPlaceIdToName = new Map<string, string>()
-  const foodPlaceIdToName = new Map<string, string>()
-  const activityPlaceIdToName = new Map<string, string>()
-  for (const d of it.destinations) {
-    for (const item of d.items) {
-      if (item.placeId) {
-        if (item.type === 'hotel') hotelPlaceIdToName.set(item.placeId, item.name.toLowerCase())
-        if (item.type === 'food_drink') foodPlaceIdToName.set(item.placeId, item.name.toLowerCase())
-        if (item.type === 'activity') activityPlaceIdToName.set(item.placeId, item.name.toLowerCase())
-      }
-    }
-  }
-  const hotelPlaceIds = [...hotelPlaceIdToName.keys()]
-  const foodPlaceIds = [...foodPlaceIdToName.keys()]
-  const activityPlaceIds = [...activityPlaceIdToName.keys()]
+  // This trip's places, for finding the same places in friends' trips (and your own).
+  const placeItems = it.destinations.flatMap(d => d.items).filter(item => item.name && ['hotel', 'food_drink', 'activity'].includes(item.type))
+  const placeNamesLower = [...new Set(placeItems.map(item => item.name.toLowerCase()))]
+  const placeIds = [...new Set(placeItems.flatMap(item => item.placeId ? [item.placeId] : []))]
+  const viewerId = session?.user?.id && !isOwn ? session.user.id : null
 
   const friendIds: string[] = session?.user?.id
     ? (await prisma.follow.findMany({
@@ -294,11 +273,11 @@ export default async function ItineraryPage({
 
   type SocialRow = { name: string; count: bigint }
   type FriendNameRow = { name: string; friend_name: string }
-  type FriendDetailRow = { name: string; friend_name: string; rating: number | null; itinerary_id: string; place_id: string | null }
+  type FriendDetailRow = { name: string; type: string; friend_name: string; user_id: string; rating: number | null; itinerary_id: string; place_id: string | null }
   type AvgRow = { item_id: string; total: bigint; avg_rating: number | null; trips: bigint }
   type BucketerRow = { friend_name: string }
 
-  const [friendDestRows, savedDestRows, friendHotelRows, friendFoodRows, friendActivityRows, placeAvgRows, itineraryBucketersRows] = await Promise.all([
+  const [friendDestRows, savedDestRows, friendPlaceRows, placeAvgRows, itineraryBucketersRows] = await Promise.all([
     // Which friends visited the same destinations (exclude the current itinerary itself)
     friendIds.length > 0 && destNamesLower.length > 0
       ? prisma.$queryRaw<FriendNameRow[]>(Prisma.sql`
@@ -325,88 +304,44 @@ export default async function ItineraryPage({
           GROUP BY LOWER(d.name)
         `)
       : Promise.resolve([] as SocialRow[]),
-    // Which friends stayed at the same hotels + their ratings (exclude current itinerary, one row per friend per place)
-    // Matches by name (case-insensitive) OR by placeId for cross-spelling detection
-    friendIds.length > 0 && (hotelNamesLower.length > 0 || hotelPlaceIds.length > 0)
+    // Friends' shared trips, and all of your own trips, with any of this trip's places (by Google place or name).
+    (friendIds.length > 0 || viewerId) && (placeNamesLower.length > 0 || placeIds.length > 0)
       ? prisma.$queryRaw<FriendDetailRow[]>(Prisma.sql`
-          SELECT DISTINCT ON (LOWER(di.name), i."userId") LOWER(di.name) AS name, u.name AS friend_name, di.rating, i.id AS itinerary_id, di."placeId" AS place_id
+          SELECT LOWER(di.name) AS name, di.type, di."placeId" AS place_id, di.rating, i.id AS itinerary_id, i."userId" AS user_id, u.name AS friend_name
           FROM "DestItem" di
           JOIN "Destination" d ON d.id = di."destinationId"
           JOIN "Itinerary" i ON i.id = d."itineraryId"
           JOIN "User" u ON u.id = i."userId"
-          WHERE i."userId" IN (${Prisma.join(friendIds)})
-            AND di.type = 'hotel'
-            AND i.visibility != 'draft'
-            AND i.id != ${id}
+          WHERE i.id != ${id}
             AND (
-              ${hotelNamesLower.length > 0 ? Prisma.sql`LOWER(di.name) IN (${Prisma.join(hotelNamesLower)})` : Prisma.sql`FALSE`}
-              OR
-              ${hotelPlaceIds.length > 0 ? Prisma.sql`(di."placeId" IS NOT NULL AND di."placeId" IN (${Prisma.join(hotelPlaceIds)}))` : Prisma.sql`FALSE`}
+              ${friendIds.length > 0 ? Prisma.sql`(i."userId" IN (${Prisma.join(friendIds)}) AND i.visibility != 'draft')` : Prisma.sql`FALSE`}
+              OR ${viewerId ? Prisma.sql`i."userId" = ${viewerId}` : Prisma.sql`FALSE`}
             )
-          ORDER BY LOWER(di.name), i."userId", di.rating DESC NULLS LAST
-        `)
-      : Promise.resolve([] as FriendDetailRow[]),
-    // Which friends ate at the same restaurants + their ratings (exclude current itinerary, one row per friend per place)
-    // Matches by name (case-insensitive) OR by placeId for cross-spelling detection
-    friendIds.length > 0 && (foodNamesLower.length > 0 || foodPlaceIds.length > 0)
-      ? prisma.$queryRaw<FriendDetailRow[]>(Prisma.sql`
-          SELECT DISTINCT ON (LOWER(di.name), i."userId") LOWER(di.name) AS name, u.name AS friend_name, di.rating, i.id AS itinerary_id, di."placeId" AS place_id
-          FROM "DestItem" di
-          JOIN "Destination" d ON d.id = di."destinationId"
-          JOIN "Itinerary" i ON i.id = d."itineraryId"
-          JOIN "User" u ON u.id = i."userId"
-          WHERE i."userId" IN (${Prisma.join(friendIds)})
-            AND di.type = 'food_drink'
-            AND i.visibility != 'draft'
-            AND i.id != ${id}
             AND (
-              ${foodNamesLower.length > 0 ? Prisma.sql`LOWER(di.name) IN (${Prisma.join(foodNamesLower)})` : Prisma.sql`FALSE`}
-              OR
-              ${foodPlaceIds.length > 0 ? Prisma.sql`(di."placeId" IS NOT NULL AND di."placeId" IN (${Prisma.join(foodPlaceIds)}))` : Prisma.sql`FALSE`}
+              ${placeNamesLower.length > 0 ? Prisma.sql`LOWER(di.name) IN (${Prisma.join(placeNamesLower)})` : Prisma.sql`FALSE`}
+              OR ${placeIds.length > 0 ? Prisma.sql`di."placeId" IN (${Prisma.join(placeIds)})` : Prisma.sql`FALSE`}
             )
-          ORDER BY LOWER(di.name), i."userId", di.rating DESC NULLS LAST
-        `)
-      : Promise.resolve([] as FriendDetailRow[]),
-    // Which friends did the same activities (exclude current itinerary, one row per friend per place)
-    friendIds.length > 0 && (activityNamesLower.length > 0 || activityPlaceIds.length > 0)
-      ? prisma.$queryRaw<FriendDetailRow[]>(Prisma.sql`
-          SELECT DISTINCT ON (LOWER(di.name), i."userId") LOWER(di.name) AS name, u.name AS friend_name, di.rating, i.id AS itinerary_id, di."placeId" AS place_id
-          FROM "DestItem" di
-          JOIN "Destination" d ON d.id = di."destinationId"
-          JOIN "Itinerary" i ON i.id = d."itineraryId"
-          JOIN "User" u ON u.id = i."userId"
-          WHERE i."userId" IN (${Prisma.join(friendIds)})
-            AND di.type = 'activity'
-            AND i.visibility != 'draft'
-            AND i.id != ${id}
-            AND (
-              ${activityNamesLower.length > 0 ? Prisma.sql`LOWER(di.name) IN (${Prisma.join(activityNamesLower)})` : Prisma.sql`FALSE`}
-              OR
-              ${activityPlaceIds.length > 0 ? Prisma.sql`(di."placeId" IS NOT NULL AND di."placeId" IN (${Prisma.join(activityPlaceIds)}))` : Prisma.sql`FALSE`}
-            )
-          ORDER BY LOWER(di.name), i."userId", di.rating DESC NULLS LAST
         `)
       : Promise.resolve([] as FriendDetailRow[]),
     // Match every current place to published ratings by place ID or name.
     // Key by item ID so spelling variants resolve to the correct card.
     prisma.$queryRaw<AvgRow[]>(Prisma.sql`
-      SELECT current_item.id AS item_id, COUNT(rated.id) FILTER (WHERE rated.rating > 0) AS total,
-        AVG(rated.rating::float) FILTER (WHERE rated.rating > 0) AS avg_rating,
-        COUNT(DISTINCT rated_dest."itineraryId") AS trips
-      FROM "DestItem" current_item
-      JOIN "Destination" current_dest ON current_dest.id = current_item."destinationId"
-      JOIN "DestItem" rated ON rated.type = current_item.type
-        AND (
-          (current_item."placeId" IS NOT NULL AND rated."placeId" = current_item."placeId")
-          OR LOWER(rated.name) = LOWER(current_item.name)
-        )
-      JOIN "Destination" rated_dest ON rated_dest.id = rated."destinationId"
-      JOIN "Itinerary" rated_trip ON rated_trip.id = rated_dest."itineraryId"
-      WHERE current_dest."itineraryId" = ${id}
-        AND rated_trip.visibility != 'draft'
-        -- Community: other trips only, not this trip's own rating.
-        AND rated_dest."itineraryId" != ${id}
-      GROUP BY current_item.id
+      SELECT item_id, COUNT(*) FILTER (WHERE rating > 0) AS total, AVG(rating::float) FILTER (WHERE rating > 0) AS avg_rating, COUNT(*) AS trips
+      FROM (
+        SELECT current_item.id AS item_id, rated_dest."itineraryId", MAX(rated.rating) AS rating
+        FROM "DestItem" current_item
+        JOIN "Destination" current_dest ON current_dest.id = current_item."destinationId"
+        JOIN "DestItem" rated ON (
+            (current_item."placeId" IS NOT NULL AND rated."placeId" = current_item."placeId")
+            OR (rated.type = current_item.type AND LOWER(rated.name) = LOWER(current_item.name))
+          )
+        JOIN "Destination" rated_dest ON rated_dest.id = rated."destinationId"
+        JOIN "Itinerary" rated_trip ON rated_trip.id = rated_dest."itineraryId"
+        WHERE current_dest."itineraryId" = ${id}
+          AND rated_trip.visibility != 'draft'
+        GROUP BY current_item.id, rated_dest."itineraryId"
+      ) per_trip
+      GROUP BY item_id
     `),
     // Which friends saved this specific itinerary
     friendIds.length > 0
@@ -428,25 +363,19 @@ export default async function ItineraryPage({
   }
   const savedDestMap = new Map(savedDestRows.map(r => [r.name, Number(r.count)]))
 
-  // hotel/food name → [{friendName, rating, itineraryId}]
-  // When matched by placeId, use the current itinerary's canonical name as key so render lookup works correctly
-  const friendHotelDetails = new Map<string, { friendName: string; rating: number | null; itineraryId: string }[]>()
-  for (const r of friendHotelRows) {
-    const key = (r.place_id && hotelPlaceIdToName.has(r.place_id)) ? hotelPlaceIdToName.get(r.place_id)! : r.name
-    if (!friendHotelDetails.has(key)) friendHotelDetails.set(key, [])
-    friendHotelDetails.get(key)!.push({ friendName: r.friend_name, rating: r.rating, itineraryId: r.itinerary_id })
-  }
-  const friendFoodDetails = new Map<string, { friendName: string; rating: number | null; itineraryId: string }[]>()
-  for (const r of friendFoodRows) {
-    const key = (r.place_id && foodPlaceIdToName.has(r.place_id)) ? foodPlaceIdToName.get(r.place_id)! : r.name
-    if (!friendFoodDetails.has(key)) friendFoodDetails.set(key, [])
-    friendFoodDetails.get(key)!.push({ friendName: r.friend_name, rating: r.rating, itineraryId: r.itinerary_id })
-  }
-  const friendActivityDetails = new Map<string, { friendName: string; rating: number | null; itineraryId: string }[]>()
-  for (const r of friendActivityRows) {
-    const key = (r.place_id && activityPlaceIdToName.has(r.place_id)) ? activityPlaceIdToName.get(r.place_id)! : r.name
-    if (!friendActivityDetails.has(key)) friendActivityDetails.set(key, [])
-    friendActivityDetails.get(key)!.push({ friendName: r.friend_name, rating: r.rating, itineraryId: r.itinerary_id })
+  // Each place → the friends who have it (one entry per friend, their best rating), with you first.
+  // The same Google place matches in any category; otherwise the name must match in the same category.
+  const friendsByItem = new Map<string, FriendRating[]>()
+  for (const item of placeItems) {
+    const best = new Map<string, FriendDetailRow>()
+    for (const row of friendPlaceRows) {
+      if (!((item.placeId && row.place_id === item.placeId) || (row.type === item.type && row.name === item.name.toLowerCase()))) continue
+      const current = best.get(row.user_id)
+      if (!current || (row.rating ?? 0) > (current.rating ?? 0)) best.set(row.user_id, row)
+    }
+    const friends = [...best.values()].sort((a, b) => Number(b.user_id === viewerId) - Number(a.user_id === viewerId))
+      .map(row => ({ friendName: row.user_id === viewerId ? 'You' : row.friend_name, rating: row.rating, itineraryId: row.itinerary_id }))
+    if (friends.length) friendsByItem.set(item.id, friends)
   }
 
   const placeRatings = new Map(placeAvgRows.map(row => [row.item_id, {
@@ -494,8 +423,7 @@ export default async function ItineraryPage({
     const { eyebrow, Icon } = PLACE_CATEGORIES[type]
     const recommendation = getRecommendation(item.tags)
     const tilePhoto = pickEventPhoto(eventPhotos(item.photoUrls, item.photoUrl))
-    const nameKey = item.name.toLowerCase()
-    const friends = (type === 'hotel' ? friendHotelDetails : type === 'food_drink' ? friendFoodDetails : friendActivityDetails).get(nameKey) ?? []
+    const friends = friendsByItem.get(item.id) ?? []
     const { avg = null, total = 0, trips = 0 } = placeRatings.get(item.id) ?? {}
     const label = type === 'food_drink' && item.mealType
       ? item.mealType.split(',').map(meal => meal.trim()).filter(Boolean).join(' · ')

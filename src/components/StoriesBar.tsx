@@ -3,14 +3,17 @@
 import Link from 'next/link'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Check, ChevronLeft, ChevronRight, MapPin, MessageCircle, Plus, Trash2, X, Pause, Play } from 'lucide-react'
-import { activeStories, deleteStory } from '@/actions/stories'
+import { ArrowRight, Check, ChevronLeft, ChevronRight, MapPin, MessageCircle, Plus, Tag, Trash2, X, Pause, Play } from 'lucide-react'
+import { activeStories, deleteStory, setStoryCategory } from '@/actions/stories'
 import { groupStories, type StoryCard } from '@/lib/stories'
 import StoryComposer from './StoryComposer'
 import { sizedPhoto } from '@/lib/photoSizing'
 import SavePlaceToPlan from './SavePlaceToPlan'
 import UserAvatar from './UserAvatar'
 import styles from './Stories.module.css'
+
+const storyTypes = [['activity', 'Experience'], ['hotel', 'Stay'], ['food_drink', 'Eat & drink'], ['transport', 'Transport']] as const
+const typeLabel = (type: string) => storyTypes.find(([value]) => value === type)?.[1] ?? 'Experience'
 
 export default function StoriesBar({ stories, userId, following, serverTime }: { stories: StoryCard[]; userId: string | null; following: boolean; serverTime: number }) {
   const router = useRouter()
@@ -60,6 +63,10 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
   const [selected, setSelected] = useState(initialId)
   const [removed, setRemoved] = useState<string[]>([])
   const [confirmDelete, setConfirmDelete] = useState(false)
+  // Your own snapshots: a corrected category, shown right away (keyed by snapshot).
+  const [changingType, setChangingType] = useState(false)
+  const [savingType, setSavingType] = useState(false)
+  const [types, setTypes] = useState<Record<string, string>>({})
   const [deleting, setDeleting] = useState(false)
   const [saveOpen, setSaveOpen] = useState(false)
   const [saved, setSaved] = useState<string[]>([])
@@ -83,9 +90,9 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
     return () => { element?.close(); if (previous !== 'hidden') document.body.style.overflow = previous }
   }, [])
   function move(offset: number) {
-    if (deleting || saveOpen || confirmDelete) return
+    if (deleting || saveOpen || confirmDelete || changingType) return
     const next = available[index + offset]
-    if (next) { setSelected(next.id); setConfirmDelete(false); setError('') }
+    if (next) { setSelected(next.id); setConfirmDelete(false); setChangingType(false); setError('') }
     else if (offset > 0) dialog.current?.close()
   }
   const minutes = story ? Math.max(0, Math.floor((now - Date.parse(story.createdAt)) / 60000)) : 0
@@ -99,7 +106,7 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
       <div className={styles.viewerInner}>
         <header className={styles.viewerHeader}><div className={styles.viewerAuthor}>{story && <UserAvatar name={story.authorName} image={story.authorImage} size={34} />}<div><h2 id={titleId}>{story?.authorName ?? 'Story expired'}</h2><p>{story ? age : 'Stories disappear after 24 hours.'}</p></div></div><button type="button" autoFocus className={styles.viewerClose} aria-label="Close story" onClick={() => dialog.current?.close()}><X size={22} /></button></header>
         {story ? <>
-          <StoryProgress key={story.id} stories={authorStories} selected={story.id} paused={paused || holding || saveOpen || confirmDelete || deleting || loaded !== story.id} onComplete={() => move(1)} />
+          <StoryProgress key={story.id} stories={authorStories} selected={story.id} paused={paused || holding || saveOpen || confirmDelete || changingType || deleting || loaded !== story.id} onComplete={() => move(1)} />
           <div className={styles.storyContent} onContextMenu={event => event.preventDefault()} onPointerDown={event => {
             if (!event.isPrimary || event.button !== 0) return
             touch.current = { x: event.clientX, y: event.clientY, time: performance.now() }
@@ -121,7 +128,7 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img key={story.id} src={sizedPhoto(story.photoUrl, 1080)} alt={story.placeName} draggable={false} onLoad={() => setLoaded(story.id)} onError={() => setLoaded(story.id)} />
               </div>
-              <span className={styles.placeType}>{story.type === 'hotel' ? 'Stay' : story.type === 'food_drink' ? 'Eat & drink' : story.type === 'transport' ? 'Transport' : 'Experience'}</span>
+              <span className={styles.placeType}>{typeLabel(types[story.id] ?? story.type)}</span>
               <h3 className={styles.storyTitle}>{story.placeName}</h3>
               <p className={styles.storyPlace}><MapPin size={15} aria-hidden="true" />{story.destination}</p>
               {/* Always there (empty when no caption) so the buttons sit in the same spot on every snapshot. */}
@@ -133,9 +140,19 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
             {(story.authorId !== userId || !story.hasTrip) && <button type="button" className={styles.pillDark} onClick={() => setSaveOpen(true)} aria-haspopup="dialog">{saved.includes(story.id) ? <Check size={17} /> : <Plus size={17} />}Save to a trip</button>}
             <span className={styles.actionIcons}>
               {userId && story.authorId !== userId && <Link href={`/messages/${story.authorId}`} aria-label={`Message ${story.authorName}`} onClick={() => dialog.current?.close()}><MessageCircle size={21} /></Link>}
-              {story.authorId === userId && <button type="button" aria-label="Delete story" onClick={() => setConfirmDelete(true)}><Trash2 size={19} /></button>}
+              {story.authorId === userId && <button type="button" aria-label="Change category" aria-expanded={changingType} onClick={() => { setConfirmDelete(false); setChangingType(value => !value) }}><Tag size={19} /></button>}
+              {story.authorId === userId && <button type="button" aria-label="Delete story" onClick={() => { setChangingType(false); setConfirmDelete(true) }}><Trash2 size={19} /></button>}
             </span>
           </div>
+          {changingType && <div className={styles.deletePrompt}><p>What kind of place is {story.placeName}? It changes in your trip too.</p><div className="mt-2 flex flex-wrap gap-2">{storyTypes.map(([value, label]) => <button key={value} type="button" disabled={savingType} aria-pressed={(types[story.id] ?? story.type) === value} className="chip !no-underline" onClick={async () => {
+            if ((types[story.id] ?? story.type) === value) { setChangingType(false); return }
+            setSavingType(true); setError('')
+            try {
+              const result = await setStoryCategory(story.id, value)
+              if (result.error) setError(result.error)
+              else { setTypes(current => ({ ...current, ...Object.fromEntries((result.ids ?? [story.id]).map(id => [id, value])) })); setChangingType(false) }
+            } catch { setError('Could not change the category. Please try again.') } finally { setSavingType(false) }
+          }}>{label}</button>)}</div></div>}
           {confirmDelete && <div className={styles.deletePrompt}><p>{story.removesTripPhoto ? `Remove this story now? Its photo will also come off ${story.placeName} in your trip.` : 'Remove this story now?'}</p><button type="button" disabled={deleting} onClick={async () => {
             setDeleting(true); setError('')
             try {

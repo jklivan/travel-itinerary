@@ -25,7 +25,8 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
   const [newName, setNewName] = useState('')
   const [newDestination, setNewDestination] = useState('')
   const [newCountry, setNewCountry] = useState('')
-  const [newType, setNewType] = useState<NewStoryType>('activity')
+  // No default: a snapshot posted as the wrong kind of place is easy to miss.
+  const [newType, setNewType] = useState<NewStoryType | ''>('')
   const [newPlaceId, setNewPlaceId] = useState('')
   const [newPlanTitle, setNewPlanTitle] = useState('')
   // Index into the chosen trip's destinations, '' for all of them, or '__other__' to type a new one.
@@ -107,7 +108,7 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
       if (saving.current || uploading || !selectedPhotos.length) return
       if (mode === 'trip' && !place && !addingNewPlace) { setError('Choose a place from your trip first.'); return }
       if (mode === 'new' || addingNewPlace) {
-        const missing = [!newPlanTitle.trim() && mode === 'new' ? 'an itinerary title' : '', !newDestination.trim() ? 'a destination' : '', !newName.trim() ? 'an activity name' : ''].filter(Boolean)
+        const missing = [!newPlanTitle.trim() && mode === 'new' ? 'an itinerary title' : '', !newType ? 'a category' : '', !newDestination.trim() ? 'a destination' : '', !newName.trim() ? 'an activity name' : ''].filter(Boolean)
         if (missing.length) { setError(`Add ${missing.join(' and ')} before posting.`); return }
       }
       saving.current = true; setBusy(true); setError('')
@@ -155,7 +156,7 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
           </div>
           <EventPhotoInput showThumbnails={false} photos={uploaded} name="your story" onBusyChange={setUploading} onChange={values => { setUploaded(values); setSelectedPhotos(values.slice(0, 10)); clientIds.current = null; setError(values.length > 10 ? 'You can post up to 10 photos at a time.' : '') }} />
           <div><p className={styles.fieldLabel}>Your rating <span>(optional)</span></p><div className="mt-2"><StarRating value={rating} onChange={setRating} /></div></div>
-          <RecommendationPicker type={(mode === 'trip' && place ? place.type : newType) as NewStoryType} value={recommendation} onChange={setRecommendation} allowAlternative={false} />
+          <RecommendationPicker type={(mode === 'trip' && place ? place.type : newType || 'activity') as NewStoryType} value={recommendation} onChange={setRecommendation} allowAlternative={false} />
           <label>Caption <span>(optional)</span><textarea value={caption} onChange={event => setCaption(event.target.value)} maxLength={500} rows={3} placeholder="A snapshot worth sharing…" /></label>
           {selectedPhotos[0] && <div className={styles.preview}><div className={styles.paper}>
             {/* eslint-disable-next-line @next/next/no-img-element */}

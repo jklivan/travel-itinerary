@@ -73,13 +73,13 @@
 .viewerHeader h2 { padding-top: 0; text-transform: none; }
 .viewerClose:focus:not(:focus-visible) { outline: none; }
 .story { display: flex; flex-direction: column; overflow-wrap: anywhere; }
-.polaroid { align-self: center; width: min(100%, 52dvh, 460px); padding: 9px 9px 14px; background: var(--color-card); box-shadow: 0 10px 24px #3d33221f, 0 1px 3px #3d332214; transform: rotate(-1.5deg); }
+.polaroid { align-self: center; width: min(100%, 44dvh, 460px); padding: 9px 9px 14px; background: var(--color-card); box-shadow: 0 10px 24px #3d33221f, 0 1px 3px #3d332214; transform: rotate(-1.5deg); }
 .polaroid img { display: block; width: 100%; aspect-ratio: 1 / 1.08; object-fit: cover; }
-.story .placeType { margin-top: 18px; color: var(--color-muted); letter-spacing: .16em; }
-.storyTitle { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-height: 2.24em; text-transform: none; font-family: var(--font-playfair), serif; font-size: 30px; line-height: 1.12; color: var(--color-ink); margin-top: 8px; }
-.storyPlace { min-height: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 14px; color: var(--color-muted); }
-.storyCaption { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--color-line); white-space: pre-wrap; font-family: var(--font-script), cursive; font-size: 24px; line-height: 1.25; color: var(--color-ink-soft); min-height: calc(3.75em + 15px); }
-.viewerActions { flex-wrap: nowrap; justify-content: flex-start; border-top: 1px solid var(--color-line); padding-top: 14px; }
+.story .placeType { margin-top: 12px; color: var(--color-muted); letter-spacing: .16em; }
+.storyTitle { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-height: 2.24em; text-transform: none; font-family: var(--font-playfair), serif; font-size: 26px; line-height: 1.12; color: var(--color-ink); margin-top: 4px; }
+.storyPlace { min-height: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 14px; color: var(--color-muted); }
+.storyCaption { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--color-line); white-space: pre-wrap; font-family: var(--font-script), cursive; font-size: 22px; line-height: 1.2; color: var(--color-ink-soft); min-height: 2.4em; }
+.viewerActions { flex-wrap: nowrap; justify-content: flex-start; border-top: 1px solid var(--color-line); padding-top: 8px; margin-top: 8px; }
 .viewerActions .pillOutline, .viewerActions .pillDark { display: inline-flex; align-items: center; gap: 6px; min-height: 42px; padding: 0 16px; border-radius: 999px; font-size: 14px; font-weight: 500; white-space: nowrap; }
 .viewerActions .pillOutline { border: 1px solid var(--color-ink); }
 .viewerActions .pillDark { background: var(--color-ink); color: var(--color-card); }
