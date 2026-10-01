@@ -56,6 +56,26 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
   const tripId = useRef(trip?.id ?? '')
   const scroller = useRef<HTMLDivElement>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
+  // While typing on a phone, keep the message box just above the on-screen keyboard. The keyboard
+  // covers the bottom of the page (the bottom bar hides meanwhile), so measure how much it covers.
+  const [keyboardInset, setKeyboardInset] = useState<number | null>(null)
+  useEffect(() => {
+    const box = composer.current
+    const viewport = window.visualViewport
+    if (!box || !viewport) return
+    let typing = false
+    function measure() {
+      if (!typing || !viewport) return
+      setKeyboardInset(Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop))
+    }
+    function focus() { typing = true; measure(); setTimeout(measure, 300) }
+    function blur() { typing = false; setKeyboardInset(null) }
+    box.addEventListener('focus', focus)
+    box.addEventListener('blur', blur)
+    viewport.addEventListener('resize', measure)
+    viewport.addEventListener('scroll', measure)
+    return () => { box.removeEventListener('focus', focus); box.removeEventListener('blur', blur); viewport.removeEventListener('resize', measure); viewport.removeEventListener('scroll', measure) }
+  }, [])
   // The message box grows with what's typed (up to its max height), then scrolls.
   useEffect(() => {
     const box = composer.current
@@ -200,7 +220,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
         {error && <p role="alert" className="px-4 pb-2 text-sm text-red-700">{error}</p>}
         <div ref={endOfChat} aria-hidden="true" style={{ scrollMarginBottom: 'calc(var(--app-bottom-clearance) + 4.5rem)' }} />
         {/* On phones the composer sticks just above the bottom navigation so it is always reachable. */}
-        <form className="sticky bottom-[calc(var(--app-bottom-clearance)-0.75rem)] z-10 flex items-end gap-2 rounded-b-2xl border-t border-line-soft bg-card p-3 lg:static" onSubmit={event => { event.preventDefault(); void send(draft) }}>
+        <form style={keyboardInset === null ? undefined : { bottom: keyboardInset + 8 }} className="sticky bottom-[calc(var(--app-bottom-clearance)-0.75rem)] z-10 flex items-end gap-2 rounded-b-2xl border-t border-line-soft bg-card p-3 lg:static" onSubmit={event => { event.preventDefault(); void send(draft) }}>
           <textarea ref={composer} autoFocus={!!initialDraft} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(draft) } }} rows={1} maxLength={4000} placeholder="Ask about a place or a trip…" aria-label="Message Postcard" className="max-h-40 min-h-11 flex-1 resize-none overflow-y-auto rounded-xl border border-line bg-white px-3 py-2.5 text-base lg:text-sm outline-none focus:border-link" />
           <button type="submit" disabled={thinking || !draft.trim()} aria-label="Send" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ink text-white disabled:opacity-40"><ArrowUp size={18} /></button>
         </form>
