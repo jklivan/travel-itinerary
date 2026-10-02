@@ -90,19 +90,23 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
     if (box && initialDraft) box.setSelectionRange(box.value.length, box.value.length)
   }, [initialDraft])
   const endOfChat = useRef<HTMLDivElement>(null)
-  const chatControls = useRef<HTMLDivElement>(null)
+  const lastQuestion = useRef<HTMLParagraphElement>(null)
   const firstRender = useRef(true)
   useEffect(() => {
     const box = scroller.current
+    const question = lastQuestion.current
+    // Opening a conversation shows its latest question and the reply, the part its title and summary
+    // describe (earlier messages are above). After that, each new message scrolls into view.
     // Desktop: the messages scroll inside their panel. Phones: they flow with the page.
-    if (box && box.scrollHeight > box.clientHeight) box.scrollTo({ top: box.scrollHeight, behavior: firstRender.current ? 'auto' : 'smooth' })
-    // Phones: opening a conversation lands on the chat controls (new chat, past chats) just above it;
-    // after that, each new message scrolls into view.
-    else if (firstRender.current) { if (turns.length) chatControls.current?.scrollIntoView({ behavior: 'auto', block: 'start' }) }
+    if (firstRender.current) {
+      if (question && box && box.scrollHeight > box.clientHeight) box.scrollTop += question.getBoundingClientRect().top - box.getBoundingClientRect().top - 16
+      else question?.scrollIntoView({ behavior: 'auto', block: 'start' })
+    } else if (box && box.scrollHeight > box.clientHeight) box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' })
     else endOfChat.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
     firstRender.current = false
   }, [turns, thinking])
 
+  const lastQuestionIndex = turns.findLastIndex(turn => turn.role === 'user')
   const places = trip?.places ?? []
   const inTrip = (rec: Recommendation) => added.has(rec.key) || places.some(place => place.name.trim().toLowerCase() === rec.name.trim().toLowerCase())
   const allRecommendations = turns.flatMap(turn => turn.role === 'assistant' ? turn.recommendations : [])
@@ -192,7 +196,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
       </section>
 
       {/* Between the trip card and the chat: start over, or (on phones) open a past conversation. */}
-      <div ref={chatControls} className="flex scroll-mt-24 gap-2">
+      <div className="flex gap-2">
         <button type="button" disabled={thinking || !turns.length} onClick={startNewChat} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-mist-edge bg-card px-4 text-sm font-semibold text-ink disabled:opacity-50"><SquarePen size={16} />Start a new chat</button>
         {history.length > 0 && <button type="button" onClick={() => setShowHistory(value => !value)} aria-expanded={showHistory} aria-controls="past-chats-phone" className="btn btn-outline lg:hidden"><History size={16} />Past chats</button>}
       </div>
@@ -205,7 +209,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
           {turns.map((turn, index) => turn.role === 'preferences'
             ? <PreferencesSummary key={index} preferences={turn.preferences} />
             : turn.role === 'user'
-            ? <p key={index} className="ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-ink px-4 py-2 text-sm text-white">{turn.text}</p>
+            ? <p key={index} ref={index === lastQuestionIndex ? lastQuestion : undefined} className="ml-auto w-fit max-w-[85%] scroll-mt-28 whitespace-pre-wrap rounded-2xl rounded-br-sm bg-ink px-4 py-2 text-sm text-white">{turn.text}</p>
             : <div key={index} className="space-y-3"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed">{turn.text}</p>
               {groupByOption(turn.recommendations).map(([option, recs]) => <section key={option} aria-label={option} className="rounded-xl border-l-4 bg-cream py-3 pl-3 pr-2" style={{ borderColor: colorOf(recs[0]) }}>
                 <h3 className="font-[family-name:var(--font-playfair)] text-lg leading-tight" style={{ color: colorOf(recs[0]) }}>{option}</h3>

@@ -13,7 +13,7 @@ export async function nameChat(id: string, turns: StoredTurn[], updatedAt: Date)
   const lastReply = turns.findLastIndex(turn => turn.role === 'assistant')
   if (lastReply < 0) return null
   const transcript = turns.filter(turn => (turn.role === 'user' || turn.role === 'assistant') && turn.text)
-    .map(turn => `${turn.role === 'user' ? 'Traveler' : 'Planner'}: ${turn.text!.slice(0, 600)}`).join('\n').slice(0, 6000)
+    .map(turn => `${turn.role === 'user' ? 'Traveler' : 'Planner'}: ${turn.text!.slice(0, 600)}`).join('\n').slice(-6000)
   try {
     const message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
