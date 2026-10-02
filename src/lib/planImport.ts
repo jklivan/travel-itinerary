@@ -1,4 +1,5 @@
-export type ImportedPlace = { name: string; destination: string; country: string; type: string; notes: string; day: number | null; rating: number | null; mealType: string }
+// near: where the reader thought the place is, when it's filed under another destination (helps find it on Google).
+export type ImportedPlace = { name: string; destination: string; country: string; type: string; notes: string; day: number | null; rating: number | null; mealType: string; near?: { name: string; country: string } }
 export function importedPlaces(data: unknown): ImportedPlace[] {
   if (!data || typeof data !== 'object' || !('destinations' in data) || !Array.isArray(data.destinations)) return []
   return data.destinations.flatMap(destination => {

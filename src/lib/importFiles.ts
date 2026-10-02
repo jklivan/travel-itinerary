@@ -97,7 +97,8 @@ export async function readFileForUpload(
   })
 }
 
-export async function fetchExtraction(payload: { text: string } | { base64: string; mediaType: string } | { blobUrl: string; mediaType: string; filename: string }, label = 'your file', externalSignal?: AbortSignal): Promise<ExtractionData> {
+// planning: importing ideas into a planned trip (keep every place, not just bookings); tripDestinations: where it's going.
+export async function fetchExtraction(payload: ({ text: string } | { base64: string; mediaType: string } | { blobUrl: string; mediaType: string; filename: string }) & { planning?: boolean; tripDestinations?: string[] }, label = 'your file', externalSignal?: AbortSignal): Promise<ExtractionData> {
     if ('text' in payload && !payload.text.trim()) throw new Error('No text to extract from.')
     let lastError: unknown
     // Retrying is safe: extraction only reads the document and does not write data.

@@ -88,6 +88,20 @@ const PDF_JSON_INSTRUCTION = `Return only valid JSON in exactly this shape:
 {"title":"","description":"","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD","notes":"","destinations":[{"name":"","country":"","items":[{"type":"hotel|activity|food_drink|transport","name":"","notes":"","dayIndex":1,"mealType":"breakfast|lunch|dinner|drinks|coffee|dessert|bakery","rating":1}]}]}.
 Use an empty array for destinations only when the document contains no travel places.`
 
+// Every place needs a location. Imports into a planned trip also say where the trip is going, so places listed
+// without a city land under the right destination, and planning notes keep ideas, not just bookings.
+function extractPrompt(planning: boolean, tripDestinations: string[]) {
+  const notes = planning ? `
+These are planning notes for a trip: include every place listed (ideas and recommendations too), not only confirmed bookings.` : ''
+  // The planner files every place under the trip's destination itself; it asks for each place's own town so
+  // the place can be found on Google.
+  const trip = tripDestinations.length ? `
+The trip is planned to: ${tripDestinations.join('; ')}. For each place, give the real town or city it is in as its destination (with its country), even when that is a nearby town rather than the trip destination. Use the trip destination only for places that are in it or that you can't place.` : ''
+  return `${EXTRACT_PROMPT}
+
+LOCATIONS: Every destination needs a name and country; never leave them empty. When the document doesn't say where a place is, use what you know about the place (or the rest of the document) to give its real city or area and country.${notes}${trip}`
+}
+
 function parseResult(completion: OpenAI.Chat.ChatCompletion): ExtractedItinerary {
   const toolCall = completion.choices[0]?.message?.tool_calls?.[0]
   if (!toolCall || toolCall.type !== 'function') throw new Error('Could not extract itinerary.')
@@ -109,18 +123,18 @@ async function fetchBlob(url: string): Promise<Response> {
   }
 }
 
-async function extractFromText(text: string): Promise<ExtractedItinerary> {
+async function extractFromText(text: string, prompt: string): Promise<ExtractedItinerary> {
   const completion = await client.chat.completions.create({
     model: 'gpt-5.6-terra',
     reasoning_effort: 'none',
     tools: [EXTRACT_FUNCTION],
     tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
-    messages: [{ role: 'user', content: `${EXTRACT_PROMPT}\n\nDOCUMENT:\n${text}` }],
+    messages: [{ role: 'user', content: `${prompt}\n\nDOCUMENT:\n${text}` }],
   })
   return parseResult(completion)
 }
 
-async function extractFromPrivatePdf(url: string, filename: string): Promise<ExtractedItinerary> {
+async function extractFromPrivatePdf(url: string, filename: string, prompt: string): Promise<ExtractedItinerary> {
   // Private Blob uploads use the same proven route as trip photos. The server,
   // rather than the browser, authenticates the read before sending the PDF on.
   const result = await get(url, { access: 'private' })
@@ -138,7 +152,7 @@ async function extractFromPrivatePdf(url: string, filename: string): Promise<Ext
         role: 'user',
         content: [
           { type: 'input_file', file_id: file.id },
-          { type: 'input_text', text: `${EXTRACT_PROMPT}\n\n${PDF_JSON_INSTRUCTION}` },
+          { type: 'input_text', text: `${prompt}\n\n${PDF_JSON_INSTRUCTION}` },
         ],
       }],
       text: {
@@ -151,7 +165,7 @@ async function extractFromPrivatePdf(url: string, filename: string): Promise<Ext
   }
 }
 
-async function extractFromImageUrl(url: string, contentType: string): Promise<ExtractedItinerary> {
+async function extractFromImageUrl(url: string, contentType: string, prompt: string): Promise<ExtractedItinerary> {
   // Fetch Blob ourselves, then send the image bytes to vision. This avoids both
   // OpenAI's remote-URL fetch and its PDF-only file-input restriction.
   const res = await fetchBlob(url)
@@ -165,14 +179,14 @@ async function extractFromImageUrl(url: string, contentType: string): Promise<Ex
       role: 'user',
       content: [
         { type: 'image_url', image_url: { url: `data:${contentType};base64,${base64}` } },
-        { type: 'text', text: EXTRACT_PROMPT },
+        { type: 'text', text: prompt },
       ],
     }],
   })
   return parseResult(completion)
 }
 
-async function extractFromImageBase64(base64: string, contentType: string): Promise<ExtractedItinerary> {
+async function extractFromImageBase64(base64: string, contentType: string, prompt: string): Promise<ExtractedItinerary> {
   const completion = await client.chat.completions.create({
     model: 'gpt-5.6-terra',
     reasoning_effort: 'none',
@@ -182,7 +196,7 @@ async function extractFromImageBase64(base64: string, contentType: string): Prom
       role: 'user',
       content: [
         { type: 'image_url', image_url: { url: `data:${contentType};base64,${base64}` } },
-        { type: 'text', text: EXTRACT_PROMPT },
+        { type: 'text', text: prompt },
       ],
     }],
   })
@@ -191,7 +205,10 @@ async function extractFromImageBase64(base64: string, contentType: string): Prom
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as { text?: string; base64?: string; blobUrl?: string; mediaType?: string; filename?: string }
+    const body = (await req.json()) as { text?: string; base64?: string; blobUrl?: string; mediaType?: string; filename?: string; planning?: unknown; tripDestinations?: unknown }
+    const tripDestinations = Array.isArray(body.tripDestinations)
+      ? body.tripDestinations.filter((name): name is string => typeof name === 'string' && !!name.trim()).map(name => name.trim().slice(0, 160)).slice(0, 20) : []
+    const prompt = extractPrompt(body.planning === true, tripDestinations)
 
     let extracted: ExtractedItinerary
 
@@ -199,13 +216,13 @@ export async function POST(req: NextRequest) {
       // .docx sent as base64 — no Blob round-trip needed
       const buffer = Buffer.from(body.base64, 'base64')
       const result = await mammoth.extractRawText({ buffer })
-      extracted = await extractFromText(result.value)
+      extracted = await extractFromText(result.value, prompt)
     } else if (body.base64 && body.mediaType?.startsWith('image/')) {
-      extracted = await extractFromImageBase64(body.base64, body.mediaType)
+      extracted = await extractFromImageBase64(body.base64, body.mediaType, prompt)
     } else if (body.blobUrl && body.mediaType?.startsWith('image/')) {
-      extracted = await extractFromImageUrl(body.blobUrl, body.mediaType)
+      extracted = await extractFromImageUrl(body.blobUrl, body.mediaType, prompt)
     } else if (body.blobUrl && body.mediaType?.includes('pdf')) {
-      extracted = await extractFromPrivatePdf(body.blobUrl, body.filename ?? 'itinerary.pdf')
+      extracted = await extractFromPrivatePdf(body.blobUrl, body.filename ?? 'itinerary.pdf', prompt)
     } else if (body.blobUrl) {
       // XLSX — fetch and parse to CSV text
       const res = await fetchBlob(body.blobUrl)
@@ -214,9 +231,9 @@ export async function POST(req: NextRequest) {
       const text = workbook.SheetNames.map(name =>
         `Sheet: ${name}\n${XLSX.utils.sheet_to_csv(workbook.Sheets[name])}`
       ).join('\n\n')
-      extracted = await extractFromText(text)
+      extracted = await extractFromText(text, prompt)
     } else if (body.text?.trim()) {
-      extracted = await extractFromText(body.text)
+      extracted = await extractFromText(body.text, prompt)
     } else {
       return NextResponse.json({ error: 'No content provided.' }, { status: 400 })
     }

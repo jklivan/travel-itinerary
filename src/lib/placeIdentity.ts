@@ -30,8 +30,9 @@ export function choosePlaceIdentity(input: PlaceIdentityInput, candidates: Googl
     const hasPlaceCoords = input.lat != null && input.lng != null
     const placeNearby = hasPlaceCoords && distance(input.lat!, input.lng!, location.latitude, location.longitude) <= 1
     if (hasPlaceCoords && !placeNearby) return false
-    // Shortened business names need the stronger corroboration of existing coordinates.
-    return exactName || placeNearby
+    // Shortened business names ("Happy Monkey" for "Happy Monkey by Jean-Georges") need the stronger
+    // corroboration of existing coordinates or an address in the destination's own town.
+    return exactName || placeNearby || (prefixName && addressMatches)
   })
   const unique = [...new Map(valid.map(candidate => [candidate.id!, candidate])).values()]
   return unique.length === 1 ? { match: unique[0], reason: 'Name and location agree.' } : { match: null, reason: unique.length > 1 ? 'Several nearby places match; needs review.' : 'No confident name and location match.' }

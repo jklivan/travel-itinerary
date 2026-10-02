@@ -20,8 +20,10 @@ export function loosePlaceMatch(name: string, city: string, country: string | nu
   const wanted = words(name).split(' ').filter(word => word && !['the', 'hotel', 'restaurant'].includes(word))
   const found = words(candidate.displayName?.text ?? '').split(' ')
   const address = words(candidate.formattedAddress ?? '')
-  // Destinations are sometimes one string ("Costa Smeralda, Italy"), so every part counts.
-  const places = [...city.split(','), country ?? ''].map(words).filter(Boolean)
+  // Destinations are sometimes one string ("Costa Smeralda, Italy"), so every part counts. Google writes the
+  // US and UK as "USA" and "UK", so those count as the same country.
+  const aliases: Record<string, string[]> = { 'united states': ['usa'], 'united states of america': ['usa'], us: ['usa'], 'united kingdom': ['uk'], 'great britain': ['uk'] }
+  const places = [...city.split(','), country ?? ''].map(words).filter(Boolean).flatMap(place => [place, ...(aliases[place] ?? [])])
   return wanted.length > 0 && wanted.every(word => found.includes(word)) && places.some(place => address.includes(place))
 }
 

@@ -11,7 +11,8 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
   if (typeof requestId !== 'string' || !/^[a-f0-9-]{36}$/.test(requestId) || !Array.isArray(places) || !places.length || places.length > 200) return { error: 'Choose between 1 and 200 places to import.' }
-  if (places.some(p => !p || typeof p.name !== 'string' || !p.name.trim() || p.name.length > 240 || typeof p.destination !== 'string' || !p.destination.trim() || p.destination.length > 160 || typeof p.country !== 'string' || p.country.length > 160 || typeof p.notes !== 'string' || p.notes.length > 8000 || typeof p.mealType !== 'string' || p.mealType.length > 100 || !['hotel', 'food_drink', 'activity', 'transport'].includes(p.type) || (p.day !== null && (!Number.isInteger(p.day) || p.day < 1 || p.day > 365)) || (p.rating !== null && (!Number.isInteger(p.rating) || p.rating < 1 || p.rating > 5)))) return { error: 'Some imported details are invalid. Please shorten the notes or import fewer places.' }
+  if (places.some(p => !p || typeof p.name !== 'string' || !p.name.trim() || p.name.length > 240 || typeof p.destination !== 'string' || !p.destination.trim() || p.destination.length > 160 || typeof p.country !== 'string' || p.country.length > 160 || typeof p.notes !== 'string' || p.notes.length > 8000 || typeof p.mealType !== 'string' || p.mealType.length > 100 || !['hotel', 'food_drink', 'activity', 'transport'].includes(p.type) || (p.day !== null && (!Number.isInteger(p.day) || p.day < 1 || p.day > 365)) || (p.rating !== null && (!Number.isInteger(p.rating) || p.rating < 1 || p.rating > 5))
+    || (p.near !== undefined && (!p.near || typeof p.near.name !== 'string' || p.near.name.length > 160 || typeof p.near.country !== 'string' || p.near.country.length > 160)))) return { error: 'Some imported details are invalid. Please shorten the notes or import fewer places.' }
   try {
     await prisma.$transaction(async tx => {
       const plan = await tx.itinerary.findFirst({ where: { id: planId, userId }, select: { id: true } })
@@ -29,7 +30,7 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
         await tx.destItem.create({ data: { id: `${requestId}:${index}`, destinationId: destination.id, name: place.name.trim(), type: place.type, notes: place.notes || null, rating: place.rating, mealType: place.type === 'food_drink' ? place.mealType || null : null, dayIndex: place.day, order: (last._max.order ?? -1) + 1, groupIndex: place.type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0 } })
       }
     }, { timeout: 60000 })
-    after(() => enrichPlaceIds(places.map((_, index) => `${requestId}:${index}`)).catch(() => undefined))
+    after(() => enrichPlaceIds(places.map((_, index) => `${requestId}:${index}`), new Map(places.flatMap((place, index) => place.near?.name.trim() ? [[`${requestId}:${index}`, place.near] as const] : []))).catch(() => undefined))
     for (const path of ['/', '/plan', `/plan/${planId}`, `/itinerary/${planId}`]) revalidatePath(path)
     return { success: true }
   } catch { return { error: 'Could not add these places. Your review is still here; please try again.' } }
