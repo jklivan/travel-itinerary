@@ -62,3 +62,11 @@ export async function login(state: LoginState, formData: FormData): Promise<Logi
     throw e
   }
 }
+
+export async function socialSignIn(formData: FormData) {
+  const provider = formData.get('provider')
+  if (provider !== 'google' && provider !== 'apple') return
+  const tripId = saveTripId(formData.get('saveTrip'))
+  // Then /welcome/continue: the intro for a brand-new account, otherwise the trip they were saving or the Feed.
+  await signIn(provider, { redirectTo: `/welcome/continue${tripId ? `?saveTrip=${encodeURIComponent(tripId)}` : ''}` })
+}

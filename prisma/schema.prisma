@@ -11,7 +11,7 @@ model User {
   id                String                @id @default(cuid())
   email             String                @unique
   name              String
-  password          String
+  password          String?               // Empty for accounts that only sign in with Google or Apple.
   isPrivate         Boolean               @default(false)
   // Profile photo (an /api/img link to a private upload); initials show when empty.
   image             String?

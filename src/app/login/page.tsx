@@ -3,6 +3,7 @@
 import { useActionState } from 'react'
 import { login } from '@/actions/auth'
 import Link from 'next/link'
+import SocialSignIn from '@/components/SocialSignIn'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { oauthReturn, saveTripId } from '@/lib/saveTripReturn'
@@ -11,6 +12,8 @@ function LoginForm() {
   const [state, action, pending] = useActionState(login, undefined)
   const searchParams = useSearchParams()
   const registered = searchParams.get('registered')
+  // Google or Apple sign-in sends people back here with ?error= when it doesn't go through.
+  const oauthError = searchParams.get('error')
   const tripId = saveTripId(searchParams.get('saveTrip'))
 
   return (
@@ -22,6 +25,7 @@ function LoginForm() {
         </div>
 
         <div className="panel p-6">
+          <SocialSignIn tripId={tripId} />
           <form action={action} className="space-y-4">
             <input type="hidden" name="saveTrip" value={tripId} />
             {/* Connecting an AI assistant: back to its "Connect … to Postcard?" page after signing in. */}
@@ -35,6 +39,11 @@ function LoginForm() {
             {searchParams.get('reset') && (
               <p role="status" className="panel-hint text-sm text-link px-4 py-3">
                 Password changed. Sign in with your new password.
+              </p>
+            )}
+            {oauthError && !state?.message && (
+              <p role="alert" className="panel-hint text-sm text-danger px-4 py-3">
+                That sign-in didn’t go through. Try again, or sign in with your email.
               </p>
             )}
             {state?.message && (

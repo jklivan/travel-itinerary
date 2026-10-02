@@ -1,7 +1,13 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
+import Google from 'next-auth/providers/google'
+import Apple from 'next-auth/providers/apple'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { followSuggestedPeople } from '@/lib/suggestedPeople'
+
+// Apple posts its answer back from appleid.apple.com, so the cookies that check it must be sent cross-site.
+const crossSite = { httpOnly: true, sameSite: 'none' as const, path: '/', secure: true }
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   providers: [
@@ -16,22 +22,55 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         // Email capitals don't matter (older accounts kept the capitals they were made with); an exact match wins.
         const user = await prisma.user.findUnique({ where: { email } })
           ?? await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } }, orderBy: { createdAt: 'asc' } })
-        if (!user) return null
+        if (!user?.password) return null
         const valid = await bcrypt.compare(credentials.password as string, user.password)
         if (!valid) return null
         return { id: user.id, email: user.email, name: user.name }
       },
     }),
+    // Each shows up once its keys are set (AUTH_GOOGLE_ID/SECRET, AUTH_APPLE_ID/SECRET). Sign-in only: name and email.
+    ...(process.env.AUTH_GOOGLE_ID ? [Google] : []),
+    ...(process.env.AUTH_APPLE_ID ? [Apple] : []),
   ],
   pages: {
     signIn: '/login',
+    error: '/login',
   },
   // After signing in or out, stay on the address you're using (www.postcardtravel.app, or the app's own address).
   trustHost: true,
   session: { strategy: 'jwt' },
+  ...(process.env.VERCEL && {
+    cookies: {
+      state: { name: '__Secure-authjs.state', options: { ...crossSite, maxAge: 900 } },
+      nonce: { name: '__Secure-authjs.nonce', options: crossSite },
+    },
+  }),
   callbacks: {
-    jwt({ token, user }) {
-      if (user) token.id = user.id
+    signIn({ account, profile }) {
+      // Google and Apple accounts join an existing Postcard account with the same email, so the email must be verified.
+      if (account?.provider === 'google' || account?.provider === 'apple') {
+        // Apple sends email_verified as "true"/"false" strings.
+        return !!profile?.email && String(profile.email_verified) === 'true'
+      }
+      return true
+    },
+    async jwt({ token, user, account, profile }) {
+      if (account && account.provider !== 'credentials' && profile?.email) {
+        const email = profile.email.toLowerCase()
+        // Apple only sends a name the first time; fall back to the start of the email.
+        const name = (user?.name && user.name !== profile.email ? user.name : email.split('@')[0]).trim().slice(0, 80)
+        // An existing account with this email (whatever its capitals), else a new one, which starts out following the
+        // most active travelers like an email sign-up.
+        let found = await prisma.user.findUnique({ where: { email } })
+          ?? await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } }, orderBy: { createdAt: 'asc' } })
+        if (!found) {
+          found = await prisma.user.create({ data: { email, name } })
+          await followSuggestedPeople(found.id).catch(error => console.error('[auth] suggested follows failed', error))
+        }
+        token.id = found.id
+        token.name = found.name
+        token.email = found.email
+      } else if (user) token.id = user.id
       return token
     },
     session({ session, token }) {

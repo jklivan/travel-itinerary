@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { saveTripId } from '@/lib/saveTripReturn'
 import { register } from '@/actions/auth'
 import Link from 'next/link'
+import SocialSignIn from '@/components/SocialSignIn'
 
 function RegisterForm() {
   const tripId = saveTripId(useSearchParams().get('saveTrip'))
@@ -19,6 +20,7 @@ function RegisterForm() {
         </div>
 
         <div className="panel p-6">
+          <SocialSignIn tripId={tripId} />
           <form action={action} className="space-y-4">
             <input type="hidden" name="saveTrip" value={tripId} />
             {state?.message && (

@@ -20,7 +20,8 @@ function siteUrl() {
 
 const escape = (text: string) => text.replace(/[&<>"']/g, char => `&#${char.charCodeAt(0)};`)
 
-// Forgot password: emails a reset link. Says the same thing whether or not the email has an account.
+// Forgot password: emails a reset link. Says the same thing whether or not the email has an account. (Someone who
+// signed up with Google or Apple has no password yet; this sets one.)
 export async function requestPasswordReset(state: ResetState, formData: FormData): Promise<ResetState> {
   const email = String(formData.get('email') ?? '').trim()
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 320) return { message: 'Enter the email you signed up with.' }
@@ -28,7 +29,7 @@ export async function requestPasswordReset(state: ResetState, formData: FormData
   if (!secret) return { message: 'Password reset isn’t available right now. Please try again later.' }
   const user = await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } }, select: { id: true, name: true, email: true, password: true } })
   if (user) {
-    const link = `${siteUrl()}/reset-password?token=${encodeURIComponent(makeResetToken(user.id, user.password, secret))}`
+    const link = `${siteUrl()}/reset-password?token=${encodeURIComponent(makeResetToken(user.id, user.password ?? '', secret))}`
     const sent = await sendEmail({
       to: user.email,
       // Its own subject each time, so Gmail doesn't group the emails and show an older (used) link first.
@@ -53,7 +54,7 @@ export async function resetPassword(state: ResetState, formData: FormData): Prom
   const read = readResetToken(token)
   const user = read && secret ? await prisma.user.findUnique({ where: { id: read.userId }, select: { id: true, password: true } }) : null
   if (read && read.expires < Date.now()) { console.warn('[password-reset] refused', JSON.stringify({ account: read.userId, reason: 'expired' })); return { message: 'This link has expired (links work for an hour).' } }
-  if (!user || !secret || !resetTokenValid(token, user.password, secret)) { console.warn('[password-reset] refused', JSON.stringify({ account: read?.userId ?? null, reason: user ? 'used or changed' : 'no account' })); return { message: USED } }
+  if (!user || !secret || !resetTokenValid(token, user.password ?? '', secret)) { console.warn('[password-reset] refused', JSON.stringify({ account: read?.userId ?? null, reason: user ? 'used or changed' : 'no account' })); return { message: USED } }
   // Only saves if the password hasn't changed since the link was checked, so a link can't be used twice at once.
   const saved = await prisma.user.updateMany({ where: { id: user.id, password: user.password }, data: { password: await bcrypt.hash(password, 10) } })
   if (!saved.count) return { message: USED }
