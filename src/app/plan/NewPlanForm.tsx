@@ -7,6 +7,10 @@ import { useRouter } from 'next/navigation'
 import { copyStoryToPlan } from '@/actions/stories'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import { startPlan, copyPlaceToPlan } from '@/actions/planning'
+import { importIntoPlan } from '@/actions/planImport'
+import { saveImportNotes } from '@/actions/importNotes'
+import { readFileForUpload, fetchExtraction } from '@/lib/importFiles'
+import { importedPlaces } from '@/lib/planImport'
 
 export const inputClass = 'mt-1 w-full min-w-0 rounded-xl border border-line bg-card px-3 py-3 text-sm text-ink'
 // The shared dark button (see .btn in globals.css).
@@ -24,6 +28,13 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
   const [style, setStyle] = useState<'days' | 'ideas'>('days')
   const [days, setDays] = useState('')
   const [audience, setAudience] = useState('family')
+  // "Import notes or a file" opens here, under the buttons; places are read before the plan is made, so
+  // notes with no places don't leave an empty plan behind.
+  const [importOpen, setImportOpen] = useState(false)
+  const [notes, setNotes] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [stage, setStage] = useState('')
+  const importId = useRef('')
   return <form onSubmit={async event => {
     event.preventDefault()
     if (busy.current) return
@@ -31,9 +42,23 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
     if (!clientId.current) clientId.current = crypto.randomUUID()
     const importing = (event.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'import'
     const data = new FormData(event.currentTarget)
-    if (importing && !String(data.get('title') ?? '').trim() && !String(data.get('destination') ?? '').trim()) data.set('title', 'My trip')
     data.set('clientId', clientId.current)
     try {
+      let places: ReturnType<typeof importedPlaces> = []
+      if (importing) {
+        const where = destination.trim()
+        if (!where) { setError('Add where you’re going first, so your places land in the right spot.'); return }
+        if (!file && !notes.trim()) { setError('Paste some notes or choose a file to import.'); return }
+        setStage('Reading your notes…')
+        const payload = file ? await readFileForUpload(file) : { text: notes }
+        if ('text' in payload) await saveImportNotes(payload.text).catch(() => null)
+        // Everything goes under this destination; each place is still found on Google near its own town.
+        places = importedPlaces(await fetchExtraction({ ...payload, planning: true, tripDestinations: [where] }, file?.name ?? 'your notes'))
+          .map(place => ({ ...place, destination: where, country: '', near: { name: place.destination, country: place.country } }))
+        if (!places.length) { setError('No places found in your notes. Check the place names and try again.'); return }
+        if (places.length > 200) { setError('Please split this into smaller imports of up to 200 places.'); return }
+        setStage('Adding your places…')
+      }
       const result = await startPlan(data)
       if (result.error) setError(result.error)
       else if (result.id) {
@@ -43,10 +68,15 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
           const copied = saveStory ? await copyStoryToPlan(saveStory, result.id, placeCopyId.current) : await copyPlaceToPlan(savePlace!, result.id, placeCopyId.current)
           if (copied.error) { setError(`Your plan was saved, but the place couldn’t be added. ${copied.error}`); return }
         }
-        router.push(`/plan/${result.id}${importing ? '?import=1' : ''}`)
+        if (places.length) {
+          if (!importId.current) importId.current = crypto.randomUUID()
+          const added = await importIntoPlan(result.id, importId.current, places)
+          if (added.error) { setError(`Your plan was saved, but the places couldn’t be added. ${added.error}`); return }
+        }
+        router.push(`/plan/${result.id}`)
       }
-    } catch { setError('Could not save. Your details are still here; please try again.') }
-    finally { busy.current = false; setSaving(false) }
+    } catch (caught) { setError(importing && caught instanceof Error && caught.message ? caught.message : 'Could not save. Your details are still here; please try again.') }
+    finally { busy.current = false; setSaving(false); setStage('') }
   }} className="panel space-y-5 p-4 sm:p-6">
     {(savePlace || saveStory) && <p className="text-sm text-link">We’ll add the place you selected to this new plan.</p>}
     <fieldset disabled={saving} className="space-y-5">
@@ -74,8 +104,15 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
       <fieldset><legend className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-link">Who is this trip for?</legend><input type="hidden" name="audience" value={audience} /><div className="flex flex-wrap gap-2">{([{ value: 'family', label: 'Family' }, { value: 'friends', label: 'Friends' }, { value: 'romantic', label: 'Couples' }, { value: 'adult', label: 'Adults' }] as const).map(option => <button key={option.value} type="button" aria-pressed={audience === option.value} onClick={() => setAudience(option.value)} className="chip">{option.label}</button>)}</div></fieldset>
       <details><summary className="flex cursor-pointer list-none items-center gap-3 py-2 text-sm text-link"><CalendarDays size={20} />Add dates (optional)<ChevronDown size={18} className="ml-auto" /></summary><DateFields /></details>
       <p className="flex items-start gap-3 rounded-xl bg-[#f0f1eb] p-4 text-sm leading-relaxed text-link"><Compass size={26} className="mt-1 shrink-0" /><span>Start with an idea. Save hotels, restaurants, and things to do as you find them. Your plan stays private until you share it.</span></p>
-      <button type="submit" value="plan" className={`${buttonClass} w-full`}>{saving ? 'Saving your plan…' : 'Start planning →'}</button>
-      <button type="submit" value="import" className="btn btn-outline w-full">Import notes or a file</button>
+      <button type="submit" value="plan" className={`${buttonClass} w-full`}>{saving && !stage ? 'Saving your plan…' : 'Start planning →'}</button>
+      <button type="button" aria-expanded={importOpen} aria-controls="new-plan-import" onClick={() => setImportOpen(open => !open)} className="btn btn-outline w-full">Import notes or a file</button>
+      {importOpen && <div id="new-plan-import" className="space-y-4 rounded-xl border border-line p-4">
+        <p className="text-sm text-muted">{destination.trim() ? <>Places from your notes go under <strong className="text-ink">{destination}</strong>. Each one shows its own town once it’s found on Google.</> : 'Add where you’re going above, then paste your notes or choose a file.'}</p>
+        <label className="block text-sm">Paste notes<textarea value={notes} onChange={event => { setNotes(event.target.value); setFile(null) }} maxLength={200000} rows={5} placeholder="Hotels, restaurants, activities…" className="mt-2 w-full rounded-xl border border-line bg-white p-3 text-base" /></label>
+        <label className="block text-sm">Or choose a file<input key={file?.name ?? 'empty'} type="file" accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.html,.htm,image/jpeg,image/png,image/gif,image/webp" onChange={event => setFile(event.target.files?.[0] ?? null)} className="mt-2 block w-full min-w-0 text-sm" /></label>
+        {file && <p className="break-words text-xs text-muted">Selected: {file.name}</p>}
+        <button type="submit" value="import" disabled={!destination.trim() || (!file && !notes.trim())} className={`${buttonClass} w-full`}>{stage || (destination.trim() ? 'Import and start planning →' : 'Add a destination first')}</button>
+      </div>}
     </fieldset>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
     {error && createdPlan && <Link href={`/plan/${createdPlan}`} className="block text-sm text-link underline">Open your saved plan →</Link>}
