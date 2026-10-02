@@ -66,6 +66,22 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
 
   const bucketSet = new Set(bucketIds.map((b) => b.itineraryId))
 
+  // Instagram-style lines under each card: who liked it (friends first) and one comment preview
+  // (a friend's, else the most-replied, else the newest).
+  const tripIds = feedTrips.map(trip => trip.id)
+  const friendIds = userId ? (await prisma.follow.findMany({ where: { followerId: userId, status: 'accepted' }, select: { followingId: true } })).map(row => row.followingId) : []
+  const [friendLikes, topComments] = tripIds.length ? await Promise.all([
+    friendIds.length ? prisma.bucketListItem.findMany({ where: { itineraryId: { in: tripIds }, userId: { in: friendIds } }, orderBy: { createdAt: 'desc' }, select: { itineraryId: true, user: { select: { name: true } } } }) : Promise.resolve([]),
+    prisma.comment.findMany({ where: { itineraryId: { in: tripIds }, parentId: null }, orderBy: { createdAt: 'desc' }, select: { itineraryId: true, content: true, userId: true, user: { select: { name: true } }, _count: { select: { replies: true } } } }),
+  ]) : [[], []]
+  const social = new Map(tripIds.map(id => {
+    const liker = friendLikes.find(like => like.itineraryId === id)?.user.name ?? null
+    const comments = topComments.filter(comment => comment.itineraryId === id)
+    const pick = comments.find(comment => friendIds.includes(comment.userId))
+      ?? [...comments].sort((a, b) => b._count.replies - a._count.replies)[0]
+    return [id, { likedBy: liker, comment: pick ? { name: pick.user.name, text: pick.content.split('\n')[0].slice(0, 200) } : null }]
+  }))
+
   return (
     <div className="max-w-xl mx-auto px-4 py-3 sm:px-8 sm:py-5">
       <Suspense fallback={null}><StoryFeed userId={userId} following={false} /></Suspense>
@@ -123,6 +139,7 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
               isBucketed={bucketSet.has(it.id)}
               saveCount={it._count.bucketedBy}
               commentCount={it._count.comments}
+              social={social.get(it.id)}
             />
           ))}
         </div>

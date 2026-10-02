@@ -39,6 +39,8 @@ type Props = {
   datesFlexible?: boolean
   fullWidth?: boolean
   commentCount?: number
+  // Feed only: a friend who liked it, and one comment to preview.
+  social?: { likedBy: string | null; comment: { name: string; text: string } | null }
   showBudget?: boolean
 }
 
@@ -57,7 +59,7 @@ export default function ItineraryCard({
   id, postType, title, startDate, endDate, audience, budget, tripRating, authorName, authorImage, authorId, destinations, coverPhoto, photos = [],
   currentUserId, isOwn, isBucketed = false, saveCount, fullWidth = false, datesFlexible = false, bestMonths = [], tags = [], durationDays,
   // Budget shows on the trip page, not on cards.
-  commentCount = 0, showBudget = false,
+  commentCount = 0, showBudget = false, social,
 }: Props) {
   const days = tripDuration({ postType, startDate, endDate, datesFlexible, destinations, tags, durationDays })
   const isGuide = days === null
@@ -138,6 +140,13 @@ export default function ItineraryCard({
             </span>}
           </div>
         </div>
+        {social && (saveCount > 0 || social.comment) && <div className="space-y-0.5 px-1 pt-2 text-[13px] leading-snug text-ink-soft">
+          {saveCount > 0 && <p>{social.likedBy
+            ? <>Liked by <span className="font-semibold text-ink">{social.likedBy.split(' ')[0]}</span>{saveCount > 1 && <> and {saveCount - 1} {saveCount - 1 === 1 ? 'other' : 'others'}</>}</>
+            : <span className="font-semibold text-ink">{saveCount} {saveCount === 1 ? 'like' : 'likes'}</span>}</p>}
+          {social.comment && <p className="line-clamp-1"><span className="font-semibold text-ink">{social.comment.name.split(' ')[0]}</span> {social.comment.text}</p>}
+          {commentCount > 1 && <Link href={`/itinerary/${id}#comments`} className="block text-muted hover:text-link">View all {commentCount} comments</Link>}
+        </div>}
       </div>
     </article>
   )
