@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import PostcardLogo from '@/components/PostcardLogo'
 
 // The home page for signed-out visitors: a full-screen coast photo, the Postcard stamp, Sign up and Log in.
 // It covers the header and bottom bar; shared trip links still open for anyone.
@@ -9,7 +10,7 @@ export default function WelcomeScreen() {
     {/* Light sky at the top for the stamp; darker toward the buttons. */}
     <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(243,238,228,0.88)_0%,rgba(243,238,228,0.6)_40%,rgba(243,238,228,0)_58%,rgba(15,29,51,0.5)_100%)]" />
     <div className="relative flex h-full flex-col items-center px-8 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(4.5rem,calc(env(safe-area-inset-top)+3rem))]">
-      <Image src="/brand/postcard-stamp-logo.png" alt="Postcard" width={190} height={190} priority className="size-[min(190px,48vw)]" />
+      <PostcardLogo size={190} alt="Postcard" priority className="size-[min(190px,48vw)]" />
       <p className="mt-6 text-center font-[family-name:var(--font-playfair)] text-sm font-semibold uppercase tracking-[0.32em] text-ink">Places worth<br />sharing</p>
       <div className="mt-auto w-full max-w-sm space-y-3">
         <Link href="/register" className="flex min-h-14 items-center justify-center rounded-full bg-ink text-sm font-semibold uppercase tracking-[0.2em] text-white shadow-lg">Sign up</Link>

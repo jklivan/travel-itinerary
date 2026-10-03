@@ -1,11 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition, type ReactNode } from 'react'
 import { Bookmark, Car, ChevronRight, Folder, MapPin, MountainSnow, Palmtree, Plus, Plane, Users, Utensils, Wine } from 'lucide-react'
 import { deleteSavedFolder, saveFolder } from '@/actions/savedFolders'
+import PostcardLogo from '@/components/PostcardLogo'
 
 type FolderSummary = { id: string; name: string; count: number }
 
@@ -77,9 +77,9 @@ export default function SavedFolderGrid({ folders, total }: { folders: FolderSum
     </form>}
     <nav aria-label="Saved folders" className="grid grid-cols-2 gap-2.5 sm:gap-3">
       <Tile href="/saved?folder=all" name="All saved" count={total} Icon={Bookmark} highlighted
-        decoration={<Image src="/brand/postcard-stamp-logo.png" alt="" width={60} height={60} className="pointer-events-none absolute -bottom-3 right-2 rotate-[-10deg] opacity-45" />} />
+        decoration={<PostcardLogo size={60} className="pointer-events-none absolute -bottom-3 right-2 rotate-[-10deg] opacity-45" />} />
       {folders.map((folder, index) => <Tile key={folder.id} href={`/saved?folder=${encodeURIComponent(folder.id)}`} name={folder.name} count={folder.count} Icon={folderIcon(folder.name)}
-        decoration={index % 4 === 2 ? <Image src="/brand/postcard-stamp-logo.png" alt="" width={56} height={56} className="pointer-events-none absolute -bottom-4 right-2 rotate-[12deg] opacity-40" /> : <Postmark />} />)}
+        decoration={index % 4 === 2 ? <PostcardLogo size={56} className="pointer-events-none absolute -bottom-4 right-2 rotate-[12deg] opacity-40" /> : <Postmark />} />)}
     </nav>
   </>
 }

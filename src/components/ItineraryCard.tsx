@@ -7,6 +7,7 @@ import { TRIP_STAMPS, STAMP_COLORS } from '@/lib/tripStamps'
 import PhotoStrip from './PhotoStrip'
 import BucketButton from './BucketButton'
 import UserAvatar from './UserAvatar'
+import PostcardLogo from '@/components/PostcardLogo'
 
 
 const AUDIENCE_CHIP = 'w-fit rounded-md bg-cream/95 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-ink'
@@ -100,9 +101,9 @@ export default function ItineraryCard({
             {audience === 'romantic' && <span className={AUDIENCE_CHIP}>Couples</span>}
           </div>
 
-          {/* The Postcard stamp, on a white disc so it reads on dark photos. */}
-          <div aria-hidden="true" className="pointer-events-none absolute right-2.5 top-2.5 z-20 size-[64px] rotate-[8deg] rounded-full bg-white/95 p-0.5 shadow-md">
-            <Image src="/brand/postcard-stamp-logo.png" alt="" width={60} height={60} className="size-full" />
+          {/* The Postcard stamp, on a white square (its own shape) so it reads on dark photos. */}
+          <div aria-hidden="true" className="pointer-events-none absolute right-2.5 top-2.5 z-20 size-[64px] rotate-[8deg] rounded-md bg-white/95 p-1 shadow-md">
+            <PostcardLogo size={60} className="size-full" />
           </div>
         </div>
 

@@ -14,6 +14,7 @@ import { tripPhotoGallery } from '@/lib/eventPhotos'
 import { fetchStockPhoto } from '@/lib/stockPhoto'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
 import { MapPin, Users, ChevronRight, Settings } from 'lucide-react'
+import PostcardLogo from '@/components/PostcardLogo'
 
 function destinationStockFallback(destination: string, country: string | null) {
   const query = `${destination} ${country ?? ''}`.toLowerCase()
@@ -192,7 +193,7 @@ export default async function UserProfilePage({
                   <Link href={tripHref} className="min-w-0 pt-2"><h3 className="break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-ink">{trip.title || 'Untitled trip'}</h3><p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places</p><p className="mt-1 text-sm text-muted">Keep planning →</p></Link>
                   <div className="flex min-w-0 flex-wrap items-end justify-between gap-2 self-end">
                     <DeleteButton compact id={trip.id} visibility={trip.visibility} returnTo={`/user/${id}`} label={`Delete ${trip.title}`} />
-                    <Link href={trip.isPlan ? `${tripHref}?post=1` : tripHref} aria-label={`Post ${trip.title}`} title="Post trip" className="inline-flex h-12 w-[66px] shrink-0 items-center justify-center transition-transform hover:-rotate-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"><Image src="/brand/postcard-stamp-logo.png" alt="" width={52} height={52} /></Link>
+                    <Link href={trip.isPlan ? `${tripHref}?post=1` : tripHref} aria-label={`Post ${trip.title}`} title="Post trip" className="inline-flex h-12 w-[66px] shrink-0 items-center justify-center transition-transform hover:-rotate-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"><PostcardLogo size={52} /></Link>
                   </div>
                 </article>
               })}</div>}
