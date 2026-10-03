@@ -49,7 +49,16 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
   const [error, setError] = useState('')
   const [added, setAdded] = useState<Set<string>>(new Set())
   const [adding, setAdding] = useState<string | null>(null)
-  const [mapView, setMapView] = useState<'normal' | 'small' | 'hidden'>('normal')
+  // 'auto' until changed: the map shows on desktop and starts hidden on phones, behind "Show map". Phones
+  // don't load it (or look up its places) until it's shown.
+  const [mapView, setMapView] = useState<'auto' | 'normal' | 'small' | 'hidden'>('auto')
+  const [wide, setWide] = useState(false)
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 1024px)')
+    const update = () => setWide(query.matches)
+    update(); query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
   // Arriving with a question about a place skips the setup questions.
   const [skippedSetup, setSkippedSetup] = useState(!!initialDraft)
   // Phones: past chats are listed above a new chat; in a conversation they're behind "Past chats".
@@ -185,7 +194,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
           <div className="flex items-center gap-4 text-sm font-semibold text-link">
             {/* From the planner this goes back where you came from; for a trip the chat built, it opens it. */}
             {trip && <Link href={`/plan/${trip.id}`}>{fromPlanner ? '← Back to your trip' : 'Open in planner →'}</Link>}
-            {mapView === 'hidden' && <button type="button" onClick={() => setMapView('normal')} className="inline-flex items-center gap-1"><MapIcon size={14} />Show map</button>}
+            {(mapView === 'hidden' || mapView === 'auto') && <button type="button" onClick={() => setMapView('normal')} className={`inline-flex items-center gap-1 ${mapView === 'auto' ? 'lg:hidden' : ''}`}><MapIcon size={14} />Show map</button>}
           </div>
         </div>
         {!places.length ? <p className="mt-3 text-sm text-muted">Ask Postcard where to go. Places you add from its suggestions will build your itinerary here.</p>
@@ -232,7 +241,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
       </section>
     </div>
 
-    {mapView === 'hidden' ? null
+    {mapView === 'hidden' || (mapView === 'auto' && !wide) ? null
     : <section aria-label="Map" className={`relative isolate order-first overflow-hidden rounded-2xl border border-line bg-card lg:order-none lg:h-auto ${mapView === 'small' ? 'h-[22dvh]' : 'h-[32dvh]'}`}>
       <div className="absolute right-3 top-3 z-[1000] flex gap-1.5">
         <button type="button" onClick={() => setMapView(mapView === 'small' ? 'normal' : 'small')} aria-label={mapView === 'small' ? 'Restore map size' : 'Shrink map'} title={mapView === 'small' ? 'Restore map size' : 'Shrink map'} className="flex size-9 items-center justify-center rounded-lg border border-line bg-card/95 text-ink shadow-sm hover:bg-white">{mapView === 'small' ? <Maximize2 size={16} /> : <Minimize2 size={16} />}</button>
