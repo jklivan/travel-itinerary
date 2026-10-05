@@ -4,13 +4,14 @@ import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
 import * as recommendations from '../src/lib/placeRecommendation.ts'
+import * as placeMatching from '../src/lib/placeMatching.ts'
 const code = ts.transpileModule(readFileSync(new URL('../src/actions/placePeople.ts', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText
 function row(userId, options = {}) {
   return { rating: null, tags: [], notes: '', planningStatus: 'considering', ...options, destination: { itinerary: { id: 'trip-' + userId, title: 'Trip', isPlan: false, datesFlexible: false, postType: 'itinerary', endDate: new Date('2020-01-01'), user: { id: userId, name: userId }, ...options.trip } } }
 }
-function harness(rows = [], signedIn = true) {
+function harness(rows = [], signedIn = true, own = null) {
   const queries = [], exports = {}
-  vm.runInNewContext(code, { exports, require: name => ({ '@/auth': { auth: async () => signedIn ? { user: { id: 'me' } } : null }, '@/lib/prisma': { prisma: { follow: { findMany: async q => { queries.push(q); return [{ followingId: 'friend' }] } }, destItem: { findMany: async q => { queries.push(q); return rows } } } }, '@/lib/placeRecommendation': recommendations })[name] })
+  vm.runInNewContext(code, { exports, require: name => ({ '@/auth': { auth: async () => signedIn ? { user: { id: 'me' } } : null }, '@/lib/prisma': { prisma: { follow: { findMany: async q => { queries.push(q); return [{ followingId: 'friend' }] } }, destItem: { findMany: async q => { queries.push(q); return rows }, findFirst: async () => own } } }, '@/lib/placeRecommendation': recommendations, '@/lib/placeMatching': placeMatching })[name] })
   return { run: exports.placePeople, queries }
 }
 test('matches exact Google place identity and restricts to public trips and visible accounts', async () => {
@@ -61,7 +62,8 @@ test('unrated guide entries are included without claiming a visit or a like', as
   const legacy = h.queries[1].where.OR[1].AND
   assert.equal(legacy[0].OR[0].placeId, null)
   assert.equal(legacy[1].name.equals, 'CRU')
-  assert.equal(legacy[2].destination.OR[0].name.equals, 'Nantucket')
+  // Only the full destination and its city, never the state or country on their own.
+  assert.deepEqual(Array.from(legacy[2].destination.OR, area => area.name.equals), ['Nantucket, MA, USA', 'Nantucket'])
 })
 
 test('saved legacy places without a Google ID require a name and match only their destination/locality', async () => {
@@ -74,4 +76,20 @@ test('saved legacy places without a Google ID require a name and match only thei
   const missing = harness()
   assert.ok((await missing.run('', 'The Berkeley', '')).error)
   assert.equal(missing.queries.length, 0)
+})
+
+test('a generic name like Wine tasting needs the place itself to match, not just the name and town', async () => {
+  const here = { lat: 38.29, lng: -122.46, address: null }
+  const nearby = row('friend', { rating: 5, placeId: null, lat: 38.2905, lng: -122.4603 })
+  const elsewhere = row('other', { rating: 5, placeId: null, lat: 38.50, lng: -122.30 })
+  const unknown = row('unknown', { rating: 5, placeId: null })
+  const { people } = await harness([nearby, elsewhere, unknown], true, here).run('', 'Wine tasting', 'Sonoma, CA, USA', 'mine')
+  assert.deepEqual(people.map(p => p.userId), ['friend'])
+  // Without a map position to compare, a generic name never matches; a distinctive one in the same town still does.
+  assert.equal((await harness([unknown]).run('', 'Wine Tasting', 'Sonoma, CA, USA')).people.length, 0)
+  assert.equal((await harness([unknown]).run('', 'Bartholomew Estate', 'Sonoma, CA, USA')).people.length, 1)
+  // Same address counts when neither has a map position.
+  const addressed = row('friend', { rating: 5, placeId: null, address: '123 Main St, Sonoma, CA' })
+  assert.equal((await harness([addressed], true, { lat: null, lng: null, address: '123 main st., sonoma CA' }).run('', 'Wine tasting', 'Sonoma, CA, USA', 'mine')).people.length, 1)
+  assert.equal((await harness([addressed], true, { lat: null, lng: null, address: '9 Vine Rd, Sonoma, CA' }).run('', 'Wine tasting', 'Sonoma, CA, USA', 'mine')).people.length, 0)
 })

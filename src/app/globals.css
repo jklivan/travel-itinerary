@@ -40,8 +40,48 @@
   .btn-sm { min-height: 2.25rem; padding: 0 .875rem; font-size: .75rem; }
 
   .chip { display: inline-flex; align-items: center; gap: .25rem; min-height: 1.75rem; padding: 0 .75rem; border-radius: 9999px; border: 1px solid transparent; background: var(--color-chip); color: var(--color-ink); font-size: .75rem; font-weight: 500; white-space: nowrap; }
-  button.chip { min-height: 2.25rem; border-color: var(--color-line); background: var(--color-card); color: var(--color-link); }
+  /* Tappable chips (buttons and links): the outlined pill. Selected = navy. */
+  button.chip, a.chip { min-height: 2.25rem; border-color: var(--color-line); background: var(--color-card); color: var(--color-link); }
+  button.chip:hover:not(:disabled):not([aria-pressed="true"]), a.chip:hover { background: var(--color-cream); }
   button.chip[aria-pressed="true"] { border-color: var(--color-ink); background: var(--color-ink); color: #fff; }
+
+  /* View tabs (planner Places/Itinerary/Map, postcard Summary/Itinerary/Map): underlined, current one in blue. */
+  .tabs { display: flex; border-bottom: 1px solid var(--color-line); }
+  .tab { display: flex; flex: 1 1 0; min-height: 3rem; align-items: center; justify-content: center; margin-bottom: -1px; border-bottom: 2px solid transparent; padding: .75rem; font-weight: 600; color: var(--color-muted); text-align: center; }
+  .tab:hover { color: var(--color-ink-soft); }
+  .tab[aria-selected="true"], .tab[aria-current="page"] { border-color: var(--color-link); color: var(--color-link); }
+
+  /* Main pages (Explore, My Trips, Saved): same width, same title, same line under it. */
+  .page-wrap { max-width: 40rem; margin-inline: auto; padding: 1.5rem 1.25rem 2.5rem; }
+  @media (min-width: 640px) { .page-wrap { padding-inline: 2rem; } }
+  .page-header { margin-bottom: 1.25rem; }
+  .page-title { font-family: var(--font-playfair), Georgia, serif; font-size: 2rem; line-height: 1.05; letter-spacing: .04em; text-transform: uppercase; color: var(--color-ink); }
+  @media (min-width: 640px) { .page-title { font-size: 2.5rem; } }
+  .page-subtitle { margin-top: .5rem; font-size: .875rem; line-height: 1.4; color: var(--color-muted); }
+
+  /* Postage stamps (ui/Stamp): dashed white edge drawn with gradients, since short dashed borders can lose a side. */
+  .stamp { display: inline-block; padding: 3px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / .1), 0 2px 4px -2px rgb(0 0 0 / .1); }
+  .stamp-inner { --dash: rgb(255 255 255 / .75); display: block; padding: .375rem .625rem; font-size: 11px; font-weight: 700; line-height: 1.2; letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; color: #fff;
+    background:
+      repeating-linear-gradient(90deg, var(--dash) 0 4px, transparent 4px 7px) top / 100% 1px no-repeat,
+      repeating-linear-gradient(90deg, var(--dash) 0 4px, transparent 4px 7px) bottom / 100% 1px no-repeat,
+      repeating-linear-gradient(180deg, var(--dash) 0 4px, transparent 4px 7px) left / 1px 100% no-repeat,
+      repeating-linear-gradient(180deg, var(--dash) 0 4px, transparent 4px 7px) right / 1px 100% no-repeat; }
+  .stamp-sm .stamp-inner { padding: .25rem .4rem; font-size: 9px; letter-spacing: .1em; }
+
+  /* Form section labels (small spaced capitals), e.g. the new-plan form. */
+  .field-label { font-size: .75rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--color-link); }
+
+  /* Photo polaroids (place photos, snapshots): thick cream-white frame, deeper at the bottom, soft shadow, slight tilt. */
+  .photo-polaroid { position: relative; display: flex; flex-direction: column; padding: 4px 4px 8px; background: var(--color-card); box-shadow: 0 6px 16px #3d33221f, 0 1px 3px #3d332214; transform: rotate(-1.5deg); }
+  .photo-polaroid-image { position: relative; display: block; width: 100%; aspect-ratio: 1 / 1.08; overflow: hidden; background: var(--color-mist); }
+  .photo-polaroid-image > img { width: 100%; height: 100%; object-fit: cover; }
+  .photo-polaroid-credit { display: block; margin-top: 4px; font-size: 8px; line-height: 1.2; color: var(--color-muted); }
+
+  /* Bottom sheets (ui/BottomSheet: feed comments and likes) slide up from the bottom. */
+  .bottom-sheet[open] { animation: sheet-up .25s ease-out; }
+  @keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @media (prefers-reduced-motion: reduce) { .bottom-sheet[open] { animation: none; } }
 
   .panel { border: 1px solid var(--color-line); border-radius: 1rem; background: var(--color-card); }
 }
@@ -64,6 +104,12 @@
   --font-mono: var(--font-geist-mono);
   --font-serif: var(--font-playfair);
 }
+
+/* Everything you can click shows the hand cursor, like a link (Tailwind 4 leaves buttons on the arrow). */
+button:not(:disabled), [role="button"]:not([aria-disabled="true"]), summary, label:has(> input[type="checkbox"]), select { cursor: pointer; }
+
+/* Long placeholders shrink to fit their box (set by PlaceholderFit). */
+input::placeholder { font-size: var(--placeholder-size, inherit); }
 
 body {
   background: var(--color-paper);

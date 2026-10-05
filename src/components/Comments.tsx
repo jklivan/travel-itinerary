@@ -1,11 +1,12 @@
 'use client'
 
+import Link from 'next/link'
 import UserAvatar from './UserAvatar'
 import { useState, useTransition } from 'react'
 import { addComment, deleteComment } from '@/actions/comments'
 import { Trash2 } from 'lucide-react'
 
-type Comment = {
+export type Comment = {
   id: string
   content: string
   createdAt: Date
@@ -26,7 +27,7 @@ function fmtDate(d: Date) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function CommentInput({
+export function CommentInput({
   placeholder,
   onSubmit,
   autoFocus,
@@ -87,16 +88,19 @@ function CommentInput({
   )
 }
 
-function CommentRow({
+// onChanged: called after a delete or reply, for places that load comments themselves (the feed's comments sheet).
+export function CommentRow({
   comment,
   itineraryId,
   currentUserId,
   isReply = false,
+  onChanged,
 }: {
   comment: Comment | Comment['replies'][number]
   itineraryId: string
   currentUserId: string | undefined
   isReply?: boolean
+  onChanged?: () => void
 }) {
   const [replyOpen, setReplyOpen] = useState(false)
   const [, startTransition] = useTransition()
@@ -107,16 +111,17 @@ function CommentRow({
   function handleDelete() {
     startTransition(async () => {
       await deleteComment(comment.id)
+      onChanged?.()
     })
   }
 
   return (
     <div className={`flex gap-2.5 ${isReply ? 'pl-9' : ''}`}>
-      <Avatar name={comment.user.name} image={comment.user.image} />
+      <Link href={`/user/${comment.user.id}`} aria-label={comment.user.name} className="shrink-0"><Avatar name={comment.user.name} image={comment.user.image} /></Link>
       <div className="flex-1 min-w-0">
         <div className="bg-gray-50 rounded-xl px-3 py-2">
           <div className="flex items-center justify-between gap-2 mb-0.5">
-            <span className="text-xs font-semibold text-gray-800">{comment.user.name}</span>
+            <Link href={`/user/${comment.user.id}`} className="text-xs font-semibold text-gray-800 hover:underline">{comment.user.name}</Link>
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-gray-400">{fmtDate(comment.createdAt)}</span>
               {isOwn && (
@@ -147,6 +152,7 @@ function CommentRow({
                 itineraryId={itineraryId}
                 currentUserId={currentUserId}
                 isReply
+                onChanged={onChanged}
               />
             ))}
           </div>
@@ -160,7 +166,7 @@ function CommentRow({
               onCancel={() => setReplyOpen(false)}
               onSubmit={async (content) => {
                 const result = await addComment(itineraryId, content, comment.id)
-                if (!result.error) setReplyOpen(false)
+                if (!result.error) { setReplyOpen(false); onChanged?.() }
               }}
             />
           </div>

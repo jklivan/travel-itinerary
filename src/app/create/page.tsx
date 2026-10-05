@@ -1,6 +1,5 @@
 'use client'
 
-import BackButton from '@/components/BackButton'
 
 import TripFormatPicker from '@/components/TripFormatPicker'
 import { StarPicker as StarRating } from '@/components/ui/Stars'
@@ -588,9 +587,6 @@ export default function CreatePage({ searchParams }: { searchParams: Promise<{ s
         {/* ── START ──────────────────────────────────────────────────────── */}
         {step === 'start' && (
           <div className="space-y-5">
-            <div className="flex items-center justify-between mb-1">
-              <BackButton fallback="/" className="text-sm text-link hover:underline">← Back</BackButton>
-            </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900 mb-1">New post</h1>
               <p className="text-sm text-gray-500">Share your trip.</p>
@@ -809,7 +805,7 @@ export default function CreatePage({ searchParams }: { searchParams: Promise<{ s
                   { value: 'adult', label: 'Adults' },
                 ] as const).map(({ value, label }) => (
                   <button key={value} type="button" aria-pressed={tripAudience === value} onClick={() => setTripAudience(value)}
-                    className={`min-h-10 rounded-full border px-4 text-sm text-link ${tripAudience === value ? 'border-link bg-mist font-semibold' : 'border-line'}`}>
+                    className="chip">
                     {label}
                   </button>
                 ))}

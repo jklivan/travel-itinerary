@@ -3,11 +3,12 @@ import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
-import { TAGS } from '../src/lib/tags.ts'
+import { TAGS, storedTags } from '../src/lib/tags.ts'
+import * as locationMatch from '../src/lib/locationMatch.ts'
 
 const exports = {}
 const code = ts.transpileModule(readFileSync(new URL('../src/lib/exploreFilters.ts', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText
-vm.runInNewContext(code, { exports, require: name => { assert.equal(name, './tags'); return { TAGS } } })
+vm.runInNewContext(code, { exports, require: name => name === './locationMatch' ? locationMatch : (assert.equal(name, './tags'), { TAGS, storedTags }) })
 const { parseExploreFilters, exploreFilterWhere } = exports
 const plain = value => JSON.parse(JSON.stringify(value))
 

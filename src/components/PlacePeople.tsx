@@ -8,15 +8,15 @@ import { placePeople } from '@/actions/placePeople'
 import styles from './PlacePeople.module.css'
 
 type Result = Awaited<ReturnType<typeof placePeople>>
-export default function PlacePeople({ placeId, name, location = '', compact = false }: { placeId: string; name: string; location?: string; compact?: boolean }) {
+export default function PlacePeople({ placeId, name, location = '', itemId = '', compact = false }: { placeId: string; name: string; location?: string; itemId?: string; compact?: boolean }) {
   const [result, setResult] = useState<Result | null>(null)
   const [open, setOpen] = useState(false)
   const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     let active = true
-    void placePeople(placeId, name, location).then(value => { if (active) setResult(value) }).catch(() => { if (active) setResult({ people: [], error: 'Could not load recommendations.' }) })
+    void placePeople(placeId, name, location, itemId).then(value => { if (active) setResult(value) }).catch(() => { if (active) setResult({ people: [], error: 'Could not load recommendations.' }) })
     return () => { active = false }
-  }, [placeId, name, location, attempt])
+  }, [placeId, name, location, itemId, attempt])
   if (!result) return <p className={styles.status} role="status">Checking friends’ recommendations…</p>
   if (result.error) return <p className={styles.status}>{result.error} <button type="button" onClick={() => setAttempt(value => value + 1)}>Try again</button></p>
   const liked = result.people.filter(person => person.isFriend && person.liked)

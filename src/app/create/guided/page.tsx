@@ -1,6 +1,5 @@
 'use client'
 
-import BackButton from '@/components/BackButton'
 import RatingStars from '@/components/RatingStars'
 
 import TripFormatPicker from '@/components/TripFormatPicker'
@@ -643,7 +642,6 @@ export default function GuidedCreatePage() {
     <div className="max-w-6xl mx-auto px-4 py-6 pb-36">
       <TripEntryLayout places={mapPlaces}>
       <div className="flex items-center justify-between mb-5">
-        <BackButton fallback="/" className="text-sm text-blue-600 hover:underline">← Back</BackButton>
         {(dests.length > 0 || curItems.length > 0 || curDest.name.trim()) && (
           <button type="button" onClick={startOver} className="text-xs text-gray-400 hover:text-red-500 transition-colors">
             ↺ Start over

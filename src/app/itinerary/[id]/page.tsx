@@ -1,6 +1,5 @@
 import Comments from '@/components/Comments'
 import { hasTripDates, tripDuration } from '@/lib/dayTrips'
-import TripBackButton from '@/components/TripBackButton'
 import CopyTripButton from '@/components/CopyTripButton'
 import RatingStars from '@/components/RatingStars'
 import { prisma } from '@/lib/prisma'
@@ -11,12 +10,14 @@ import PhotoStrip from '@/components/PhotoStrip'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
-import { Plane, Hotel, Utensils, Camera, MapPin, Check, Ban, BedDouble } from 'lucide-react'
+import { Plane, Hotel, Utensils, Camera, MapPin, Check, Ban, Star, Users } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import { eventPhotos, pickEventPhoto, tripPhotoGallery } from '@/lib/eventPhotos'
-import { tagMeta } from '@/lib/tags'
 import DeleteButton from '@/components/DeleteButton'
 import { TRIP_STAMPS, STAMP_COLORS } from '@/lib/tripStamps'
+import { tripLocationLabel } from '@/lib/tripLocation'
+import TagChip, { TAG_PILL } from '@/components/ui/TagChip'
+import Stamp from '@/components/ui/Stamp'
 import ItineraryMap from '@/components/ItineraryMap'
 import type { ItemPin } from '@/components/ItineraryMapInner'
 import styles from './places.module.css'
@@ -157,7 +158,6 @@ const PLACE_CATEGORIES = {
 type PlaceCategory = keyof typeof PLACE_CATEGORIES
 
 // Trip-page chips use the shared .chip (globals.css); colours below only override its background.
-const TAG_CHIP = 'chip'
 
 const MEAL_GROUPS = [
   { value: 'breakfast', label: 'Breakfast' },
@@ -387,7 +387,7 @@ export default async function ItineraryPage({
   // friends who saved this itinerary
   const itineraryFriendBucketers = itineraryBucketersRows.map(r => r.friend_name)
 
-  const audienceLabel = ({ family: '👨‍👩‍👧 Family', friends: '🥳 Friends', romantic: '💕 Couples', adult: 'Adults' } as Record<string, string>)[it.audience]
+  const audienceLabel = ({ family: 'Family', friends: 'Friends', romantic: 'Couples', adult: 'Adults' } as Record<string, string>)[it.audience]
   const displayTags = it.tags
 
   // Build map pins from geocoded items
@@ -432,24 +432,24 @@ export default async function ItineraryPage({
 
     return (
       <div key={item.id} id={`place-${item.id}`} className="scroll-mt-24">
-      <PlaceDetailsCard messageHref={!isOwn ? `/messages/${it.user.id}?place=${encodeURIComponent(item.id)}` : undefined} editHref={isOwn ? editHref : undefined} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} ratings={<RatingsDetails itemId={item.id} authorName={isOwn ? 'You' : it.user.name} authorRating={item.rating} friends={friends} avg={avg} total={total} trips={trips} />} className={`${styles.card} ${styles[type]} ${isOwn ? styles.ownerPolaroid : ''} ${recommendation !== 'none' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
-        {recommendation === 'must' && type !== 'hotel' && <Image src="/must-do-stamp.png" alt="Must do" width={60} height={54} unoptimized className={styles.mustDoStamp} />}
-        {recommendation === 'must' && type === 'hotel' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><BedDouble size={24} aria-hidden="true" /><span>Must stay</span></span>}
+      <PlaceDetailsCard messageHref={!isOwn ? `/messages/${it.user.id}?place=${encodeURIComponent(item.id)}` : undefined} editHref={isOwn ? editHref : undefined} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} ratings={<RatingsDetails itemId={item.id} authorName={isOwn ? 'You' : it.user.name} authorRating={item.rating} friends={friends} avg={avg} total={total} trips={trips} />} className={`${styles.card} ${styles[type]} ${isOwn ? styles.ownerPolaroid : ''} ${recommendation !== 'none' && recommendation !== 'must' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
+        {recommendation === 'must' && <Stamp small label={type === 'hotel' ? 'Must stay!' : 'Must do!'} color={STAMP_COLORS[5]} className={`${styles.mustDoStamp} ${styles.verdictStamp}`} />}
         {recommendation === 'avoid' && <span className={`${styles.mustDoStamp} ${styles.textStamp} ${styles.avoidStamp}`}><Ban size={24} aria-hidden="true" /><span>Avoid</span></span>}
         {recommendation === 'option' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><span>Alternative</span></span>}
         {tilePhoto ? (
-          <div className={`${styles.thumbnail} ${isOwn ? styles.polaroidPhoto : ''}`}>
-            {isOwn ? <span className={styles.polaroidImage}><Image src={tilePhoto} alt="" fill sizes="132px" className="object-cover" /></span> : <Image src={tilePhoto} alt="" fill sizes="132px" className="object-cover" />}
+          <div className={`${styles.thumbnail} photo-polaroid`}>
+            <span className="photo-polaroid-image"><Image src={tilePhoto} alt="" fill sizes="132px" className="object-cover" /></span>
           </div>
         ) : (
-          <div className={`${styles.thumbnail} ${isOwn ? styles.polaroidPhoto : ''}`}>
-            {isOwn && <span className={styles.polaroidImage}>{type !== 'transport' && <GooglePlaceThumb itemId={item.id} />}</span>}
-            <div className={styles.keepsake} aria-hidden="true">
-              <span>{eyebrow}</span>
-              <Icon size={25} strokeWidth={1} />
-              <span>{item.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span>
-            </div>
-            {!isOwn && type !== 'transport' && <GooglePlaceThumb itemId={item.id} />}
+          <div className={`${styles.thumbnail} photo-polaroid`}>
+            <span className="photo-polaroid-image">
+              <span className={styles.keepsake} aria-hidden="true">
+                <span>{eyebrow}</span>
+                <Icon size={25} strokeWidth={1} />
+                <span>{item.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span>
+              </span>
+              {type !== 'transport' && <GooglePlaceThumb itemId={item.id} />}
+            </span>
           </div>
         )}
         <div className={styles.cardBody}>
@@ -479,7 +479,6 @@ export default async function ItineraryPage({
     <div className="min-h-screen bg-paper">
       {previewing && <PublishPreviewBar id={it.id} postType={it.postType} budget={it.budget} tripRating={it.tripRating} tags={it.tags} />}
       <div className={`max-w-4xl mx-auto px-4 ${isOwn ? 'pt-2 pb-6' : 'py-6'}`}>
-        <TripBackButton itineraryId={it.id} fallback={isOwn ? `/user/${it.user.id}` : "/"} className={isOwn ? 'mb-1 min-h-9' : ''} />
 
         {previewing ? (
           <div className="mb-4 rounded-lg border border-mist-line bg-mist px-3 py-2 text-xs font-medium text-ink">
@@ -497,30 +496,17 @@ export default async function ItineraryPage({
             {it.title}
           </h1>
 
-          <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3">
-            {it.destinations.map((d, i) => (
-              <span key={i} className="text-xs uppercase tracking-widest text-brown font-semibold">
-                {d.name}{d.country ? `, ${d.country}` : ''}
-              </span>
-            ))}
-          </div>
+          {tripLocationLabel(it.destinations) && <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-brown">{tripLocationLabel(it.destinations)}</p>}
 
           <div aria-label="Trip tags" className="flex flex-wrap gap-2 items-center mb-4">
             {!isOwn && <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />}
             {/* One chip style for everything here; the verdict uses its stamp colour, as on the trip cards. */}
-            {stamp && <span className={`${TAG_CHIP} font-semibold text-white`} style={{ backgroundColor: STAMP_COLORS[stamp.value] }}>{stamp.label}</span>}
-            {!!it.budget && it.budget > 0 && <span aria-label={`Budget ${it.budget} out of 5`} className={`${TAG_CHIP} bg-chip font-semibold tracking-tight`}>{[1, 2, 3, 4, 5].map(n => <span key={n} className={n <= it.budget! ? 'text-ink' : 'text-gold-faint'}>$</span>)}</span>}
-            {audienceLabel && <span className={`${TAG_CHIP} bg-chip text-ink`}>{audienceLabel}</span>}
-            {displayTags.map(tag => {
-              const meta = tagMeta(tag)
-              return meta ? (
-                <span key={tag} className={`${TAG_CHIP} bg-chip text-ink`}>
-                  {meta.emoji} {meta.label}
-                </span>
-              ) : null
-            })}
+            {stamp && <span className={`${TAG_PILL} text-white`} style={{ backgroundColor: STAMP_COLORS[stamp.value] }}><Star size={16} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />{stamp.label}</span>}
+            {!!it.budget && it.budget > 0 && <span aria-label={`Budget ${it.budget} out of 5`} className={`${TAG_PILL} gap-1 bg-chip`}>{[1, 2, 3, 4, 5].map(n => <span key={n} className={n <= it.budget! ? 'text-ink' : 'text-gold-faint'}>$</span>)}</span>}
+            {audienceLabel && <span className={`${TAG_PILL} bg-chip text-ink`}><Users size={18} strokeWidth={1.5} aria-hidden="true" />{audienceLabel}</span>}
+            {displayTags.map(tag => <TagChip key={tag} id={tag} />)}
             {it.bestMonths && it.bestMonths.length > 0 && it.bestMonths.map(m => (
-              <span key={m} className={`${TAG_CHIP} bg-mist text-ink`}>{m}</span>
+              <span key={m} className={`${TAG_PILL} bg-mist text-ink`}>{m}</span>
             ))}
           </div>
 
@@ -553,13 +539,7 @@ export default async function ItineraryPage({
                   else if (followStatus === 'pending') await cancelFollowRequest(it.user.id)
                   else await sendFollowRequest(it.user.id)
                 }}>
-                  <button type="submit" className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
-                    followStatus === 'accepted'
-                      ? 'border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-500'
-                      : followStatus === 'pending'
-                      ? 'border-amber-300 text-amber-700 hover:border-red-300 hover:text-red-500'
-                      : 'bg-ink border-ink text-white hover:bg-ink-soft'
-                  }`}>
+                  <button type="submit" aria-pressed={followStatus === 'accepted'} className="chip">
                     {followStatus === 'accepted' ? 'Following' : followStatus === 'pending' ? 'Requested' : '+ Follow'}
                   </button>
                 </form>
@@ -581,19 +561,11 @@ export default async function ItineraryPage({
           </div>
         </div>
 
-        <nav aria-label="Itinerary view" className="flex flex-wrap gap-1 bg-sand rounded-xl p-1 text-sm font-medium mb-3 w-fit">
-          <Link href={`/itinerary/${it.id}`} scroll={false} aria-current={!showMap && !showDayByDay ? 'page' : undefined}
-            className={`px-4 py-2 rounded-lg transition-colors ${!showMap && !showDayByDay ? 'bg-cream shadow-sm text-ink' : 'text-brown hover:text-ink-soft'}`}>
-            Trip Summary
-          </Link>
-          {hasDailyPlan && <Link href={`/itinerary/${it.id}?view=day-by-day`} scroll={false} aria-current={showDayByDay ? 'page' : undefined}
-            className={`px-4 py-2 rounded-lg transition-colors ${showDayByDay ? 'bg-cream shadow-sm text-ink' : 'text-brown hover:text-ink-soft'}`}>
-            Itinerary View
-          </Link>}
-          {mapPins.length > 0 && <Link href={`/itinerary/${it.id}?view=map`} scroll={false} aria-current={showMap ? 'page' : undefined}
-            className={`px-4 py-2 rounded-lg transition-colors ${showMap ? 'bg-cream shadow-sm text-ink' : 'text-brown hover:text-ink-soft'}`}>
-            Map View
-          </Link>}
+        {/* Same underlined tabs as the planner. */}
+        <nav aria-label="Itinerary view" className="tabs mb-5">
+          <Link href={`/itinerary/${it.id}`} scroll={false} aria-current={!showMap && !showDayByDay ? 'page' : undefined} className="tab">Summary</Link>
+          {hasDailyPlan && <Link href={`/itinerary/${it.id}?view=day-by-day`} scroll={false} aria-current={showDayByDay ? 'page' : undefined} className="tab">Itinerary</Link>}
+          {mapPins.length > 0 && <Link href={`/itinerary/${it.id}?view=map`} scroll={false} aria-current={showMap ? 'page' : undefined} className="tab">Map</Link>}
         </nav>
 
         {showMap && (
@@ -615,7 +587,8 @@ export default async function ItineraryPage({
               <div className="mb-10">
                 <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-1">Day by Day</h2>
                 <div className="h-px bg-line-strong mb-5" />
-                <div className="space-y-10">
+                {/* Narrower than the page on desktop, so short notes don't leave a wide empty card. */}
+                <div className="mx-auto max-w-2xl space-y-10">
                   {mainDestinations.map((dest) => {
                     const groups = groupItems(dest.items as DestItemRow[])
                     const multiStay = groups.length > 1
@@ -695,7 +668,8 @@ export default async function ItineraryPage({
               <div className="mb-10">
                 <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-1">Places from the trip</h2>
                 <div className="h-px bg-line-strong mb-5" />
-                <div className="space-y-10">
+                {/* Narrower than the page on desktop, so short notes don't leave a wide empty card. */}
+                <div className="mx-auto max-w-2xl space-y-10">
                   {mainDestinations.map((dest) => {
                     const dItems = dest.items as DestItemRow[]
                     const dHotels = dItems.filter(i => i.type === 'hotel')
@@ -804,8 +778,8 @@ export default async function ItineraryPage({
         </div>}
         {isOwn && <section aria-label="Manage trip" className="mt-8 border-t border-line-strong pt-5">
           <div className="flex flex-wrap items-center gap-2">
-            <Link href={editHref} className="inline-flex min-h-11 items-center rounded-full border border-line-strong px-4 py-2 text-sm font-medium text-ink-soft hover:bg-sand">Edit</Link>
-            <Link href={`/plan/${it.id}`} className="inline-flex min-h-11 items-center rounded-full bg-link px-4 py-2 text-sm font-semibold text-white">Add a place</Link>
+            <Link href={editHref} className="chip">Edit</Link>
+            <Link href={`/plan/${it.id}`} className="chip">Add a place</Link>
             <DeleteButton id={it.id} visibility={it.visibility} />
           </div>
         </section>}

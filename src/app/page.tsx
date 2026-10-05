@@ -71,15 +71,15 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
   const tripIds = feedTrips.map(trip => trip.id)
   const friendIds = userId ? (await prisma.follow.findMany({ where: { followerId: userId, status: 'accepted' }, select: { followingId: true } })).map(row => row.followingId) : []
   const [friendLikes, topComments] = tripIds.length ? await Promise.all([
-    friendIds.length ? prisma.bucketListItem.findMany({ where: { itineraryId: { in: tripIds }, userId: { in: friendIds } }, orderBy: { createdAt: 'desc' }, select: { itineraryId: true, user: { select: { name: true } } } }) : Promise.resolve([]),
+    friendIds.length ? prisma.bucketListItem.findMany({ where: { itineraryId: { in: tripIds }, userId: { in: friendIds } }, orderBy: { createdAt: 'desc' }, select: { itineraryId: true, user: { select: { id: true, name: true } } } }) : Promise.resolve([]),
     prisma.comment.findMany({ where: { itineraryId: { in: tripIds }, parentId: null }, orderBy: { createdAt: 'desc' }, select: { itineraryId: true, content: true, userId: true, user: { select: { name: true } }, _count: { select: { replies: true } } } }),
   ]) : [[], []]
   const social = new Map(tripIds.map(id => {
-    const liker = friendLikes.find(like => like.itineraryId === id)?.user.name ?? null
+    const liker = friendLikes.find(like => like.itineraryId === id)?.user ?? null
     const comments = topComments.filter(comment => comment.itineraryId === id)
     const pick = comments.find(comment => friendIds.includes(comment.userId))
       ?? [...comments].sort((a, b) => b._count.replies - a._count.replies)[0]
-    return [id, { likedBy: liker, comment: pick ? { name: pick.user.name, text: pick.content.split('\n')[0].slice(0, 200) } : null }]
+    return [id, { likedBy: liker, comment: pick ? { userId: pick.userId, name: pick.user.name, text: pick.content.split('\n')[0].slice(0, 200) } : null }]
   }))
 
   return (

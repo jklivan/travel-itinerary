@@ -1,23 +1,23 @@
 'use client'
 
+import PolaroidTile from '@/components/ui/PolaroidTile'
+
 export type TripFormat = 'guide' | 'day-trip' | 'itinerary'
 
-// Polaroid cards match the plan page's "What are you planning?" picker.
-const POLAROIDS: Record<TripFormat, { photo: string; tilt: string }> = {
-  guide: { photo: 'photo-1499793983690-e29da59ef1c2', tilt: 'rotate-[-4deg]' },
-  'day-trip': { photo: 'photo-1449965408869-eaa3f722e40d', tilt: 'rotate-[-2deg]' },
-  itinerary: { photo: 'photo-1436491865332-7a61a109cc05', tilt: 'rotate-[4deg]' },
+// The same polaroid option tiles as the plan page's choices (ui/PolaroidTile).
+const PHOTOS: Record<TripFormat, string> = {
+  guide: 'photo-1499793983690-e29da59ef1c2',
+  'day-trip': 'photo-1449965408869-eaa3f722e40d',
+  itinerary: 'photo-1436491865332-7a61a109cc05',
 }
 
 export default function TripFormatPicker({ value, onChange, variant = 'compact' }: { value: TripFormat; onChange: (value: TripFormat) => void; variant?: 'compact' | 'polaroid' }) {
   const options = [['guide', 'Guide', 'Places & ideas'], ['day-trip', 'Day trip', 'A short getaway'], ['itinerary', 'Multi-day trip', 'A longer journey']] as const
   if (variant === 'polaroid') return <fieldset>
-    <legend className="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink">What are you sharing?</legend>
-    <div className="grid grid-cols-3 gap-3 py-2">
-      {options.map(([format, label, hint]) => <button key={format} type="button" aria-pressed={value === format} onClick={() => onChange(format)} className={`${POLAROIDS[format].tilt} min-w-0 rounded-lg border bg-card p-1.5 pb-3 shadow-md sm:p-2 ${value === format ? 'border-link ring-2 ring-link/20' : 'border-line-soft'}`}>
-        <span className="block aspect-[3/4] rounded bg-cover bg-center" style={{ backgroundImage: `url(https://images.unsplash.com/${POLAROIDS[format].photo}?auto=format&fit=crop&w=480&q=85)` }} />
-        <span className="mt-2 block text-[10px] font-semibold uppercase leading-tight tracking-wide text-ink sm:text-sm">{label}</span>
-        <span className="mt-1 block text-[7px] uppercase tracking-wide text-link sm:text-[9px]">{hint}</span>
+    <legend className="field-label mb-3">What are you sharing?</legend>
+    <div className="grid grid-cols-3 gap-3 py-1">
+      {options.map(([format, label], index) => <button key={format} type="button" aria-pressed={value === format} onClick={() => onChange(format)} className="min-w-0">
+        <PolaroidTile photo={`https://images.unsplash.com/${PHOTOS[format]}?auto=format&fit=crop&w=360&q=80`} label={label} selected={value === format} index={index} />
       </button>)}
     </div>
     <p className="mt-2 text-xs text-muted">{value === 'guide' ? 'Recommendations without a set duration or daily schedule.' : value === 'day-trip' ? 'A one-day outing.' : 'A trip with a duration or a day-by-day itinerary.'}</p>

@@ -1,4 +1,5 @@
-import { TAGS } from './tags'
+import { TAGS, storedTags } from './tags'
+import { locationConditions } from './locationMatch'
 
 export const TRIP_TYPES = [
   { id: 'family', label: 'Family', emoji: '👨‍👩‍👧' },
@@ -22,14 +23,11 @@ export function parseExploreFilters(types?: string, tags?: string, location?: st
 export function exploreFilterWhere(filters: { types: string[]; tags: string[]; location: string }) {
   return {
     ...(filters.types.length ? { audience: { in: filters.types } } : {}),
-    ...(filters.tags.length ? { tags: { hasSome: filters.tags } } : {}),
+    ...(filters.tags.length ? { tags: { hasSome: storedTags(filters.tags) } } : {}),
     ...(filters.location ? {
       destinations: {
         some: {
-          OR: [
-            { name: { contains: filters.location, mode: 'insensitive' as const } },
-            { country: { contains: filters.location, mode: 'insensitive' as const } },
-          ],
+          OR: locationConditions(filters.location),
         },
       },
     } : {}),

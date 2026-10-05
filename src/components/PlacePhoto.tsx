@@ -32,17 +32,24 @@ export default function PlacePhoto({ itemId, name, photos = [], thumbnailClass, 
     return () => { observer.disconnect(); controller.abort() }
   }, [itemId])
   const displayPhoto = storedPhoto ? { url: storedPhoto, mapsUrl: '' } : photo
-  // Card thumbnails keep their width with or without a photo, so the illustrated fallback always has room.
-  return <div ref={element} className="shrink-0" style={displayPhoto && !failed && fullWidth ? { width: '100%' } : fullWidth ? { minHeight: 1 } : { width: '36%', maxWidth: 132 }}>
-    <div className={thumbnailClass} style={displayPhoto && !failed || !fullWidth ? { width: '100%' } : { display: 'none' }}>
-      {displayPhoto && !failed ? <>
-        {/* Card thumbnails fill their box (it has a minimum height, not a fixed one), cropped to fit. */}
+  if (fullWidth) return <div ref={element} className="shrink-0" style={displayPhoto && !failed ? { width: '100%' } : { minHeight: 1 }}>
+    <div className={thumbnailClass} style={displayPhoto && !failed ? { width: '100%' } : { display: 'none' }}>
+      {displayPhoto && !failed && <>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={sizedPhoto(displayPhoto.url, fullWidth ? 1080 : 640)} alt={name} className={fullWidth ? 'h-full w-full object-cover' : 'absolute inset-0 h-full w-full object-cover'} onError={() => setFailed(true)} />
-      </> : fallback}
+        <img src={sizedPhoto(displayPhoto.url, 1080)} alt={name} className="h-full w-full object-cover" onError={() => setFailed(true)} />
+      </>}
     </div>
-    {displayPhoto && !failed && displayPhoto.mapsUrl && <div className="relative z-[2] mt-1 space-y-1 bg-card p-1 text-xs leading-tight text-[#5e5e5e] [overflow-wrap:anywhere]">
-      <a href={displayPhoto.mapsUrl} target="_blank" rel="noopener noreferrer" aria-label={`View ${name} on Google Maps`} className="block font-normal not-italic tracking-normal">View place on <span translate="no">Google Maps</span></a>
-    </div>}
+    {displayPhoto && !failed && displayPhoto.mapsUrl && <a href={displayPhoto.mapsUrl} target="_blank" rel="noopener noreferrer" aria-label={`View ${name} on Google Maps`} className="mt-1 block text-xs text-muted">View place on <span translate="no">Google Maps</span></a>}
+  </div>
+  // Card thumbnails: a photo polaroid that keeps its size with or without a photo, so the illustrated fallback always has room.
+  // Google's credit sits in the polaroid's bottom strip.
+  return <div ref={element} className={`${thumbnailClass ?? ''} photo-polaroid`}>
+    <span className="photo-polaroid-image">
+      {displayPhoto && !failed ? <>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={sizedPhoto(displayPhoto.url, 640)} alt={name} className="absolute inset-0 h-full w-full object-cover" onError={() => setFailed(true)} />
+      </> : fallback}
+    </span>
+    {displayPhoto && !failed && displayPhoto.mapsUrl && <a href={displayPhoto.mapsUrl} target="_blank" rel="noopener noreferrer" aria-label={`View ${name} on Google Maps`} onClick={event => event.stopPropagation()} className="photo-polaroid-credit relative z-[2]">Photo: <span translate="no">Google Maps</span></a>}
   </div>
 }

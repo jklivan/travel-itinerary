@@ -14,6 +14,7 @@ import MoveToDay from '@/components/MoveToDay'
 
 import { preventImplicitSubmit } from '@/lib/preventImplicitSubmit'
 
+import SwipeToDelete from '@/components/SwipeToDelete'
 import EventPhotoInput from '@/components/EventPhotoInput'
 import { eventPhotos } from '@/lib/eventPhotos'
 
@@ -408,10 +409,14 @@ function SortableItem({ item, dayControl, isEditing, onEdit, onDraftChange, onUp
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="bg-cream rounded-xl">
+    <div ref={setNodeRef} style={style}>
+    {/* Swipe left to delete. Computers already have the Delete place button, so no hover button. */}
+    <SwipeToDelete title={item.name || 'this place'} hoverButton={false} className="rounded-xl" confirmLabel="Delete place" keepLabel="Keep place" onDelete={onRemove}
+      message={<>Delete <span className="font-semibold">{item.name || 'this place'}</span>? It’s removed from the trip when you save.</>}>
+    <div className="bg-cream rounded-xl">
       {dayControl}
       <div className="flex items-center justify-between px-3 py-2.5 gap-2">
-      <button type="button" {...attributes} {...listeners} className="text-gold-faint hover:text-muted cursor-grab active:cursor-grabbing shrink-0 touch-none">
+      <button type="button" data-no-swipe {...attributes} {...listeners} className="text-gold-faint hover:text-muted cursor-grab active:cursor-grabbing shrink-0 touch-none">
         <GripVertical size={14} />
       </button>
       <button type="button" onClick={onEdit} className="flex items-center gap-2 min-w-0 flex-1 text-left hover:opacity-75 transition-opacity">
@@ -420,6 +425,8 @@ function SortableItem({ item, dayControl, isEditing, onEdit, onDraftChange, onUp
       <button type="button" onClick={onRemove} aria-label={`Delete ${item.name || 'this place'}`} className="min-h-11 shrink-0 px-2 text-xs text-red-700 hover:underline">Delete place</button>
       </div>
       <EventPhotoInput photos={item.photos} name={item.name} onChange={onPhotoChange} onBusyChange={onPhotoBusyChange} />
+    </div>
+    </SwipeToDelete>
     </div>
   )
 }
@@ -647,7 +654,7 @@ export default function EditForm({ itinerary }: { itinerary: ItineraryData }) {
           </div>
           <div>
             <p className="text-xs font-medium text-muted mb-2">Tags</p>
-            <TagPicker theme="paper" selected={tags} onChange={setTags} />
+            <TagPicker selected={tags} onChange={setTags} />
           </div>
           <div>
             <p className="text-xs font-medium text-muted mb-2">Budget</p>

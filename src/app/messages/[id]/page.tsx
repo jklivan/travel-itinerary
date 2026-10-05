@@ -1,5 +1,4 @@
 
-import BackButton from '@/components/BackButton'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/auth'
@@ -36,7 +35,6 @@ export default async function ConversationPage({ params, searchParams }: { param
   const pageHref = attachment ? `${conversationHref}&place=${encodeURIComponent(attachment.id)}` : conversationHref
   return <div className="max-w-2xl mx-auto px-4 py-6">
     <MarkMessagesRead senderId={id} messageIds={result.messages.filter(message => message.recipientId === userId).map(message => message.id)} />
-    <BackButton fallback="/messages" className="text-sm text-brown">← Back</BackButton>
     <div className="my-5 flex flex-wrap items-center justify-between gap-3 border-b border-line-strong pb-4"><div><h1 className="font-[family-name:var(--font-playfair)] text-2xl text-ink break-words">{attachment?.name ?? person.name}</h1>{attachment && <p className="mt-1 text-sm text-brown">Conversation with {person.name}</p>}{trip ? <Link href={`/itinerary/${trip.id}`} className="mt-2 block text-sm font-semibold text-link underline">{title}</Link> : <p className="mt-2 text-sm font-semibold text-link">{title}</p>}<p className="mt-1 text-xs text-brown">{tripId ? 'A separate conversation for this trip.' : 'Messages without a trip attached.'}</p></div><MessageRefresh /></div>
     {result.hasOlder && <Link className="block mb-4 text-sm underline" href={`${pageHref}${tripId ? '&' : '?'}before=${result.messages[0].id}`}>Earlier messages</Link>}
     {before && <Link href={pageHref} className="block mb-4 text-sm underline">Latest messages</Link>}

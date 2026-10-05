@@ -1,20 +1,20 @@
 import Link from 'next/link'
-import { Search, ChevronRight, MapPin, MessagesSquare, Users, Globe } from 'lucide-react'
+import { Search } from 'lucide-react'
+import PolaroidTile from '@/components/ui/PolaroidTile'
 import styles from './ExploreLanding.module.css'
 
 const cards = [
-  { href: '/explore?tag=day-trip', title: 'Day trips', description: 'Quick escapes nearby', position: '0% 0%', Icon: MapPin, color: '#979e87' },
-  { href: '/explore?view=tags', title: 'Search by trip type', description: 'Family trips, couples getaways, and more', position: '0% 100%', Icon: Users, color: '#7e919c' },
-  { href: '/explore?view=destinations', title: 'Search by destination', description: 'Explore places around the world', position: '100% 100%', Icon: Globe, color: '#979e87' },
-  { href: '/explore/questions', title: 'Ask your friends', description: 'Get recommendations & travel advice', position: '100% 0%', Icon: MessagesSquare, color: '#ad9072' },
+  { href: '/explore?tag=day-trip', title: 'Day trips', position: '0% 0%' },
+  { href: '/explore?view=tags', title: 'Search by trip type', position: '0% 100%' },
+  { href: '/explore?view=destinations', title: 'Search by destination', position: '100% 100%' },
+  { href: '/explore/questions', title: 'Ask your friends', position: '100% 0%' },
 ]
 
 export default function ExploreLanding() {
-  return <div className={styles.page}>
-    <header className={styles.heading}>
-      <p className={styles.eyebrow}>Explore</p>
-      <h1>Where to next?</h1>
-      <p className={styles.intro}>Find ideas, get inspired, and plan your next trip together.</p>
+  return <div className={`page-wrap ${styles.page}`}>
+    <header className="page-header">
+      <h1 className="page-title">Where to next?</h1>
+      <p className="page-subtitle">Find ideas, get inspired, and plan your next trip together.</p>
     </header>
     <form action="/explore" className={styles.search} role="search">
       <label className="sr-only" htmlFor="explore-search">Search destinations, trip types, or keywords</label>
@@ -22,13 +22,9 @@ export default function ExploreLanding() {
       <input id="explore-search" name="q" type="search" required placeholder="Search destinations, trip types, or keywords" />
     </form>
     <nav aria-label="Ways to explore" className={styles.grid}>
-      {cards.map(card => <Link key={card.href} href={card.href} className={styles.card}>
-        <span aria-hidden="true" className={styles.photo} style={{ backgroundPosition: card.position }} />
-        <div className={styles.cardContent}>
-        <span className={styles.badge} style={{ backgroundColor: card.color }} aria-hidden="true"><card.Icon size={23} strokeWidth={1.6} /></span>
-        <h2>{card.title}</h2>
-        <div className={styles.cardFooter}><p>{card.description}</p><span className={styles.arrow} aria-hidden="true"><ChevronRight size={20} /></span></div>
-        </div>
+      {/* Same polaroid tiles as Search by trip type and the new-plan choices, with an arrow. */}
+      {cards.map((card, index) => <Link key={card.href} href={card.href} className={styles.card}>
+        <PolaroidTile photo="/explore-photos.webp" photoPosition={card.position} photoSize="200% 200%" label={card.title} index={index} trailing="arrow" size="lg" />
       </Link>)}
     </nav>
   </div>

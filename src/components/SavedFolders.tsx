@@ -28,7 +28,7 @@ export default function SavedFolders({ userId, folders, selected, total, basePat
     <div className="mb-6 rounded-xl border border-sand bg-cream p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 font-semibold text-ink"><Folder size={18} />Your folders</h2>
-        <button type="button" disabled={pending} onClick={() => { setEditing('new'); setName(''); setError(''); setDeleting(false) }} className="flex items-center gap-1 text-sm text-ink-soft"><Plus size={16} />New folder</button>
+        <button type="button" disabled={pending} onClick={() => { setEditing('new'); setName(''); setError(''); setDeleting(false) }} className="chip"><Plus size={14} />New folder</button>
       </div>
       <nav aria-label="Saved folders" className="flex flex-wrap gap-2">
         {options.map(folder => <Link key={folder.id} href={folder.id ? folderHref(folder.id) : base} aria-current={selected === folder.id ? 'page' : undefined}

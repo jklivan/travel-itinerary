@@ -81,6 +81,9 @@
   pointer-events: none;
 }
 
+/* Must do!: the shared stamp, stuck on the photo's top corner so it never covers the place's name. */
+.mustDoStamp.verdictStamp { width: auto; top: 4px; right: auto; left: 2px; mix-blend-mode: normal; z-index: 3; transform: rotate(-8deg); }
+
 .textStamp {
   display: flex;
   flex-direction: column;
@@ -113,15 +116,15 @@
   box-shadow: 0 4px 14px #403b2919;
 }
 
+/* Place photo: a .photo-polaroid (globals.css) sized for the card. */
 .thumbnail {
-  position: relative;
   flex-shrink: 0;
   width: 36%;
   max-width: 132px;
-  min-height: 132px;
-  height: auto;
-  align-self: stretch;
-  overflow: hidden;
+  align-self: flex-start;
+}
+
+.thumbnail :global(.photo-polaroid-image) {
   background: var(--place-tint);
 }
 
@@ -134,37 +137,8 @@
   box-shadow: 0 4px 12px #403b2912;
 }
 
-.polaroidPhoto {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  aspect-ratio: 0.82;
-  min-height: 0;
-  height: auto;
-  padding: 5px 5px 20px;
-  align-self: flex-start;
-  overflow: hidden;
-  border: 1px solid var(--color-line-soft);
-  background: #fff;
-  box-shadow: 0 2px 5px #1f335418;
-}
-
-.polaroidImage {
-  position: relative;
-  display: block;
-  width: 100%;
-  aspect-ratio: 1;
-  flex: 0 0 auto;
-  overflow: hidden;
-  background: var(--place-tint);
-}
-
 .thumbnail:has([data-place-photo]) .keepsake {
   display: none;
-}
-
-.polaroidPhoto .keepsake {
-  inset: 5px 5px 20px;
 }
 
 .keepsake {

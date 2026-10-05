@@ -4,17 +4,22 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { TAGS } from '@/lib/tags'
 import { TRIP_TYPES } from '@/lib/exploreFilters'
-import { ChevronDown, MapPin, Check } from 'lucide-react'
+import { ChevronDown, MapPin } from 'lucide-react'
+import PolaroidTile from '@/components/ui/PolaroidTile'
 
-const TILE_PHOTOS: Record<string, string> = {
-  family: 'photo-1475503572774-15a45e5d60b9', friends: 'photo-1529156069898-49953e39b3ac', romantic: 'photo-1516589178581-6cd7833ae3b2', adult: 'photo-1517248135467-4c7edcad34c4',
+// Who's coming and travel styles both have a 'romantic' id, so the groups have separate photo lists.
+const TYPE_PHOTOS: Record<string, string> = {
+  family: 'photo-1475503572774-15a45e5d60b9', friends: 'photo-1529156069898-49953e39b3ac', romantic: 'photo-1494774157365-9e04c6720e47', adult: 'photo-1517248135467-4c7edcad34c4',
+}
+const TAG_PHOTOS: Record<string, string> = {
+  romantic: 'photo-1516589178581-6cd7833ae3b2', skiing: 'photo-1551698618-1dfe5d97d256',
   'day-trip': 'photo-1500530855697-b586d89ba3ee', adventure: 'photo-1464822759023-fed622ff2c3b', beach: 'photo-1507525428034-b723cf961d3e', city: 'photo-1477959858617-67f85cf4f1df',
-  culture: 'photo-1549490349-8643362247b5', food: 'photo-1552566626-52f8b828add9', hiking: 'photo-1551632811-561732d1e306', history: 'photo-1552832230-c0197dd311b5',
+  culture: 'photo-1549490349-8643362247b5', food: 'photo-1552566626-52f8b828add9', history: 'photo-1552832230-c0197dd311b5',
   luxury: 'photo-1566073771259-6a8506099945', nature: 'photo-1441974231531-c6227db76b6e', nightlife: 'photo-1514525253161-7a46d19cd819', relaxing: 'photo-1500534623283-312aade485b7', 'road-trip': 'photo-1469854523086-cc02fe5d8800', shopping: 'photo-1441986300917-64674bd600d8', wildlife: 'photo-1549366021-9f761d450615',
 }
 
-function tilePhoto(id: string) {
-  return `https://images.unsplash.com/${TILE_PHOTOS[id] ?? 'photo-1500530855697-b586d89ba3ee'}?auto=format&fit=crop&w=360&q=75`
+function tilePhoto(group: 'types' | 'tags', id: string) {
+  return `https://images.unsplash.com/${(group === 'types' ? TYPE_PHOTOS : TAG_PHOTOS)[id] ?? 'photo-1500530855697-b586d89ba3ee'}?auto=format&fit=crop&w=360&q=75`
 }
 
 export default function ExploreTripFilters({
@@ -80,7 +85,7 @@ export default function ExploreTripFilters({
 
       {open && (
         <form
-          className="px-5 pb-5 sm:px-6 sm:pb-6 border-t border-sand"
+          className="px-3 pb-5 sm:px-6 sm:pb-6 border-t border-sand"
           onSubmit={e => { e.preventDefault(); submit() }}
         >
           <p className="mt-4 mb-5 text-sm leading-relaxed text-brown">
@@ -92,8 +97,8 @@ export default function ExploreTripFilters({
               <legend className="mb-3 font-[family-name:var(--font-playfair)] text-xl text-ink">
                 {group.title}
               </legend>
-              <div className="grid grid-cols-4 gap-2">
-                {group.options.map(option => {
+              <div className="grid grid-cols-4 gap-x-2 gap-y-3 sm:gap-x-3">
+                {group.options.map((option, index) => {
                   const isChecked = selected[group.name].includes(option.id)
                   return (
                     <label key={option.id} className="cursor-pointer">
@@ -113,16 +118,7 @@ export default function ExploreTripFilters({
                         }}
                         className="sr-only"
                       />
-                      <div className={[
-                        'flex flex-col items-center overflow-hidden rounded-xl border-2 bg-card text-center transition-all select-none',
-                        isChecked
-                          ? 'border-link shadow-sm'
-                          : 'border-line-soft hover:bg-chip',
-                        pending ? 'opacity-60' : '',
-                      ].join(' ')}>
-                        <span className="block aspect-[1.35] w-full bg-cover bg-center" style={{ backgroundImage: `url(${tilePhoto(option.id)})` }} aria-hidden="true" />
-                        <span className="flex w-full items-center justify-center gap-1 px-1 py-1.5"><span className="text-[10px] font-medium leading-tight text-ink-soft">{option.label}</span><span className={`grid size-4 shrink-0 place-items-center rounded-full border ${isChecked ? 'border-link bg-link text-white' : 'border-ink-soft text-transparent'}`}><Check size={10} strokeWidth={3} /></span></span>
-                      </div>
+                      <PolaroidTile photo={tilePhoto(group.name, option.id)} label={option.label} selected={isChecked} index={index} dimmed={pending} />
                     </label>
                   )
                 })}

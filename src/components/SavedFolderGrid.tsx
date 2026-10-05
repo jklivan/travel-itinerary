@@ -51,11 +51,11 @@ export default function SavedFolderGrid({ folders, total }: { folders: FolderSum
   const [pending, startTransition] = useTransition()
 
   return <>
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <h1 className="font-[family-name:var(--font-playfair)] text-4xl uppercase tracking-[0.04em] text-ink">Saved</h1>
-      <button type="button" disabled={pending} onClick={() => { setCreating(true); setName(''); setError('') }} className="btn btn-primary uppercase tracking-[0.16em]"><Plus size={18} />New folder</button>
-    </div>
-    <p className="mb-5 mt-2 text-xs uppercase tracking-[0.16em] text-muted">Trips you’ve saved, sorted into folders.</p>
+    <header className="page-header">
+      <h1 className="page-title">Saved</h1>
+      <p className="page-subtitle">Trips you’ve saved, sorted into folders.</p>
+    </header>
+    {!creating && <button type="button" disabled={pending} onClick={() => { setCreating(true); setName(''); setError('') }} className="chip mb-5"><Plus size={14} />New folder</button>}
     {creating && <form className="mb-5 rounded-xl border border-line-soft bg-card p-4" onSubmit={event => {
       event.preventDefault(); setError('')
       startTransition(async () => {

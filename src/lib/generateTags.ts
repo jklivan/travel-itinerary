@@ -3,9 +3,9 @@ import Anthropic from '@anthropic-ai/sdk'
 const client = new Anthropic()
 
 const TAG_IDS = [
-  'adventure', 'beach', 'city', 'culture', 'food', 'hiking',
+  'adventure', 'beach', 'city', 'culture', 'food',
   'history', 'luxury', 'nature', 'nightlife', 'relaxing',
-  'road-trip', 'romantic', 'shopping', 'wildlife',
+  'road-trip', 'romantic', 'shopping', 'skiing', 'wildlife',
 ] as const
 
 type Item = { type: string; name: string; notes: string | null }

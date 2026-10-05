@@ -1,5 +1,4 @@
 
-import BackButton from '@/components/BackButton'
 import ExploreLanding from '@/components/ExploreLanding'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
@@ -10,7 +9,8 @@ import ItineraryCard from '@/components/ItineraryCard'
 import { tripPhotoGallery } from '@/lib/eventPhotos'
 import ExploreSearchBar from '@/components/ExploreSearchBar'
 import { parseSearchQuery, type ParsedQuery } from '@/lib/parseSearchQuery'
-import { tagMeta } from '@/lib/tags'
+import { tagMeta, storedTags } from '@/lib/tags'
+import { locationConditions } from '@/lib/locationMatch'
 import { DAY_TRIP_TAG, isDayTrip } from '@/lib/dayTrips'
 import { MapPin } from 'lucide-react'
 import ExploreMap from '@/components/ExploreMap'
@@ -270,15 +270,12 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     const where: ItineraryWhereInput = {}
     if (parsed.postType) where.postType = parsed.postType
     if (parsed.audience) where.audience = parsed.audience
-    if (parsed.tags.length > 0) where.tags = { hasSome: parsed.tags }
+    if (parsed.tags.length > 0) where.tags = { hasSome: storedTags(parsed.tags) }
     if (parsed.maxBudget) where.budget = { lte: parsed.maxBudget }
     if (parsed.locationTerms.length > 0) {
       where.destinations = {
         some: {
-          OR: parsed.locationTerms.flatMap((term) => [
-            { name: { contains: term, mode: 'insensitive' } },
-            { country: { contains: term, mode: 'insensitive' } },
-          ]),
+          OR: parsed.locationTerms.flatMap(locationConditions),
         },
       }
     }
@@ -294,7 +291,12 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     })
     console.log('[search] all destinations:', allDests.map(d => `"${d.name}" / "${d.country}"`).join(' | '))
 
-    const { itineraries, bucketSet } = await fetchItineraries(where, userId)
+    let { itineraries, bucketSet } = await fetchItineraries(where, userId)
+    // A place search that finds nothing with the extra filters the AI read into it (vibes, who it's for, budget)
+    // falls back to just the place, so "california" still finds every California trip.
+    if (!itineraries.length && where.destinations && (where.tags || where.audience || where.budget || where.postType)) {
+      ({ itineraries, bucketSet } = await fetchItineraries({ destinations: where.destinations }, userId))
+    }
     console.log('[search] result count:', itineraries.length)
     for (const it of itineraries) {
       console.log('[search] match:', it.title, '|', it.destinations.map(d => `${d.name} / ${d.country}`).join(', '))
@@ -302,7 +304,6 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <BackButton fallback="/explore" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
         <ExploreSearchBar />
         <SearchFiltersDisplay parsed={parsed} />
         <p className="text-sm text-brown mb-4">
@@ -319,7 +320,6 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     const { itineraries, bucketSet } = await fetchItineraries({ tags: { has: tag } }, userId)
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <BackButton fallback="/explore?view=tags" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="mb-5">
           <h1 className="font-[family-name:var(--font-playfair)] text-2xl tracking-wide text-ink">
             {meta?.label ?? tag}
@@ -351,7 +351,6 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     )
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <BackButton fallback={country === 'United States' ? '/explore?view=destinations' : `/explore?country=${encodeURIComponent(country)}`} className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="mb-5">
           <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink flex items-center gap-2">
             <MapPin size={18} className="text-ink-soft" />
@@ -443,7 +442,6 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
-        <BackButton fallback="/explore" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="mb-5">
           <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink">{country}</h2>
           <p className="text-sm text-brown">{cities.length} destination{cities.length !== 1 ? 's' : ''}</p>
@@ -504,7 +502,6 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     const meta = TRIP_TYPE_META[type]
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <BackButton fallback="/explore?view=tags" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="mb-5">
           <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink">{meta.emoji} {meta.label}</h2>
           <p className="text-sm text-brown">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
@@ -520,8 +517,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     const { itineraries, bucketSet } = await fetchItineraries(exploreFilterWhere(filters), userId)
 
     return (
-      <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <BackButton fallback="/explore" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
+      <div className="max-w-xl mx-auto px-4 py-6 sm:px-8">
         <h1 className="font-[family-name:var(--font-playfair)] text-2xl sm:text-3xl tracking-wide text-ink mb-5">SEARCH BY TRIP TYPE</h1>
         <ExploreTripFilters key={`${filters.types.join(',')}|${filters.tags.join(',')}|${filters.location}`} types={filters.types} tags={filters.tags} location={filters.location} />
         <div className="mt-7">
@@ -536,7 +532,6 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
   if (view === 'hotspots') {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <BackButton fallback="/explore" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="text-center py-24">
           <p className="text-5xl mb-4">🔥</p>
           <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-2">Hot Spots</h2>
@@ -550,7 +545,6 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
   if (view === 'recs') {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-        <BackButton fallback="/explore" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
         <div className="text-center py-24">
           <p className="text-5xl mb-4">👥</p>
           <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-2">Friends&apos; Trips</h2>
@@ -586,7 +580,6 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     return (
       <div className="flex flex-col" style={{ height: 'calc(100dvh - 3.5rem)' }}>
         <div className="px-4 py-3 flex items-center justify-between border-b border-sand bg-cream shrink-0">
-          <BackButton fallback="/explore" className="text-sm text-ink-soft hover:underline">← Back</BackButton>
           <span className="text-sm text-brown">{pins.length} place{pins.length !== 1 ? 's' : ''} mapped</span>
         </div>
         <div className="flex-1 min-h-0">
@@ -604,7 +597,6 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
-        <BackButton fallback="/explore?view=destinations" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
         <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-5">{region}</h1>
         {cards.length === 0 ? (
           <p className="text-sm text-brown italic">No destinations yet.</p>
@@ -647,7 +639,6 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
-      <BackButton fallback="/explore" className="text-sm text-ink-soft hover:underline mb-5 inline-block">← Back</BackButton>
       <div className="mb-5">
         <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-ink">Destinations</h1>
       </div>

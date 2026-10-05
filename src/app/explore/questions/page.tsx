@@ -1,5 +1,4 @@
 
-import BackButton from '@/components/BackButton'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/auth'
@@ -15,10 +14,9 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
   const result = await getFriendQuestions(before)
   if (!result.questions) notFound()
   return <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
-    <BackButton fallback="/explore" className="text-sm text-brown">← Back</BackButton>
     <div className="flex items-center justify-between gap-3">
       <div><h1 className="font-[family-name:var(--font-playfair)] text-3xl text-ink">Ask your friends</h1><p className="mt-2 text-sm text-brown">Trip questions, trusted advice, and ideas worth sharing.</p></div>
-      <MessageRefresh label="Refresh questions" />
+      <MessageRefresh />
     </div>
     <QuestionComposer />
     <section aria-label="Questions from your circle" className="space-y-3">

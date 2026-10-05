@@ -2,7 +2,7 @@ import Link from 'next/link'
 import PostcardBrand from './PostcardBrand'
 import { auth } from '@/auth'
 import HeaderMessagesLink from './HeaderMessagesLink'
-import HeaderPostButton from './HeaderPostButton'
+import HeaderLeft from './HeaderLeft'
 import { User } from 'lucide-react'
 
 export default async function Navbar() {
@@ -10,9 +10,9 @@ export default async function Navbar() {
 
   return (
     <header className="app-header postcard-header bg-paper text-ink sticky top-0 z-40">
-      {/* Signed in: + (post) · centered logo · messages and profile. Signed out: logo left, sign-in right. */}
+      {/* Signed in: + on Feed, Back elsewhere · centered logo · messages and profile. Signed out: logo left, sign-in right. */}
       <div className={`max-w-5xl mx-auto px-4 py-3 items-center gap-2 ${session?.user ? 'grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'flex flex-wrap justify-between gap-3'}`}>
-        {session?.user && <div className="flex justify-start"><HeaderPostButton /></div>}
+        {session?.user && <div className="flex justify-start"><HeaderLeft /></div>}
         <Link href="/" aria-label="Postcard home" className="shrink-0">
           <PostcardBrand />
         </Link>

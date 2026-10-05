@@ -6,13 +6,14 @@ import { Compass, CalendarDays, ChevronDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { copyStoryToPlan } from '@/actions/stories'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
+import PolaroidTile from '@/components/ui/PolaroidTile'
 import { startPlan, copyPlaceToPlan } from '@/actions/planning'
 import { importIntoPlan } from '@/actions/planImport'
 import { saveImportNotes } from '@/actions/importNotes'
 import { readFileForUpload, fetchExtraction } from '@/lib/importFiles'
 import { importedPlaces } from '@/lib/planImport'
 
-export const inputClass = 'mt-1 w-full min-w-0 rounded-xl border border-line bg-card px-3 py-3 text-sm text-ink'
+export const inputClass = 'mt-1.5 w-full min-w-0 rounded-xl border border-line bg-card px-3 py-3 text-sm font-normal normal-case tracking-normal text-ink'
 // The shared dark button (see .btn in globals.css).
 export const buttonClass = 'btn btn-primary'
 
@@ -83,25 +84,24 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
       {/* Two ways to plan: day by day (asks how many days, so places can go on a day right away), or just
           collecting ideas (a guide). One day is saved as a day trip. */}
       <fieldset>
-        <legend className="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink">How do you want to plan?</legend>
+        <legend className="field-label mb-3">How do you want to plan?</legend>
         <input type="hidden" name="format" value={style === 'ideas' ? 'guide' : days === '1' ? 'day-trip' : 'itinerary'} />
-        <div className="mx-auto grid max-w-[270px] grid-cols-2 gap-4 py-2">
+        {/* Same polaroid tiles as Search by trip type. */}
+        <div className="mx-auto grid max-w-[260px] grid-cols-2 gap-4 py-1">
           {[
-            { value: 'ideas', label: 'Start collecting ideas', hint: 'Places & ideas', photo: 'photo-1499793983690-e29da59ef1c2', tilt: 'rotate-[-3deg]' },
-            { value: 'days', label: 'Plan day by day', hint: 'A day-by-day itinerary', photo: 'photo-1435527173128-983b87201f4d', tilt: 'rotate-[3deg]' },
-          ].map(option => <button key={option.value} type="button" aria-pressed={style === option.value} onClick={() => setStyle(option.value as 'days' | 'ideas')} className={`${option.tilt} min-w-0 rounded-lg border bg-card p-1.5 pb-3 shadow-md sm:p-2 ${style === option.value ? 'border-link ring-2 ring-link/20' : 'border-line-soft'}`}>
-            <span className="block aspect-[4/3] rounded bg-cover bg-center" style={{ backgroundImage: `url(https://images.unsplash.com/${option.photo}?auto=format&fit=crop&w=480&q=85)` }} />
-            <span className="mt-2 block text-[11px] font-semibold uppercase leading-tight tracking-wide text-ink sm:text-sm">{option.label}</span>
-            <span className="mt-1 block text-[8px] uppercase tracking-wide text-link sm:text-[9px]">{option.hint}</span>
+            { value: 'ideas', label: 'Start collecting ideas', photo: 'photo-1499793983690-e29da59ef1c2' },
+            { value: 'days', label: 'Plan day by day', photo: 'photo-1435527173128-983b87201f4d' },
+          ].map((option, index) => <button key={option.value} type="button" aria-pressed={style === option.value} onClick={() => setStyle(option.value as 'days' | 'ideas')} className="min-w-0">
+            <PolaroidTile photo={`https://images.unsplash.com/${option.photo}?auto=format&fit=crop&w=360&q=80`} label={option.label} selected={style === option.value} index={index} size="lg" />
           </button>)}
         </div>
-        {style === 'days' && <label className="mt-4 block text-[10px] font-semibold uppercase tracking-[0.16em] text-link">How many days?
+        {style === 'days' && <label className="mt-4 block"><span className="field-label">How many days?</span>
           <input name="durationDays" type="number" inputMode="numeric" min={1} max={365} step={1} required value={days} onChange={event => setDays(event.target.value)} placeholder="e.g. 5" className={inputClass} />
         </label>}
       </fieldset>
-      <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-link">Where are you thinking?<PlacesAutocomplete name="destination" value={destination} onChange={setDestination} onSelect={(main, secondary) => setDestination([main, secondary].filter(Boolean).join(', '))} type="destination" maxLength={160} placeholder="e.g. Italy, Japan, a weekend away…" className={inputClass} /></label>
-      <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-link">Trip name <span className="font-normal normal-case tracking-normal">(optional)</span><input name="title" maxLength={160} placeholder="Summer in Italy" className={inputClass} /></label>
-      <fieldset><legend className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-link">Who is this trip for?</legend><input type="hidden" name="audience" value={audience} /><div className="flex flex-wrap gap-2">{([{ value: 'family', label: 'Family' }, { value: 'friends', label: 'Friends' }, { value: 'romantic', label: 'Couples' }, { value: 'adult', label: 'Adults' }] as const).map(option => <button key={option.value} type="button" aria-pressed={audience === option.value} onClick={() => setAudience(option.value)} className="chip">{option.label}</button>)}</div></fieldset>
+      <label className="block"><span className="field-label">Where are you thinking?</span><PlacesAutocomplete name="destination" value={destination} onChange={setDestination} onSelect={(main, secondary) => setDestination([main, secondary].filter(Boolean).join(', '))} type="destination" maxLength={160} placeholder="e.g. Italy, Japan, a weekend away…" className={inputClass} /></label>
+      <label className="block"><span className="field-label">Trip name</span> <span className="text-xs text-muted">(optional)</span><input name="title" maxLength={160} placeholder="Summer in Italy" className={inputClass} /></label>
+      <fieldset><legend className="field-label mb-2">Who is this trip for?</legend><input type="hidden" name="audience" value={audience} /><div className="flex flex-wrap gap-2">{([{ value: 'family', label: 'Family' }, { value: 'friends', label: 'Friends' }, { value: 'romantic', label: 'Couples' }, { value: 'adult', label: 'Adults' }] as const).map(option => <button key={option.value} type="button" aria-pressed={audience === option.value} onClick={() => setAudience(option.value)} className="chip">{option.label}</button>)}</div></fieldset>
       <details><summary className="flex cursor-pointer list-none items-center gap-3 py-2 text-sm text-link"><CalendarDays size={20} />Add dates (optional)<ChevronDown size={18} className="ml-auto" /></summary><DateFields /></details>
       <p className="flex items-start gap-3 rounded-xl bg-[#f0f1eb] p-4 text-sm leading-relaxed text-link"><Compass size={26} className="mt-1 shrink-0" /><span>Start with an idea. Save hotels, restaurants, and things to do as you find them. Your plan stays private until you share it.</span></p>
       <button type="submit" value="plan" className={`${buttonClass} w-full`}>{saving && !stage ? 'Saving your plan…' : 'Start planning →'}</button>

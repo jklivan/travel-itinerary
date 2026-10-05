@@ -124,7 +124,7 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
           }} onPointerCancel={() => { touch.current = null; setHolding(false) }} onLostPointerCapture={() => { touch.current = null; setHolding(false) }}>
             {/* A tilted polaroid on cream paper, the place in serif, and the caption handwritten. */}
             <article className={styles.story}>
-              <div className={styles.polaroid}>
+              <div className={`photo-polaroid ${styles.polaroid}`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img key={story.id} src={sizedPhoto(story.photoUrl, 1080)} alt={story.placeName} draggable={false} onLoad={() => setLoaded(story.id)} onError={() => setLoaded(story.id)} />
               </div>

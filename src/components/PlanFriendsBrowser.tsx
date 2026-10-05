@@ -1,6 +1,5 @@
 'use client'
 
-import BackButton from '@/components/BackButton'
 
 import Link from 'next/link'
 import { useRef, useState } from 'react'
@@ -66,7 +65,6 @@ export default function PlanFriendsBrowser({ plan, initialQuery, initialResults 
   }
 
   return <div className="mx-auto max-w-2xl px-4 py-6 pb-64 text-ink">
-    <BackButton fallback={`/plan/${plan.id}`} className="text-sm text-link">← Back</BackButton>
     <h1 className="mt-5 font-[family-name:var(--font-playfair)] text-3xl">Browse friends’ places</h1>
     <p className="mt-2 text-sm leading-relaxed text-muted">Pick places from several trips and add them to {plan.title} together. Keep browsing without leaving your plan.</p>
     <form className="mt-5" onSubmit={event => { event.preventDefault(); void search(query) }}>

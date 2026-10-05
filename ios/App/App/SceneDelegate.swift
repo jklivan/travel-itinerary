@@ -32,7 +32,13 @@ class AppViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor(red: 240 / 255, green: 232 / 255, blue: 217 / 255, alpha: 1)
+        // Match the web app: the status bar band uses the page colour (paper, #f7f3ec) and the band under
+        // the home indicator uses the bottom bar's colour (cream, #faf7f1), so neither shows as a stripe.
+        view.backgroundColor = UIColor(red: 247 / 255, green: 243 / 255, blue: 236 / 255, alpha: 1)
+        let bottomBand = UIView()
+        bottomBand.backgroundColor = UIColor(red: 250 / 255, green: 247 / 255, blue: 241 / 255, alpha: 1)
+        bottomBand.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bottomBand)
         addChild(bridgeController)
         let webContent = bridgeController.view!
         webContent.translatesAutoresizingMaskIntoConstraints = false
@@ -43,6 +49,10 @@ class AppViewController: UIViewController {
             webContent.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor),
             webContent.leadingAnchor.constraint(equalTo: safeArea.leadingAnchor),
             webContent.trailingAnchor.constraint(equalTo: safeArea.trailingAnchor),
+            bottomBand.topAnchor.constraint(equalTo: safeArea.bottomAnchor),
+            bottomBand.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            bottomBand.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            bottomBand.trailingAnchor.constraint(equalTo: view.trailingAnchor),
         ])
         bridgeController.didMove(toParent: self)
     }

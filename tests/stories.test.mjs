@@ -26,7 +26,7 @@ function harness(user = 'owner', itemType = 'hotel') {
       count: async ({ where }) => rows.filter(row => row.sourceItemId === where.sourceItemId && row.photoUrl === where.photoUrl && row.photoAddedToPlace === where.photoAddedToPlace).length,
       deleteMany: async ({ where }) => { const index = rows.findIndex(row => row.id === where.id && row.userId === where.userId); if (index < 0) return { count: 0 }; rows.splice(index, 1); return { count: 1 } },
     },
-    destItem: { findFirst: async ({ where }) => where.destination.itinerary.userId === 'owner' ? item : null, updateMany: async ({data}) => { Object.assign(item, data); return { count: 1 } }, update: async ({ data }) => Object.assign(item, data), aggregate: async () => ({ _max: { order: -1, groupIndex: -1 } }), create: async ({ data }) => { const created = { ...data, id: 'new-place', lat: null, lng: null }; addedItems.push(created); return created } },
+    destItem: { findFirst: async ({ where }) => where.destination.itinerary.userId === 'owner' ? item : null, findMany: async ({ where }) => where.destination.itinerary.userId === 'owner' && where.destination.itinerary.id === item.destination.itineraryId ? [item] : [], updateMany: async ({data}) => { Object.assign(item, data); return { count: 1 } }, update: async ({ data }) => Object.assign(item, data), aggregate: async () => ({ _max: { order: -1, groupIndex: -1 } }), create: async ({ data }) => { const created = { ...data, id: 'new-place', lat: null, lng: null }; addedItems.push(created); return created } },
     destination: { findMany: async ({ where }) => destinations.filter(destination => destination.itineraryId === where.itineraryId), findFirst: async ({ where }) => destinations.find(destination => destination.itineraryId === where.itineraryId && destination.name.toLowerCase() === where.name.equals.toLowerCase()) ?? null, create: async ({ data }) => { const created = { ...data, id: `destination-${destinations.length + 1}` }; destinations.push(created); return created }, count: async ({ where }) => destinations.filter(destination => destination.itineraryId === where.itineraryId).length },
     user: { findUnique: async () => ({ isPrivate: false }) },
     itinerary: { create: async ({ data }) => { plans.push(data); return data }, findFirst: async () => ({ id: 'plan' }), findMany: async query => { queries.push(query); return [] } },
@@ -215,4 +215,22 @@ test('concurrent photo edits abort posting instead of replacing the photo list',
   h.prisma.destItem.updateMany = async () => ({ count: 0 })
   assert.ok((await h.actions.postStory(input)).error)
   assert.equal(h.rows.length, 0)
+})
+
+test('a snapshot typed as a new place that is already in the trip joins that place', async () => {
+  const h = harness()
+  // Same name in the same city, filed under a different category, with no rating or Must do chosen.
+  const result = await h.actions.postStories({ placeName: '  hotel ', destination: 'Rome', type: 'activity', tripId: 'private', caption: 'Ask for a terrace room', photos: [{ id, photoUrl: '/new.jpg' }] })
+  assert.ok(result.success)
+  assert.equal(h.addedItems.length, 0)
+  assert.deepEqual([...h.item.photoUrls], ['/old.jpg', '/new.jpg'])
+  assert.equal(h.item.notes, 'secret notes\n\nAsk for a terrace room')
+  assert.equal(h.item.rating, null)
+  assert.deepEqual([...h.item.tags], ['Pool'])
+  assert.equal(h.rows[0].sourceItemId, 'place')
+  assert.equal(h.rows[0].photoAddedToPlace, true)
+  // A different place in the same trip is still added as new.
+  const other = harness()
+  assert.ok((await other.actions.postStories({ placeName: 'Trevi Fountain', destination: 'Rome', type: 'activity', tripId: 'private', caption: '', photos: [{ id, photoUrl: '/trevi.jpg' }] })).success)
+  assert.equal(other.addedItems.length, 1)
 })

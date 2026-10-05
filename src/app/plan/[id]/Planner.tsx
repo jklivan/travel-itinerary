@@ -1,6 +1,5 @@
 'use client'
 
-import BackButton from '@/components/BackButton'
 import RatingStars from '@/components/RatingStars'
 
 import Link from 'next/link'
@@ -22,12 +21,14 @@ import DeleteButton from '@/components/DeleteButton'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import PlanningMap from '@/components/PlanningMap'
 import PlacePeople from '@/components/PlacePeople'
+import SwipeToDelete from '@/components/SwipeToDelete'
 import PlacePhoto from '@/components/PlacePhoto'
 import { placeTown } from '@/lib/placeTown'
 import { DateFields, inputClass, buttonClass } from '../NewPlanForm'
-import { TAGS } from '@/lib/tags'
+import { TAGS, tagMeta } from '@/lib/tags'
+import TagChip from '@/components/ui/TagChip'
 import { getRecommendation } from '@/lib/placeRecommendation'
-import PostcardLogo from '@/components/PostcardLogo'
+import { PostStamp } from '@/components/PostcardLogo'
 
 type Place = { tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[]; mealType: string | null; alternative: string | null; description: string | null; link: string | null; address: string | null }
 type Trip = { coverPhoto?: string | null; tripPhotos?: string[]; notes?: string | null; bestMonths?: string[]; budget?: number | null; tripRating?: number | null; tags?: string[]; postType: string; durationDays?: number | null; id: string; title: string; audience: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; items: Place[] }[] }
@@ -86,7 +87,6 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     finally { setPublishing(false) }
   }
   return <div className="mx-auto max-w-2xl px-4 py-6 text-ink">
-    <BackButton fallback="/plan" className="text-sm text-link">← Back</BackButton>
     <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
     <h1 className="trip-title mt-2 break-words font-[family-name:var(--font-playfair)] text-3xl sm:text-4xl">{trip.title}</h1>
     {<details open={initialDetails || undefined} className="mt-3"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-2 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit trip details</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
@@ -95,16 +95,16 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       <span className="text-xs text-muted">Saved changes appear on your shared trip.</span>
     </div>}
     {/* One row of compact actions, so the places start higher up the screen. */}
-    <div className="sticky top-0 z-20 -mx-1 mt-3 grid grid-cols-4 gap-2 bg-paper px-1 py-3">
-      <button type="button" onClick={() => { setImporting(false); setAdding({ at: 'top' }) }} className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-ink bg-ink text-white"><Plus size={20} />Add a place</button>
-      <Link href={`/plan/${trip.id}/friends`} className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-mist-edge bg-card text-link"><Users size={18} />Browse friends’ places</Link>
-      <button type="button" onClick={() => { setAdding(null); setImporting(true) }} aria-expanded={importing} aria-controls="plan-import-panel" className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-mist-edge bg-card text-link"><Upload size={18} />Import notes or files</button>
+    <div className="sticky top-[var(--app-header-height,0px)] z-20 -mx-1 mt-3 grid grid-cols-4 items-start gap-2 bg-paper px-1 py-3">
+      <button type="button" onClick={() => { setImporting(false); setAdding({ at: 'top' }) }} className={action}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={24} /></span>Add a place</button>
+      <Link href={`/plan/${trip.id}/friends`} className={action}><span className={`${actionIcon} border-line bg-card text-ink`}><Users size={22} strokeWidth={1.75} /></span>Browse friends’ places</Link>
+      <button type="button" onClick={() => { setAdding(null); setImporting(true) }} aria-expanded={importing} aria-controls="plan-import-panel" className={action}><span className={`${actionIcon} border-line bg-card text-ink`}><Upload size={22} strokeWidth={1.75} /></span>Import notes or files</button>
       {/* This trip's AI chat: it sees the trip's places and can add its picks here. */}
-      <Link href={`/testplan?trip=${trip.id}&from=planner`} className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[11px] font-semibold leading-tight border-mist-line bg-mist text-ink"><Sparkles size={18} />Plan with AI</Link>
+      <Link href={`/testplan?trip=${trip.id}&from=planner`} className={action}><span className={`${actionIcon} border-mist-line bg-mist text-ink`}><Sparkles size={22} strokeWidth={1.75} /></span>Plan with AI</Link>
     </div>
     {addForm('top')}
     {importing && <div id="plan-import-panel"><PlanImport tripId={trip.id} destinations={destinations.filter(d => d.name !== 'Destination to decide').map(d => ({ name: d.name, country: d.country }))} onClose={() => setImporting(false)} /></div>}
-    <div role="tablist" aria-label="Trip view" className="mb-5 mt-3 flex border-b border-line">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className={`min-h-12 flex-1 border-b-2 p-3 font-semibold ${tab === value ? 'border-link text-link' : 'border-transparent text-muted'}`}>{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
+    <div role="tablist" aria-label="Trip view" className="tabs mb-5 mt-3">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className="tab">{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
     <section role="tabpanel" id="trip-panel" aria-labelledby={`${tab}-tab`}>
       {mapOpened && <div hidden={tab !== 'map'}><PlanningMap places={places.filter(place => place.type !== 'transport' || place.placeId || (place.lat !== null && place.lng !== null)).map(place => ({ id: place.id, name: place.name, city: place.destination, type: place.type === 'hotel' ? 'hotel' : place.type === 'food_drink' ? 'food_drink' : place.type === 'transport' ? 'transport' : 'activity', day: place.day, placeId: place.placeId ?? undefined, lat: place.lat, lng: place.lng }))} /></div>}
       {tab === 'itinerary' && !places.length && (trip.durationDays ? <p className="mb-4 text-sm text-muted">Your {trip.durationDays}-day trip. Add places and choose a day for each.</p> : <TripDaysPrompt tripId={trip.id} />)}
@@ -127,8 +127,8 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
           {!!trip.durationDays && places.some(p => p.day === null) && <OrganizeWithAI tripId={trip.id} places={places} />}<div className="space-y-3">{places.filter(p => p.day === null).map(place => trip.durationDays ? <PlaceRow key={place.id} tripId={trip.id} place={place} maxDay={maxDay} destinationNames={destinations.map(d => d.name)} dayChips={trip.durationDays} /> : renderPlace(place))}</div>{places.every(p => p.day !== null) && <p className="text-sm text-muted">All your places have a day.</p>}</section>
       </>}
     </section>
-    <div className="mt-8 border-t border-line pt-5"><div className="flex flex-wrap items-center justify-between gap-3"><div className="pointer-events-auto"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div>{trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={() => setPublishFormat(trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary')} aria-label="Post trip" title="Post trip" className="pointer-events-auto relative inline-flex size-20 items-center justify-center transition-transform hover:-rotate-6 hover:scale-105 disabled:opacity-60"><PostcardLogo size={80} /><span className="sr-only">Post</span></button>}</div></div>
-    {trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="panel w-full max-w-md p-5 shadow-xl"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-ink">A few more details</h2><p className="mt-1 text-sm text-muted">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-2xl leading-none text-muted" aria-label="Close">×</button></div><div className="mt-5 space-y-5">{allPhotos.length > 0 && <fieldset><legend className="mb-1 text-sm font-semibold text-link">Choose cover photo</legend><p className="mb-1 text-xs text-muted">The photo people see first. Scroll sideways to see them all.</p><CoverPhotoPicker photos={allPhotos} value={publishCover} onChange={setPublishCover} /></fieldset>}<fieldset><legend className="mb-2 text-sm font-semibold text-link">Trip type</legend><div className="grid grid-cols-3 gap-2">{([['guide', 'Guide'], ['day-trip', 'Day trip'], ['itinerary', 'Multi-day']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setPublishFormat(value)} className={`rounded-xl border px-2 py-2 text-xs font-semibold ${publishFormat === value ? 'border-link bg-mist text-ink' : 'border-line text-muted'}`}>{label}</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-link">Budget</legend><div className="flex gap-2">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => setPublishBudget(publishBudget === value ? 0 : value)} className={`text-xl ${value <= publishBudget ? 'text-gold' : 'text-gold-faint'}`} aria-label={`${value} dollar signs`}>$</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-link">Overall trip rating</legend><div className="flex gap-1"><StarPicker value={publishRating} onChange={setPublishRating} name="trip" size={26} /></div></fieldset><MonthPicker value={publishMonths} onChange={setPublishMonths} legendClass="mb-1 text-sm font-semibold text-link" /><fieldset><legend className="mb-2 text-sm font-semibold text-link">Tags</legend><div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">{TAGS.slice(0, 16).map(tag => <button key={tag.id} type="button" aria-pressed={publishTags.includes(tag.id)} onClick={() => setPublishTags(current => current.includes(tag.id) ? current.filter(value => value !== tag.id) : [...current, tag.id])} className="chip">{tag.label}</button>)}</div></fieldset><button type="button" disabled={publishing} onClick={() => void continueToPreview(publishFormat)} className="btn btn-primary w-full">{publishing ? 'Saving…' : 'Continue →'}</button></div></div></div>}
+    <div className="mt-8 border-t border-line pt-5"><div className="flex flex-wrap items-center justify-between gap-3"><div className="pointer-events-auto"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div>{trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={() => setPublishFormat(trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary')} aria-label="Post trip" title="Post trip" className="pointer-events-auto relative inline-flex size-20 items-center justify-center transition-transform hover:-rotate-6 hover:scale-105 disabled:opacity-60"><PostStamp size={80} /><span className="sr-only">Post</span></button>}</div></div>
+    {trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="panel w-full max-w-md p-5 shadow-xl"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-ink">A few more details</h2><p className="mt-1 text-sm text-muted">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-2xl leading-none text-muted" aria-label="Close">×</button></div><div className="mt-5 space-y-5">{allPhotos.length > 0 && <fieldset><legend className="mb-1 text-sm font-semibold text-link">Choose cover photo</legend><p className="mb-1 text-xs text-muted">The photo people see first. Scroll sideways to see them all.</p><CoverPhotoPicker photos={allPhotos} value={publishCover} onChange={setPublishCover} /></fieldset>}<fieldset><legend className="mb-2 text-sm font-semibold text-link">Trip type</legend><div className="grid grid-cols-3 gap-2">{([['guide', 'Guide'], ['day-trip', 'Day trip'], ['itinerary', 'Multi-day']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setPublishFormat(value)} className={`rounded-xl border px-2 py-2 text-xs font-semibold ${publishFormat === value ? 'border-link bg-mist text-ink' : 'border-line text-muted'}`}>{label}</button>)}</div></fieldset><TripExtras budget={publishBudget} onBudget={setPublishBudget} rating={publishRating} onRating={setPublishRating} tags={publishTags} onTags={setPublishTags} legendClass="mb-2 text-sm font-semibold text-link" months={<MonthPicker value={publishMonths} onChange={setPublishMonths} legendClass="mb-1 text-sm font-semibold text-link" />} /><button type="button" disabled={publishing} onClick={() => void continueToPreview(publishFormat)} className="btn btn-primary w-full">{publishing ? 'Saving…' : 'Continue →'}</button></div></div></div>}
     {publishMessage && <p role="status" className="mt-2 text-right text-sm text-link">{publishMessage}</p>}
     {unratedPrompt && <UnratedPrompt places={places.filter(place => unratedPrompt.includes(place.id))} onClose={() => setUnratedPrompt(null)} onPreview={showPreview} />}
   </div>
@@ -248,7 +248,15 @@ function PlaceRow({ tripId, place, maxDay, destinationNames, dayChips }: { tripI
     finally { saving.current = false; setBusy(false) }
   }
   const Icon = category.Icon
-  return <article id={`place-${place.id}`} className={`${planningStyles.place} ${styles[category.value]} scroll-mt-40`}>
+  async function remove() {
+    const result = await removePlanPlace(place.id)
+    if (result.error) return result.error
+    router.refresh()
+  }
+  // Swipe left (or hover on a computer) to delete; off while the place's edit form is open.
+  return <SwipeToDelete title={place.name} disabled={editing} className="" confirmLabel="Delete place" keepLabel="Keep place" onDelete={remove}
+    message={<>Delete <span className="font-semibold">{place.name}</span> and its notes? The rest of your trip will stay.</>}>
+  <article id={`place-${place.id}`} className={`${planningStyles.place} ${styles[category.value]} scroll-mt-40`}>
       {/* Tapping the photo or text opens the place with its full notes and details. */}
       <div role="button" tabIndex={0} aria-label={`Open ${place.name}`} onClick={() => { if (!editing) openEditor() }} onKeyDown={event => { if (!editing && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); openEditor() } }} className={`${styles.card} ${planningStyles.card} cursor-pointer`}>
       <PlacePhoto itemId={place.id} name={place.name} photos={place.photos} onAddress={setFoundAddress} thumbnailClass={styles.thumbnail} fallback={<div className={styles.keepsake} aria-hidden="true"><span>{category.eyebrow}</span><Icon size={25} strokeWidth={1} /><span>{place.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span></div>} />
@@ -267,7 +275,7 @@ function PlaceRow({ tripId, place, maxDay, destinationNames, dayChips }: { tripI
       </div>
     </div>
     {!!dayChips && <DayChips itemId={place.id} days={dayChips} />}
-    {place.type !== 'transport' && <PlacePeople key={`${place.placeId}:${place.name}:${place.destination}`} compact placeId={place.placeId ?? ''} name={place.name} location={place.destination} />}
+    {place.type !== 'transport' && <PlacePeople key={`${place.placeId}:${place.name}:${place.destination}`} compact placeId={place.placeId ?? ''} name={place.name} location={place.destination} itemId={place.id} />}
     <div className={planningStyles.controls}>
     {!editing ? <PlaceQuickEdit compact row itemId={place.id} name={place.name} type={category.value as PlaceType} tags={place.tags} rating={place.rating} photos={place.photos}
         leading={<button onClick={openEditor} type="button" className="inline-flex min-h-11 items-center justify-center gap-1.5 px-2 text-xs text-link sm:text-sm"><Pencil size={15} />Edit details</button>} />
@@ -293,6 +301,20 @@ function PlaceRow({ tripId, place, maxDay, destinationNames, dayChips }: { tripI
     }}>{busy ? 'Deleting…' : 'Delete this place'}</button><button type="button" disabled={busy} className="min-h-11" onClick={() => setRemoving(false)}>Keep place</button></div>}{error && <p role="alert" className="text-sm text-red-700">{error}</p>}</div>}
     </div>
   </article>
+  </SwipeToDelete>
+}
+// Planner action row: a round icon button with its label underneath.
+const action = 'group flex flex-col items-center gap-1.5 text-center text-xs leading-tight text-ink'
+const actionIcon = 'flex size-14 items-center justify-center rounded-full border shadow-[0_2px_6px_rgba(31,51,84,0.08)] transition-transform group-active:scale-95'
+// Budget, overall rating (it sets the Must go! / Loved it stamp) and travel-style tags: chosen when posting, and
+// changeable afterwards in Edit trip details. Day trip isn't a tag here; it follows the trip type.
+function TripExtras({ budget, onBudget, rating, onRating, tags, onTags, legendClass, months }: { budget: number; onBudget: (value: number) => void; rating: number; onRating: (value: number) => void; tags: string[]; onTags: (value: string[]) => void; legendClass: string; months?: React.ReactNode }) {
+  return <>
+    <fieldset><legend className={legendClass}>Budget</legend><div className="flex gap-2">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => onBudget(budget === value ? 0 : value)} className={`text-xl ${value <= budget ? 'text-gold' : 'text-gold-faint'}`} aria-label={`${value} dollar signs`}>$</button>)}</div></fieldset>
+    <fieldset><legend className={legendClass}>Overall trip rating</legend><div className="flex gap-1"><StarPicker value={rating} onChange={onRating} name="trip" size={26} /></div></fieldset>
+    {months}
+    <fieldset><legend className={legendClass}>Tags</legend><div className="flex flex-wrap gap-2">{TAGS.filter(tag => tag.id !== 'day-trip').map(tag => <TagChip key={tag.id} id={tag.id} selected={tags.includes(tag.id)} onToggle={() => onTags(tags.includes(tag.id) ? tags.filter(value => value !== tag.id) : [...tags, tag.id])} />)}</div></fieldset>
+  </>
 }
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 // "When to go": the months the poster recommends, shown on the posted trip.
@@ -306,6 +328,11 @@ function DetailsForm({ trip }: { trip: Trip }) {
   const [coverBusy, setCoverBusy] = useState(false)
   const [coverMessage, setCoverMessage] = useState('')
   const [months, setMonths] = useState<string[]>(trip.bestMonths ?? [])
+  const [audience, setAudience] = useState(trip.audience ?? '')
+  const [budget, setBudget] = useState(trip.budget ?? 0)
+  const [tripRating, setTripRating] = useState(trip.tripRating ?? 0)
+  // Retired tags show as the tag they now count as (Hiking → Nature), so saving keeps them.
+  const [tags, setTags] = useState<string[]>([...new Set((trip.tags ?? []).map(tag => tagMeta(tag)?.id ?? tag).filter(tag => tag !== 'day-trip'))])
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   return <><form className="space-y-3 rounded-xl border border-line bg-white p-4" onSubmit={async event => {
@@ -314,7 +341,7 @@ function DetailsForm({ trip }: { trip: Trip }) {
     const data = new FormData(event.currentTarget)
     try { const result = await savePlanDetails(trip.id, data); setMessage(result.error || 'Saved'); if (!result.error) router.refresh() }
     catch { setMessage('Could not save. Please try again.') } finally { setBusy(false) }
-  }}><fieldset disabled={busy} className="space-y-3"><label className="block text-sm">Trip name<input name="title" required defaultValue={trip.title} maxLength={160} className={inputClass} /></label><label className="block text-sm">Number of days (optional)<input name="durationDays" type="number" min="1" step="1" defaultValue={trip.durationDays ?? ''} className={inputClass} /></label><fieldset><legend className="mb-2 text-sm">Who is this trip for?</legend><div className="flex flex-wrap gap-2">{([{ value: 'family', label: 'Family' }, { value: 'friends', label: 'Friends' }, { value: 'romantic', label: 'Couples' }, { value: 'adult', label: 'Adults' }] as const).map(option => <label key={option.value} className="cursor-pointer"><input className="peer sr-only" type="radio" name="audience" value={option.value} defaultChecked={trip.audience === option.value} /><span className="inline-flex min-h-10 items-center rounded-full border border-line px-4 text-sm text-link peer-checked:border-link peer-checked:bg-mist peer-checked:font-semibold">{option.label}</span></label>)}</div></fieldset><DateFields start={trip.start} end={trip.end} /><p className="text-xs text-muted">Leave both dates blank to keep things flexible.</p><MonthPicker value={months} onChange={setMonths} /><input type="hidden" name="bestMonths" value={JSON.stringify(months)} /><label className="block text-sm">Trip notes & tips (optional)<textarea name="notes" rows={4} defaultValue={trip.notes ?? ''} maxLength={8000} placeholder="Tips, packing list, visa info…" className={inputClass} /></label><button className={buttonClass}>{busy ? 'Saving…' : 'Save details'}</button></fieldset>{message && <p role="status" className="text-sm">{message}</p>}</form>
+  }}><fieldset disabled={busy} className="space-y-3"><label className="block text-sm">Trip name<input name="title" required defaultValue={trip.title} maxLength={160} className={inputClass} /></label><label className="block text-sm">Number of days (optional)<input name="durationDays" type="number" min="1" step="1" defaultValue={trip.durationDays ?? ''} className={inputClass} /></label><fieldset><legend className="mb-2 text-sm">Who is this trip for?</legend><input type="hidden" name="audience" value={audience} /><div className="flex flex-wrap gap-2">{([{ value: 'family', label: 'Family' }, { value: 'friends', label: 'Friends' }, { value: 'romantic', label: 'Couples' }, { value: 'adult', label: 'Adults' }] as const).map(option => <button key={option.value} type="button" aria-pressed={audience === option.value} onClick={() => setAudience(option.value)} className="chip">{option.label}</button>)}</div></fieldset><DateFields start={trip.start} end={trip.end} /><p className="text-xs text-muted">Leave both dates blank to keep things flexible.</p><TripExtras budget={budget} onBudget={setBudget} rating={tripRating} onRating={setTripRating} tags={tags} onTags={setTags} legendClass="mb-2 text-sm" months={<MonthPicker value={months} onChange={setMonths} />} /><input type="hidden" name="bestMonths" value={JSON.stringify(months)} /><input type="hidden" name="budget" value={budget} /><input type="hidden" name="tripRating" value={tripRating} /><input type="hidden" name="tags" value={JSON.stringify(tags)} /><label className="block text-sm">Trip notes & tips (optional)<textarea name="notes" rows={4} defaultValue={trip.notes ?? ''} maxLength={8000} placeholder="Tips, packing list, visa info…" className={inputClass} /></label><button className={buttonClass}>{busy ? 'Saving…' : 'Save details'}</button></fieldset>{message && <p role="status" className="text-sm">{message}</p>}</form>
     {coverPhotos.length > 0 && <div className="panel mt-3 p-4"><p className="text-sm font-semibold text-ink">Cover photo</p><p className="mb-1 text-xs text-muted">Tap a photo to make it the cover. {coverMessage}</p><CoverPhotoPicker photos={coverPhotos} value={cover} disabled={coverBusy} onChange={async url => { const previous = cover; setCover(url); setCoverBusy(true); setCoverMessage(''); try { const result = await setTripCover(trip.id, url); if (result.error) { setCover(previous); setCoverMessage(result.error) } else { setCoverMessage('Saved.'); router.refresh() } } catch { setCover(previous); setCoverMessage('Could not save. Please try again.') } finally { setCoverBusy(false) } }} /></div>}</>
 }
 

@@ -11,9 +11,9 @@ export type ParsedQuery = {
 }
 
 const TAG_IDS = [
-  'adventure', 'beach', 'city', 'culture', 'food', 'hiking',
+  'adventure', 'beach', 'city', 'culture', 'food',
   'history', 'luxury', 'nature', 'nightlife', 'relaxing',
-  'road-trip', 'romantic', 'shopping', 'wildlife',
+  'road-trip', 'romantic', 'shopping', 'skiing', 'wildlife',
 ]
 
 const EMPTY: ParsedQuery = { audience: null, postType: null, tags: [], maxBudget: null, locationTerms: [] }
@@ -44,7 +44,7 @@ export async function parseSearchQuery(query: string): Promise<ParsedQuery> {
             tags: {
               type: 'array',
               items: { type: 'string', enum: TAG_IDS },
-              description: 'Tags that match the trip vibe.',
+              description: 'Only vibes the person actually asked for (e.g. "beach", "foodie", "nightlife", "skiing"). Do NOT guess vibes from a place name alone: "California" or "Paris" → no tags.',
             },
             maxBudget: {
               type: 'integer',
@@ -55,9 +55,10 @@ export async function parseSearchQuery(query: string): Promise<ParsedQuery> {
             locationTerms: {
               type: 'array',
               items: { type: 'string' },
-              description: `Every country and city mentioned or clearly implied. Rules:
+              description: `Every place mentioned or clearly implied, as specific as the person said it. Rules:
 - Named country → include it (e.g. "France")
-- Named city → include city AND its country (e.g. ["Tokyo", "Japan"])
+- Named city, island or town → include only that place (e.g. ["Tokyo"], ["Nantucket"]); do NOT add its country, state or region
+- Named US state or other region → include only that name (e.g. ["California"]); do NOT add the country
 - Europe → France, Italy, Spain, Germany, Portugal, Greece, Netherlands, Austria, Croatia, Switzerland, UK, Ireland
 - Southeast Asia → Thailand, Vietnam, Indonesia, Philippines, Malaysia, Singapore, Cambodia
 - Asia → Japan, China, South Korea, Thailand, Vietnam, Indonesia, India

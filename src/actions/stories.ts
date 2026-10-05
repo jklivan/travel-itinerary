@@ -3,7 +3,7 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
-import { samePlanDestination } from '@/lib/planPlaceIdentity'
+import { samePlanDestination, sameSnapshotPlace } from '@/lib/planPlaceIdentity'
 import { eventPhotos } from '@/lib/eventPhotos'
 import { getRecommendation, recommendationTags, type PlaceRecommendation } from '@/lib/placeRecommendation'
 import { STORY_LIFETIME_MS, visibleStoriesWhere, type StoryCard } from '@/lib/stories'
@@ -77,9 +77,13 @@ export async function postStories(input: StoryPostDetails & { photos: StoryPhoto
     const tripId = await prisma.$transaction(async tx => {
       // Photos this post puts onto the place; ones it already had stay put if the snapshot is deleted.
       let addedPhotos = new Set<string>()
-      let storyPlace: { name: string; destination: string; country: string | null; type: string; placeId: string | null; lat: number | null; lng: number | null; tripId: string | null; itemId: string | null }
-      if (input.itemId) {
-        const owned = { id: input.itemId, destination: { itinerary: { userId } } }
+      type StoryPlace = { name: string; destination: string; country: string | null; type: string; placeId: string | null; lat: number | null; lng: number | null; tripId: string | null; itemId: string | null }
+      let storyPlace: StoryPlace | undefined
+      // Adds the snapshot to a place already in the trip: its photos join the place's photos and the caption joins its notes.
+      // matched: the person typed a new place that turned out to be one already in the trip, so an unset rating
+      // or Must do / Avoid leaves the place's own alone instead of clearing it.
+      const intoItem = async (itemId: string, matched: boolean): Promise<StoryPlace> => {
+        const owned = { id: itemId, destination: { itinerary: { userId } } }
         const item = await tx.destItem.findFirst({ where: owned, include: { destination: true } })
         if (!item) throw new Error('Place is not owned by this account')
         const photos = eventPhotos(item.photoUrls, item.photoUrl)
@@ -98,12 +102,22 @@ export async function postStories(input: StoryPostDetails & { photos: StoryPhoto
         // The caption becomes the place's notes: filled in when empty, added on a new line otherwise.
         const caption = input.caption.trim()
         if (caption && !(item.notes ?? '').includes(caption)) details.notes = item.notes?.trim() ? `${item.notes.trim()}\n\n${caption}` : caption
-        if (input.rating !== undefined && (input.rating || null) !== item.rating) details.rating = input.rating || null
-        const tags = input.recommendation === undefined ? null : recommendationTags(item.tags, input.recommendation)
+        if (input.rating !== undefined && !(matched && !input.rating) && (input.rating || null) !== item.rating) details.rating = input.rating || null
+        const tags = input.recommendation === undefined || (matched && input.recommendation === 'none') ? null : recommendationTags(item.tags, input.recommendation)
         if (tags && tags.join('\n') !== item.tags.join('\n')) details.tags = tags
-        if (Object.keys(details).length) await tx.destItem.update({ where: { id: item.id }, data: details })
-        storyPlace = { name: item.name, destination: item.destination.name, country: item.destination.country, type: item.type, placeId: item.placeId, lat: item.lat, lng: item.lng, tripId: item.destination.itineraryId, itemId: item.id }
-      } else {
+        const placeId = matched && !item.placeId ? input.placeId?.trim() || null : null
+        if (Object.keys(details).length || placeId) await tx.destItem.update({ where: { id: item.id }, data: { ...details, ...(placeId ? { placeId } : {}) } })
+        return { name: item.name, destination: item.destination.name, country: item.destination.country, type: item.type, placeId: item.placeId ?? placeId, lat: item.lat, lng: item.lng, tripId: item.destination.itineraryId, itemId: item.id }
+      }
+      if (input.itemId) storyPlace = await intoItem(input.itemId, false)
+      else if (input.tripId) {
+        // A "new" place that's already in this trip (same Google place, or same name in the same destination) joins it.
+        const places = await tx.destItem.findMany({ where: { destination: { itinerary: { id: input.tripId, userId } } }, orderBy: [{ destination: { order: 'asc' } }, { order: 'asc' }],
+          select: { id: true, name: true, placeId: true, destination: { select: { name: true, country: true } } } })
+        const match = places.find(place => sameSnapshotPlace(place, { name: input.placeName!, placeId: input.placeId?.trim() || null, destination: { name: input.destination!.trim(), country: input.country?.trim() || null } }))
+        if (match) storyPlace = await intoItem(match.id, true)
+      }
+      if (!storyPlace) {
         let itineraryId: string
         if (input.newPlanId) {
           await tx.itinerary.create({ data: {
@@ -134,13 +148,14 @@ export async function postStories(input: StoryPostDetails & { photos: StoryPhoto
         storyPlace = { name: item.name, destination: destination.name, country: destination.country, type: item.type, placeId: item.placeId, lat: item.lat, lng: item.lng, tripId: itineraryId, itemId: item.id }
       }
       const now = new Date()
+      const place = storyPlace!
       await tx.story.createMany({ data: input.photos.map((photo, index) => ({
-        id: photo.id, userId, sourceItineraryId: storyPlace.tripId, sourceItemId: storyPlace.itemId,
-        placeName: storyPlace.name, destination: storyPlace.destination, country: storyPlace.country, type: storyPlace.type,
-        placeId: storyPlace.placeId, lat: storyPlace.lat, lng: storyPlace.lng, photoUrl: photo.photoUrl, caption: input.caption.trim(), photoAddedToPlace: addedPhotos.has(photo.photoUrl),
+        id: photo.id, userId, sourceItineraryId: place.tripId, sourceItemId: place.itemId,
+        placeName: place.name, destination: place.destination, country: place.country, type: place.type,
+        placeId: place.placeId, lat: place.lat, lng: place.lng, photoUrl: photo.photoUrl, caption: input.caption.trim(), photoAddedToPlace: addedPhotos.has(photo.photoUrl),
         createdAt: new Date(now.getTime() + index), expiresAt: new Date(now.getTime() + index + STORY_LIFETIME_MS),
       })) })
-      return storyPlace.tripId
+      return place.tripId
     })
     for (const path of ['/', '/explore', '/plan', ...(tripId ? [`/plan/${tripId}`, `/itinerary/${tripId}`] : []), `/user/${userId}`, '/trips']) revalidatePath(path)
     return { success: true }

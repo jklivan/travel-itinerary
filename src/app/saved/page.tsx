@@ -24,7 +24,7 @@ export default async function SavedPage({ searchParams }: { searchParams: Promis
   // No folder chosen: the folder tiles. ?folder=all or a folder's id: that folder's trips.
   const openFolder = folder === 'all' ? { id: '', name: 'All saved' } : folders.find(f => f.id === folder)
   const savedIds = new Set(bucketItems.map(item => item.itineraryId))
-  if (!openFolder) return <div className="mx-auto max-w-2xl px-5 pb-10 pt-6 sm:px-8">
+  if (!openFolder) return <div className="page-wrap">
     <SavedFolderGrid total={bucketItems.length} folders={folders.map(f => ({ ...f, count: bucketItems.filter(item => item.folderId === f.id).length }))} />
   </div>
   const selectedFolder = openFolder.id

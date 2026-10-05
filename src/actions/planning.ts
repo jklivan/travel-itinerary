@@ -1,5 +1,7 @@
 'use server'
 
+import { TAGS } from '@/lib/tags'
+
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
@@ -89,8 +91,19 @@ export async function savePlanDetails(id: string, form: FormData): Promise<Resul
     const audience = text(form, 'audience', 20)
     if (!['family', 'friends', 'romantic', 'adult'].includes(audience)) return { error: 'Choose a trip type.' }
     // Whole-trip notes & tips and When to go are only changed when the form sends them.
-    const extra: { notes?: string | null; bestMonths?: string[] } = {}
+    const extra: { notes?: string | null; bestMonths?: string[]; budget?: number | null; tripRating?: number | null; tags?: string[] } = {}
     if (form.has('notes')) extra.notes = text(form, 'notes', 8000) || null
+    // Budget, overall rating and tags (also chosen when posting) are changed only when the form sends them.
+    const oneToFive = (key: string) => { const value = Number(form.get(key)); return Number.isInteger(value) && value >= 1 && value <= 5 ? value : null }
+    if (form.has('budget')) extra.budget = oneToFive('budget')
+    if (form.has('tripRating')) extra.tripRating = oneToFive('tripRating')
+    if (form.has('tags')) {
+      let chosen: string[] = []
+      try { const parsed = JSON.parse(String(form.get('tags'))); if (Array.isArray(parsed)) chosen = parsed.filter((tag): tag is string => typeof tag === 'string' && TAGS.some(known => known.id === tag && tag !== 'day-trip')) } catch { chosen = [] }
+      // Day trip follows the trip type, so it stays if the trip had it.
+      const current = await prisma.itinerary.findFirst({ where: { id, userId }, select: { tags: true } })
+      extra.tags = [...new Set([...(current?.tags.includes('day-trip') ? ['day-trip'] : []), ...chosen])].slice(0, 20)
+    }
     if (form.has('bestMonths')) { try { extra.bestMonths = bestMonths(JSON.parse(String(form.get('bestMonths')))) } catch { extra.bestMonths = [] } }
     const result = await prisma.itinerary.updateMany({ where: { id, userId }, data: { title, audience, ...dates(form), ...(form.has('durationDays') ? { durationDays: duration(form) } : {}), ...extra } })
     if (!result.count) return { error: unavailable }

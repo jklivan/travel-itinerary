@@ -4,6 +4,8 @@ import './globals.css'
 import Navbar from '@/components/Navbar'
 import Providers from '@/components/Providers'
 import BottomNavWrapper from '@/components/BottomNavWrapper'
+import PlaceholderFit from '@/components/PlaceholderFit'
+import HeaderHeight from '@/components/HeaderHeight'
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair', style: ['normal', 'italic'] })
@@ -30,6 +32,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Navbar />
           <main className="app-main">{children}</main>
           <BottomNavWrapper />
+          <PlaceholderFit />
+          <HeaderHeight />
         </Providers>
       </body>
     </html>

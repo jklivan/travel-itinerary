@@ -1,5 +1,4 @@
 
-import BackButton from '@/components/BackButton'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { notFound } from 'next/navigation'
@@ -13,8 +12,8 @@ import DeleteButton from '@/components/DeleteButton'
 import { tripPhotoGallery } from '@/lib/eventPhotos'
 import { fetchStockPhoto } from '@/lib/stockPhoto'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
-import { MapPin, Users, ChevronRight, Settings } from 'lucide-react'
-import PostcardLogo from '@/components/PostcardLogo'
+import { ChevronRight, Settings } from 'lucide-react'
+import { PostStamp } from '@/components/PostcardLogo'
 
 function destinationStockFallback(destination: string, country: string | null) {
   const query = `${destination} ${country ?? ''}`.toLowerCase()
@@ -50,7 +49,7 @@ export default async function UserProfilePage({
   const showBucket = isOwn && tab === 'bucket'
   const showDrafts = (tab === 'in-progress' || tab === 'drafts') && isOwn
 
-  const [itineraries, drafts, bucketItems, followRecord, followerCount, followingCount, viewerBucketIds, folders, pendingCount] = await Promise.all([
+  const [itineraries, drafts, bucketItems, followRecord, followerCount, followingCount, viewerBucketIds, folders] = await Promise.all([
     prisma.itinerary.findMany({
       where: { userId: id, visibility: { not: 'draft' } },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -100,7 +99,6 @@ export default async function UserProfilePage({
     isOwn
       ? prisma.savedFolder.findMany({ where: { userId: id }, orderBy: { name: 'asc' }, select: { id: true, name: true } })
       : Promise.resolve([]),
-    isOwn ? prisma.follow.count({ where: { followingId: id, status: 'pending' } }) : Promise.resolve(0),
   ])
 
   const selectedFolder = folder && folders.some(f => f.id === folder) ? folder : ''
@@ -130,24 +128,14 @@ export default async function UserProfilePage({
 
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
-      {!isOwn && <BackButton fallback="/friends" className="text-sm text-brown hover:underline mb-5 inline-block">← Back</BackButton>}
 
       {/* Public profile header */}
       {!isOwn && <div className="bg-cream rounded-xl border border-sand p-5 mb-5 flex items-center gap-4">
         <UserAvatar name={user.name} image={user.image} size={64} className="text-xl" />
         <div className="flex-1 min-w-0">
           <h1 className="font-[family-name:var(--font-playfair)] text-xl text-ink">{user.name}</h1>
-          <div className="flex items-center gap-3 mt-1 text-xs text-brown">
-            <span className="flex items-center gap-1">
-              <Users size={12} />
-              {followerCount} follower{followerCount !== 1 ? 's' : ''}
-            </span>
-            <span>{followingCount} following</span>
-            <span className="flex items-center gap-1">
-              <MapPin size={12} />
-              {itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}
-            </span>
-          </div>
+          {/* Same plain stats line as your own profile. */}
+          <p className="mt-1 text-xs text-link">{followerCount} follower{followerCount !== 1 ? 's' : ''} · {followingCount} following · {itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
         {isOwn && <Link href="/settings" aria-label="Settings" className="flex size-10 shrink-0 items-center justify-center rounded-full border border-sand text-link hover:bg-line-soft"><Settings size={18} /></Link>}
         {session?.user && !isOwn && (
@@ -157,26 +145,12 @@ export default async function UserProfilePage({
             else if (followStatus === 'pending') await cancelFollowRequest(id)
             else await sendFollowRequest(id)
           }}>
-            <button type="submit"
-              className={`text-sm font-medium px-4 py-2 rounded-full border transition-colors ${
-                followStatus === 'accepted'
-                  ? 'border-line-strong text-ink-soft hover:border-red-300 hover:text-red-500'
-                  : followStatus === 'pending'
-                  ? 'border-amber-300 text-amber-700 hover:border-red-300 hover:text-red-500'
-                  : 'bg-ink border-ink text-white hover:bg-ink-soft'
-              }`}>
+            <button type="submit" aria-pressed={followStatus === 'accepted'} className="chip">
               {followStatus === 'accepted' ? 'Following' : followStatus === 'pending' ? 'Requested' : '+ Follow'}
             </button>
           </form>
         )}
       </div>}
-
-      {!isOwn && <Link href="/friends" className="group mb-5 flex min-h-20 items-center gap-4 rounded-2xl border border-mist-line bg-mist p-4 text-ink transition-colors hover:bg-mist-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Users size={23} /></span>
-        <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-xl">Friends</span><span className="mt-0.5 block text-sm text-link">{pendingCount ? `${pendingCount} friend request${pendingCount === 1 ? '' : 's'} waiting` : 'Find friends & see who you follow'}</span></span>
-        {pendingCount > 0 && <span className="rounded-full bg-link px-2 py-1 text-xs font-semibold text-white">{pendingCount}</span>}
-        <ChevronRight size={20} className="shrink-0 text-link transition-transform group-hover:translate-x-0.5" />
-      </Link>}
 
       {!isOwn && <Link href={`/messages/${id}`} className="mb-5 inline-block rounded-full bg-link px-4 py-2 text-sm text-white">Send private message</Link>}
 
@@ -189,11 +163,11 @@ export default async function UserProfilePage({
               {drafts.length === 0 ? <div className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">No private plans yet.</div> : <div className="space-y-4">{drafts.map(trip => {
                 const tripHref = `/plan/${trip.id}`
                 return <article key={trip.id} className="panel grid grid-cols-[minmax(0,38%)_minmax(0,1fr)] gap-x-4 gap-y-3 p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)]">
-                  <Link href={tripHref} aria-label={`Open ${trip.title}`} className="relative row-span-2 min-h-[210px] rotate-[-3deg] overflow-hidden border-[5px] border-white bg-mist shadow-[0_2px_5px_rgba(45,38,27,0.18)]">{draftCoverPhotos.get(trip.id) ? <Image src={draftCoverPhotos.get(trip.id)!} alt="" fill sizes="(max-width: 640px) 34vw, 180px" className="object-cover" /> : <span className="grid h-full place-items-center text-center text-[9px] uppercase tracking-wider text-link">Postcard</span>}</Link>
+                  <Link href={tripHref} aria-label={`Open ${trip.title}`} className="photo-polaroid row-span-2 self-start"><span className="photo-polaroid-image">{draftCoverPhotos.get(trip.id) ? <Image src={draftCoverPhotos.get(trip.id)!} alt="" fill sizes="(max-width: 640px) 34vw, 180px" className="object-cover" /> : <span className="grid h-full place-items-center text-center text-[9px] uppercase tracking-wider text-link">Postcard</span>}</span></Link>
                   <Link href={tripHref} className="min-w-0 pt-2"><h3 className="break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-ink">{trip.title || 'Untitled trip'}</h3><p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places</p><p className="mt-1 text-sm text-muted">Keep planning →</p></Link>
                   <div className="flex min-w-0 flex-wrap items-end justify-between gap-2 self-end">
                     <DeleteButton compact id={trip.id} visibility={trip.visibility} returnTo={`/user/${id}`} label={`Delete ${trip.title}`} />
-                    <Link href={trip.isPlan ? `${tripHref}?post=1` : tripHref} aria-label={`Post ${trip.title}`} title="Post trip" className="inline-flex h-12 w-[66px] shrink-0 items-center justify-center transition-transform hover:-rotate-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"><PostcardLogo size={52} /></Link>
+                    <Link href={trip.isPlan ? `${tripHref}?post=1` : tripHref} aria-label={`Post ${trip.title}`} title="Post trip" className="inline-flex h-12 w-[66px] shrink-0 items-center justify-center transition-transform hover:-rotate-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"><PostStamp size={52} /></Link>
                   </div>
                 </article>
               })}</div>}

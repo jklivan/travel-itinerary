@@ -22,7 +22,7 @@ export default async function NotificationsPage() {
       <MarkNotificationsRead />
     </div>
     <NotificationPreferences />
-    <div className="mb-4"><MessageRefresh label="Refresh alerts" /></div>
+    <MessageRefresh />
     {notifications.length === 0 ? <p className="rounded-xl border border-line-soft bg-card p-6 text-muted">Forum posts, private messages, new trips from people you follow, and activity on your trips appear here.</p> :
       <ul className="overflow-hidden rounded-xl border border-line-soft divide-y divide-line-soft">
         {notifications.map(n => <li key={n.id} className={n.readAt ? 'bg-cream' : 'bg-card'}>

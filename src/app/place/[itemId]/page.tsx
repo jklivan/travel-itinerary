@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
-import BackButton from '@/components/BackButton'
 import ItineraryCard from '@/components/ItineraryCard'
 import RatingStars from '@/components/RatingStars'
 import { tripPhotoGallery } from '@/lib/eventPhotos'
@@ -41,7 +40,6 @@ export default async function PlacePage({ params }: { params: Promise<{ itemId: 
   const average = ratings.length ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null
 
   return <div className="mx-auto max-w-xl px-5 py-6 text-ink sm:px-8">
-    <BackButton fallback="/explore" className="mb-5 inline-block text-sm text-ink-soft hover:underline">← Back</BackButton>
     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-link">{CATEGORY[item.type] ?? 'Place'} · {[item.destination.name, item.destination.country].filter(Boolean).join(', ')}</p>
     <h1 className="trip-title mt-2 font-[family-name:var(--font-playfair)] text-3xl text-ink">{item.name}</h1>
     <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">

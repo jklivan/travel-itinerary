@@ -14,6 +14,13 @@ export function samePlanPlace(a: PlanPlaceIdentity, b: PlanPlaceIdentity) {
   return a.type === b.type && normalize(a.name) === normalize(b.name) && samePlanDestination(a.destination, b.destination)
 }
 
+// Snapshots: the same Google place, or (when either has no Google id) the same name in the same destination,
+// whatever category it was filed under, since a snapshot's category is picked by hand.
+export function sameSnapshotPlace(a: Omit<PlanPlaceIdentity, 'type'>, b: Omit<PlanPlaceIdentity, 'type'>) {
+  if (a.placeId && b.placeId) return a.placeId === b.placeId
+  return normalize(a.name) === normalize(b.name) && samePlanDestination(a.destination, b.destination)
+}
+
 export function planSuggestionQuery(title: string, destinations: Destination[]) {
   const destination = destinations.find(d => d.name !== 'Destination to decide')
   if (destination) return destination.name.split(',')[0].trim()

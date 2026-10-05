@@ -1,44 +1,21 @@
 'use client'
 
 import { TAGS } from '@/lib/tags'
+import TagChip from '@/components/ui/TagChip'
 
 export default function TagPicker({
   selected,
   onChange,
-  theme = 'default',
 }: {
   selected: string[]
   onChange: (tags: string[]) => void
-  theme?: 'default' | 'paper'
 }) {
   function toggle(id: string) {
     onChange(selected.includes(id) ? selected.filter((t) => t !== id) : [...selected, id])
   }
 
-  return (
-    <div className="flex flex-wrap gap-2">
-      {TAGS.map((tag) => {
-        const active = selected.includes(tag.id)
-        return (
-          <button
-            key={tag.id}
-            type="button"
-            onClick={() => toggle(tag.id)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-              theme === 'paper'
-                ? active
-                  ? 'bg-link border-link text-white shadow-sm'
-                  : 'bg-card border-line text-muted hover:border-link hover:text-link'
-                : active
-                ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600'
-            }`}
-          >
-            <span>{tag.emoji}</span>
-            {tag.label}
-          </button>
-        )
-      })}
-    </div>
-  )
+  // The shared tag pill (ui/TagChip), as on the trip page.
+  return <div className="flex flex-wrap gap-2">
+    {TAGS.map(tag => <TagChip key={tag.id} id={tag.id} selected={selected.includes(tag.id)} onToggle={() => toggle(tag.id)} />)}
+  </div>
 }

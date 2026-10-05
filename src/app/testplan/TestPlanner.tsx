@@ -192,8 +192,8 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
         <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="font-[family-name:var(--font-playfair)] text-2xl">{trip?.title ?? 'Your next trip'}</h1>
           <div className="flex items-center gap-4 text-sm font-semibold text-link">
-            {/* From the planner this goes back where you came from; for a trip the chat built, it opens it. */}
-            {trip && <Link href={`/plan/${trip.id}`}>{fromPlanner ? '← Back to your trip' : 'Open in planner →'}</Link>}
+            {/* For a trip the chat built, a link to open it. From the planner, the header's Back returns there. */}
+            {trip && !fromPlanner && <Link href={`/plan/${trip.id}`}>Open in planner →</Link>}
             {(mapView === 'hidden' || mapView === 'auto') && <button type="button" onClick={() => setMapView('normal')} className={`inline-flex items-center gap-1 ${mapView === 'auto' ? 'lg:hidden' : ''}`}><MapIcon size={14} />Show map</button>}
           </div>
         </div>

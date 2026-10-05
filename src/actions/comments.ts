@@ -7,6 +7,24 @@ import { after } from 'next/server'
 import { createTripNotification } from '@/lib/notifications'
 import { deliverNotification } from '@/lib/push'
 
+// The feed's comments sheet: a trip's comments with their replies, newest first (as on the trip page).
+// Anyone who can open the trip can read them: any posted trip, or your own draft.
+export async function loadComments(itineraryId: string) {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (typeof itineraryId !== 'string' || itineraryId.length > 200) return { error: 'Not found.', comments: [], userId }
+  const itinerary = await prisma.itinerary.findUnique({ where: { id: itineraryId }, select: { visibility: true, userId: true } })
+  if (!itinerary || (itinerary.visibility === 'draft' && itinerary.userId !== userId)) return { error: 'Not found.', comments: [], userId }
+  const comments = await prisma.comment.findMany({
+    where: { itineraryId, parentId: null }, orderBy: { createdAt: 'desc' },
+    include: {
+      user: { select: { id: true, name: true, image: true } },
+      replies: { orderBy: { createdAt: 'asc' }, include: { user: { select: { id: true, name: true, image: true } } } },
+    },
+  })
+  return { comments, userId }
+}
+
 export async function addComment(itineraryId: string, content: string, parentId?: string): Promise<{ error?: string }> {
   const session = await auth()
   if (!session?.user?.id) return { error: 'You must be logged in to comment.' }

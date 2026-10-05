@@ -1,7 +1,8 @@
 'use client'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-export default function MessageRefresh({ label = 'Refresh messages' }: { label?: string }) {
+// Keeps messages, replies and alerts up to date: every 15 seconds and whenever the app comes back into view.
+export default function MessageRefresh() {
   const router = useRouter()
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === 'visible') router.refresh() }
@@ -16,5 +17,5 @@ export default function MessageRefresh({ label = 'Refresh messages' }: { label?:
       document.removeEventListener('visibilitychange', refresh)
     }
   }, [router])
-  return <button type="button" onClick={() => router.refresh()} className="text-sm underline text-link">{label}</button>
+  return null
 }

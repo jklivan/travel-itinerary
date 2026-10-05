@@ -1,9 +1,13 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Heart, MapPin, MessageCircle } from 'lucide-react'
+import { Heart, MapPin } from 'lucide-react'
+import CommentsSheetButton from './CommentsSheet'
+import { tripLocationLabel } from '@/lib/tripLocation'
+import LikesSheetButton from './LikesSheet'
 import { hasTripDates, tripDuration } from '@/lib/dayTrips'
 import { tripSeason } from '@/lib/tripSeason'
 import { TRIP_STAMPS, STAMP_COLORS } from '@/lib/tripStamps'
+import Stamp from '@/components/ui/Stamp'
 import PhotoStrip from './PhotoStrip'
 import BucketButton from './BucketButton'
 import UserAvatar from './UserAvatar'
@@ -41,7 +45,7 @@ type Props = {
   fullWidth?: boolean
   commentCount?: number
   // Feed only: a friend who liked it, and one comment to preview.
-  social?: { likedBy: string | null; comment: { name: string; text: string } | null }
+  social?: { likedBy: { id: string; name: string } | null; comment: { userId: string; name: string; text: string } | null }
   showBudget?: boolean
 }
 
@@ -68,22 +72,7 @@ export default function ItineraryCard({
   const coverColor = hashPick(title, COVER_COLORS)
   const season = tripSeason({ startDate, endDate, datesFlexible: !hasTripDates({ startDate, endDate, datesFlexible, postType }), postType: isGuide ? 'guide' : postType, bestMonths, latitude: destinations.find(destination => destination.lat != null)?.lat })
 
-  function locationLabel(dests: Destination[]): string | null {
-    if (dests.length === 0) return null
-    if (dests.length === 1) {
-      const d = dests[0]
-      return `${d.name}${d.country ? `, ${d.country}` : ''}`
-    }
-    if (dests.length <= 3) {
-      return dests.map((d) => d.name).join(' · ')
-    }
-    const countries = [...new Set(dests.map((d) => d.country).filter(Boolean))] as string[]
-    if (countries.length === 0) return dests.map((d) => d.name).slice(0, 3).join(' · ') + '…'
-    if (countries.length <= 4) return countries.join(' · ')
-    return countries.slice(0, 3).join(' · ') + ` +${countries.length - 3}`
-  }
-
-  const location = locationLabel(destinations)
+  const location = tripLocationLabel(destinations)
 
   const showBucket = !isOwn
 
@@ -113,12 +102,10 @@ export default function ItineraryCard({
             {location && <span className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.16em] text-link">
               <MapPin size={12} className="shrink-0 text-brown" />{location}
             </span>}
-            <h2 className="trip-title line-clamp-2 font-[family-name:var(--font-playfair)] text-xl !uppercase leading-[1.1] tracking-[0.08em] sm:text-2xl">{title}</h2>
+            <h2 className="trip-title break-words font-[family-name:var(--font-playfair)] text-xl !uppercase leading-[1.1] tracking-[0.08em] sm:text-2xl">{title}</h2>
             <span className="mt-1 block text-[10px] font-medium uppercase tracking-[0.16em] text-link">{days === null ? 'Guide' : `${days}-day trip`}</span>
           </Link>
-          {stamp && <span aria-label={`Author verdict: ${stamp.label}`} className="pointer-events-none absolute -top-5 right-0 z-20 -rotate-[12deg] p-[3px] shadow-md" style={{ backgroundColor: STAMP_COLORS[stamp.value] }}>
-            <span className="block border border-dashed border-white/70 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white">{stamp.label}</span>
-          </span>}
+          {stamp && <Stamp aria-label={`Author verdict: ${stamp.label}`} label={stamp.label} color={STAMP_COLORS[stamp.value]} className="pointer-events-none absolute -top-5 right-0 z-20 -rotate-[12deg]" />}
         </div>
 
         <div className={`mt-2 flex min-h-11 items-center justify-between gap-2 border-t border-line-soft px-1 pt-2 ${fullWidth ? 'sm:px-1.5' : ''}`}>
@@ -133,20 +120,19 @@ export default function ItineraryCard({
             {season && <span className="hidden text-[8px] font-medium uppercase tracking-[0.12em] text-brown min-[390px]:inline">{season}</span>}
             {showBucket && <BucketButton itineraryId={id} initialBucketed={isBucketed} isLoggedIn={!!currentUserId} withFolders={!!currentUserId} />}
             <span aria-label={`${saveCount} likes`} className="flex items-center gap-1 text-[11px]"><Heart size={15} />{saveCount}</span>
-            <Link href={`/itinerary/${id}#comments`} aria-label={`${commentCount} comments`} className="flex min-h-8 items-center gap-1 text-[11px] hover:text-link">
-              <MessageCircle size={15} />{commentCount}
-            </Link>
+            <CommentsSheetButton itineraryId={id} title={title} count={commentCount} variant="icon" />
             {showBudget && budget && budget > 0 && <span className="text-[9px] font-medium tracking-tight" aria-label={`Budget level ${budget} out of 5`}>
               {[1,2,3,4,5].map((n) => <span key={n} className={n <= budget ? 'text-green-600' : 'text-gray-300'}>$</span>)}
             </span>}
           </div>
         </div>
         {social && (saveCount > 0 || social.comment) && <div className="space-y-0.5 px-1 pt-2 text-[13px] leading-snug text-ink-soft">
+          {/* Names go to that person's profile; "N others" / "N likes" open who liked it. */}
           {saveCount > 0 && <p>{social.likedBy
-            ? <>Liked by <span className="font-semibold text-ink">{social.likedBy.split(' ')[0]}</span>{saveCount > 1 && <> and {saveCount - 1} {saveCount - 1 === 1 ? 'other' : 'others'}</>}</>
-            : <span className="font-semibold text-ink">{saveCount} {saveCount === 1 ? 'like' : 'likes'}</span>}</p>}
-          {social.comment && <p className="line-clamp-1"><span className="font-semibold text-ink">{social.comment.name.split(' ')[0]}</span> {social.comment.text}</p>}
-          {commentCount > 1 && <Link href={`/itinerary/${id}#comments`} className="block text-muted hover:text-link">View all {commentCount} comments</Link>}
+            ? <>Liked by <Link href={`/user/${social.likedBy.id}`} className="font-semibold text-ink hover:underline">{social.likedBy.name.split(' ')[0]}</Link>{saveCount > 1 && <> and <LikesSheetButton itineraryId={id} title={title}>{saveCount - 1} {saveCount - 1 === 1 ? 'other' : 'others'}</LikesSheetButton></>}</>
+            : <LikesSheetButton itineraryId={id} title={title}>{saveCount} {saveCount === 1 ? 'like' : 'likes'}</LikesSheetButton>}</p>}
+          {social.comment && <p className="line-clamp-1"><Link href={`/user/${social.comment.userId}`} className="font-semibold text-ink hover:underline">{social.comment.name.split(' ')[0]}</Link> {social.comment.text}</p>}
+          {commentCount > 1 && <CommentsSheetButton itineraryId={id} title={title} count={commentCount} variant="link" />}
         </div>}
       </div>
     </article>
