@@ -120,8 +120,8 @@ function ItineraryList({
           authorImage={it.user.image}
           authorId={it.user.id}
           destinations={it.destinations}
-          coverPhoto={it.photos[0]?.url ?? null}
-                  photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items))}
+          coverPhoto={it.coverPhoto ?? it.photos[0]?.url ?? null}
+                  photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items), it.coverPhoto)}
           currentUserId={userId}
           isOwn={it.user.id === userId}
           isBucketed={bucketSet.has(it.id)}

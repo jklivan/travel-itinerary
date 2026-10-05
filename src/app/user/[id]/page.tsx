@@ -241,8 +241,8 @@ export default async function UserProfilePage({
                   authorImage={user.image}
                   authorId={user.id}
                   destinations={it.destinations}
-                  coverPhoto={it.photos[0]?.url ?? null}
-                  photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items))}
+                  coverPhoto={it.coverPhoto ?? it.photos[0]?.url ?? null}
+                  photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items), it.coverPhoto)}
                   currentUserId={viewerId}
                   isOwn={isOwn}
                   isBucketed={viewerBucketSet.has(it.id)}
@@ -287,8 +287,8 @@ export default async function UserProfilePage({
                     authorImage={item.itinerary.user.image}
                     authorId={item.itinerary.user.id}
                     destinations={item.itinerary.destinations}
-                    coverPhoto={item.itinerary.photos[0]?.url ?? null}
-                    photos={tripPhotoGallery(item.itinerary.photos, item.itinerary.destinations.flatMap(destination => destination.items))}
+                    coverPhoto={item.itinerary.coverPhoto ?? item.itinerary.photos[0]?.url ?? null}
+                    photos={tripPhotoGallery(item.itinerary.photos, item.itinerary.destinations.flatMap(destination => destination.items), item.itinerary.coverPhoto)}
                     currentUserId={viewerId}
                     isOwn={item.itinerary.user.id === viewerId}
                     isBucketed={ownBucketSet.has(item.itinerary.id)}

@@ -9,7 +9,7 @@ import { fetchStockPhoto } from '@/lib/stockPhoto'
 export const metadata: Metadata = { title: 'My Trips — Postcard' }
 
 const tripSelect = {
-  id: true, title: true, isPlan: true, publishedAt: true,
+  id: true, title: true, isPlan: true, publishedAt: true, coverPhoto: true,
   photos: { orderBy: { isStock: 'asc' as const }, select: { url: true, isStock: true } },
   destinations: { orderBy: { order: 'asc' as const }, select: { name: true, country: true, items: { orderBy: { order: 'asc' as const }, select: { id: true, type: true, photoUrl: true, photoUrls: true } } } },
 }
@@ -25,7 +25,7 @@ export default async function MyTripsPage() {
   ])
   type Trip = typeof plans[number]
   const placeCount = (trip: Trip) => trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)
-  const savedCover = (trip: Trip) => trip.photos.find(photo => !photo.isStock)?.url
+  const savedCover = (trip: Trip) => trip.coverPhoto ?? trip.photos.find(photo => !photo.isStock)?.url
     ?? trip.destinations.flatMap(destination => destination.items).flatMap(item => item.photoUrls.length ? item.photoUrls : item.photoUrl ? [item.photoUrl] : [])[0]
     ?? trip.photos[0]?.url ?? null
   // Trips with no photos of their own get the first place's Google photo (client side, as in the planner),

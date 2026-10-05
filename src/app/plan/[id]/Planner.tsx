@@ -9,12 +9,13 @@ import planningStyles from './Planner.module.css'
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, MapPin, LockKeyhole, Check, Hotel, Utensils, Camera, Plane, Upload, Pencil, Sparkles, Users } from 'lucide-react'
-import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, setPlanDays, deletePlanDay, setPlaceDay, applyDayPlan } from '@/actions/planning'
+import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, setPlanDays, deletePlanDay, setPlaceDay, applyDayPlan, setTripCover } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
 import PlaceEntryForm from '@/components/PlaceEntryForm'
 import PlaceEditForm, { type PlaceEditValues, type PlaceType } from '@/components/PlaceEditForm'
 import EventPhotoInput from '@/components/EventPhotoInput'
 import PlaceQuickEdit from '@/components/PlaceQuickEdit'
+import CoverPhotoPicker from '@/components/CoverPhotoPicker'
 import { StarPicker } from '@/components/ui/Stars'
 import { updatePlace } from '@/actions/placeQuickEdit'
 import DeleteButton from '@/components/DeleteButton'
@@ -29,7 +30,7 @@ import { getRecommendation } from '@/lib/placeRecommendation'
 import PostcardLogo from '@/components/PostcardLogo'
 
 type Place = { tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[]; mealType: string | null; alternative: string | null; description: string | null; link: string | null; address: string | null }
-type Trip = { notes?: string | null; bestMonths?: string[]; budget?: number | null; tripRating?: number | null; tags?: string[]; postType: string; durationDays?: number | null; id: string; title: string; audience: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; items: Place[] }[] }
+type Trip = { coverPhoto?: string | null; tripPhotos?: string[]; notes?: string | null; bestMonths?: string[]; budget?: number | null; tripRating?: number | null; tags?: string[]; postType: string; durationDays?: number | null; id: string; title: string; audience: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; items: Place[] }[] }
 const categories = [{ value: 'hotel', label: 'Hotels', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
 
 export default function Planner({ trip, initialImport = false, initialDetails = false, initialPost = false }: { trip: Trip; initialImport?: boolean; initialDetails?: boolean; initialPost?: boolean }) {
@@ -46,6 +47,9 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const [publishRating, setPublishRating] = useState(trip.tripRating ?? 0)
   const [publishTags, setPublishTags] = useState<string[]>((trip.tags ?? []).filter(tag => tag !== 'day-trip'))
   const [publishMonths, setPublishMonths] = useState<string[]>(trip.bestMonths ?? [])
+  // Every photo in the trip (trip photos, then each place's), for choosing the cover.
+  const allPhotos = tripPhotoList(trip)
+  const [publishCover, setPublishCover] = useState<string | null>(trip.coverPhoto ?? allPhotos[0] ?? null)
   const [publishMessage, setPublishMessage] = useState('')
   // After Continue: offer to rate places without a rating (not transport or alternatives) before the preview.
   // The places listed when the prompt opened; they stay listed (showing their new stars) as they're rated.
@@ -71,6 +75,10 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     if (publishing) return
     setPublishing(true); setPublishMessage('')
     try {
+      if (publishCover && publishCover !== trip.coverPhoto) {
+        const cover = await setTripCover(trip.id, publishCover)
+        if (cover.error) { setPublishMessage(cover.error); return }
+      }
       const result = await savePublishDetails(trip.id, format, { budget: publishBudget, tripRating: publishRating, tags: publishTags, bestMonths: publishMonths })
       if (result.error) setPublishMessage(result.error)
       else { setPublishFormat(null); if (unrated.length) setUnratedPrompt(unrated.map(place => place.id)); else showPreview() }
@@ -120,7 +128,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       </>}
     </section>
     <div className="mt-8 border-t border-line pt-5"><div className="flex flex-wrap items-center justify-between gap-3"><div className="pointer-events-auto"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div>{trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={() => setPublishFormat(trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary')} aria-label="Post trip" title="Post trip" className="pointer-events-auto relative inline-flex size-20 items-center justify-center transition-transform hover:-rotate-6 hover:scale-105 disabled:opacity-60"><PostcardLogo size={80} /><span className="sr-only">Post</span></button>}</div></div>
-    {trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="panel w-full max-w-md p-5 shadow-xl"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-ink">A few more details</h2><p className="mt-1 text-sm text-muted">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-2xl leading-none text-muted" aria-label="Close">×</button></div><div className="mt-5 space-y-5"><fieldset><legend className="mb-2 text-sm font-semibold text-link">Trip type</legend><div className="grid grid-cols-3 gap-2">{([['guide', 'Guide'], ['day-trip', 'Day trip'], ['itinerary', 'Multi-day']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setPublishFormat(value)} className={`rounded-xl border px-2 py-2 text-xs font-semibold ${publishFormat === value ? 'border-link bg-mist text-ink' : 'border-line text-muted'}`}>{label}</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-link">Budget</legend><div className="flex gap-2">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => setPublishBudget(publishBudget === value ? 0 : value)} className={`text-xl ${value <= publishBudget ? 'text-gold' : 'text-gold-faint'}`} aria-label={`${value} dollar signs`}>$</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-link">Overall trip rating</legend><div className="flex gap-1"><StarPicker value={publishRating} onChange={setPublishRating} name="trip" size={26} /></div></fieldset><MonthPicker value={publishMonths} onChange={setPublishMonths} legendClass="mb-1 text-sm font-semibold text-link" /><fieldset><legend className="mb-2 text-sm font-semibold text-link">Tags</legend><div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">{TAGS.slice(0, 16).map(tag => <button key={tag.id} type="button" aria-pressed={publishTags.includes(tag.id)} onClick={() => setPublishTags(current => current.includes(tag.id) ? current.filter(value => value !== tag.id) : [...current, tag.id])} className="chip">{tag.label}</button>)}</div></fieldset><button type="button" disabled={publishing} onClick={() => void continueToPreview(publishFormat)} className="btn btn-primary w-full">{publishing ? 'Saving…' : 'Continue →'}</button></div></div></div>}
+    {trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="panel w-full max-w-md p-5 shadow-xl"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-ink">A few more details</h2><p className="mt-1 text-sm text-muted">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-2xl leading-none text-muted" aria-label="Close">×</button></div><div className="mt-5 space-y-5">{allPhotos.length > 0 && <fieldset><legend className="mb-1 text-sm font-semibold text-link">Choose cover photo</legend><p className="mb-1 text-xs text-muted">The photo people see first. Scroll sideways to see them all.</p><CoverPhotoPicker photos={allPhotos} value={publishCover} onChange={setPublishCover} /></fieldset>}<fieldset><legend className="mb-2 text-sm font-semibold text-link">Trip type</legend><div className="grid grid-cols-3 gap-2">{([['guide', 'Guide'], ['day-trip', 'Day trip'], ['itinerary', 'Multi-day']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setPublishFormat(value)} className={`rounded-xl border px-2 py-2 text-xs font-semibold ${publishFormat === value ? 'border-link bg-mist text-ink' : 'border-line text-muted'}`}>{label}</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-link">Budget</legend><div className="flex gap-2">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => setPublishBudget(publishBudget === value ? 0 : value)} className={`text-xl ${value <= publishBudget ? 'text-gold' : 'text-gold-faint'}`} aria-label={`${value} dollar signs`}>$</button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-semibold text-link">Overall trip rating</legend><div className="flex gap-1"><StarPicker value={publishRating} onChange={setPublishRating} name="trip" size={26} /></div></fieldset><MonthPicker value={publishMonths} onChange={setPublishMonths} legendClass="mb-1 text-sm font-semibold text-link" /><fieldset><legend className="mb-2 text-sm font-semibold text-link">Tags</legend><div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">{TAGS.slice(0, 16).map(tag => <button key={tag.id} type="button" aria-pressed={publishTags.includes(tag.id)} onClick={() => setPublishTags(current => current.includes(tag.id) ? current.filter(value => value !== tag.id) : [...current, tag.id])} className="chip">{tag.label}</button>)}</div></fieldset><button type="button" disabled={publishing} onClick={() => void continueToPreview(publishFormat)} className="btn btn-primary w-full">{publishing ? 'Saving…' : 'Continue →'}</button></div></div></div>}
     {publishMessage && <p role="status" className="mt-2 text-right text-sm text-link">{publishMessage}</p>}
     {unratedPrompt && <UnratedPrompt places={places.filter(place => unratedPrompt.includes(place.id))} onClose={() => setUnratedPrompt(null)} onPreview={showPreview} />}
   </div>
@@ -293,16 +301,21 @@ function MonthPicker({ value, onChange, legendClass = 'mb-1 text-sm' }: { value:
 }
 function DetailsForm({ trip }: { trip: Trip }) {
   const router = useRouter()
+  const coverPhotos = tripPhotoList(trip)
+  const [cover, setCover] = useState<string | null>(trip.coverPhoto ?? coverPhotos[0] ?? null)
+  const [coverBusy, setCoverBusy] = useState(false)
+  const [coverMessage, setCoverMessage] = useState('')
   const [months, setMonths] = useState<string[]>(trip.bestMonths ?? [])
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
-  return <form className="space-y-3 rounded-xl border border-line bg-white p-4" onSubmit={async event => {
+  return <><form className="space-y-3 rounded-xl border border-line bg-white p-4" onSubmit={async event => {
     event.preventDefault(); if (busy) return
     setBusy(true); setMessage('')
     const data = new FormData(event.currentTarget)
     try { const result = await savePlanDetails(trip.id, data); setMessage(result.error || 'Saved'); if (!result.error) router.refresh() }
     catch { setMessage('Could not save. Please try again.') } finally { setBusy(false) }
   }}><fieldset disabled={busy} className="space-y-3"><label className="block text-sm">Trip name<input name="title" required defaultValue={trip.title} maxLength={160} className={inputClass} /></label><label className="block text-sm">Number of days (optional)<input name="durationDays" type="number" min="1" step="1" defaultValue={trip.durationDays ?? ''} className={inputClass} /></label><fieldset><legend className="mb-2 text-sm">Who is this trip for?</legend><div className="flex flex-wrap gap-2">{([{ value: 'family', label: 'Family' }, { value: 'friends', label: 'Friends' }, { value: 'romantic', label: 'Couples' }, { value: 'adult', label: 'Adults' }] as const).map(option => <label key={option.value} className="cursor-pointer"><input className="peer sr-only" type="radio" name="audience" value={option.value} defaultChecked={trip.audience === option.value} /><span className="inline-flex min-h-10 items-center rounded-full border border-line px-4 text-sm text-link peer-checked:border-link peer-checked:bg-mist peer-checked:font-semibold">{option.label}</span></label>)}</div></fieldset><DateFields start={trip.start} end={trip.end} /><p className="text-xs text-muted">Leave both dates blank to keep things flexible.</p><MonthPicker value={months} onChange={setMonths} /><input type="hidden" name="bestMonths" value={JSON.stringify(months)} /><label className="block text-sm">Trip notes & tips (optional)<textarea name="notes" rows={4} defaultValue={trip.notes ?? ''} maxLength={8000} placeholder="Tips, packing list, visa info…" className={inputClass} /></label><button className={buttonClass}>{busy ? 'Saving…' : 'Save details'}</button></fieldset>{message && <p role="status" className="text-sm">{message}</p>}</form>
+    {coverPhotos.length > 0 && <div className="panel mt-3 p-4"><p className="text-sm font-semibold text-ink">Cover photo</p><p className="mb-1 text-xs text-muted">Tap a photo to make it the cover. {coverMessage}</p><CoverPhotoPicker photos={coverPhotos} value={cover} disabled={coverBusy} onChange={async url => { const previous = cover; setCover(url); setCoverBusy(true); setCoverMessage(''); try { const result = await setTripCover(trip.id, url); if (result.error) { setCover(previous); setCoverMessage(result.error) } else { setCoverMessage('Saved.'); router.refresh() } } catch { setCover(previous); setCoverMessage('Could not save. Please try again.') } finally { setCoverBusy(false) } }} /></div>}</>
 }
 
 // Itinerary tab: how many days the trip is, so places can be put on days.
@@ -422,4 +435,9 @@ function OrganizeWithAI({ tripId, places }: { tripId: string; places: (Place & {
     </div>}
     {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
   </div>
+}
+
+// All of a trip's photos for choosing a cover: trip photos, then each place's, once each.
+function tripPhotoList(trip: Trip) {
+  return [...new Set([...(trip.tripPhotos ?? []), ...trip.destinations.flatMap(d => d.items.flatMap(item => item.photos))])]
 }

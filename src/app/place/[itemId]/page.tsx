@@ -55,8 +55,8 @@ export default async function PlacePage({ params }: { params: Promise<{ itemId: 
           <p className="mb-2 flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold text-link">{trip.user.id === userId ? 'You' : trip.user.name}</span>{rating ? <RatingStars value={rating} label={`${trip.user.name} rated it ${rating} out of 5`} /> : <span className="text-muted">went, no rating</span>}</p>
           <ItineraryCard fullWidth id={trip.id} postType={trip.postType} tags={trip.tags} durationDays={trip.durationDays} title={trip.title} bestMonths={trip.bestMonths}
             datesFlexible={trip.datesFlexible} startDate={trip.startDate} endDate={trip.endDate} audience={trip.audience} budget={trip.budget} tripRating={trip.tripRating}
-            authorName={trip.user.name} authorImage={trip.user.image} authorId={trip.user.id} destinations={trip.destinations} coverPhoto={trip.photos[0]?.url ?? null}
-            photos={tripPhotoGallery(trip.photos, trip.destinations.flatMap(destination => destination.items))} currentUserId={userId}
+            authorName={trip.user.name} authorImage={trip.user.image} authorId={trip.user.id} destinations={trip.destinations} coverPhoto={trip.coverPhoto ?? trip.photos[0]?.url ?? null}
+            photos={tripPhotoGallery(trip.photos, trip.destinations.flatMap(destination => destination.items), trip.coverPhoto)} currentUserId={userId}
             isOwn={trip.user.id === userId} isBucketed={bucketSet.has(trip.id)} saveCount={trip._count.bucketedBy} />
         </section>
       })}

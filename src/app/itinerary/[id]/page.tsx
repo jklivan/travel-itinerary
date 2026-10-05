@@ -788,7 +788,7 @@ export default async function ItineraryPage({
           </>
         )}
         {(() => {
-          const photos = tripPhotoGallery(it.photos, it.destinations.flatMap(d => d.items))
+          const photos = tripPhotoGallery(it.photos, it.destinations.flatMap(d => d.items), it.coverPhoto)
           const stockPhoto = it.photos.find(photo => photo.isStock)
           const gallery = photos.length ? photos : stockPhoto ? [stockPhoto] : []
           if (!gallery.length) return null

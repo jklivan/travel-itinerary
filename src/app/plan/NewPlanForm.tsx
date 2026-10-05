@@ -25,7 +25,7 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [destination, setDestination] = useState('')
-  const [style, setStyle] = useState<'days' | 'ideas'>('days')
+  const [style, setStyle] = useState<'days' | 'ideas'>('ideas')
   const [days, setDays] = useState('')
   const [audience, setAudience] = useState('family')
   // "Import notes or a file" opens here, under the buttons; places are read before the plan is made, so
@@ -87,8 +87,8 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
         <input type="hidden" name="format" value={style === 'ideas' ? 'guide' : days === '1' ? 'day-trip' : 'itinerary'} />
         <div className="mx-auto grid max-w-[270px] grid-cols-2 gap-4 py-2">
           {[
-            { value: 'days', label: 'Plan day by day', hint: 'A day-by-day itinerary', photo: 'photo-1435527173128-983b87201f4d', tilt: 'rotate-[-3deg]' },
-            { value: 'ideas', label: 'Start collecting ideas', hint: 'Places & ideas', photo: 'photo-1499793983690-e29da59ef1c2', tilt: 'rotate-[3deg]' },
+            { value: 'ideas', label: 'Start collecting ideas', hint: 'Places & ideas', photo: 'photo-1499793983690-e29da59ef1c2', tilt: 'rotate-[-3deg]' },
+            { value: 'days', label: 'Plan day by day', hint: 'A day-by-day itinerary', photo: 'photo-1435527173128-983b87201f4d', tilt: 'rotate-[3deg]' },
           ].map(option => <button key={option.value} type="button" aria-pressed={style === option.value} onClick={() => setStyle(option.value as 'days' | 'ideas')} className={`${option.tilt} min-w-0 rounded-lg border bg-card p-1.5 pb-3 shadow-md sm:p-2 ${style === option.value ? 'border-link ring-2 ring-link/20' : 'border-line-soft'}`}>
             <span className="block aspect-[4/3] rounded bg-cover bg-center" style={{ backgroundImage: `url(https://images.unsplash.com/${option.photo}?auto=format&fit=crop&w=480&q=85)` }} />
             <span className="mt-2 block text-[11px] font-semibold uppercase leading-tight tracking-wide text-ink sm:text-sm">{option.label}</span>

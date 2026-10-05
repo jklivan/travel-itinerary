@@ -7,9 +7,10 @@ export function pickEventPhoto(photos: readonly string[], random = Math.random()
   return photos.length ? photos[Math.min(photos.length - 1, Math.max(0, Math.floor(random * photos.length)))] : null
 }
 
-export function tripPhotoGallery(tripPhotos: { id: string; url: string; caption: string | null; isStock?: boolean }[], items: { id: string; name: string; photoUrls?: string[]; photoUrl?: string | null }[]) {
+// All of a trip's photos (trip photos, then each place's), once each; the chosen cover photo goes first.
+export function tripPhotoGallery(tripPhotos: { id: string; url: string; caption: string | null; isStock?: boolean }[], items: { id: string; name: string; photoUrls?: string[]; photoUrl?: string | null }[], cover?: string | null) {
   const seen = new Set<string>()
-  return [
+  const gallery = [
     ...tripPhotos.filter(photo => !photo.isStock),
     ...items.flatMap(item => eventPhotos(item.photoUrls, item.photoUrl).map((url, index) => ({ id: `${item.id}-photo-${index}`, url, caption: item.name }))),
   ].filter(photo => {
@@ -17,4 +18,6 @@ export function tripPhotoGallery(tripPhotos: { id: string; url: string; caption:
     seen.add(photo.url)
     return true
   })
+  const chosen = cover ? gallery.findIndex(photo => photo.url === cover) : -1
+  return chosen > 0 ? [gallery[chosen], ...gallery.slice(0, chosen), ...gallery.slice(chosen + 1)] : gallery
 }

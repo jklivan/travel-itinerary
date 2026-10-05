@@ -190,6 +190,21 @@ export async function applyDayPlan(tripId: string, assignments: { id: string; da
   } catch { return { error: 'Could not apply the plan. Please try again.' } }
 }
 
+// Choose a trip's cover photo: one of its own trip or place photos (null goes back to the first photo).
+export async function setTripCover(id: string, url: string | null): Promise<Result> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  try {
+    const trip = await prisma.itinerary.findFirst({ where: { id, userId }, select: { photos: { select: { url: true } }, destinations: { select: { items: { select: { photoUrl: true, photoUrls: true } } } } } })
+    if (!trip) return { error: unavailable }
+    const own = new Set([...trip.photos.map(photo => photo.url), ...trip.destinations.flatMap(d => d.items.flatMap(item => [...item.photoUrls, ...(item.photoUrl ? [item.photoUrl] : [])]))])
+    if (url !== null && (typeof url !== 'string' || !own.has(url))) return { error: 'Choose one of this trip’s photos.' }
+    await prisma.itinerary.updateMany({ where: { id, userId }, data: { coverPhoto: url } })
+    refresh(id, userId)
+    return { success: true }
+  } catch { return { error: 'Could not save the cover photo. Please try again.' } }
+}
+
 export async function addPlanPlace(id: string, form: FormData): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }

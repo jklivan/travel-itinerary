@@ -80,6 +80,8 @@ model Itinerary {
   user         User             @relation(fields: [userId], references: [id])
   destinations Destination[]
   photos       Photo[]
+  // The photo chosen as the trip's cover (one of its trip or place photos); empty = first photo.
+  coverPhoto   String?
   bucketedBy   BucketListItem[]
   comments     Comment[]
   notifications Notification[]
