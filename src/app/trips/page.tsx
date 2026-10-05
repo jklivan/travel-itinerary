@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { fetchStockPhoto } from '@/lib/stockPhoto'
+import SwipeToDelete from '@/components/SwipeToDelete'
 
 export const metadata: Metadata = { title: 'My Trips — Postcard' }
 
@@ -41,10 +42,10 @@ export default async function MyTripsPage() {
     <h1 className="font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-ink">My trips</h1>
     <TripSection title="Private plans" description="Only you can see these. Keep planning, then post when you’re ready." empty="No private plans yet." action={<Link href="/plan" className="shrink-0 whitespace-nowrap text-sm font-semibold text-link">+ New plan</Link>}>
       {/* Plans go straight to /plan: the trip editor's redirect there fails during in-app navigation. */}
-      {plans.map(trip => <TripRow key={trip.id} href={`/plan/${trip.id}`} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={`${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}`} cta="Keep planning →" />)}
+      {plans.map(trip => <TripRow key={trip.id} id={trip.id} href={`/plan/${trip.id}`} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={`${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}`} cta="Keep planning →" />)}
     </TripSection>
     <TripSection title="Shared postcards" description="Posted trips. You can still add places and update them." empty="You haven’t posted a trip yet.">
-      {postcards.map(trip => <TripRow key={trip.id} href={`/itinerary/${trip.id}`} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={`${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}${trip.publishedAt ? ` · Posted ${trip.publishedAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : ''}`} cta="View postcard →" />)}
+      {postcards.map(trip => <TripRow key={trip.id} id={trip.id} href={`/itinerary/${trip.id}`} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={`${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}${trip.publishedAt ? ` · Posted ${trip.publishedAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : ''}`} cta="View postcard →" />)}
     </TripSection>
   </div>
 }
@@ -59,9 +60,9 @@ function TripSection({ title, description, empty, action, children }: { title: s
   </section>
 }
 
-function TripRow({ href, title, photo, detail, cta }: { href: string; title: string; photo: { saved: string | null; itemId: string | null; stock: string | null }; detail: string; cta: string }) {
-  return <Link href={href} className="panel flex items-center gap-4 p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)] transition-colors hover:bg-chip">
+function TripRow({ id, href, title, photo, detail, cta }: { id: string; href: string; title: string; photo: { saved: string | null; itemId: string | null; stock: string | null }; detail: string; cta: string }) {
+  return <SwipeToDelete id={id} title={title}><Link href={href} draggable={false} className="panel flex items-center gap-4 p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)] transition-colors hover:bg-chip">
     <span className="relative aspect-[3/4] w-24 shrink-0 rotate-[-3deg] overflow-hidden border-[4px] border-white bg-mist shadow-[0_2px_5px_rgba(45,38,27,0.18)]"><TripCover {...photo} /></span>
     <span className="min-w-0 flex-1"><span className="block break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-ink">{title}</span><span className="mt-2 block text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">{detail}</span><span className="mt-1 block text-sm text-link">{cta}</span></span>
-  </Link>
+  </Link></SwipeToDelete>
 }
