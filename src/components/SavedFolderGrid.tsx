@@ -2,10 +2,9 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useTransition, type ReactNode } from 'react'
+import { useState, useTransition } from 'react'
 import { Bookmark, Car, ChevronRight, Folder, MapPin, MountainSnow, Palmtree, Plus, Plane, Users, Utensils, Wine } from 'lucide-react'
 import { deleteSavedFolder, saveFolder } from '@/actions/savedFolders'
-import PostcardLogo from '@/components/PostcardLogo'
 
 type FolderSummary = { id: string; name: string; count: number }
 
@@ -23,14 +22,8 @@ function folderIcon(name: string) {
   return Folder
 }
 
-// Postmark wavy lines in a tile's corner.
-function Postmark() {
-  return <svg aria-hidden="true" viewBox="0 0 120 50" className="pointer-events-none absolute bottom-2 right-1 w-20 text-mist-edge opacity-70 sm:w-28" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-    <path d="M4 12 Q19 4 34 12 T64 12 T94 12 T118 10M4 24 Q19 16 34 24 T64 24 T94 24 T118 22M4 36 Q19 28 34 36 T64 36 T94 36 T118 34" />
-  </svg>
-}
-
-function Tile({ href, name, count, Icon, highlighted = false, decoration }: { href: string; name: string; count: number; Icon: typeof Folder; highlighted?: boolean; decoration: ReactNode }) {
+// A folder tile: icon, name and count. Plain, without postmark lines or stamps.
+function Tile({ href, name, count, Icon, highlighted = false }: { href: string; name: string; count: number; Icon: typeof Folder; highlighted?: boolean }) {
   return <Link href={href} className={`relative flex min-h-[112px] items-center gap-2.5 overflow-hidden rounded-xl border p-3 pr-6 sm:min-h-[132px] sm:gap-3 sm:p-4 sm:pr-8 transition-shadow hover:shadow-md ${highlighted ? 'border-ink bg-mist' : 'border-line-soft bg-card'}`}>
     <span className="relative z-[1] flex size-11 shrink-0 items-center justify-center rounded-full bg-chip text-brown sm:size-14"><Icon size={22} strokeWidth={1.5} /></span>
     <span className="relative z-[1] min-w-0">
@@ -38,7 +31,6 @@ function Tile({ href, name, count, Icon, highlighted = false, decoration }: { hr
       <span className="mt-1 block text-sm tracking-wider text-muted">({count})</span>
     </span>
     <ChevronRight size={16} className="absolute right-2 top-3 text-ink sm:right-3 sm:top-4" />
-    {decoration}
   </Link>
 }
 
@@ -76,10 +68,8 @@ export default function SavedFolderGrid({ folders, total }: { folders: FolderSum
       {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
     </form>}
     <nav aria-label="Saved folders" className="grid grid-cols-2 gap-2.5 sm:gap-3">
-      <Tile href="/saved?folder=all" name="All saved" count={total} Icon={Bookmark} highlighted
-        decoration={<PostcardLogo size={60} className="pointer-events-none absolute -bottom-3 right-2 rotate-[-10deg] opacity-45" />} />
-      {folders.map((folder, index) => <Tile key={folder.id} href={`/saved?folder=${encodeURIComponent(folder.id)}`} name={folder.name} count={folder.count} Icon={folderIcon(folder.name)}
-        decoration={index % 4 === 2 ? <PostcardLogo size={56} className="pointer-events-none absolute -bottom-4 right-2 rotate-[12deg] opacity-40" /> : <Postmark />} />)}
+      <Tile href="/saved?folder=all" name="All saved" count={total} Icon={Bookmark} highlighted />
+      {folders.map(folder => <Tile key={folder.id} href={`/saved?folder=${encodeURIComponent(folder.id)}`} name={folder.name} count={folder.count} Icon={folderIcon(folder.name)} />)}
     </nav>
   </>
 }
