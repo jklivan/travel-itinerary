@@ -579,7 +579,7 @@ export default async function ItineraryPage({
             {showDayByDay && it.isPlan && <div className="space-y-6 mb-10">
               {[...new Set(mainDestinations.flatMap(d => d.items.flatMap(i => i.dayIndex === null ? [] : [i.dayIndex])))].sort((a, b) => (a ?? 0) - (b ?? 0)).concat([-1]).map(day => {
                 const items = mainDestinations.flatMap(d => d.items).filter(i => day === -1 ? i.dayIndex === null : i.dayIndex === day)
-                return items.length > 0 && <section key={day}><h2 className="mb-3 text-xl font-semibold">{day === -1 ? 'Unscheduled' : `Day ${day}`}</h2><div className={styles.cardColumns}>{items.map(item => renderPlaceCard(item, item.type === 'hotel' ? 'hotel' : item.type === 'food_drink' ? 'food_drink' : item.type === 'transport' ? 'transport' : 'activity'))}</div></section>
+                return items.length > 0 && <section key={day}><h2 className={styles.dayHeading}>{day === -1 ? 'Unscheduled' : `Day ${day}`}</h2><div className={styles.cardColumns}>{items.map(item => renderPlaceCard(item, item.type === 'hotel' ? 'hotel' : item.type === 'food_drink' ? 'food_drink' : item.type === 'transport' ? 'transport' : 'activity'))}</div></section>
               })}
             </div>}
             {/* ── Day by Day (itineraries) ── */}
