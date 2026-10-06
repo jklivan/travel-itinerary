@@ -3,6 +3,7 @@ import { hasTripDates, tripDuration } from '@/lib/dayTrips'
 import CopyTripButton from '@/components/CopyTripButton'
 import RatingStars from '@/components/RatingStars'
 import { prisma } from '@/lib/prisma'
+import { after } from 'next/server'
 import { Prisma } from '@/generated/prisma/client'
 import { auth } from '@/auth'
 import Image from 'next/image'
@@ -17,9 +18,7 @@ import DeleteButton from '@/components/DeleteButton'
 import { TRIP_STAMPS, STAMP_COLORS } from '@/lib/tripStamps'
 import { tripLocationLabel } from '@/lib/tripLocation'
 import { locateTripPlaces, needsLocating } from '@/lib/locatePlaces'
-import { after } from 'next/server'
 import TagChip, { TAG_PILL } from '@/components/ui/TagChip'
-import DestinationPeopleButton from '@/components/DestinationPeopleButton'
 import LikesSheetButton from '@/components/LikesSheet'
 import Stamp from '@/components/ui/Stamp'
 import ItineraryMap from '@/components/ItineraryMap'
@@ -30,6 +29,7 @@ import PublishPreviewBar from '@/components/PublishPreviewBar'
 import GooglePlaceThumb from '@/components/GooglePlaceThumb'
 import UserAvatar from '@/components/UserAvatar'
 import FriendRatingsButton from '@/components/FriendRatingsButton'
+import DestinationSocial, { type DestinationFriend } from '@/components/DestinationSocial'
 import { getRecommendation, partitionPlaces } from '@/lib/placeRecommendation'
 import { mapDayNumber } from '@/lib/mapDays'
 import { distanceMiles } from '@/lib/distance'
@@ -275,8 +275,8 @@ export default async function ItineraryPage({
       })).map(f => f.followingId)
     : []
 
-  type SocialRow = { name: string; count: bigint }
-  type FriendNameRow = { name: string; friend_name: string }
+  type SaverRow = { name: string; user_id: string; user_name: string }
+  type FriendNameRow = { name: string; friend_name: string; itinerary_id: string }
   type FriendDetailRow = { name: string; type: string; friend_name: string; user_id: string; rating: number | null; itinerary_id: string; place_id: string | null }
   type AvgRow = { item_id: string; total: bigint; avg_rating: number | null; trips: bigint }
   type BucketerRow = { friend_name: string }
@@ -285,7 +285,7 @@ export default async function ItineraryPage({
     // Which friends visited the same destinations (exclude the current itinerary itself)
     friendIds.length > 0 && destNamesLower.length > 0
       ? prisma.$queryRaw<FriendNameRow[]>(Prisma.sql`
-          SELECT DISTINCT ON (LOWER(d.name), i."userId") LOWER(d.name) AS name, u.name AS friend_name
+          SELECT DISTINCT ON (LOWER(d.name), i."userId") LOWER(d.name) AS name, u.name AS friend_name, i.id AS itinerary_id
           FROM "Destination" d
           JOIN "Itinerary" i ON i.id = d."itineraryId"
           JOIN "User" u ON u.id = i."userId"
@@ -293,21 +293,21 @@ export default async function ItineraryPage({
             AND LOWER(d.name) IN (${Prisma.join(destNamesLower)})
             AND i.visibility != 'draft'
             AND i.id != ${id}
-          ORDER BY LOWER(d.name), i."userId"
+          ORDER BY LOWER(d.name), i."userId", i."createdAt" DESC
         `)
       : Promise.resolve([] as FriendNameRow[]),
-    // How many travelers saved itineraries containing each destination
+    // Who saved shared trips with each destination (only friends' names are shown; others are counted)
     destNamesLower.length > 0
-      ? prisma.$queryRaw<SocialRow[]>(Prisma.sql`
-          SELECT LOWER(d.name) AS name, COUNT(DISTINCT b."userId") AS count
+      ? prisma.$queryRaw<SaverRow[]>(Prisma.sql`
+          SELECT DISTINCT LOWER(d.name) AS name, b."userId" AS user_id, u.name AS user_name
           FROM "BucketListItem" b
           JOIN "Itinerary" i ON i.id = b."itineraryId"
           JOIN "Destination" d ON d."itineraryId" = i.id
+          JOIN "User" u ON u.id = b."userId"
           WHERE LOWER(d.name) IN (${Prisma.join(destNamesLower)})
             AND i.visibility != 'draft'
-          GROUP BY LOWER(d.name)
         `)
-      : Promise.resolve([] as SocialRow[]),
+      : Promise.resolve([] as SaverRow[]),
     // Friends' shared trips, and all of your own trips, with any of this trip's places (by Google place or name).
     (friendIds.length > 0 || viewerId) && (placeNamesLower.length > 0 || placeIds.length > 0)
       ? prisma.$queryRaw<FriendDetailRow[]>(Prisma.sql`
@@ -360,12 +360,16 @@ export default async function ItineraryPage({
   ])
 
   // destination name → [friend names]
-  const friendDestNames = new Map<string, string[]>()
-  for (const r of friendDestRows) {
-    if (!friendDestNames.has(r.name)) friendDestNames.set(r.name, [])
-    friendDestNames.get(r.name)!.push(r.friend_name)
+  // Each destination (lowercase name) → friends who've been, and who saved a trip there.
+  const friendDestNames = new Map<string, DestinationFriend[]>()
+  for (const r of friendDestRows) friendDestNames.set(r.name, [...(friendDestNames.get(r.name) ?? []), { name: r.friend_name, itineraryId: r.itinerary_id }])
+  const savedDestMap = new Map<string, { names: string[]; total: number }>()
+  for (const r of savedDestRows) {
+    const current = savedDestMap.get(r.name) ?? { names: [], total: 0 }
+    const name = r.user_id === session?.user?.id ? 'You' : friendIds.includes(r.user_id) ? r.user_name : null
+    savedDestMap.set(r.name, { names: name ? [...current.names, name] : current.names, total: current.total + 1 })
   }
-  const savedDestMap = new Map(savedDestRows.map(r => [r.name, Number(r.count)]))
+  const destinationSocial = (dest: { name: string }) => <DestinationSocial destination={dest.name} friends={friendDestNames.get(dest.name.toLowerCase()) ?? []} savers={savedDestMap.get(dest.name.toLowerCase()) ?? { names: [], total: 0 }} />
 
   // Each place → the friends who have it (one entry per friend, their best rating), with you first.
   // The same Google place matches in any category; otherwise the name must match in the same category.
@@ -508,9 +512,9 @@ export default async function ItineraryPage({
           <div aria-label="Trip tags" className="flex flex-wrap gap-2 items-center mb-4">
             {!isOwn && <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />}
             {/* One chip style for everything here; the verdict uses its stamp colour, as on the trip cards. */}
-            {stamp && <span className={`${TAG_PILL} text-white`} style={{ backgroundColor: STAMP_COLORS[stamp.value] }}><Star size={16} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />{stamp.label}</span>}
+            {stamp && <span className={`${TAG_PILL} text-white`} style={{ backgroundColor: STAMP_COLORS[stamp.value] }}><Star size={14} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />{stamp.label}</span>}
             {!!it.budget && it.budget > 0 && <span aria-label={`Budget ${it.budget} out of 5`} className={`${TAG_PILL} gap-1 bg-chip`}>{[1, 2, 3, 4, 5].map(n => <span key={n} className={n <= it.budget! ? 'text-ink' : 'text-gold-faint'}>$</span>)}</span>}
-            {audienceLabel && <span className={`${TAG_PILL} bg-chip text-ink`}><Users size={18} strokeWidth={1.5} aria-hidden="true" />{audienceLabel}</span>}
+            {audienceLabel && <span className={`${TAG_PILL} bg-chip text-ink`}><Users size={15} strokeWidth={1.5} aria-hidden="true" />{audienceLabel}</span>}
             {displayTags.map(tag => <TagChip key={tag} id={tag} />)}
             {it.bestMonths && it.bestMonths.length > 0 && it.bestMonths.map(m => (
               <span key={m} className={`${TAG_PILL} bg-mist text-ink`}>{m}</span>
@@ -524,34 +528,30 @@ export default async function ItineraryPage({
             </p>
           )}
 
-          {/* Author / meta / actions row */}
-          <div className="flex items-center justify-between flex-wrap gap-3 border-t border-b border-line-strong py-3 mb-2">
-            <div className="flex items-center gap-3 flex-wrap">
-              <Link href={`/user/${it.user.id}`} className="flex items-center gap-2 hover:opacity-80">
-                <UserAvatar name={it.user.name} image={it.user.image} size={32} />
-                <span className="text-sm font-medium text-ink">{it.user.name}</span>
-              </Link>
-              {isGuide && <span className="text-xs text-brown">Guide</span>}
-              {days !== null && (
-                <span className="text-xs text-brown">
-                  {hasTripDates(it) && `${fmtShort(it.startDate)} – ${fmtShort(it.endDate)} · `}{days} {days === 1 ? 'day' : 'days'}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {session?.user && !isOwn && (
-                <form action={async () => {
-                  'use server'
-                  if (followStatus === 'accepted') await unfollowUser(it.user.id)
-                  else if (followStatus === 'pending') await cancelFollowRequest(it.user.id)
-                  else await sendFollowRequest(it.user.id)
-                }}>
-                  <button type="submit" aria-pressed={followStatus === 'accepted'} className="chip">
-                    {followStatus === 'accepted' ? 'Following' : followStatus === 'pending' ? 'Requested' : '+ Follow'}
-                  </button>
-                </form>
-              )}
-            </div>
+          {/* Author row, one line: who posted it | when and how long, with Follow on the right. */}
+          <div className="flex items-center gap-3 border-t border-b border-line-strong py-3 mb-2">
+            <Link href={`/user/${it.user.id}`} className="flex shrink-0 items-center gap-2 hover:opacity-80">
+              <UserAvatar name={it.user.name} image={it.user.image} size={32} />
+              <span className="text-sm text-ink">{it.user.name}</span>
+            </Link>
+            {(isGuide || days !== null) && <>
+              <span aria-hidden="true" className="h-5 w-px shrink-0 bg-line-strong" />
+              <span className="min-w-0 flex-1 text-[11px] leading-snug text-brown">
+                {isGuide ? 'Guide' : <>{hasTripDates(it) && `${fmtShort(it.startDate)} – ${fmtShort(it.endDate)} · `}{days} {days === 1 ? 'day' : 'days'}</>}
+              </span>
+            </>}
+            {session?.user && !isOwn && (
+              <form className="ml-auto shrink-0" action={async () => {
+                'use server'
+                if (followStatus === 'accepted') await unfollowUser(it.user.id)
+                else if (followStatus === 'pending') await cancelFollowRequest(it.user.id)
+                else await sendFollowRequest(it.user.id)
+              }}>
+                <button type="submit" aria-pressed={followStatus === 'accepted'} className="chip">
+                  {followStatus === 'accepted' ? 'Following' : followStatus === 'pending' ? 'Requested' : '+ Follow'}
+                </button>
+              </form>
+            )}
           </div>
 
 
@@ -573,7 +573,7 @@ export default async function ItineraryPage({
         <nav aria-label="Itinerary view" className="tabs mb-5">
           <Link href={`/itinerary/${it.id}`} scroll={false} aria-current={!showMap && !showDayByDay ? 'page' : undefined} className="tab">Summary</Link>
           {hasDailyPlan && <Link href={`/itinerary/${it.id}?view=day-by-day`} scroll={false} aria-current={showDayByDay ? 'page' : undefined} className="tab">Itinerary</Link>}
-          {mapPins.length > 0 && <Link href={`/itinerary/${it.id}?view=map`} scroll={false} aria-current={showMap ? 'page' : undefined} className="tab">Map</Link>}
+          {mapPins.length > 0 && <Link href={`/itinerary/${it.id}?view=map`} scroll={false} aria-current={showMap ? 'page' : undefined} className="tab">Map View</Link>}
         </nav>
 
         {showMap && (
@@ -587,7 +587,7 @@ export default async function ItineraryPage({
             {showDayByDay && it.isPlan && <div className="space-y-6 mb-10">
               {[...new Set(mainDestinations.flatMap(d => d.items.flatMap(i => i.dayIndex === null ? [] : [i.dayIndex])))].sort((a, b) => (a ?? 0) - (b ?? 0)).concat([-1]).map(day => {
                 const items = mainDestinations.flatMap(d => d.items).filter(i => day === -1 ? i.dayIndex === null : i.dayIndex === day)
-                return items.length > 0 && <section key={day}><h2 className="mb-3 text-xl font-semibold">{day === -1 ? 'Unscheduled' : `Day ${day}`}</h2><div className={styles.cardColumns}>{items.map(item => renderPlaceCard(item, item.type === 'hotel' ? 'hotel' : item.type === 'food_drink' ? 'food_drink' : item.type === 'transport' ? 'transport' : 'activity'))}</div></section>
+                return items.length > 0 && <section key={day}><h2 className={styles.dayHeading}>{day === -1 ? 'Unscheduled' : `Day ${day}`}</h2><div className={styles.cardColumns}>{items.map(item => renderPlaceCard(item, item.type === 'hotel' ? 'hotel' : item.type === 'food_drink' ? 'food_drink' : item.type === 'transport' ? 'transport' : 'activity'))}</div></section>
               })}
             </div>}
             {/* ── Day by Day (itineraries) ── */}
@@ -602,8 +602,6 @@ export default async function ItineraryPage({
                     const multiStay = groups.length > 1
                     const dayOffset = dest.items.some(item => item.type !== 'hotel' && item.dayIndex === 0) ? 1 : 0
                     const dayNumber = (day: number) => Math.max(1, day + dayOffset)
-                    const dFriends = friendDestNames.get(dest.name.toLowerCase()) ?? []
-                    const dSaved = savedDestMap.get(dest.name.toLowerCase()) ?? 0
                     return (
                       <div key={dest.id}>
                         {mainDestinations.length > 1 && (
@@ -611,16 +609,7 @@ export default async function ItineraryPage({
                             <MapPin size={11} /> {dest.name}{dest.country ? `, ${dest.country}` : ''}
                           </p>
                         )}
-                        {(dFriends.length > 0 || dSaved > 0) && (
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3 text-xs text-brown">
-                            {dFriends.length > 0 && (
-                              <DestinationPeopleButton itineraryId={it.id} destination={dest.name} kind="visited">👫 <span className="font-medium text-ink-soft">{dFriends.slice(0, 3).map(n => n.split(' ')[0]).join(', ')}</span>
-                                {dFriends.length > 3 && ` +${dFriends.length - 3} more`} also visited
-                              </DestinationPeopleButton>
-                            )}
-                            {dSaved > 0 && <DestinationPeopleButton itineraryId={it.id} destination={dest.name} kind="saved">🔖 Saved by {dSaved} {dSaved === 1 ? 'traveler' : 'travelers'}</DestinationPeopleButton>}
-                          </div>
-                        )}
+                        {destinationSocial(dest)}
                         {dest.notes && <p className="text-xs text-brown italic mb-3 border-l-2 border-line-strong pl-2">{dest.notes}</p>}
                         <div className="space-y-5">
                           {groups.map((group, gi) => {
@@ -690,6 +679,7 @@ export default async function ItineraryPage({
                             <MapPin size={11} /> {dest.name}{dest.country ? `, ${dest.country}` : ''}
                           </p>
                         )}
+                        {destinationSocial(dest)}
                         {dest.notes && <p className="text-xs text-brown italic mb-3 border-l-2 border-line-strong pl-2">{dest.notes}</p>}
                         <div className={styles.categoryStack}>
                           {dHotels.length > 0 && (

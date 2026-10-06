@@ -42,6 +42,21 @@
   font-size: 18px;
 }
 
+/* Day headings in itinerary views: the category headings' serif and size, with a rule under the text. */
+.dayHeading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--color-ink);
+  color: var(--color-ink);
+  font-family: var(--font-playfair), Georgia, serif;
+  font-size: 18px;
+  font-weight: 400;
+}
+
 .categoryIcon {
   display: grid;
   place-items: center;
