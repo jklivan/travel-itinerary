@@ -16,6 +16,8 @@ function harness(userId = 'alice') {
   const match = (row, where) => (!where.id || row.id === where.id) && (!('itineraryId' in where) || (row.itineraryId ?? null) === where.itineraryId) && where.OR.some(pair => Object.entries(pair).every(([k, v]) => row[k] === v))
   const prisma = {
     notification: {
+      // Unread alerts for the inbox's "new" highlight; none in these tests.
+      findMany: async () => [],
       createManyAndReturn: async ({ data, skipDuplicates }) => {
         if (failNotification) throw new Error('notification failed')
         assert.equal(skipDuplicates, true)

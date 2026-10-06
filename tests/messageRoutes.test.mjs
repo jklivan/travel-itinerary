@@ -24,7 +24,7 @@ const common = {
   '@/auth': { auth: async () => ({ user: { id: 'me' } }) },
 }
 test('inbox presents separate links for two trips with the same person and general messages', async () => {
-  const Inbox = load('../src/app/messages/page.tsx', { ...common, '@/actions/messages': { getMessageInbox: async () => ({ threads: [
+  const Inbox = load('../src/app/messages/page.tsx', { ...common, '@/actions/messages': { unreadMessageIds: async () => [], getMessageInbox: async () => ({ threads: [
     { person: { id: 'jen', name: 'Jen' }, itineraryId: 'london', itineraryTitle: 'London', content: 'London question', createdAt: new Date() },
     { person: { id: 'jen', name: 'Jen' }, itineraryId: 'capri', itineraryTitle: 'Capri', content: 'Capri question', createdAt: new Date() },
     { person: { id: 'jen', name: 'Jen' }, itineraryId: null, content: 'Hello', createdAt: new Date() },
@@ -42,7 +42,7 @@ test('trip and place entry points filter reads and keep the selected trip throug
         destItem: { findFirst: async () => ({ id: 'museum', name: 'Museum', destination: { itinerary: { id: 'london', title: 'London with kids' } } }) },
         itinerary: { findFirst: async () => ({ id: 'london', title: 'London with kids' }) },
       } },
-      '@/actions/messages': { getConversation: async (...args) => { calls.push(args); return { messages: [{ id: 'london-message', recipientId: 'me' }], hasOlder: true } } },
+      '@/actions/messages': { unreadMessageIds: async () => [], getConversation: async (...args) => { calls.push(args); return { messages: [{ id: 'london-message', recipientId: 'me' }], hasOlder: true } } },
     }).default
     const rendered = nodes(await Page({ params: Promise.resolve({ id: 'jen' }), searchParams: Promise.resolve(search) }))
     assert.equal(calls[0][2], 'london')
@@ -66,7 +66,7 @@ test('forum replies coexist with trip-specific private conversations in Messages
   const Inbox = load('../src/app/messages/page.tsx', { ...common,
     '@/actions/questions': { getForumReplyInbox: async () => [{ id: 'reply', question: { id: 'question', content: 'Where should we stay?' }, author: { name: 'Jen' }, content: 'Try Capri', notification: { id: 'alert', readAt: null } }] },
     '@/actions/notifications': { openNotification },
-    '@/actions/messages': { getMessageInbox: async () => ({ threads: [{ person: { id: 'jen', name: 'Jen' }, itineraryId: 'capri', itineraryTitle: 'Capri', content: 'Private answer', createdAt: new Date() }] }) },
+    '@/actions/messages': { unreadMessageIds: async () => [], getMessageInbox: async () => ({ threads: [{ person: { id: 'jen', name: 'Jen' }, itineraryId: 'capri', itineraryTitle: 'Capri', content: 'Private answer', createdAt: new Date() }] }) },
   }).default
   const rendered = nodes(await Inbox())
   assert.ok(rendered.some(n => n.props?.children === 'Where should we stay?'))
