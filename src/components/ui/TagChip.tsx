@@ -7,11 +7,8 @@ const ICONS: Record<string, LucideIcon> = {
   skiing: MountainSnow, wildlife: PawPrint,
 }
 
-const PILL = 'inline-flex items-center rounded-full font-semibold uppercase tracking-[0.08em] transition-colors'
-// On a trip. Also used for the other pills beside its tags (verdict, budget, who it's for, months), so the row matches.
-export const TAG_PILL = `${PILL} min-h-8 gap-1.5 px-3 text-[10px]`
-// The same pill a little larger when picking tags, for an easy tap.
-const PICKER_PILL = `${PILL} min-h-10 gap-2 px-3.5 text-[11px]`
+// Also used for the other pills beside tags on a trip (verdict, budget, who it's for, months), so the row matches.
+export const TAG_PILL = 'inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold uppercase tracking-[0.08em] transition-colors'
 
 // A travel-style tag (Beach, Romantic, Skiing…): a line icon and the name in small capitals on a pale blue pill.
 // The same pill when picking tags (onToggle: a button, navy when selected) and when showing them on a trip.
@@ -19,8 +16,8 @@ export default function TagChip({ id, selected = false, onToggle }: { id: string
   const meta = tagMeta(id)
   if (!meta) return null
   const Icon = ICONS[meta.id]
-  const content = <>{Icon && <Icon size={onToggle ? 18 : 15} strokeWidth={1.5} aria-hidden="true" />}{meta.label}</>
+  const content = <>{Icon && <Icon size={15} strokeWidth={1.5} aria-hidden="true" />}{meta.label}</>
   if (!onToggle) return <span className={`${TAG_PILL} bg-mist text-ink`}>{content}</span>
   return <button type="button" aria-pressed={selected} onClick={onToggle}
-    className={`${PICKER_PILL} ${selected ? 'bg-ink text-white' : 'bg-mist text-ink hover:bg-mist-strong'}`}>{content}</button>
+    className={`${TAG_PILL} ${selected ? 'bg-ink text-white' : 'bg-mist text-ink hover:bg-mist-strong'}`}>{content}</button>
 }
