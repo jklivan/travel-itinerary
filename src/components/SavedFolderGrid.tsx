@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { Bookmark, Car, ChevronRight, Folder, MapPin, MountainSnow, Palmtree, Plus, Plane, Users, Utensils, Wine } from 'lucide-react'
 import { deleteSavedFolder, saveFolder } from '@/actions/savedFolders'
+import { sizedPhoto } from '@/lib/photoSizing'
 
-type FolderSummary = { id: string; name: string; count: number }
+type FolderSummary = { id: string; name: string; count: number; photo: string | null }
 
 // A folder's icon, guessed from its name.
 function folderIcon(name: string) {
@@ -22,20 +23,27 @@ function folderIcon(name: string) {
   return Folder
 }
 
-// A folder tile: icon, name and count. Plain, without postmark lines or stamps.
-function Tile({ href, name, count, Icon, highlighted = false }: { href: string; name: string; count: number; Icon: typeof Folder; highlighted?: boolean }) {
-  return <Link href={href} className={`relative flex min-h-[112px] items-center gap-2.5 overflow-hidden rounded-xl border p-3 pr-6 sm:min-h-[132px] sm:gap-3 sm:p-4 sm:pr-8 transition-shadow hover:shadow-md ${highlighted ? 'border-ink bg-mist' : 'border-line-soft bg-card'}`}>
-    <span className="relative z-[1] flex size-11 shrink-0 items-center justify-center rounded-full bg-chip text-brown sm:size-14"><Icon size={22} strokeWidth={1.5} /></span>
-    <span className="relative z-[1] min-w-0">
-      <span className="block font-[family-name:var(--font-playfair)] text-[11px] uppercase leading-snug tracking-[0.12em] sm:text-[13px] sm:tracking-[0.16em] text-ink [overflow-wrap:anywhere]">{name}</span>
-      <span className="mt-1 block text-sm tracking-wider text-muted">({count})</span>
+// A folder row: a photo polaroid from one of its trips (or the folder's icon when it's empty), the name, and how many trips.
+function Row({ href, name, count, photo, Icon }: { href: string; name: string; count: number; photo: string | null; Icon: typeof Folder }) {
+  return <Link href={href} className="flex items-center gap-4 border-b border-line-soft py-3 transition-colors last:border-b-0 hover:bg-cream">
+    <span className="photo-polaroid w-16 shrink-0">
+      <span className="photo-polaroid-image grid place-items-center text-brown">
+        {photo
+          // eslint-disable-next-line @next/next/no-img-element
+          ? <img src={sizedPhoto(photo, 256)} alt="" className="absolute inset-0" />
+          : <Icon size={22} strokeWidth={1.5} />}
+      </span>
     </span>
-    <ChevronRight size={16} className="absolute right-2 top-3 text-ink sm:right-3 sm:top-4" />
+    <span className="min-w-0 flex-1">
+      <span className="block font-[family-name:var(--font-playfair)] text-[13px] uppercase leading-snug tracking-[0.14em] text-ink [overflow-wrap:anywhere]">{name}</span>
+      <span className="mt-1 block text-sm text-muted">{count} {count === 1 ? 'trip' : 'trips'}</span>
+    </span>
+    <ChevronRight size={18} className="shrink-0 text-ink" />
   </Link>
 }
 
 // The main Saved page: "All saved" and each folder as a tile, and a button to make a new folder.
-export default function SavedFolderGrid({ folders, total }: { folders: FolderSummary[]; total: number }) {
+export default function SavedFolderGrid({ folders, total, allPhoto }: { folders: FolderSummary[]; total: number; allPhoto: string | null }) {
   const router = useRouter()
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
@@ -67,9 +75,9 @@ export default function SavedFolderGrid({ folders, total }: { folders: FolderSum
       </div>
       {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
     </form>}
-    <nav aria-label="Saved folders" className="grid grid-cols-2 gap-2.5 sm:gap-3">
-      <Tile href="/saved?folder=all" name="All saved" count={total} Icon={Bookmark} highlighted />
-      {folders.map(folder => <Tile key={folder.id} href={`/saved?folder=${encodeURIComponent(folder.id)}`} name={folder.name} count={folder.count} Icon={folderIcon(folder.name)} />)}
+    <nav aria-label="Saved folders" className="panel px-4">
+      <Row href="/saved?folder=all" name="All saved" count={total} photo={allPhoto} Icon={Bookmark} />
+      {folders.map(folder => <Row key={folder.id} href={`/saved?folder=${encodeURIComponent(folder.id)}`} name={folder.name} count={folder.count} photo={folder.photo} Icon={folderIcon(folder.name)} />)}
     </nav>
   </>
 }

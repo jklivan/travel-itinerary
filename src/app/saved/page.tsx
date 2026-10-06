@@ -24,8 +24,16 @@ export default async function SavedPage({ searchParams }: { searchParams: Promis
   // No folder chosen: the folder tiles. ?folder=all or a folder's id: that folder's trips.
   const openFolder = folder === 'all' ? { id: '', name: 'All saved' } : folders.find(f => f.id === folder)
   const savedIds = new Set(bucketItems.map(item => item.itineraryId))
+  // Each folder's row shows a photo from its most recently saved trip that has one.
+  const tripPhoto = (trip: (typeof bucketItems)[number]['itinerary']) => trip.coverPhoto ?? trip.photos.find(photo => !photo.isStock)?.url
+    ?? trip.destinations.flatMap(destination => destination.items).flatMap(item => item.photoUrls.length ? item.photoUrls : item.photoUrl ? [item.photoUrl] : [])[0]
+    ?? trip.photos[0]?.url ?? null
+  const firstPhoto = (items: typeof bucketItems) => items.map(item => tripPhoto(item.itinerary)).find(Boolean) ?? null
   if (!openFolder) return <div className="page-wrap">
-    <SavedFolderGrid total={bucketItems.length} folders={folders.map(f => ({ ...f, count: bucketItems.filter(item => item.folderId === f.id).length }))} />
+    <SavedFolderGrid total={bucketItems.length} allPhoto={firstPhoto(bucketItems)} folders={folders.map(f => {
+      const inFolder = bucketItems.filter(item => item.folderId === f.id)
+      return { ...f, count: inFolder.length, photo: firstPhoto(inFolder) }
+    })} />
   </div>
   const selectedFolder = openFolder.id
   const visibleItems = bucketItems.filter(item => !selectedFolder || item.folderId === selectedFolder)
