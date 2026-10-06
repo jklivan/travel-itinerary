@@ -4,10 +4,13 @@ import { createHash } from 'node:crypto'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
-import { samePlanDestination, samePlanPlace } from '@/lib/planPlaceIdentity'
+import { samePlanPlace } from '@/lib/planPlaceIdentity'
+import { fileUnderDestination, type DestinationQuestion } from '@/lib/fileUnderDestination'
+import { locateDestinations } from '@/lib/locateDestinations'
 import type { Prisma } from '@/generated/prisma/client'
 
 const unavailable = 'This plan is unavailable or belongs to another account.'
+class NeedsDestinations extends Error { constructor(readonly questions: (DestinationQuestion & { key: string; places: number })[]) { super('needs destinations') } }
 const pageSize = 12
 function copyId(planId: string, sourceId: string) {
   return `plan-copy-${createHash('sha256').update(JSON.stringify([planId, sourceId])).digest('hex')}`
@@ -52,12 +55,16 @@ export async function findFriendsPlanPlaces(planId: string, query: string, befor
   }
 }
 
-export async function copyPlacesToPlan(sourceIds: string[], planId: string) {
+// choices: answers to "Which destination?", keyed by the friend's destination (e.g. "Barano d'Ischia, Italy"):
+// one of the plan's destination ids, or 'new'.
+export async function copyPlacesToPlan(sourceIds: string[], planId: string, choices: Record<string, string> = {}) {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in to add places.' }
   if (!Array.isArray(sourceIds) || !sourceIds.length || sourceIds.length > 100 || sourceIds.some(id => typeof id !== 'string' || !id || id.length > 100)) return { error: 'Choose between 1 and 100 places.' }
   const ids = [...new Set(sourceIds)]
+  if (!choices || typeof choices !== 'object' || Object.values(choices).some(value => typeof value !== 'string' || value.length > 100)) return { error: 'Please choose a destination again.' }
   try {
+    if (await prisma.itinerary.count({ where: { id: planId, userId } })) await locateDestinations(planId)
     const result = await prisma.$transaction(async tx => {
       const plan = await tx.itinerary.findFirst({ where: { id: planId, userId }, select: { id: true } })
       if (!plan) return { error: unavailable }
@@ -65,19 +72,26 @@ export async function copyPlacesToPlan(sourceIds: string[], planId: string) {
       await tx.$queryRaw`SELECT id FROM "Itinerary" WHERE id = ${planId} FOR UPDATE`
       const sources = await tx.destItem.findMany({ where: { id: { in: ids }, destination: { itinerary: { visibility: 'public' } } }, include: { destination: true } })
       if (sources.length !== ids.length) return { error: 'One or more selected places are no longer available. Nothing was added. Update your selection and try again.' }
-      const destinations = await tx.destination.findMany({ where: { itineraryId: planId }, orderBy: { order: 'asc' } })
       const existing = await tx.destItem.findMany({ where: { destination: { itineraryId: planId } }, include: { destination: true } })
       const data: Prisma.DestItemCreateManyInput[] = []
       const known = [...existing]
+      // Friends' destinations that don't clearly match one of yours: asked about all together, before anything is added.
+      const questions = new Map<string, DestinationQuestion & { key: string; places: number }>()
+      const filedUnder = new Map<string, string>()
+      for (const source of sources) {
+        const key = [source.destination.name, source.destination.country].filter(Boolean).join(', ')
+        if (filedUnder.has(key) || questions.has(key)) { const question = questions.get(key); if (question) question.places++; continue }
+        const filed = await fileUnderDestination(tx, planId, source, choices[key])
+        if ('ask' in filed) questions.set(key, { ...filed.ask, key, places: 1 })
+        else filedUnder.set(key, filed.id)
+      }
+      // Roll back anything filing created (a new destination) so the batch is all-or-nothing.
+      if (questions.size) throw new NeedsDestinations([...questions.values()])
       for (const sourceId of ids) {
         const source = sources.find(item => item.id === sourceId)!
         const id = copyId(planId, sourceId)
         if (existing.some(item => item.id === id) || known.some(item => samePlanPlace(item, source))) continue
-        let destination = destinations.find(d => samePlanDestination(d, source.destination))
-        if (!destination) {
-          destination = await tx.destination.create({ data: { itineraryId: planId, name: source.destination.name, country: source.destination.country, order: Math.max(-1, ...destinations.map(d => d.order)) + 1 } })
-          destinations.push(destination)
-        }
+        const destination = { id: filedUnder.get([source.destination.name, source.destination.country].filter(Boolean).join(', '))! }
         const siblings = [...existing, ...data].filter(item => item.destinationId === destination.id)
         data.push({ id, destinationId: destination.id, name: source.name, type: source.type,
           address: source.address, link: source.link, placeId: source.placeId, lat: source.lat, lng: source.lng,
@@ -95,5 +109,8 @@ export async function copyPlacesToPlan(sourceIds: string[], planId: string) {
       for (const path of ['/plan', `/plan/${planId}`, `/plan/${planId}/friends`, `/itinerary/${planId}`, `/user/${userId}`]) revalidatePath(path)
     }
     return result
-  } catch { return { error: 'Could not add these places. Your selection is still here; please try again.' } }
+  } catch (error) {
+    if (error instanceof NeedsDestinations) return { chooseDestinations: error.questions }
+    return { error: 'Could not add these places. Your selection is still here; please try again.' }
+  }
 }

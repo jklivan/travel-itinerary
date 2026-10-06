@@ -5,6 +5,16 @@ import vm from 'node:vm'
 import ts from 'typescript'
 import * as placeIdentity from '../src/lib/planPlaceIdentity.ts'
 
+// The destination-filing helpers, loaded the same way as the code under test.
+const fileUnder = (() => {
+  const run = (path, deps) => { const out = {}; vm.runInNewContext(ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { exports: out, require: name => deps[name] }); return out }
+  const match = run('../src/lib/planDestinationMatch.ts', { './planPlaceIdentity': placeIdentity })
+  return run('../src/lib/fileUnderDestination.ts', { '@/lib/planDestinationMatch': match })
+})()
+const filingStubs = { '@/lib/fileUnderDestination': fileUnder, '@/lib/locateDestinations': { locateDestinations: async () => {} }, 'next/server': { after: () => {} } }
+const destinationMatch = {}
+vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/lib/planDestinationMatch.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { exports: destinationMatch, require: () => placeIdentity })
+
 const code = ts.transpileModule(readFileSync(new URL('../src/actions/planning.ts', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText
 const clientId = '12345678-1234-1234-1234-123456789012'
 function form(values = {}) { const data = new FormData(); for (const [key, value] of Object.entries({ clientId, audience: 'family', title: 'Italy', destination: 'Rome', startDate: '', endDate: '', name: 'A lovely cafe', type: 'food_drink', notes: 'Reservation at 7', day: '', status: 'considering', ...values })) data.set(key, value); return data }
@@ -19,7 +29,7 @@ function harness({ user = 'owner', fail = false, zeroBased = false, empty = fals
   const enrich = i => i ? { ...i, destination: destinations.find(d => d.id === i.destinationId) } : null
   const prisma = {
     itinerary: {
-      findUnique: async ({ where }) => tripMatch(where), findFirst: async ({ where }) => tripMatch(where), findMany: async ({ where }) => trips.filter(t => t.userId === where.userId),
+      count: async ({ where }) => tripMatch(where) ? 1 : 0, findUnique: async ({ where }) => tripMatch(where), findFirst: async ({ where }) => tripMatch(where), findMany: async ({ where }) => trips.filter(t => t.userId === where.userId),
       create: async ({ data }) => { if (fail) throw Error('connection contains secret'); writes.push(data); trips.push(data); return data },
       updateMany: async ({ where, data }) => { const t = tripMatch(where); if (!t) return { count: 0 }; writes.push(data); Object.assign(t, data); return { count: 1 } },
     },
@@ -38,7 +48,7 @@ function harness({ user = 'owner', fail = false, zeroBased = false, empty = fals
   }
   prisma.$transaction = async callback => callback(prisma)
   const exports = {}
-  vm.runInNewContext(code, { exports, require: name => ({ '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath: path => paths.push(path) }, '@/lib/tripPublishedNotifications': { scheduleTripPublishedNotifications: id => notifications.push(id) }, '@/lib/planPlaceIdentity': placeIdentity })[name] })
+  vm.runInNewContext(code, { exports, require: name => ({ '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath: path => paths.push(path) }, '@/lib/tripPublishedNotifications': { scheduleTripPublishedNotifications: id => notifications.push(id) }, '@/lib/planPlaceIdentity': placeIdentity, ...filingStubs, '@/lib/planDestinationMatch': destinationMatch })[name] })
   return { actions: exports, trips, items, writes, paths, notifications }
 }
 test('new plans are private, dates optional, and retry returns the same trip', async () => {

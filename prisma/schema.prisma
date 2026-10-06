@@ -124,6 +124,8 @@ model Destination {
   lat         Float?
   lng         Float?
   order       Int        @default(0)
+  // How many days of the trip are spent here (optional, set when planning day by day).
+  days        Int?
   itineraryId String
   itinerary   Itinerary  @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
   items       DestItem[]
@@ -147,6 +149,8 @@ model DestItem {
   link          String?
   groupIndex    Int         @default(0)
   dayIndex      Int?
+  // Hotels: nights booked, starting on the hotel's day (its check-in).
+  nights        Int?
   order         Int         @default(0)
   tags          String[]    @default([])
   alternative   String?

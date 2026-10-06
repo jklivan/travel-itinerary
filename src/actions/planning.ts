@@ -5,10 +5,13 @@ import { TAGS } from '@/lib/tags'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 import { samePlanDestination } from '@/lib/planPlaceIdentity'
+import { fileUnderDestination, type DestinationQuestion } from '@/lib/fileUnderDestination'
+import { locateDestinations } from '@/lib/locateDestinations'
 import { scheduleTripPublishedNotifications } from '@/lib/tripPublishedNotifications'
 
-type Result = { error?: string; success?: boolean; id?: string }
+type Result = { error?: string; success?: boolean; id?: string; chooseDestination?: DestinationQuestion }
 class InputError extends Error {}
 
 const unavailable = 'This trip is unavailable or belongs to another account.'
@@ -30,6 +33,12 @@ function dates(form: FormData) {
   if (!valid(start) || !valid(end) || end < start) throw new InputError('Choose a start and end date, with the end after the start, or leave both blank.')
   return { datesFlexible: false, startDate: new Date(start), endDate: new Date(end) }
 }
+// Hotels: nights booked (1–60), or nothing.
+function nightsFrom(form: FormData) {
+  const nights = Number(form.get('nights'))
+  return form.has('nights') && Number.isInteger(nights) && nights >= 1 && nights <= 60 ? nights : null
+}
+
 function duration(form: FormData) {
   if (!form.has('durationDays')) return null
   const raw = text(form, 'durationDays', 8)
@@ -67,16 +76,26 @@ export async function startPlan(form: FormData): Promise<Result> {
     const format = form.get('format') ?? 'itinerary'
     if (!['guide', 'day-trip', 'itinerary'].includes(String(format))) throw new InputError('Choose a trip format.')
     const dateFields = dates(form)
+    // More stops on the trip, besides the first destination.
+    let extra: string[] = []
+    try { const parsed = JSON.parse(String(form.get('moreDestinations') ?? '[]')); if (Array.isArray(parsed)) extra = [...new Set(parsed.filter((name): name is string => typeof name === 'string').map(name => name.trim().slice(0, 160)).filter(name => name && name !== destination))].slice(0, 9) } catch { extra = [] }
+    if (!destination) extra = []
+    // Days in each stop (day-by-day plans): the trip length becomes their total when it isn't given.
+    let stopDays: (number | null)[] = []
+    try { const parsed = JSON.parse(String(form.get('destinationDays') ?? '[]')); if (Array.isArray(parsed)) stopDays = parsed.slice(0, 10).map(value => { const days = Number(value); return Number.isInteger(days) && days >= 1 && days <= 365 ? days : null }) } catch { stopDays = [] }
+    const stopTotal = stopDays.reduce<number>((sum, days) => sum + (days ?? 0), 0)
     // Reusing this ID makes a retry safe even if the first response was lost.
     const existing = await prisma.itinerary.findUnique({ where: { id }, select: { userId: true } })
     if (existing) return existing.userId === userId ? { id } : { error: unavailable }
     await prisma.itinerary.create({ data: {
       id, userId, title: title || `Trip to ${destination}`, audience, visibility: 'draft', isPlan: true, ...dateFields,
       postType: String(format),
-      durationDays: format === 'guide' ? null : format === 'day-trip' ? 1 : duration(form),
+      durationDays: format === 'guide' ? null : format === 'day-trip' ? 1 : Math.max(duration(form) ?? 0, stopTotal) || null,
       tags: form.get('format') === 'day-trip' ? ['day-trip'] : [],
-      destinations: { create: { name: destination || 'Destination to decide', order: 0 } },
+      destinations: { create: [destination || 'Destination to decide', ...extra].map((name, order) => ({ name, order, days: format === 'itinerary' ? stopDays[order] ?? null : null })) },
     } })
+    // Map positions for the destinations, so places added later go under the nearest one.
+    after(() => locateDestinations(id).catch(() => {}))
     refresh(id, userId)
     return { id }
   } catch (error) { return message(error) }
@@ -97,6 +116,16 @@ export async function savePlanDetails(id: string, form: FormData): Promise<Resul
     const oneToFive = (key: string) => { const value = Number(form.get(key)); return Number.isInteger(value) && value >= 1 && value <= 5 ? value : null }
     if (form.has('budget')) extra.budget = oneToFive('budget')
     if (form.has('tripRating')) extra.tripRating = oneToFive('tripRating')
+    // Days in each destination, as { destinationId: days }; a trip that needs more days than it has grows to fit.
+    if (form.has('destinationDays')) {
+      let wanted: Record<string, unknown> = {}
+      try { const parsed = JSON.parse(String(form.get('destinationDays'))); if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) wanted = parsed } catch { wanted = {} }
+      const destinations = await prisma.destination.findMany({ where: { itineraryId: id, itinerary: { userId } }, select: { id: true } })
+      for (const destination of destinations) if (destination.id in wanted) {
+        const value = Number(wanted[destination.id])
+        await prisma.destination.update({ where: { id: destination.id }, data: { days: Number.isInteger(value) && value >= 1 && value <= 365 ? value : null } })
+      }
+    }
     if (form.has('tags')) {
       let chosen: string[] = []
       try { const parsed = JSON.parse(String(form.get('tags'))); if (Array.isArray(parsed)) chosen = parsed.filter((tag): tag is string => typeof tag === 'string' && TAGS.some(known => known.id === tag && tag !== 'day-trip')) } catch { chosen = [] }
@@ -256,7 +285,7 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
       if (zeroBased) await tx.destItem.updateMany({ where: { destinationId: dest.id, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
       await tx.destItem.create({ data: { id: clientId, destinationId: dest.id, name, type, placeId: placeId ?? null, notes: notes || null,
         rating: rating || null, planningStatus: status, mealType: type === 'food_drink' ? mealType || null : null, tags, photoUrls, photoUrl: photoUrls[0] ?? null,
-        dayIndex: day ? Number(day) : null,
+        dayIndex: day ? Number(day) : null, nights: type === 'hotel' ? nightsFrom(form) : null,
         order: (last._max.order ?? -1) + 1, groupIndex: type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0,
       } })
     })
@@ -277,7 +306,9 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     if (rating !== undefined && (!Number.isInteger(rating) || rating < 0 || rating > 5)) throw new InputError('Choose a rating from 1 to 5, or leave it blank.')
     const day = text(form, 'day', 4)
     // The rest match the trip editor's fields; each is only changed when the form sends it.
-    const extra: { type?: string; groupIndex?: number; mealType?: string | null; tags?: string[]; alternative?: string | null; description?: string | null; link?: string | null; address?: string | null; photoUrls?: string[]; photoUrl?: string | null } = {}
+    const extra: { nights?: number | null; type?: string; groupIndex?: number; mealType?: string | null; tags?: string[]; alternative?: string | null; description?: string | null; link?: string | null; address?: string | null; photoUrls?: string[]; photoUrl?: string | null } = {}
+    // Hotels: nights booked from the hotel's day. Only changed when the form sends it.
+    if (form.has('nights')) { const nights = Number(form.get('nights')); extra.nights = Number.isInteger(nights) && nights >= 1 && nights <= 60 ? nights : null }
     // Category can be corrected (e.g. a restaurant posted as an activity from a snapshot).
     const nextType = form.has('category') ? text(form, 'category', 20) : ''
     const nextDestination = form.has('destination') ? text(form, 'destination', 160) : ''
@@ -410,12 +441,14 @@ export async function plansForSaving() {
   return { trips }
 }
 
-export async function copyPlaceToPlan(sourceId: string, planId: string, clientId: string): Promise<Result> {
+// destination: the answer to "Which destination?" when the place doesn't clearly belong to one of the plan's.
+export async function copyPlaceToPlan(sourceId: string, planId: string, clientId: string, destination?: string): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
-  if (!/^[a-f0-9-]{36}$/.test(clientId)) return { error: 'Please reload and try again.' }
+  if (!/^[a-f0-9-]{36}$/.test(clientId) || (destination !== undefined && (typeof destination !== 'string' || destination.length > 100))) return { error: 'Please reload and try again.' }
   try {
-    await prisma.$transaction(async tx => {
+    if (await prisma.itinerary.count({ where: { id: planId, userId } })) await locateDestinations(planId)
+    const question = await prisma.$transaction(async tx => {
       const plan = await tx.itinerary.findFirst({ where: { id: planId, userId, isPlan: true }, select: { id: true } })
       if (!plan) throw new InputError(unavailable)
       const source = await tx.destItem.findFirst({ where: { id: sourceId, destination: { itinerary: { visibility: 'public' } } }, include: { destination: true } })
@@ -425,15 +458,16 @@ export async function copyPlaceToPlan(sourceId: string, planId: string, clientId
         if (existing.destination.itineraryId !== planId) throw new InputError(unavailable)
         return
       }
-      let destination = (await tx.destination.findMany({ where: { itineraryId: planId }, orderBy: { order: 'asc' } })).find(existing => samePlanDestination(existing, source.destination)) ?? null
-      if (!destination) destination = await tx.destination.create({ data: { itineraryId: planId, name: source.destination.name, country: source.destination.country, order: await tx.destination.count({ where: { itineraryId: planId } }) } })
-      const last = await tx.destItem.aggregate({ where: { destinationId: destination.id }, _max: { order: true, groupIndex: true } })
-      await tx.destItem.create({ data: { id: clientId, destinationId: destination.id, name: source.name, type: source.type,
+      const filed = await fileUnderDestination(tx, planId, source, destination)
+      if ('ask' in filed) return filed.ask
+      const last = await tx.destItem.aggregate({ where: { destinationId: filed.id }, _max: { order: true, groupIndex: true } })
+      await tx.destItem.create({ data: { id: clientId, destinationId: filed.id, name: source.name, type: source.type,
         address: source.address, link: source.link, placeId: source.placeId, lat: source.lat, lng: source.lng,
         order: (last._max.order ?? -1) + 1, groupIndex: source.type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0,
         // Personal notes, photos, ratings and day assignments stay with their author.
       } })
     })
+    if (question) return { chooseDestination: question }
     refresh(planId, userId)
     return { success: true }
   } catch (error) { return message(error) }

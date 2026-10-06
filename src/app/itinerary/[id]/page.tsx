@@ -579,7 +579,7 @@ export default async function ItineraryPage({
             {showDayByDay && it.isPlan && <div className="space-y-6 mb-10">
               {[...new Set(mainDestinations.flatMap(d => d.items.flatMap(i => i.dayIndex === null ? [] : [i.dayIndex])))].sort((a, b) => (a ?? 0) - (b ?? 0)).concat([-1]).map(day => {
                 const items = mainDestinations.flatMap(d => d.items).filter(i => day === -1 ? i.dayIndex === null : i.dayIndex === day)
-                return items.length > 0 && <section key={day}><h2 className="mb-3 text-xl font-semibold">{day === -1 ? 'Unscheduled' : `Day ${day}`}</h2><div className={styles.placeGrid}>{items.map(item => renderPlaceCard(item, item.type === 'hotel' ? 'hotel' : item.type === 'food_drink' ? 'food_drink' : item.type === 'transport' ? 'transport' : 'activity'))}</div></section>
+                return items.length > 0 && <section key={day}><h2 className="mb-3 text-xl font-semibold">{day === -1 ? 'Unscheduled' : `Day ${day}`}</h2><div className={styles.cardColumns}>{items.map(item => renderPlaceCard(item, item.type === 'hotel' ? 'hotel' : item.type === 'food_drink' ? 'food_drink' : item.type === 'transport' ? 'transport' : 'activity'))}</div></section>
               })}
             </div>}
             {/* ── Day by Day (itineraries) ── */}
@@ -587,8 +587,8 @@ export default async function ItineraryPage({
               <div className="mb-10">
                 <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-1">Day by Day</h2>
                 <div className="h-px bg-line-strong mb-5" />
-                {/* Narrower than the page on desktop, so short notes don't leave a wide empty card. */}
-                <div className="mx-auto max-w-2xl space-y-10">
+                {/* Cards two across on wider screens, the same size as the Summary view's. */}
+                <div className="space-y-10">
                   {mainDestinations.map((dest) => {
                     const groups = groupItems(dest.items as DestItemRow[])
                     const multiStay = groups.length > 1
@@ -626,8 +626,8 @@ export default async function ItineraryPage({
                                         <div className="flex items-center gap-2 mb-2">
                                           <span className="text-xs font-bold text-cream bg-ink px-2.5 py-1 rounded-full">Day {dn}</span>
                                         </div>
-                                        {di === 0 && group.hotel && renderHotelCard(group.hotel)}
-                                        <div className="space-y-2 mt-2">
+                                        {di === 0 && group.hotel && <div className={styles.cardColumns}>{renderHotelCard(group.hotel)}</div>}
+                                        <div className={`${styles.cardColumns} mt-2`}>
                                           {day.items.map(item => item.type === 'food_drink' ? renderFoodCard(item) : renderActivityCard(item))}
                                         </div>
                                       </div>
@@ -638,7 +638,7 @@ export default async function ItineraryPage({
                             } else {
                               return (
                                 <div key={gi} className="space-y-3">
-                                  {group.hotel && renderHotelCard(group.hotel)}
+                                  {group.hotel && <div className={styles.cardColumns}>{renderHotelCard(group.hotel)}</div>}
                                   {group.days.map((day, di) => (
                                     <div key={di}>
                                       {(group.days.length > 1 || dayNumber(day.dayIndex) > 1) && (
@@ -646,7 +646,7 @@ export default async function ItineraryPage({
                                           <span className="text-xs font-bold text-cream bg-ink px-2.5 py-1 rounded-full">Day {dayNumber(day.dayIndex)}</span>
                                         </div>
                                       )}
-                                      <div className="space-y-2">
+                                      <div className={styles.cardColumns}>
                                         {day.items.map(item => item.type === 'food_drink' ? renderFoodCard(item) : renderActivityCard(item))}
                                       </div>
                                     </div>
@@ -668,8 +668,7 @@ export default async function ItineraryPage({
               <div className="mb-10">
                 <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-1">Places from the trip</h2>
                 <div className="h-px bg-line-strong mb-5" />
-                {/* Narrower than the page on desktop, so short notes don't leave a wide empty card. */}
-                <div className="mx-auto max-w-2xl space-y-10">
+                <div className="space-y-10">
                   {mainDestinations.map((dest) => {
                     const dItems = dest.items as DestItemRow[]
                     const dHotels = dItems.filter(i => i.type === 'hotel')
@@ -684,11 +683,11 @@ export default async function ItineraryPage({
                           </p>
                         )}
                         {dest.notes && <p className="text-xs text-brown italic mb-3 border-l-2 border-line-strong pl-2">{dest.notes}</p>}
-                        <div className={styles.placeGrid}>
+                        <div className={styles.categoryStack}>
                           {dHotels.length > 0 && (
                             <div>
                               <CategoryHeading type="hotel" count={dHotels.length} />
-                              <div className="space-y-2">{dHotels.map(item => renderHotelCard(item))}</div>
+                              <div className={styles.cardColumns}>{dHotels.map(item => renderHotelCard(item))}</div>
                             </div>
                           )}
                           {dFood.length > 0 && (
@@ -702,7 +701,7 @@ export default async function ItineraryPage({
                                     <section key={group.value} aria-label={group.label}>
                                       {/* No heading when no restaurant has a meal type. */}
                                       {!(group.value === 'other' && meals.length === dFood.length) && <h4 className="text-xs font-semibold uppercase tracking-wider text-terracotta mb-2">{group.label}</h4>}
-                                      <div className="space-y-2">{meals.map(item => renderFoodCard(item))}</div>
+                                      <div className={styles.cardColumns}>{meals.map(item => renderFoodCard(item))}</div>
                                     </section>
                                   )
                                 })}
@@ -712,10 +711,10 @@ export default async function ItineraryPage({
                           {dActs.length > 0 && (
                             <div>
                               <CategoryHeading type="activity" count={dActs.length} />
-                              <div className="space-y-2">{dActs.map(item => renderActivityCard(item))}</div>
+                              <div className={styles.cardColumns}>{dActs.map(item => renderActivityCard(item))}</div>
                             </div>
                           )}
-                          {dTransport.length > 0 && <div><CategoryHeading type="transport" count={dTransport.length} /><div className="space-y-2">{dTransport.map(item => renderPlaceCard(item, 'transport'))}</div></div>}
+                          {dTransport.length > 0 && <div><CategoryHeading type="transport" count={dTransport.length} /><div className={styles.cardColumns}>{dTransport.map(item => renderPlaceCard(item, 'transport'))}</div></div>}
                         </div>
                       </div>
                     )

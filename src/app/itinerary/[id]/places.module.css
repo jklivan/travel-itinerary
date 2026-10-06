@@ -20,6 +20,10 @@
   gap: 24px 14px;
 }
 
+/* Summary view: each category (Hotels, Restaurants…) full width, one under another; its cards two across on wider screens. */
+.categoryStack { display: grid; gap: 28px; }
+.cardColumns { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px 14px; align-items: start; }
+
 .categoryHeading {
   display: flex;
   align-items: center;
@@ -307,6 +311,9 @@
 @media (min-width: 768px) {
   .placeGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .cardColumns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
 }

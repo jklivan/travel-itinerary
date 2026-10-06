@@ -12,6 +12,15 @@ function load(file, dependencies = {}) {
   return exports
 }
 const identity = load('../src/lib/planPlaceIdentity.ts')
+
+// The destination-filing helpers, loaded the same way as the code under test.
+const fileUnder = (() => {
+  const run = (path, deps) => { const out = {}; vm.runInNewContext(ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { exports: out, require: name => deps[name] }); return out }
+  const match = run('../src/lib/planDestinationMatch.ts', { './planPlaceIdentity': identity })
+  return run('../src/lib/fileUnderDestination.ts', { '@/lib/planDestinationMatch': match })
+})()
+const filingStubs = { '@/lib/fileUnderDestination': fileUnder, '@/lib/locateDestinations': { locateDestinations: async () => {} }, 'next/server': { after: () => {} } }
+const destinationMatch = load('../src/lib/planDestinationMatch.ts', { './planPlaceIdentity': identity })
 function harness(userId = 'me') {
   const trips = [
     { id: 'plan', userId: 'me', isPlan: true, visibility: 'draft', title: 'London w kids' },
@@ -57,6 +66,7 @@ function harness(userId = 'me') {
   const enrich = item => ({ ...item, destination: destinations.find(d => d.id === item.destinationId) })
   const prisma = {
     itinerary: {
+      count: async ({ where }) => trips.filter(t => tripMatches(t, where)).length,
       findFirst: async ({ where }) => trips.find(t => tripMatches(t, where)),
       findMany: async ({ where, cursor, skip = 0, take }) => {
         let found = trips.filter(t => tripMatches(t, where)).sort((a, b) => b.createdAt - a.createdAt)
@@ -83,7 +93,7 @@ function harness(userId = 'me') {
       catch (e) { destinations.splice(0, destinations.length, ...before.destinations); items.splice(0, items.length, ...before.items); throw e }
     },
   }
-  const actions = load('../src/actions/planSuggestions.ts', { 'node:crypto': { createHash }, '@/auth': { auth: async () => userId ? { user: { id: userId } } : null }, '@/lib/prisma': { prisma }, '@/lib/planPlaceIdentity': identity, 'next/cache': { revalidatePath: p => paths.push(p) } })
+  const actions = load('../src/actions/planSuggestions.ts', { 'node:crypto': { createHash }, '@/auth': { auth: async () => userId ? { user: { id: userId } } : null }, '@/lib/prisma': { prisma }, '@/lib/planPlaceIdentity': identity, ...filingStubs, '@/lib/planDestinationMatch': destinationMatch, 'next/cache': { revalidatePath: p => paths.push(p) } })
   return { ...actions, items, trips, destinations, paths, follows, fail: () => { fail = true }, locks: () => locks, copies: () => items.filter(i => destinations.find(d => d.id === i.destinationId)?.itineraryId === 'plan') }
 }
 
@@ -142,7 +152,7 @@ test('invalid selections or unavailable sources add nothing, and failed batches 
   for (const ids of [[], ['museum', 'secret-item'], ['museum', 'missing'], [null], Array(101).fill('museum')]) assert.ok((await h.copyPlacesToPlan(ids, 'plan')).error)
   assert.equal(h.copies().length, 0)
   h.fail()
-  const failed = await h.copyPlacesToPlan(['paris', 'museum'], 'plan')
+  const failed = await h.copyPlacesToPlan(['paris', 'museum'], 'plan', { 'Paris, France': 'new' })
   assert.match(failed.error, /try again/); assert.doesNotMatch(failed.error, /secret/)
   assert.equal(h.copies().length, 0)
   assert.equal(h.destinations.filter(d => d.itineraryId === 'plan').length, 1)
@@ -159,4 +169,19 @@ test('more-results cursor visits all matching friend trips without duplicates', 
   assert.equal(first.trips.length, 12); assert.equal(first.hasMore, true)
   assert.equal(second.trips.length, 5); assert.equal(second.hasMore, false)
   assert.equal(new Set([...first.trips, ...second.trips].map(t => t.id)).size, 17)
+})
+
+test('a friend\'s place that is not near any of your destinations asks which destination, and adds nothing until answered', async () => {
+  const h = harness()
+  const asked = await h.copyPlacesToPlan(['paris'], 'plan')
+  assert.equal(asked.chooseDestinations.length, 1)
+  assert.equal(asked.chooseDestinations[0].key, 'Paris, France')
+  assert.equal(asked.chooseDestinations[0].newName, 'Paris, France')
+  assert.ok(asked.chooseDestinations[0].options.length >= 1)
+  assert.equal(h.copies().length, 0)
+  // Answer: file it under the plan's existing destination.
+  const target = asked.chooseDestinations[0].options[0].id
+  const added = await h.copyPlacesToPlan(['paris'], 'plan', { 'Paris, France': target })
+  assert.equal(added.added, 1)
+  assert.equal(h.copies()[0].destinationId, target)
 })

@@ -5,6 +5,8 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Check, ChevronRight, MapPin, Plus, X } from 'lucide-react'
 import { copyPlaceToPlan, plansForSaving } from '@/actions/planning'
 import { copyStoryToPlan } from '@/actions/stories'
+import WhichDestination from './WhichDestination'
+import type { DestinationQuestion } from '@/lib/fileUnderDestination'
 import { savePlaceToNewPlan } from '@/actions/quickSavePlan'
 import styles from './SavePlaceToPlan.module.css'
 
@@ -46,15 +48,18 @@ export default function SavePlaceToPlan({ itemId, storyId, placeName, open, onCl
     }
   }, [open])
 
-  async function save(trip: Trip) {
+  // Set when the place doesn't clearly belong to one of the chosen trip's destinations.
+  const [asking, setAsking] = useState<{ trip: Trip; question: DestinationQuestion } | null>(null)
+  async function save(trip: Trip, destination?: string) {
     if (saving.current) return
     if (added.has(trip.id)) { setSaved(trip); return }
     saving.current = true; setBusy(trip.id); setError('')
     if (!attempts.current.has(trip.id)) attempts.current.set(trip.id, crypto.randomUUID())
     try {
-      const result = storyId ? await copyStoryToPlan(storyId, trip.id, attempts.current.get(trip.id)!) : await copyPlaceToPlan(itemId!, trip.id, attempts.current.get(trip.id)!)
-      if (result.error) setError(result.error)
-      else { setAdded(previous => new Set([...previous, trip.id])); setSaved(trip); onSaved() }
+      const result = storyId ? await copyStoryToPlan(storyId, trip.id, attempts.current.get(trip.id)!, destination) : await copyPlaceToPlan(itemId!, trip.id, attempts.current.get(trip.id)!, destination)
+      if (result.chooseDestination) setAsking({ trip, question: result.chooseDestination })
+      else if (result.error) setError(result.error)
+      else { setAsking(null); setAdded(previous => new Set([...previous, trip.id])); setSaved(trip); onSaved() }
     } catch { setError('Could not save this place. Please try again.') }
     finally { saving.current = false; setBusy('') }
   }
@@ -80,9 +85,9 @@ export default function SavePlaceToPlan({ itemId, storyId, placeName, open, onCl
     if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.current?.close()
   }}>
     <div className={styles.handle} aria-hidden="true" />
-    <header className={styles.header}><div><h2 id={titleId}>{saved ? 'Place saved' : 'Which trip?'}</h2><p>{placeName}</p></div><button type="button" autoFocus disabled={!!busy} className={styles.close} aria-label="Close save to a trip" onClick={() => dialog.current?.close()}><X size={20} /></button></header>
+    <header className={styles.header}><div><h2 id={titleId}>{saved ? 'Place saved' : asking ? 'Which destination?' : 'Which trip?'}</h2><p>{placeName}</p></div><button type="button" autoFocus disabled={!!busy} className={styles.close} aria-label="Close save to a trip" onClick={() => dialog.current?.close()}><X size={20} /></button></header>
     <div className={styles.body}>
-      {saved ? <div className={styles.success} role="status"><span className={styles.successIcon}><Check size={26} /></span><h3>Added to {saved.title}</h3><p>{saved.id === createdId ? 'Saved to a private trip with a temporary title. Rename it and add dates whenever you’re ready.' : 'Your place is ready in your plan.'}</p><button type="button" className={styles.openPlan} onClick={() => dialog.current?.close()}>Keep browsing</button><Link href={`/plan/${saved.id}${saved.id === createdId ? '?details=1' : ''}`} onClick={() => dialog.current?.close()} className={styles.done}>{saved.id === createdId ? 'Finish new trip' : 'Open trip'} <ChevronRight size={16} className="inline" /></Link></div> : <>
+      {asking && !saved ? <div className="space-y-3"><p className="text-sm text-ink">Adding to <span className="font-semibold">{asking.trip.title}</span></p><WhichDestination heading={false} question={asking.question} place={placeName} disabled={!!busy} onChoose={destination => void save(asking.trip, destination)} /><button type="button" disabled={!!busy} onClick={() => setAsking(null)} className="text-sm text-link underline">Choose another trip</button></div> : saved ? <div className={styles.success} role="status"><span className={styles.successIcon}><Check size={26} /></span><h3>Added to {saved.title}</h3><p>{saved.id === createdId ? 'Saved to a private trip with a temporary title. Rename it and add dates whenever you’re ready.' : 'Your place is ready in your plan.'}</p><button type="button" className={styles.openPlan} onClick={() => dialog.current?.close()}>Keep browsing</button><Link href={`/plan/${saved.id}${saved.id === createdId ? '?details=1' : ''}`} onClick={() => dialog.current?.close()} className={styles.done}>{saved.id === createdId ? 'Finish new trip' : 'Open trip'} <ChevronRight size={16} className="inline" /></Link></div> : <>
         {loading ? <p role="status" className={styles.empty}>Loading your trips…</p> : trips.length ? <div className={styles.trips}>{trips.map(trip => <button key={trip.id} type="button" disabled={!!busy} onClick={() => void save(trip)} className={styles.trip}>
           <span className={styles.tripIcon}><MapPin size={20} /></span><span className={styles.tripTitle}>{trip.title}<small>{busy === trip.id ? 'Adding…' : added.has(trip.id) ? 'Already added' : 'Add this place'}</small></span>{added.has(trip.id) ? <Check size={19} /> : <Plus size={19} />}
         </button>)}</div> : !error && <p className={styles.empty}>Start your first plan to keep the places you want to visit together.</p>}

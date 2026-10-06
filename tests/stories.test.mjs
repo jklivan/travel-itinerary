@@ -5,6 +5,14 @@ import vm from 'node:vm'
 import ts from 'typescript'
 import * as placeIdentity from '../src/lib/planPlaceIdentity.ts'
 import * as placeRecommendation from '../src/lib/placeRecommendation.ts'
+
+// The destination-filing helpers, loaded the same way as the code under test.
+const fileUnder = (() => {
+  const run = (path, deps) => { const out = {}; vm.runInNewContext(ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { exports: out, require: name => deps[name] }); return out }
+  const match = run('../src/lib/planDestinationMatch.ts', { './planPlaceIdentity': placeIdentity })
+  return run('../src/lib/fileUnderDestination.ts', { '@/lib/planDestinationMatch': match })
+})()
+const filingStubs = { '@/lib/fileUnderDestination': fileUnder, '@/lib/locateDestinations': { locateDestinations: async () => {} }, 'next/server': { after: () => {} } }
 function module(path, deps = {}) {
   const exports = {}
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, { exports, Date, require: name => deps[name] })
@@ -29,14 +37,14 @@ function harness(user = 'owner', itemType = 'hotel') {
     destItem: { findFirst: async ({ where }) => where.destination.itinerary.userId === 'owner' ? item : null, findMany: async ({ where }) => where.destination.itinerary.userId === 'owner' && where.destination.itinerary.id === item.destination.itineraryId ? [item] : [], updateMany: async ({data}) => { Object.assign(item, data); return { count: 1 } }, update: async ({ data }) => Object.assign(item, data), aggregate: async () => ({ _max: { order: -1, groupIndex: -1 } }), create: async ({ data }) => { const created = { ...data, id: 'new-place', lat: null, lng: null }; addedItems.push(created); return created } },
     destination: { findMany: async ({ where }) => destinations.filter(destination => destination.itineraryId === where.itineraryId), findFirst: async ({ where }) => destinations.find(destination => destination.itineraryId === where.itineraryId && destination.name.toLowerCase() === where.name.equals.toLowerCase()) ?? null, create: async ({ data }) => { const created = { ...data, id: `destination-${destinations.length + 1}` }; destinations.push(created); return created }, count: async ({ where }) => destinations.filter(destination => destination.itineraryId === where.itineraryId).length },
     user: { findUnique: async () => ({ isPrivate: false }) },
-    itinerary: { create: async ({ data }) => { plans.push(data); return data }, findFirst: async () => ({ id: 'plan' }), findMany: async query => { queries.push(query); return [] } },
+    itinerary: { count: async () => 1, create: async ({ data }) => { plans.push(data); return data }, findFirst: async () => ({ id: 'plan' }), findMany: async query => { queries.push(query); return [] } },
   }
   prisma.$transaction = async callback => {
     const before = structuredClone(item), beforeRows = rows.length, beforePlans = plans.length, beforeDestinations = destinations.length, beforeItems = addedItems.length
     try { return await callback(prisma) }
     catch (error) { Object.assign(item, before); rows.splice(beforeRows); plans.splice(beforePlans); destinations.splice(beforeDestinations); addedItems.splice(beforeItems); throw error }
   }
-  const actions = module('../src/actions/stories.ts', { '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} }, '@/lib/eventPhotos': photos, '@/lib/stories': lib, '@/lib/planPlaceIdentity': placeIdentity, '@/lib/placeRecommendation': placeRecommendation })
+  const actions = module('../src/actions/stories.ts', { '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} }, '@/lib/eventPhotos': photos, '@/lib/stories': lib, '@/lib/planPlaceIdentity': placeIdentity, ...filingStubs, '@/lib/placeRecommendation': placeRecommendation })
   return { actions, rows, queries, item, prisma, plans, destinations, addedItems }
 }
 const input = { id, itemId: 'place', photoUrl: '/photo.jpg', caption: 'Great stay' }

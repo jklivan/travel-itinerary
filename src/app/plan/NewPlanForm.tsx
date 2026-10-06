@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import Link from 'next/link'
-import { Compass, CalendarDays, ChevronDown } from 'lucide-react'
+import { Compass, CalendarDays, ChevronDown, Plus, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { copyStoryToPlan } from '@/actions/stories'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
@@ -26,8 +26,19 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [destination, setDestination] = useState('')
+  // Other stops on the trip (e.g. Ischia, then Ravello): places you add are filed under the nearest one.
+  const [moreDestinations, setMoreDestinations] = useState<string[]>([])
   const [style, setStyle] = useState<'days' | 'ideas'>('ideas')
   const [days, setDays] = useState('')
+  // Day-by-day plans: days in each destination (first, then the others), optional. The trip grows to fit them.
+  const [stopDays, setStopDays] = useState<string[]>([])
+  function setStopDay(index: number, value: string) {
+    const next = [...stopDays]; next[index] = value; setStopDays(next)
+  }
+  // One destination uses "How many days?"; with several, each gets its own days box instead, and they add up.
+  const multiStop = style === 'days' && moreDestinations.length > 0
+  const stopTotal = stopDays.slice(0, moreDestinations.length + 1).reduce((sum, value) => sum + (Number(value) || 0), 0)
+  const stopDaysInput = (index: number, name: string) => multiStop && <input type="number" min={1} max={365} step={1} inputMode="numeric" required aria-label={`Days in ${name || `destination ${index + 1}`}`} value={stopDays[index] ?? ''} onChange={event => setStopDay(index, event.target.value)} placeholder="Days" className="mt-1.5 w-20 shrink-0 rounded-xl border border-line bg-card px-3 py-3 text-sm" />
   const [audience, setAudience] = useState('family')
   // "Import notes or a file" opens here, under the buttons; places are read before the plan is made, so
   // notes with no places don't leave an empty plan behind.
@@ -66,7 +77,7 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
         setCreatedPlan(result.id)
         if (savePlace || saveStory) {
           if (!placeCopyId.current) placeCopyId.current = crypto.randomUUID()
-          const copied = saveStory ? await copyStoryToPlan(saveStory, result.id, placeCopyId.current) : await copyPlaceToPlan(savePlace!, result.id, placeCopyId.current)
+          const copied = saveStory ? await copyStoryToPlan(saveStory, result.id, placeCopyId.current, 'new') : await copyPlaceToPlan(savePlace!, result.id, placeCopyId.current, 'new')
           if (copied.error) { setError(`Your plan was saved, but the place couldn’t be added. ${copied.error}`); return }
         }
         if (places.length) {
@@ -95,11 +106,15 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
             <PolaroidTile photo={`https://images.unsplash.com/${option.photo}?auto=format&fit=crop&w=360&q=80`} label={option.label} selected={style === option.value} index={index} size="lg" />
           </button>)}
         </div>
-        {style === 'days' && <label className="mt-4 block"><span className="field-label">How many days?</span>
+        {style === 'days' && !multiStop && <label className="mt-4 block"><span className="field-label">How many days?</span>
           <input name="durationDays" type="number" inputMode="numeric" min={1} max={365} step={1} required value={days} onChange={event => setDays(event.target.value)} placeholder="e.g. 5" className={inputClass} />
         </label>}
       </fieldset>
-      <label className="block"><span className="field-label">Where are you thinking?</span><PlacesAutocomplete name="destination" value={destination} onChange={setDestination} onSelect={(main, secondary) => setDestination([main, secondary].filter(Boolean).join(', '))} type="destination" maxLength={160} placeholder="e.g. Italy, Japan, a weekend away…" className={inputClass} /></label>
+      <div className="flex items-end gap-2"><label className="block min-w-0 flex-1"><span className="field-label">Where are you thinking?</span><PlacesAutocomplete name="destination" value={destination} onChange={setDestination} onSelect={(main, secondary) => setDestination([main, secondary].filter(Boolean).join(', '))} type="destination" maxLength={160} placeholder="e.g. Italy, Japan, a weekend away…" className={inputClass} /></label>{stopDaysInput(0, destination)}{multiStop && <span aria-hidden="true" className="size-11 shrink-0" />}</div>
+      {moreDestinations.map((value, index) => <div key={index} className="flex items-end gap-2"><label className="block min-w-0 flex-1"><span className="sr-only">Destination {index + 2}</span><PlacesAutocomplete value={value} onChange={next => setMoreDestinations(current => current.map((item, i) => i === index ? next : item))} onSelect={(main, secondary) => setMoreDestinations(current => current.map((item, i) => i === index ? [main, secondary].filter(Boolean).join(', ') : item))} type="destination" maxLength={160} placeholder="Another destination" className={inputClass} /></label>{stopDaysInput(index + 1, value)}<button type="button" aria-label={`Remove destination ${index + 2}`} onClick={() => { setMoreDestinations(current => current.filter((_, i) => i !== index)); setStopDays(current => current.filter((_, i) => i !== index + 1)) }} className="mb-1 grid size-11 shrink-0 place-items-center rounded-full text-muted hover:bg-chip"><X size={18} /></button></div>)}
+      {multiStop && <><p className="-mt-2 text-sm text-muted">{stopTotal ? <><span className="font-semibold text-ink">{stopTotal} {stopTotal === 1 ? 'day' : 'days'}</span> in total. </> : ''}Your itinerary sets each place’s days aside for it, in this order.</p><input type="hidden" name="destinationDays" value={JSON.stringify(stopDays.slice(0, moreDestinations.length + 1))} /><input type="hidden" name="durationDays" value={stopTotal || ''} /></>}
+      <input type="hidden" name="moreDestinations" value={JSON.stringify(moreDestinations.map(value => value.trim()).filter(Boolean))} />
+      {destination.trim() && moreDestinations.length < 9 && <button type="button" onClick={() => { if (!moreDestinations.length && days && !stopDays[0]) setStopDays([days]); setMoreDestinations(current => [...current, '']) }} className="-mt-2 inline-flex items-center gap-1 text-sm font-semibold text-link"><Plus size={16} />Add another destination</button>}
       <label className="block"><span className="field-label">Trip name</span> <span className="text-xs text-muted">(optional)</span><input name="title" maxLength={160} placeholder="Summer in Italy" className={inputClass} /></label>
       <fieldset><legend className="field-label mb-2">Who is this trip for?</legend><input type="hidden" name="audience" value={audience} /><div className="flex flex-wrap gap-2">{([{ value: 'family', label: 'Family' }, { value: 'friends', label: 'Friends' }, { value: 'romantic', label: 'Couples' }, { value: 'adult', label: 'Adults' }] as const).map(option => <button key={option.value} type="button" aria-pressed={audience === option.value} onClick={() => setAudience(option.value)} className="chip">{option.label}</button>)}</div></fieldset>
       <details><summary className="flex cursor-pointer list-none items-center gap-3 py-2 text-sm text-link"><CalendarDays size={20} />Add dates (optional)<ChevronDown size={18} className="ml-auto" /></summary><DateFields /></details>

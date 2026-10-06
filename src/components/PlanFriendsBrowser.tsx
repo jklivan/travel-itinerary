@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { copyPlacesToPlan, findFriendsPlanPlaces } from '@/actions/planSuggestions'
+import WhichDestination from './WhichDestination'
+import type { DestinationQuestion } from '@/lib/fileUnderDestination'
 import { samePlanPlace } from '@/lib/planPlaceIdentity'
 
 type Results = Awaited<ReturnType<typeof findFriendsPlanPlaces>>
@@ -39,7 +41,7 @@ export default function PlanFriendsBrowser({ plan, initialQuery, initialResults 
     finally { busy.current = false; setLoading(false) }
   }
   function toggle(places: Place[], checked: boolean) {
-    setSuccess(''); setError('')
+    setSuccess(''); setError(''); setQuestions([])
     const next = new Map(selected)
     for (const place of places) {
       if (place.alreadyAdded) continue
@@ -49,12 +51,17 @@ export default function PlanFriendsBrowser({ plan, initialQuery, initialResults 
     if (next.size > 100) { setError('You can add up to 100 places at a time. Add this selection first, then keep browsing.'); return }
     setSelected(next)
   }
+  // "Which destination?" for friends' destinations that don't clearly match one of the plan's, answered before adding.
+  const [questions, setQuestions] = useState<(DestinationQuestion & { key: string; places: number })[]>([])
+  const [choices, setChoices] = useState<Record<string, string>>({})
   async function addSelected() {
     if (busy.current || !selected.size) return
     busy.current = true; setSaving(true); setError(''); setSuccess('')
     try {
-      const result = await copyPlacesToPlan([...selected.keys()], plan.id)
-      if (!('added' in result)) { setError(result.error); return }
+      const result = await copyPlacesToPlan([...selected.keys()], plan.id, choices)
+      if ('chooseDestinations' in result && result.chooseDestinations) { setQuestions(result.chooseDestinations); return }
+      if (!('added' in result)) { setError(result.error ?? 'Could not add these places. Please try again.'); return }
+      setQuestions([]); setChoices({})
       const addedPlaces = [...selected.values()]
       setTrips(previous => previous.map(trip => ({ ...trip, places: trip.places.map(place => ({ ...place, alreadyAdded: place.alreadyAdded || addedPlaces.some(added => samePlanPlace(added, place)) })) })))
       setSelected(new Map())
@@ -73,6 +80,10 @@ export default function PlanFriendsBrowser({ plan, initialQuery, initialResults 
     </form>
     {plan.destinations.filter(d => d.name !== 'Destination to decide').length > 1 && <div className="mt-3 flex flex-wrap gap-2">{plan.destinations.filter(d => d.name !== 'Destination to decide').map(d => <button key={d.name} type="button" disabled={loading || saving} onClick={() => { const value = d.name.split(',')[0]; setQuery(value); void search(value) }} className="btn btn-outline">{d.name}</button>)}</div>}
     {selected.size > 0 && <details className="mt-4 rounded-xl border border-line bg-card p-3"><summary className="cursor-pointer text-sm font-semibold">{selected.size} selected across your friends’ trips</summary><ul className="mt-2 space-y-1">{[...selected.values()].map(place => <li key={place.id} className="flex items-center justify-between gap-3 text-sm"><span className="min-w-0 break-words">{place.name} · {place.destination.name}</span><button type="button" disabled={saving || loading} aria-label={`Remove ${place.name} from selection`} className="min-h-11 shrink-0 text-link underline" onClick={() => toggle([place], false)}>Remove</button></li>)}</ul></details>}
+    {questions.length > 0 && <div className="mt-4 space-y-3">
+      {questions.map(question => <WhichDestination key={question.key} question={question} place={question.places === 1 ? '1 place' : `${question.places} places`} chosen={choices[question.key]} disabled={saving} onChoose={destination => setChoices(current => ({ ...current, [question.key]: destination }))} />)}
+      <button type="button" disabled={saving || questions.some(question => !choices[question.key])} onClick={() => void addSelected()} className="btn btn-primary w-full">{saving ? 'Adding…' : `Add ${selected.size} ${selected.size === 1 ? 'place' : 'places'}`}</button>
+    </div>}
     {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
     {success && <div role="status" className="mt-4 rounded-xl border border-mist-edge bg-mist p-4 text-sm"><p>{success}</p><Link href={`/plan/${plan.id}`} className="mt-2 inline-block font-semibold text-link underline">Open your plan →</Link><p className="mt-2 text-xs">New places are unscheduled, ready for your own notes and days.</p></div>}
     <div aria-busy={loading} className="mt-6 space-y-4">

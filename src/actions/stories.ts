@@ -4,11 +4,13 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { samePlanDestination, sameSnapshotPlace } from '@/lib/planPlaceIdentity'
+import { fileUnderDestination, type DestinationQuestion } from '@/lib/fileUnderDestination'
+import { locateDestinations } from '@/lib/locateDestinations'
 import { eventPhotos } from '@/lib/eventPhotos'
 import { getRecommendation, recommendationTags, type PlaceRecommendation } from '@/lib/placeRecommendation'
 import { STORY_LIFETIME_MS, visibleStoriesWhere, type StoryCard } from '@/lib/stories'
 
-type Result = { error?: string; success?: boolean }
+type Result = { error?: string; success?: boolean; chooseDestination?: DestinationQuestion }
 export async function activeStories(following = false): Promise<StoryCard[]> {
   const userId = (await auth())?.user?.id ?? null
   const rows = await prisma.story.findMany({ where: visibleStoriesWhere(userId, following), orderBy: { createdAt: 'desc' }, take: 200,
@@ -218,27 +220,29 @@ export async function setStoryCategory(id: string, type: string): Promise<Result
   } catch { return { error: 'Could not change the category. Please try again.' } }
 }
 
-export async function copyStoryToPlan(storyId: string, planId: string, clientId: string): Promise<Result> {
+// destination: the answer to "Which destination?" when the place doesn't clearly belong to one of the plan's.
+export async function copyStoryToPlan(storyId: string, planId: string, clientId: string, destination?: string): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
-  if (!/^[a-f0-9-]{36}$/.test(clientId)) return { error: 'Please reopen the trip picker and try again.' }
+  if (!/^[a-f0-9-]{36}$/.test(clientId) || (destination !== undefined && (typeof destination !== 'string' || destination.length > 100))) return { error: 'Please reopen the trip picker and try again.' }
   try {
+    if (await prisma.itinerary.count({ where: { id: planId, userId } })) await locateDestinations(planId)
     const result = await prisma.$transaction(async tx => {
       const plan = await tx.itinerary.findFirst({ where: { id: planId, userId, isPlan: true }, select: { id: true } })
       const story = await tx.story.findFirst({ where: { id: storyId, ...visibleStoriesWhere(userId) } })
       if (!plan || !story) return { error: 'This story has expired or is unavailable, or the plan belongs to another account.' }
       const existing = await tx.destItem.findUnique({ where: { id: clientId }, select: { destination: { select: { itineraryId: true } } } })
       if (existing) return existing.destination.itineraryId === planId ? { success: true } : { error: 'Please reopen the trip picker and try again.' }
-      let destination = (await tx.destination.findMany({ where: { itineraryId: planId }, orderBy: { order: 'asc' } })).find(existing => samePlanDestination(existing, { name: story.destination, country: story.country })) ?? null
-      if (!destination) destination = await tx.destination.create({ data: { itineraryId: planId, name: story.destination, country: story.country, order: await tx.destination.count({ where: { itineraryId: planId } }) } })
-      const last = await tx.destItem.aggregate({ where: { destinationId: destination.id }, _max: { order: true, groupIndex: true } })
-      await tx.destItem.create({ data: { id: clientId, destinationId: destination.id, name: story.placeName, type: story.type,
+      const filed = await fileUnderDestination(tx, planId, { destination: { name: story.destination, country: story.country }, lat: story.lat, lng: story.lng }, destination)
+      if ('ask' in filed) return { chooseDestination: filed.ask }
+      const last = await tx.destItem.aggregate({ where: { destinationId: filed.id }, _max: { order: true, groupIndex: true } })
+      await tx.destItem.create({ data: { id: clientId, destinationId: filed.id, name: story.placeName, type: story.type,
         placeId: story.placeId, lat: story.lat, lng: story.lng, order: (last._max.order ?? -1) + 1,
         groupIndex: story.type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0,
       } })
       return { success: true }
     })
-    for (const path of ['/', '/plan', `/plan/${planId}`, `/itinerary/${planId}`]) revalidatePath(path)
+    if (!result.chooseDestination) for (const path of ['/', '/plan', `/plan/${planId}`, `/itinerary/${planId}`]) revalidatePath(path)
     return result
   } catch { return { error: 'Could not save this place. Please try again.' } }
 }
