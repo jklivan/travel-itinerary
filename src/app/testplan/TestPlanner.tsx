@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import RatingStars from '@/components/RatingStars'
 import { useEffect, useId, useRef, useState } from 'react'
+import { Capacitor, type PluginListenerHandle } from '@capacitor/core'
+import { Keyboard } from '@capacitor/keyboard'
 import { useRouter } from 'next/navigation'
 import { ArrowUp, ArrowUpRight, Camera, Check, EyeOff, History, Hotel, Map as MapIcon, Maximize2, Minimize2, Plane, Plus, Sparkles, Users, Utensils, MapPin, SquarePen, X } from 'lucide-react'
 import styles from '../itinerary/[id]/places.module.css'
@@ -66,9 +68,9 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
   const tripId = useRef(trip?.id ?? '')
   const scroller = useRef<HTMLDivElement>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
-  // While typing on a phone, pin the message box to the bottom of what's visible, just above the on-screen
-  // keyboard. iPhones either shrink the page or slide the keyboard over it, depending on the app build, so this
-  // follows the visible area (visualViewport) rather than the page.
+  // While typing on a phone, pin the message box just above the on-screen keyboard. Safari reports the visible
+  // area (visualViewport); in the iPhone app that can lag or not change at all, so the app's keyboard plugin
+  // also says how tall the keyboard is, and the box keeps clear of it either way.
   const form = useRef<HTMLFormElement>(null)
   const [pinnedTop, setPinnedTop] = useState<number | null>(null)
   useEffect(() => {
@@ -76,20 +78,37 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
     const viewport = window.visualViewport
     if (!box || !viewport) return
     let typing = false
+    let keyboard = 0
+    // The page's height with the keyboard closed.
+    let fullHeight = window.innerHeight
     function measure() {
-      if (!typing || !viewport) return
+      if (!typing || !viewport) { if (!typing) fullHeight = window.innerHeight; return }
       if (window.matchMedia('(min-width: 1024px)').matches) { setPinnedTop(null); return }
       const height = form.current?.offsetHeight ?? 64
-      setPinnedTop(viewport.offsetTop + viewport.height - height - 8)
+      const visibleBottom = viewport.offsetTop + viewport.height
+      const keyboardTop = keyboard ? viewport.offsetTop + fullHeight - keyboard : visibleBottom
+      setPinnedTop(Math.min(visibleBottom, keyboardTop) - height - 8)
     }
-    function focus() { typing = true; measure(); setTimeout(measure, 150); setTimeout(measure, 400) }
+    const later = () => { measure(); setTimeout(measure, 150); setTimeout(measure, 400) }
+    function focus() { typing = true; later() }
     function blur() { typing = false; setPinnedTop(null) }
     box.addEventListener('focus', focus)
     box.addEventListener('blur', blur)
     box.addEventListener('input', measure)
     viewport.addEventListener('resize', measure)
     viewport.addEventListener('scroll', measure)
-    return () => { box.removeEventListener('focus', focus); box.removeEventListener('blur', blur); box.removeEventListener('input', measure); viewport.removeEventListener('resize', measure); viewport.removeEventListener('scroll', measure) }
+    window.addEventListener('resize', measure)
+    const listeners: Promise<PluginListenerHandle>[] = []
+    if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('Keyboard')) listeners.push(
+      Keyboard.addListener('keyboardWillShow', info => { keyboard = info.keyboardHeight; later() }),
+      Keyboard.addListener('keyboardDidShow', info => { keyboard = info.keyboardHeight; measure() }),
+      Keyboard.addListener('keyboardWillHide', () => { keyboard = 0 }),
+    )
+    return () => {
+      box.removeEventListener('focus', focus); box.removeEventListener('blur', blur); box.removeEventListener('input', measure)
+      viewport.removeEventListener('resize', measure); viewport.removeEventListener('scroll', measure); window.removeEventListener('resize', measure)
+      for (const listener of listeners) void listener.then(handle => handle.remove()).catch(() => {})
+    }
   }, [])
   // The message box grows with what's typed (up to its max height), then scrolls.
   useEffect(() => {
