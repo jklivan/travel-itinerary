@@ -28,6 +28,7 @@ import { placeTown } from '@/lib/placeTown'
 import { DateFields, inputClass, buttonClass } from '../NewPlanForm'
 import { TAGS, tagMeta } from '@/lib/tags'
 import TagChip from '@/components/ui/TagChip'
+import { samePlanDestination } from '@/lib/planPlaceIdentity'
 import { getRecommendation } from '@/lib/placeRecommendation'
 import { PostStamp } from '@/components/PostcardLogo'
 
@@ -63,6 +64,14 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   // Trips with more than one destination split their places under a heading for each.
   const destinations = trip.destinations.filter(d => d.items.length || d.name !== 'Destination to decide')
   const multiDestination = destinations.length > 1
+  // Destinations that start with the same name ("Capri" and "Capri, Metropolitan City of Naples, Italy"), grouped,
+  // so the planner can offer to merge them. Each group keeps its shortest name.
+  const lookAlikes = destinations.reduce<{ keep: typeof destinations[number]; others: typeof destinations }[]>((groups, destination) => {
+    const group = groups.find(g => samePlanDestination(g.keep, destination))
+    if (!group) return [...groups, { keep: destination, others: [] }]
+    if (destination.name.length < group.keep.name.length) { group.others.push(group.keep); group.keep = destination } else group.others.push(destination)
+    return groups
+  }, []).filter(group => group.others.length > 0)
   const scheduled = [...new Set(places.flatMap(p => p.day === null ? [] : [p.day]))].sort((a, b) => a - b)
   // Days each destination (or a hotel stay) covers, when the person has set them.
   const ranges = destinationRanges(trip.destinations)
@@ -117,6 +126,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       {/* A plan with several destinations shows their headings (each with Add a place) even before anything is added. */}
       {tab === 'map' ? null : !places.length && !(multiDestination && tab === 'places') && !(tab === 'itinerary' && trip.durationDays) ? <div className="rounded-2xl border border-dashed border-line p-8 text-center"><MapPin className="mx-auto mb-3 text-link" /><h2 className="text-xl font-semibold">A place to start</h2><p className="mt-2 text-sm text-muted">A hotel you love, a restaurant someone mentioned, something you want to do. Add it now and decide when later.</p></div> : tab === 'places' ? <>
         <p className="mb-5 text-sm text-muted">Everything you’re considering, all in one place. Days are optional.</p>
+        {lookAlikes.map(group => <MergeLookAlikes key={group.keep.id} tripId={trip.id} keep={group.keep} others={group.others} />)}
         {multiDestination ? destinations.map(destination => { const items = places.filter(p => p.destinationId === destination.id); return <section key={destination.id} aria-label={destination.name} className="mb-10">
           <div className="mb-3 flex items-baseline justify-between gap-3 border-b-2 border-ink pb-2"><h2 className="flex min-w-0 items-center gap-2 font-[family-name:var(--font-playfair)] text-2xl uppercase [overflow-wrap:anywhere]"><MapPin size={20} className="shrink-0 text-link" />{destination.name}</h2><span className="flex shrink-0 items-center gap-3"><span className="text-xs font-semibold uppercase tracking-wider text-muted">{items.length} {items.length === 1 ? 'place' : 'places'}</span><button type="button" aria-expanded={editingDestination === destination.id} onClick={() => setEditingDestination(current => current === destination.id ? null : destination.id)} className="inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-link"><Pencil size={14} />Edit</button></span></div>
           {editingDestination === destination.id && <DestinationEditor key={destination.id} tripId={trip.id} destination={destination} places={items.length} others={destinations.filter(other => other.id !== destination.id)} onClose={() => setEditingDestination(null)} />}
@@ -358,6 +368,30 @@ function DestinationPicker({ destinations, value, selectedId, onChange, labelCla
     </div>}
     {typing && <PlacesAutocomplete maxLength={160} value={value} onChange={name => onChange(name, null)} onSelect={(main, secondary) => onChange(cleanDestination([main, secondary].filter(Boolean).join(', ')), null)} type="destination" placeholder="City or area" aria-label="New destination" className={inputClass} />}
   </fieldset>
+}
+
+// Two or more destinations that look like the same place: ask, then merge them into the shortest name (their
+// places, days and hotel stays move across). Asked rather than automatic: "Springfield, IL" and "Springfield, MO" differ.
+function MergeLookAlikes({ tripId, keep, others }: { tripId: string; keep: { id: string; name: string }; others: { id: string; name: string }[] }) {
+  const router = useRouter()
+  const [hidden, setHidden] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  if (hidden) return null
+  return <div role="status" className="panel mb-6 space-y-3 border-link p-4 text-sm">
+    <p className="text-ink"><strong>{cleanDestination(keep.name)}</strong> and {others.map((other, index) => <span key={other.id}>{index > 0 && ' and '}<strong>{cleanDestination(other.name)}</strong></span>)} look like the same place.</p>
+    <div className="flex flex-wrap gap-2">
+      <button type="button" disabled={busy} onClick={async () => {
+        setBusy(true); setError('')
+        try {
+          for (const other of others) { const result = await mergePlanDestination(tripId, other.id, keep.id); if (result.error) { setError(result.error); return } }
+          router.refresh()
+        } catch { setError('Could not merge them. Please try again.') } finally { setBusy(false) }
+      }} className="btn btn-primary btn-sm">{busy ? 'Merging…' : `Merge into ${cleanDestination(keep.name)}`}</button>
+      <button type="button" disabled={busy} onClick={() => setHidden(true)} className="btn btn-outline btn-sm">They’re different</button>
+    </div>
+    {error && <p role="alert" className="text-danger">{error}</p>}
+  </div>
 }
 
 // A destination heading's Edit panel: change the destination, move all its places into another one (which
