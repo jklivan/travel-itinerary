@@ -501,9 +501,9 @@ export default async function ItineraryPage({
           <div aria-label="Trip tags" className="flex flex-wrap gap-2 items-center mb-4">
             {!isOwn && <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />}
             {/* One chip style for everything here; the verdict uses its stamp colour, as on the trip cards. */}
-            {stamp && <span className={`${TAG_PILL} text-white`} style={{ backgroundColor: STAMP_COLORS[stamp.value] }}><Star size={16} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />{stamp.label}</span>}
+            {stamp && <span className={`${TAG_PILL} text-white`} style={{ backgroundColor: STAMP_COLORS[stamp.value] }}><Star size={14} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />{stamp.label}</span>}
             {!!it.budget && it.budget > 0 && <span aria-label={`Budget ${it.budget} out of 5`} className={`${TAG_PILL} gap-1 bg-chip`}>{[1, 2, 3, 4, 5].map(n => <span key={n} className={n <= it.budget! ? 'text-ink' : 'text-gold-faint'}>$</span>)}</span>}
-            {audienceLabel && <span className={`${TAG_PILL} bg-chip text-ink`}><Users size={18} strokeWidth={1.5} aria-hidden="true" />{audienceLabel}</span>}
+            {audienceLabel && <span className={`${TAG_PILL} bg-chip text-ink`}><Users size={15} strokeWidth={1.5} aria-hidden="true" />{audienceLabel}</span>}
             {displayTags.map(tag => <TagChip key={tag} id={tag} />)}
             {it.bestMonths && it.bestMonths.length > 0 && it.bestMonths.map(m => (
               <span key={m} className={`${TAG_PILL} bg-mist text-ink`}>{m}</span>
