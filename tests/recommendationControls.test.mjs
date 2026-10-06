@@ -41,7 +41,7 @@ function find(node, predicate) {
   const children = Array.isArray(node) ? node : [node.props?.children]
   for (const child of children) { const found = find(child, predicate); if (found) return found }
 }
-for (const path of ['../src/components/PlaceEditForm.tsx', '../src/app/create/guided/page.tsx']) {
+for (const path of ['../src/components/PlaceEditForm.tsx']) {
   test(`${path}: stamp click updates parent immediately; Cancel restores previous recommendation`, () => {
     const ui = editor(path)
     let item = { type: 'activity', name: 'Museum', mealType: '', rating: 5, notes: 'Original notes', tags: ['Cultural', '__avoid'], isHighlight: false, description: '', link: '', address: '', alternative: '', photo: '', placeId: '' }
@@ -60,7 +60,7 @@ for (const path of ['../src/components/PlaceEditForm.tsx', '../src/app/create/gu
   })
 }
 
-for (const path of ['../src/components/PlaceEditForm.tsx', '../src/app/create/guided/page.tsx']) {
+for (const path of ['../src/components/PlaceEditForm.tsx']) {
   test(`${path}: restaurant notes accept and save multiple lines`, () => {
     const ui = editor(path)
     let saved
@@ -77,7 +77,7 @@ for (const path of ['../src/components/PlaceEditForm.tsx', '../src/app/create/gu
   })
 }
 
-for (const path of ['../src/components/PlaceEditForm.tsx', '../src/app/create/guided/page.tsx']) {
+for (const path of ['../src/components/PlaceEditForm.tsx']) {
   test(`${path}: open event edits reach trip draft immediately and Cancel restores original`, () => {
     const ui = editor(path)
     let item = { type: 'food_drink', name: 'Cafe', mealType: '', rating: 4, notes: 'Original', tags: [], isHighlight: false, description: '', link: '', address: '', alternative: '', photos: [], photo: '', placeId: '' }

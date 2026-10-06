@@ -648,7 +648,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
       {destRegions.length === 0 ? (
         <div className="text-center py-20 text-brown mt-6">
           <p className="text-4xl mb-3">🌍</p>
-          <p className="text-sm">No destinations yet. <Link href="/create" className="text-ink-soft hover:underline">Add a trip!</Link></p>
+          <p className="text-sm">No destinations yet. <Link href="/plan" className="text-ink-soft hover:underline">Plan a trip!</Link></p>
         </div>
       ) : (
         <div className="space-y-8 mt-6">
