@@ -8,8 +8,8 @@ import styles from '../../itinerary/[id]/places.module.css'
 import planningStyles from './Planner.module.css'
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, MapPin, LockKeyhole, Check, Hotel, Utensils, Camera, Plane, Upload, Pencil, Sparkles, Users } from 'lucide-react'
-import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, setPlanDays, deletePlanDay, setPlaceDay, applyDayPlan, setTripCover } from '@/actions/planning'
+import { Plus, MapPin, Trash2, LockKeyhole, Check, Hotel, Utensils, Camera, Plane, Upload, Pencil, Sparkles, Users } from 'lucide-react'
+import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, removePlanDestination, renamePlanDestination, mergePlanDestination, setPlanDays, deletePlanDay, setPlaceDay, applyDayPlan, setTripCover } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
 import PlaceEntryForm from '@/components/PlaceEntryForm'
 import PlaceEditForm, { type PlaceEditValues, type PlaceType } from '@/components/PlaceEditForm'
@@ -28,6 +28,7 @@ import { placeTown } from '@/lib/placeTown'
 import { DateFields, inputClass, buttonClass } from '../NewPlanForm'
 import { TAGS, tagMeta } from '@/lib/tags'
 import TagChip from '@/components/ui/TagChip'
+import { samePlanDestination } from '@/lib/planPlaceIdentity'
 import { getRecommendation } from '@/lib/placeRecommendation'
 import { PostStamp } from '@/components/PostcardLogo'
 
@@ -41,7 +42,9 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const [tab, setTab] = useState<'places' | 'itinerary' | 'map'>(trip.durationDays ? 'itinerary' : 'places')
   const [mapOpened, setMapOpened] = useState(false)
   // Where the add-a-place form is open: the top button, under a destination's heading, or on an empty day.
-  const [adding, setAdding] = useState<{ at: string; destination?: string; day?: number } | null>(null)
+  // The destination heading whose Edit panel is open.
+  const [editingDestination, setEditingDestination] = useState<string | null>(null)
+  const [adding, setAdding] = useState<{ at: string; destination?: string; destinationId?: string; day?: number } | null>(null)
   const [importing, setImporting] = useState(initialImport)
   const [publishing, setPublishing] = useState(false)
   const [publishFormat, setPublishFormat] = useState<'guide' | 'day-trip' | 'itinerary' | null>(initialPost ? (trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary') : null)
@@ -61,13 +64,21 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   // Trips with more than one destination split their places under a heading for each.
   const destinations = trip.destinations.filter(d => d.items.length || d.name !== 'Destination to decide')
   const multiDestination = destinations.length > 1
+  // Destinations that start with the same name ("Capri" and "Capri, Metropolitan City of Naples, Italy"), grouped,
+  // so the planner can offer to merge them. Each group keeps its shortest name.
+  const lookAlikes = destinations.reduce<{ keep: typeof destinations[number]; others: typeof destinations }[]>((groups, destination) => {
+    const group = groups.find(g => samePlanDestination(g.keep, destination))
+    if (!group) return [...groups, { keep: destination, others: [] }]
+    if (destination.name.length < group.keep.name.length) { group.others.push(group.keep); group.keep = destination } else group.others.push(destination)
+    return groups
+  }, []).filter(group => group.others.length > 0)
   const scheduled = [...new Set(places.flatMap(p => p.day === null ? [] : [p.day]))].sort((a, b) => a - b)
   // Days each destination (or a hotel stay) covers, when the person has set them.
   const ranges = destinationRanges(trip.destinations)
   const maxDay = Math.max(trip.durationDays ?? 0, ...scheduled, totalDays(trip.destinations), 1)
   const unrated = places.filter(place => place.type !== 'transport' && !place.rating && getRecommendation(place.tags) !== 'option')
-  function renderPlace(place: Place & { destination: string; destinationName: string }) { return <PlaceRow key={place.id} tripId={trip.id} place={place} maxDay={maxDay} destinationNames={destinations.map(d => d.name)} /> }
-  function addForm(at: string) { return adding?.at === at && !importing ? <AddPlace key={at} trip={trip} maxDay={maxDay} initialDestination={adding.destination} initialDay={adding.day} onClose={() => setAdding(null)} /> : null }
+  function renderPlace(place: Place & { destination: string; destinationName: string; destinationId: string }) { return <PlaceRow key={place.id} tripId={trip.id} place={place} maxDay={maxDay} destinationChoices={destinations.map(d => ({ id: d.id, name: d.name }))} /> }
+  function addForm(at: string) { return adding?.at === at && !importing ? <AddPlace key={at} trip={trip} maxDay={maxDay} initialDestination={adding.destination} initialDestinationId={adding.destinationId} initialDay={adding.day} onClose={() => setAdding(null)} /> : null }
   function categorySections(items: typeof places) {
     return categories.map(category => { const inCategory = items.filter(p => p.type === category.value); return inCategory.length > 0 && <section key={category.value} className="mb-7"><div className={`${styles.categoryHeading} ${styles[category.value]}`}><h3><span className={styles.categoryIcon}><category.Icon size={17} /></span>{category.label}</h3><span className={styles.count}>{inCategory.length} {inCategory.length === 1 ? 'place' : 'places'}</span></div><div className="space-y-3">{inCategory.map(renderPlace)}</div></section> })
   }
@@ -115,10 +126,12 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       {/* A plan with several destinations shows their headings (each with Add a place) even before anything is added. */}
       {tab === 'map' ? null : !places.length && !(multiDestination && tab === 'places') && !(tab === 'itinerary' && trip.durationDays) ? <div className="rounded-2xl border border-dashed border-line p-8 text-center"><MapPin className="mx-auto mb-3 text-link" /><h2 className="text-xl font-semibold">A place to start</h2><p className="mt-2 text-sm text-muted">A hotel you love, a restaurant someone mentioned, something you want to do. Add it now and decide when later.</p></div> : tab === 'places' ? <>
         <p className="mb-5 text-sm text-muted">Everything you’re considering, all in one place. Days are optional.</p>
+        {lookAlikes.map(group => <MergeLookAlikes key={group.keep.id} tripId={trip.id} keep={group.keep} others={group.others} />)}
         {multiDestination ? destinations.map(destination => { const items = places.filter(p => p.destinationId === destination.id); return <section key={destination.id} aria-label={destination.name} className="mb-10">
-          <div className="mb-3 flex items-baseline justify-between gap-3 border-b-2 border-ink pb-2"><h2 className="flex min-w-0 items-center gap-2 font-[family-name:var(--font-playfair)] text-2xl uppercase [overflow-wrap:anywhere]"><MapPin size={20} className="shrink-0 text-link" />{destination.name}</h2><span className="shrink-0 text-xs font-semibold uppercase tracking-wider text-muted">{items.length} {items.length === 1 ? 'place' : 'places'}</span></div>
+          <div className="mb-3 flex items-baseline justify-between gap-3 border-b-2 border-ink pb-2"><h2 className="flex min-w-0 items-center gap-2 font-[family-name:var(--font-playfair)] text-2xl uppercase [overflow-wrap:anywhere]"><MapPin size={20} className="shrink-0 text-link" />{destination.name}</h2><span className="flex shrink-0 items-center gap-3"><span className="text-xs font-semibold uppercase tracking-wider text-muted">{items.length} {items.length === 1 ? 'place' : 'places'}</span><button type="button" aria-expanded={editingDestination === destination.id} onClick={() => setEditingDestination(current => current === destination.id ? null : destination.id)} className="inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-link"><Pencil size={14} />Edit</button></span></div>
+          {editingDestination === destination.id && <DestinationEditor key={destination.id} tripId={trip.id} destination={destination} places={items.length} others={destinations.filter(other => other.id !== destination.id)} onClose={() => setEditingDestination(null)} />}
           {/* Adds here search near this destination. */}
-          <button type="button" onClick={() => { setImporting(false); setAdding({ at: `destination:${destination.id}`, destination: destination.name }) }} className="mb-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-link px-4 text-sm font-semibold text-link hover:bg-mist"><Plus size={17} />Add a place in {destination.name}</button>
+          <button type="button" onClick={() => { setImporting(false); setAdding({ at: `destination:${destination.id}`, destination: destination.name, destinationId: destination.id }) }} className="mb-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-link px-4 text-sm font-semibold text-link hover:bg-mist"><Plus size={17} />Add a place in {destination.name}</button>
           {addForm(`destination:${destination.id}`)}
           {categorySections(items)}
         </section> }) : categorySections(places)}
@@ -129,7 +142,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
           {!!trip.durationDays && trip.durationDays > 1 && <DeleteDay tripId={trip.id} day={day} places={dayPlaces.length} />}</section> })}
         {!!trip.durationDays && <AddDay tripId={trip.id} days={trip.durationDays} />}
         <section><h2 className={styles.dayHeading}>Unscheduled</h2>
-          {!!trip.durationDays && places.some(p => p.day === null) && <OrganizeWithAI tripId={trip.id} places={places} />}<div className="space-y-3">{places.filter(p => p.day === null).map(place => trip.durationDays ? <PlaceRow key={place.id} tripId={trip.id} place={place} maxDay={maxDay} destinationNames={destinations.map(d => d.name)} dayChips={trip.durationDays} dayRange={ranges.get(place.destinationId)} /> : renderPlace(place))}</div>{places.length > 0 && places.every(p => p.day !== null) && <p className="text-sm text-muted">All your places have a day.</p>}{!places.length && <p className="text-sm text-muted">Places you haven’t put on a day yet show here.</p>}</section>
+          {!!trip.durationDays && places.some(p => p.day === null) && <OrganizeWithAI tripId={trip.id} places={places} />}<div className="space-y-3">{places.filter(p => p.day === null).map(place => trip.durationDays ? <PlaceRow key={place.id} tripId={trip.id} place={place} maxDay={maxDay} destinationChoices={destinations.map(d => ({ id: d.id, name: d.name }))} dayChips={trip.durationDays} dayRange={ranges.get(place.destinationId)} /> : renderPlace(place))}</div>{places.length > 0 && places.every(p => p.day !== null) && <p className="text-sm text-muted">All your places have a day.</p>}{!places.length && <p className="text-sm text-muted">Places you haven’t put on a day yet show here.</p>}</section>
       </>}
     </section>
     <div className="mt-8 border-t border-line pt-5"><div className="flex flex-wrap items-center justify-between gap-3">{/* Post on the left, delete on the right (also when there's nothing to post). */}{trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={() => setPublishFormat(trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary')} aria-label="Post trip" title="Post trip" className="pointer-events-auto relative inline-flex size-20 items-center justify-center transition-transform hover:-rotate-6 hover:scale-105 disabled:opacity-60"><PostStamp size={80} /><span className="sr-only">Post</span></button>}<div className="pointer-events-auto ml-auto"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div></div></div>
@@ -139,7 +152,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   </div>
 }
 
-function AddPlace({ trip, maxDay, initialDestination, initialDay, onClose }: { trip: Trip; maxDay: number; initialDestination?: string; initialDay?: number; onClose: () => void }) {
+function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, initialDay, onClose }: { trip: Trip; maxDay: number; initialDestination?: string; initialDestinationId?: string; initialDay?: number; onClose: () => void }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -155,9 +168,10 @@ function AddPlace({ trip, maxDay, initialDestination, initialDay, onClose }: { t
   // Added from a destination or a day: that destination. Otherwise the person picks (a one-destination trip picks itself).
   const realDestinations = trip.destinations.filter(d => d.name !== 'Destination to decide')
   const [destination, setDestination] = useState(initialDestination ?? (realDestinations.length === 1 ? realDestinations[0].name : ''))
-  const selectedDestination = trip.destinations.find(d => d.name === destination)
+  const [destinationId, setDestinationId] = useState<string | null>(initialDestinationId ?? trip.destinations.find(d => d.name === (initialDestination ?? (realDestinations.length === 1 ? realDestinations[0].name : '')))?.id ?? null)
+  const selectedDestination = trip.destinations.find(d => d.id === destinationId) ?? trip.destinations.find(d => d.name === destination)
   const city = [destination, selectedDestination?.country].filter(Boolean).join(', ')
-  function changeDestination(value: string) { setDestination(value) }
+  function changeDestination(value: string, id: string | null = null) { setDestination(value); setDestinationId(id) }
   const stayRange = selectedDestination ? destinationRanges(trip.destinations).get(selectedDestination.id) : undefined
   // Choosing Hotel suggests a check-in on the destination's first day, for all of its days.
   const [suggested, setSuggested] = useState(false)
@@ -169,7 +183,7 @@ function AddPlace({ trip, maxDay, initialDestination, initialDay, onClose }: { t
 
   const nightsSelect = <label className="block text-xs uppercase tracking-wide text-link">How many nights?<select value={nights} onChange={event => setNights(event.target.value)} className={inputClass}><option value="">Not sure yet</option>{Array.from({ length: 30 }, (_, index) => index + 1).map(value => <option key={value} value={value}>{value} {value === 1 ? 'night' : 'nights'}</option>)}</select></label>
   return <section className="panel mb-4 space-y-3 p-4" aria-label="Add a place"><button type="button" onClick={onClose} className="text-sm text-link">← Back</button><h2 className="font-[family-name:var(--font-playfair)] text-2xl uppercase">Add a place</h2><p className="text-sm text-muted">Save places to your trip. Add notes now. If you’ve already been, add a rating too.</p><fieldset disabled={busy || uploading} className="space-y-3">
-    <DestinationPicker names={trip.destinations.map(d => d.name)} value={destination} onChange={changeDestination} labelClass="mb-1 text-sm" />
+    <DestinationPicker destinations={trip.destinations.map(d => ({ id: d.id, name: d.name }))} value={destination} selectedId={destinationId} onChange={changeDestination} labelClass="mb-1 text-sm" />
     <fieldset><legend className="mb-2 text-sm">Category</legend><div className="flex flex-wrap gap-2">
       {[
         { value: 'hotel', label: 'Hotel / Airbnb', Icon: Hotel, color: 'peer-checked:border-ink peer-checked:bg-ink peer-checked:text-white' },
@@ -188,7 +202,7 @@ function AddPlace({ trip, maxDay, initialDestination, initialDay, onClose }: { t
       saving.current = true; setBusy(true); setError('')
       if (!clientId.current) clientId.current = crypto.randomUUID()
       const data = new FormData()
-      for (const [key, value] of Object.entries({ ...item, destination, day, ...(category === 'hotel' && nights ? { nights } : {}), status, clientId: clientId.current })) data.set(key, Array.isArray(value) ? JSON.stringify(value) : String(value))
+      for (const [key, value] of Object.entries({ ...item, destination, destinationId: destinationId ?? '', day, ...(category === 'hotel' && nights ? { nights } : {}), status, clientId: clientId.current })) data.set(key, Array.isArray(value) ? JSON.stringify(value) : String(value))
       try {
         const result = await addPlanPlace(trip.id, data)
         if (result.error) { setError(result.error); return false }
@@ -239,7 +253,7 @@ function UnratedPrompt({ places, onClose, onPreview }: { places: (Place & { dest
   </div>
 }
 
-function PlaceRow({ tripId, place, maxDay, destinationNames, dayChips, dayRange }: { tripId: string; place: Place & { destination: string; destinationName: string }; maxDay: number; destinationNames: string[]; dayChips?: number; dayRange?: DayRange }) {
+function PlaceRow({ tripId, place, maxDay, destinationChoices, dayChips, dayRange }: { tripId: string; place: Place & { destination: string; destinationName: string; destinationId: string }; maxDay: number; destinationChoices: { id: string; name: string }[]; dayChips?: number; dayRange?: DayRange }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -253,15 +267,16 @@ function PlaceRow({ tripId, place, maxDay, destinationNames, dayChips, dayRange 
   const [nights, setNights] = useState(place.nights ? String(place.nights) : '')
   const [type, setType] = useState(place.type)
   const [destination, setDestination] = useState(place.destinationName)
+  const [destinationId, setDestinationId] = useState<string | null>(place.destinationId)
   const [uploading, setUploading] = useState(false)
   const [foundAddress, setFoundAddress] = useState<string | null>(null)
   const category = categories.find(category => category.value === place.type) ?? categories[2]
-  function openEditor() { setType(place.type); setDestination(place.destinationName); setPlaceId(place.placeId ?? ''); setPhotos(place.photos); setDay(place.day === null ? '' : String(place.day)); setNights(place.nights ? String(place.nights) : ''); setEditing(true); setError(''); setSaved(false) }
+  function openEditor() { setType(place.type); setDestination(place.destinationName); setDestinationId(place.destinationId); setPlaceId(place.placeId ?? ''); setPhotos(place.photos); setDay(place.day === null ? '' : String(place.day)); setNights(place.nights ? String(place.nights) : ''); setEditing(true); setError(''); setSaved(false) }
   async function save(values: PlaceEditValues) {
     if (saving.current || uploading) return
     saving.current = true; setBusy(true); setError('')
     const data = new FormData()
-    for (const [key, value] of Object.entries({ name: values.name, category: type, destination, placeId, status: place.status, notes: values.notes, day, ...(type === 'hotel' ? { nights } : {}), mealType: values.mealType,
+    for (const [key, value] of Object.entries({ name: values.name, category: type, destination, destinationId: destinationId ?? '', placeId, status: place.status, notes: values.notes, day, ...(type === 'hotel' ? { nights } : {}), mealType: values.mealType,
       tags: JSON.stringify(values.tags), alternative: values.alternative, description: values.description, link: values.link, address: values.address, photos: JSON.stringify(photos) })) data.set(key, value)
     try { const result = await editPlanPlace(place.id, data); if (result.error) setError(result.error); else { setEditing(false); setSaved(true); router.refresh() } }
     catch { setError('Could not save. Your changes are still here; try again.') }
@@ -305,7 +320,7 @@ function PlaceRow({ tripId, place, maxDay, destinationNames, dayChips, dayRange 
           initial={{ name: place.name, mealType: place.mealType ?? '', rating: place.rating ?? 0, notes: place.notes ?? '', tags: place.tags, isHighlight: false, alternative: place.alternative ?? '', description: place.description ?? '', link: place.link ?? '', address: place.address ?? '' }}>
           <div className="space-y-1"><p className="text-xs text-muted">Photos</p><EventPhotoInput photos={photos} name={place.name} onChange={setPhotos} onBusyChange={setUploading} /></div>
           {/* Moving a place to another destination puts it under that destination's heading. */}
-          <DestinationPicker names={destinationNames} value={destination} onChange={setDestination} labelClass="mb-1 text-xs text-muted" />
+          <DestinationPicker destinations={destinationChoices} value={destination} selectedId={destinationId} onChange={(name, id) => { setDestination(name); setDestinationId(id) }} labelClass="mb-1 text-xs text-muted" />
           <fieldset><legend className="mb-1 text-xs text-muted">Category</legend><div className="flex flex-wrap gap-1.5">{categories.map(option => <button key={option.value} type="button" aria-pressed={type === option.value} onClick={() => setType(option.value)} className="chip"><option.Icon size={14} />{option.label}</button>)}</div></fieldset>
           <label className="block text-xs text-muted">{type === 'hotel' ? 'Check-in day (optional)' : 'Day (optional)'}<select value={day} onChange={event => setDay(event.target.value)} className={inputClass}><option value="">Unscheduled</option>{Array.from({ length: maxDay }, (_, index) => index + 1).map(value => <option key={value} value={value}>Day {value}</option>)}</select></label>
           {/* Hotels: how many nights, from the check-in day. The itinerary shows the stay on those days. */}
@@ -342,16 +357,76 @@ function cleanDestination(name: string) { return name.split(',').map(part => par
 
 // Which destination a place goes under: your trip's destinations as buttons, or "Somewhere else…" to type a new one.
 // Nothing is chosen for you unless the place already belongs somewhere (editing) or was added from a destination or day.
-function DestinationPicker({ names, value, onChange, labelClass }: { names: string[]; value: string; onChange: (value: string) => void; labelClass: string }) {
-  const options = names.filter(name => name !== 'Destination to decide')
-  const [typing, setTyping] = useState(!options.length || (!!value && !options.includes(value)))
+function DestinationPicker({ destinations, value, selectedId, onChange, labelClass }: { destinations: { id: string; name: string }[]; value: string; selectedId: string | null; onChange: (name: string, id: string | null) => void; labelClass: string }) {
+  const options = destinations.filter(d => d.name !== 'Destination to decide')
+  const [typing, setTyping] = useState(!options.length || (!!value && !selectedId && !options.some(d => d.name === value)))
+  // Each button is one destination (by id), so two that read alike, like two "Positano"s, stay separate.
   return <fieldset className="space-y-1.5"><legend className={labelClass}>Destination</legend>
     {options.length > 0 && <div className="flex flex-wrap gap-1.5">
-      {options.map(name => <button key={name} type="button" aria-pressed={!typing && value === name} onClick={() => { setTyping(false); onChange(name) }} className="chip">{cleanDestination(name)}</button>)}
-      <button type="button" aria-pressed={typing} onClick={() => { setTyping(true); onChange('') }} className="chip"><Plus size={14} />Somewhere else…</button>
+      {options.map(d => <button key={d.id} type="button" aria-pressed={!typing && selectedId === d.id} onClick={() => { setTyping(false); onChange(d.name, d.id) }} className="chip">{cleanDestination(d.name)}</button>)}
+      <button type="button" aria-pressed={typing} onClick={() => { setTyping(true); onChange('', null) }} className="chip"><Plus size={14} />Somewhere else…</button>
     </div>}
-    {typing && <PlacesAutocomplete maxLength={160} value={value} onChange={onChange} onSelect={(main, secondary) => onChange(cleanDestination([main, secondary].filter(Boolean).join(', ')))} type="destination" placeholder="City or area" aria-label="New destination" className={inputClass} />}
+    {typing && <PlacesAutocomplete maxLength={160} value={value} onChange={name => onChange(name, null)} onSelect={(main, secondary) => onChange(cleanDestination([main, secondary].filter(Boolean).join(', ')), null)} type="destination" placeholder="City or area" aria-label="New destination" className={inputClass} />}
   </fieldset>
+}
+
+// Two or more destinations that look like the same place: ask, then merge them into the shortest name (their
+// places, days and hotel stays move across). Asked rather than automatic: "Springfield, IL" and "Springfield, MO" differ.
+function MergeLookAlikes({ tripId, keep, others }: { tripId: string; keep: { id: string; name: string }; others: { id: string; name: string }[] }) {
+  const router = useRouter()
+  const [hidden, setHidden] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  if (hidden) return null
+  return <div role="status" className="panel mb-6 space-y-3 border-link p-4 text-sm">
+    <p className="text-ink"><strong>{cleanDestination(keep.name)}</strong> and {others.map((other, index) => <span key={other.id}>{index > 0 && ' and '}<strong>{cleanDestination(other.name)}</strong></span>)} look like the same place.</p>
+    <div className="flex flex-wrap gap-2">
+      <button type="button" disabled={busy} onClick={async () => {
+        setBusy(true); setError('')
+        try {
+          for (const other of others) { const result = await mergePlanDestination(tripId, other.id, keep.id); if (result.error) { setError(result.error); return } }
+          router.refresh()
+        } catch { setError('Could not merge them. Please try again.') } finally { setBusy(false) }
+      }} className="btn btn-primary btn-sm">{busy ? 'Merging…' : `Merge into ${cleanDestination(keep.name)}`}</button>
+      <button type="button" disabled={busy} onClick={() => setHidden(true)} className="btn btn-outline btn-sm">They’re different</button>
+    </div>
+    {error && <p role="alert" className="text-danger">{error}</p>}
+  </div>
+}
+
+// A destination heading's Edit panel: change the destination, move all its places into another one (which
+// removes it), or remove it. Removing one that has places asks first and says how many go with it.
+function DestinationEditor({ tripId, destination, places, others, onClose }: { tripId: string; destination: { id: string; name: string }; places: number; others: { id: string; name: string }[]; onClose: () => void }) {
+  const router = useRouter()
+  const [name, setName] = useState(destination.name)
+  const [moveTo, setMoveTo] = useState<{ id: string; name: string } | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const placesLabel = `${places} ${places === 1 ? 'place' : 'places'}`
+  async function run(action: () => Promise<{ error?: string }>) {
+    setBusy(true); setError('')
+    try { const result = await action(); if (result.error) setError(result.error); else { onClose(); router.refresh() } }
+    catch { setError('Could not save. Please try again.') } finally { setBusy(false) }
+  }
+  return <div className="panel mb-5 space-y-5 p-4">
+    <fieldset disabled={busy} className="space-y-5">
+      <div className="space-y-2"><p className="text-sm font-semibold text-ink">Change destination</p>
+        <PlacesAutocomplete maxLength={160} value={name} onChange={setName} onSelect={(main, secondary) => setName(cleanDestination([main, secondary].filter(Boolean).join(', ')))} type="destination" placeholder="City or area" aria-label="Destination" className={inputClass} />
+        <button type="button" disabled={!name.trim() || name.trim() === destination.name} onClick={() => void run(() => renamePlanDestination(tripId, destination.id, name))} className="btn btn-primary btn-sm">Save</button>
+        {places > 0 && <p className="text-xs text-muted">Its {placesLabel} stay with it.</p>}</div>
+      {places > 0 && others.length > 0 && <div className="space-y-2"><p className="text-sm font-semibold text-ink">Move its places to…</p>
+        <div className="flex flex-wrap gap-1.5">{others.map(other => <button key={other.id} type="button" aria-pressed={moveTo?.id === other.id} onClick={() => setMoveTo(current => current?.id === other.id ? null : other)} className="chip">{cleanDestination(other.name)}</button>)}</div>
+        {moveTo && <button type="button" onClick={() => void run(() => mergePlanDestination(tripId, destination.id, moveTo.id))} className="btn btn-primary btn-sm">Move {placesLabel} to {cleanDestination(moveTo.name)} and remove {cleanDestination(destination.name)}</button>}</div>}
+      {others.length > 0 && <div className="space-y-2 border-t border-line-soft pt-4">
+        {!confirmRemove ? <button type="button" onClick={() => places ? setConfirmRemove(true) : void run(() => removePlanDestination(tripId, destination.id))} className="inline-flex items-center gap-1.5 text-sm font-semibold text-danger"><Trash2 size={15} />Remove destination</button>
+        : <><p className="text-sm text-ink">Remove {cleanDestination(destination.name)} and its {placesLabel}? Their notes, ratings and photos go too. This can’t be undone.{others.length > 0 && ' To keep them, move them to another destination above instead.'}</p>
+          <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void run(() => removePlanDestination(tripId, destination.id, true))} className="btn btn-sm bg-danger text-white">Remove destination and {placesLabel}</button><button type="button" onClick={() => setConfirmRemove(false)} className="btn btn-outline btn-sm">Keep it</button></div></>}
+      </div>}
+    </fieldset>
+    {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+    <button type="button" onClick={onClose} className="text-sm text-link">Done</button>
+  </div>
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']

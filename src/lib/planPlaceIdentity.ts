@@ -9,6 +9,14 @@ export function samePlanDestination(a: Destination, b: Destination) {
   return normalize(a.name.split(',')[0]) === normalize(b.name.split(',')[0]) &&
     (!a.country || !b.country || countryOf(a.country) === countryOf(b.country))
 }
+// Which of a trip's destinations a place goes under: the one picked (by id), else one with exactly that name, else
+// one that loosely matches ("Capri" for "Capri, Italy"). A loose match alone can't tell apart two destinations
+// that start the same, so pickers send the id.
+export function pickPlanDestination<T extends Destination & { id: string }>(destinations: T[], choice: { id?: string; name: string }) {
+  return destinations.find(d => choice.id && d.id === choice.id)
+    ?? destinations.find(d => choice.name && normalize(d.name) === normalize(choice.name))
+    ?? destinations.find(d => choice.name && samePlanDestination(d, { name: choice.name })) ?? null
+}
 export function samePlanPlace(a: PlanPlaceIdentity, b: PlanPlaceIdentity) {
   if (a.placeId && b.placeId) return a.placeId === b.placeId
   return a.type === b.type && normalize(a.name) === normalize(b.name) && samePlanDestination(a.destination, b.destination)
