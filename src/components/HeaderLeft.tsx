@@ -24,7 +24,7 @@ export default function HeaderLeft() {
   return <button type="button" onClick={() => {
     if (previousPage(window.history.state)) router.back()
     else router.push(parentPath(pathname, window.location.search))
-  }} className="-ml-1 flex min-h-11 items-center gap-0.5 pr-2 text-[15px] text-link hover:text-ink">
+  }} className="-ml-1 flex min-h-11 items-center gap-0.5 pr-2 text-[15px] text-ink hover:text-ink-soft">
     <ChevronLeft size={22} strokeWidth={1.75} />Back
   </button>
 }
