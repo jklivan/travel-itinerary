@@ -9,7 +9,7 @@ import planningStyles from './Planner.module.css'
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, MapPin, Trash2, LockKeyhole, Check, Hotel, Utensils, Camera, Plane, Upload, Pencil, Sparkles, Users } from 'lucide-react'
-import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, removePlanDestination, setPlanDays, deletePlanDay, setPlaceDay, applyDayPlan, setTripCover } from '@/actions/planning'
+import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, removePlanDestination, renamePlanDestination, mergePlanDestination, setPlanDays, deletePlanDay, setPlaceDay, applyDayPlan, setTripCover } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
 import PlaceEntryForm from '@/components/PlaceEntryForm'
 import PlaceEditForm, { type PlaceEditValues, type PlaceType } from '@/components/PlaceEditForm'
@@ -41,6 +41,8 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const [tab, setTab] = useState<'places' | 'itinerary' | 'map'>(trip.durationDays ? 'itinerary' : 'places')
   const [mapOpened, setMapOpened] = useState(false)
   // Where the add-a-place form is open: the top button, under a destination's heading, or on an empty day.
+  // The destination heading whose Edit panel is open.
+  const [editingDestination, setEditingDestination] = useState<string | null>(null)
   const [adding, setAdding] = useState<{ at: string; destination?: string; destinationId?: string; day?: number } | null>(null)
   const [importing, setImporting] = useState(initialImport)
   const [publishing, setPublishing] = useState(false)
@@ -116,7 +118,8 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       {tab === 'map' ? null : !places.length && !(multiDestination && tab === 'places') && !(tab === 'itinerary' && trip.durationDays) ? <div className="rounded-2xl border border-dashed border-line p-8 text-center"><MapPin className="mx-auto mb-3 text-link" /><h2 className="text-xl font-semibold">A place to start</h2><p className="mt-2 text-sm text-muted">A hotel you love, a restaurant someone mentioned, something you want to do. Add it now and decide when later.</p></div> : tab === 'places' ? <>
         <p className="mb-5 text-sm text-muted">Everything you’re considering, all in one place. Days are optional.</p>
         {multiDestination ? destinations.map(destination => { const items = places.filter(p => p.destinationId === destination.id); return <section key={destination.id} aria-label={destination.name} className="mb-10">
-          <div className="mb-3 flex items-baseline justify-between gap-3 border-b-2 border-ink pb-2"><h2 className="flex min-w-0 items-center gap-2 font-[family-name:var(--font-playfair)] text-2xl uppercase [overflow-wrap:anywhere]"><MapPin size={20} className="shrink-0 text-link" />{destination.name}</h2>{items.length ? <span className="shrink-0 text-xs font-semibold uppercase tracking-wider text-muted">{items.length} {items.length === 1 ? 'place' : 'places'}</span> : <RemoveDestination tripId={trip.id} destination={destination} />}</div>
+          <div className="mb-3 flex items-baseline justify-between gap-3 border-b-2 border-ink pb-2"><h2 className="flex min-w-0 items-center gap-2 font-[family-name:var(--font-playfair)] text-2xl uppercase [overflow-wrap:anywhere]"><MapPin size={20} className="shrink-0 text-link" />{destination.name}</h2><span className="flex shrink-0 items-center gap-3"><span className="text-xs font-semibold uppercase tracking-wider text-muted">{items.length} {items.length === 1 ? 'place' : 'places'}</span><button type="button" aria-expanded={editingDestination === destination.id} onClick={() => setEditingDestination(current => current === destination.id ? null : destination.id)} className="inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-link"><Pencil size={14} />Edit</button></span></div>
+          {editingDestination === destination.id && <DestinationEditor key={destination.id} tripId={trip.id} destination={destination} places={items.length} others={destinations.filter(other => other.id !== destination.id)} onClose={() => setEditingDestination(null)} />}
           {/* Adds here search near this destination. */}
           <button type="button" onClick={() => { setImporting(false); setAdding({ at: `destination:${destination.id}`, destination: destination.name, destinationId: destination.id }) }} className="mb-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-link px-4 text-sm font-semibold text-link hover:bg-mist"><Plus size={17} />Add a place in {destination.name}</button>
           {addForm(`destination:${destination.id}`)}
@@ -357,19 +360,39 @@ function DestinationPicker({ destinations, value, selectedId, onChange, labelCla
   </fieldset>
 }
 
-// On an empty destination heading: remove it (only possible while it has no places).
-function RemoveDestination({ tripId, destination }: { tripId: string; destination: { id: string; name: string } }) {
+// A destination heading's Edit panel: change the destination, move all its places into another one (which
+// removes it), or remove it. Removing one that has places asks first and says how many go with it.
+function DestinationEditor({ tripId, destination, places, others, onClose }: { tripId: string; destination: { id: string; name: string }; places: number; others: { id: string; name: string }[]; onClose: () => void }) {
   const router = useRouter()
+  const [name, setName] = useState(destination.name)
+  const [moveTo, setMoveTo] = useState<{ id: string; name: string } | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  return <span className="flex shrink-0 items-center gap-2">
-    {error && <span role="alert" className="text-xs text-danger">{error}</span>}
-    <button type="button" disabled={busy} aria-label={`Remove ${destination.name}`} title={`Remove ${destination.name}`} onClick={async () => {
-      setBusy(true); setError('')
-      try { const result = await removePlanDestination(tripId, destination.id); if (result.error) setError(result.error); else router.refresh() }
-      catch { setError('Could not remove it. Try again.') } finally { setBusy(false) }
-    }} className="inline-flex min-h-9 items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted hover:text-danger disabled:opacity-50"><Trash2 size={15} />{busy ? 'Removing…' : 'Remove'}</button>
-  </span>
+  const placesLabel = `${places} ${places === 1 ? 'place' : 'places'}`
+  async function run(action: () => Promise<{ error?: string }>) {
+    setBusy(true); setError('')
+    try { const result = await action(); if (result.error) setError(result.error); else { onClose(); router.refresh() } }
+    catch { setError('Could not save. Please try again.') } finally { setBusy(false) }
+  }
+  return <div className="panel mb-5 space-y-5 p-4">
+    <fieldset disabled={busy} className="space-y-5">
+      <div className="space-y-2"><p className="text-sm font-semibold text-ink">Change destination</p>
+        <PlacesAutocomplete maxLength={160} value={name} onChange={setName} onSelect={(main, secondary) => setName(cleanDestination([main, secondary].filter(Boolean).join(', ')))} type="destination" placeholder="City or area" aria-label="Destination" className={inputClass} />
+        <button type="button" disabled={!name.trim() || name.trim() === destination.name} onClick={() => void run(() => renamePlanDestination(tripId, destination.id, name))} className="btn btn-primary btn-sm">Save</button>
+        {places > 0 && <p className="text-xs text-muted">Its {placesLabel} stay with it.</p>}</div>
+      {places > 0 && others.length > 0 && <div className="space-y-2"><p className="text-sm font-semibold text-ink">Move its places to…</p>
+        <div className="flex flex-wrap gap-1.5">{others.map(other => <button key={other.id} type="button" aria-pressed={moveTo?.id === other.id} onClick={() => setMoveTo(current => current?.id === other.id ? null : other)} className="chip">{cleanDestination(other.name)}</button>)}</div>
+        {moveTo && <button type="button" onClick={() => void run(() => mergePlanDestination(tripId, destination.id, moveTo.id))} className="btn btn-primary btn-sm">Move {placesLabel} to {cleanDestination(moveTo.name)} and remove {cleanDestination(destination.name)}</button>}</div>}
+      {others.length > 0 && <div className="space-y-2 border-t border-line-soft pt-4">
+        {!confirmRemove ? <button type="button" onClick={() => places ? setConfirmRemove(true) : void run(() => removePlanDestination(tripId, destination.id))} className="inline-flex items-center gap-1.5 text-sm font-semibold text-danger"><Trash2 size={15} />Remove destination</button>
+        : <><p className="text-sm text-ink">Remove {cleanDestination(destination.name)} and its {placesLabel}? Their notes, ratings and photos go too. This can’t be undone.{others.length > 0 && ' To keep them, move them to another destination above instead.'}</p>
+          <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void run(() => removePlanDestination(tripId, destination.id, true))} className="btn btn-sm bg-danger text-white">Remove destination and {placesLabel}</button><button type="button" onClick={() => setConfirmRemove(false)} className="btn btn-outline btn-sm">Keep it</button></div></>}
+      </div>}
+    </fieldset>
+    {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+    <button type="button" onClick={onClose} className="text-sm text-link">Done</button>
+  </div>
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']

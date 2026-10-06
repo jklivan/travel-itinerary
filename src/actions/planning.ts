@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
 import { pickPlanDestination } from '@/lib/planPlaceIdentity'
+import type { Prisma } from '@/generated/prisma/client'
 import { fileUnderDestination, type DestinationQuestion } from '@/lib/fileUnderDestination'
 import { locateDestinations } from '@/lib/locateDestinations'
 import { locateTripPlaces } from '@/lib/locatePlaces'
@@ -416,13 +417,70 @@ export async function sharePlan(id: string, format: PublishFormat = 'itinerary',
   } catch { return { error: 'Could not share your trip. Please try again.' } }
 }
 
-// Removes one of a trip's destination headings, only while it has no places in it.
-export async function removePlanDestination(tripId: string, destinationId: string): Promise<Result> {
+// Editing a destination heading in the planner: change it, move its places into another destination (which
+// removes it), or remove it (with its places, if any). A trip always keeps at least one destination.
+async function ownedDestination(tx: Prisma.TransactionClient, userId: string, tripId: string, destinationId: string) {
+  const destination = await tx.destination.findFirst({ where: { id: destinationId, itineraryId: tripId, itinerary: { userId } }, select: { id: true, days: true } })
+  if (!destination) throw new InputError(unavailable)
+  return destination
+}
+
+export async function renamePlanDestination(tripId: string, destinationId: string, name: string): Promise<Result> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  const next = typeof name === 'string' ? name.trim() : ''
+  if (!next || next.length > 160) return { error: 'Enter a destination.' }
+  try {
+    await prisma.$transaction(async tx => {
+      await ownedDestination(tx, userId, tripId, destinationId)
+      const clash = await tx.destination.findFirst({ where: { itineraryId: tripId, id: { not: destinationId }, name: { equals: next, mode: 'insensitive' } }, select: { id: true } })
+      if (clash) throw new InputError(`This trip already has ${next}. Use “Move its places to” instead.`)
+      // The new name carries its own region and country, so the old country goes.
+      await tx.destination.update({ where: { id: destinationId }, data: { name: next, country: null, lat: null, lng: null } })
+    })
+    refresh(tripId, userId)
+    return { success: true }
+  } catch (error) { return message(error) }
+}
+
+export async function mergePlanDestination(tripId: string, fromId: string, intoId: string): Promise<Result> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  if (fromId === intoId) return { error: 'Choose a different destination.' }
+  try {
+    await prisma.$transaction(async tx => {
+      const from = await ownedDestination(tx, userId, tripId, fromId)
+      const into = await ownedDestination(tx, userId, tripId, intoId)
+      // Older plans counted days from 0 in some destinations; put both on the same footing before mixing them.
+      for (const destinationId of [fromId, intoId]) {
+        const zeroBased = await tx.destItem.count({ where: { destinationId, dayIndex: 0, type: { not: 'hotel' } } })
+        if (zeroBased) await tx.destItem.updateMany({ where: { destinationId, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
+      }
+      const last = await tx.destItem.aggregate({ where: { destinationId: intoId }, _max: { order: true, groupIndex: true } })
+      const items = await tx.destItem.findMany({ where: { destinationId: fromId }, orderBy: { order: 'asc' }, select: { id: true, type: true, groupIndex: true } })
+      for (const [index, item] of items.entries()) await tx.destItem.update({ where: { id: item.id }, data: {
+        destinationId: intoId, order: (last._max.order ?? -1) + 1 + index,
+        ...(item.type === 'hotel' ? { groupIndex: (last._max.groupIndex ?? -1) + 1 + item.groupIndex } : {}),
+      } })
+      if (from.days || into.days) await tx.destination.update({ where: { id: intoId }, data: { days: (from.days ?? 0) + (into.days ?? 0) } })
+      await tx.destination.delete({ where: { id: fromId } })
+    }, { timeout: 30000 })
+    refresh(tripId, userId)
+    return { success: true }
+  } catch (error) { return message(error) }
+}
+
+// withPlaces: also delete its places (the planner asks first). Without it, only an empty destination is removed.
+export async function removePlanDestination(tripId: string, destinationId: string, withPlaces = false): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
   try {
-    const removed = await prisma.destination.deleteMany({ where: { id: destinationId, itineraryId: tripId, itinerary: { userId }, items: { none: {} } } })
-    if (!removed.count) return { error: 'Move or remove its places first.' }
+    await prisma.$transaction(async tx => {
+      await ownedDestination(tx, userId, tripId, destinationId)
+      if (await tx.destination.count({ where: { itineraryId: tripId } }) <= 1) throw new InputError('A trip needs at least one destination. Change it instead.')
+      if (!withPlaces && await tx.destItem.count({ where: { destinationId } })) throw new InputError('Move or remove its places first.')
+      await tx.destination.delete({ where: { id: destinationId } })
+    })
     refresh(tripId, userId)
     return { success: true }
   } catch (error) { return message(error) }
