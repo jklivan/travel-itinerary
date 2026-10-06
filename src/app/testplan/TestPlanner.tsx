@@ -61,14 +61,16 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
   }, [])
   // Arriving with a question about a place skips the setup questions.
   const [skippedSetup, setSkippedSetup] = useState(!!initialDraft)
-  // Phones: past chats are listed above a new chat; in a conversation they're behind "Past chats".
-  const [showHistory, setShowHistory] = useState(!chat?.turns.length)
+  // Phones: past chats stay behind the "Past chats" button, so a new chat is the first thing you see.
+  const [showHistory, setShowHistory] = useState(false)
   const tripId = useRef(trip?.id ?? '')
   const scroller = useRef<HTMLDivElement>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
-  // While typing on a phone, keep the message box just above the on-screen keyboard. The keyboard
-  // covers the bottom of the page (the bottom bar hides meanwhile), so measure how much it covers.
-  const [keyboardInset, setKeyboardInset] = useState<number | null>(null)
+  // While typing on a phone, pin the message box to the bottom of what's visible, just above the on-screen
+  // keyboard. iPhones either shrink the page or slide the keyboard over it, depending on the app build, so this
+  // follows the visible area (visualViewport) rather than the page.
+  const form = useRef<HTMLFormElement>(null)
+  const [pinnedTop, setPinnedTop] = useState<number | null>(null)
   useEffect(() => {
     const box = composer.current
     const viewport = window.visualViewport
@@ -76,15 +78,18 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
     let typing = false
     function measure() {
       if (!typing || !viewport) return
-      setKeyboardInset(Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop))
+      if (window.matchMedia('(min-width: 1024px)').matches) { setPinnedTop(null); return }
+      const height = form.current?.offsetHeight ?? 64
+      setPinnedTop(viewport.offsetTop + viewport.height - height - 8)
     }
-    function focus() { typing = true; measure(); setTimeout(measure, 300) }
-    function blur() { typing = false; setKeyboardInset(null) }
+    function focus() { typing = true; measure(); setTimeout(measure, 150); setTimeout(measure, 400) }
+    function blur() { typing = false; setPinnedTop(null) }
     box.addEventListener('focus', focus)
     box.addEventListener('blur', blur)
+    box.addEventListener('input', measure)
     viewport.addEventListener('resize', measure)
     viewport.addEventListener('scroll', measure)
-    return () => { box.removeEventListener('focus', focus); box.removeEventListener('blur', blur); viewport.removeEventListener('resize', measure); viewport.removeEventListener('scroll', measure) }
+    return () => { box.removeEventListener('focus', focus); box.removeEventListener('blur', blur); box.removeEventListener('input', measure); viewport.removeEventListener('resize', measure); viewport.removeEventListener('scroll', measure) }
   }, [])
   // The message box grows with what's typed (up to its max height), then scrolls.
   useEffect(() => {
@@ -130,7 +135,11 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
     ...suggestions.map(rec => ({ id: rec.key, name: rec.name, city: [rec.destination, rec.country].filter(Boolean).join(', '), type: rec.type, day: null, placeId: rec.placeId ?? undefined, lat: rec.lat, lng: rec.lng, color: colorOf(rec), label: `Suggested · ${optionOf(rec)}` })),
   ]
 
-  function startNewChat() { chatId.current = ''; tripId.current = ''; setTurns([]); setAdded(new Set()); setError(''); router.push('/testplan?new=1') }
+  // Already on a blank chat (past chats listed above it on phones): close the list and go to the message box.
+  function startNewChat() {
+    if (!turns.length) { setShowHistory(false); requestAnimationFrame(() => { composer.current?.scrollIntoView({ block: 'center' }); composer.current?.focus() }); return }
+    chatId.current = ''; tripId.current = ''; setTurns([]); setAdded(new Set()); setError(''); router.push('/testplan?new=1')
+  }
 
   async function send(text: string, preferences?: TravelPreferences) {
     const message = text.trim()
@@ -206,7 +215,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
 
       {/* Between the trip card and the chat: start over, or (on phones) open a past conversation. */}
       <div className="flex gap-2">
-        <button type="button" disabled={thinking || !turns.length} onClick={startNewChat} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-mist-edge bg-card px-4 text-sm font-semibold text-ink disabled:opacity-50"><SquarePen size={16} />Start a new chat</button>
+        <button type="button" disabled={thinking} onClick={startNewChat} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-mist-edge bg-card px-4 text-sm font-semibold text-ink disabled:opacity-50"><SquarePen size={16} />Start a new chat</button>
         {history.length > 0 && <button type="button" onClick={() => setShowHistory(value => !value)} aria-expanded={showHistory} aria-controls="past-chats-phone" className="btn btn-outline lg:hidden"><History size={16} />Past chats</button>}
       </div>
       {showHistory && history.length > 0 && <div id="past-chats-phone" className="panel p-2 lg:hidden"><p className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-link">Past chats</p><PastChats history={history} currentId={chat?.id} limit={5} /></div>}
@@ -234,7 +243,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
         {error && <p role="alert" className="px-4 pb-2 text-sm text-red-700">{error}</p>}
         <div ref={endOfChat} aria-hidden="true" style={{ scrollMarginBottom: 'calc(var(--app-bottom-clearance) + 4.5rem)' }} />
         {/* On phones the composer sticks just above the bottom navigation so it is always reachable. */}
-        <form style={keyboardInset === null ? undefined : { bottom: keyboardInset + 8 }} className="sticky bottom-[calc(var(--app-bottom-clearance)-0.75rem)] z-10 flex items-end gap-2 rounded-b-2xl border-t border-line-soft bg-card p-3 lg:static" onSubmit={event => { event.preventDefault(); void send(draft) }}>
+        <form ref={form} style={pinnedTop === null ? undefined : { position: 'fixed', top: pinnedTop, left: 12, right: 12, bottom: 'auto', zIndex: 60 }} className={`sticky bottom-[calc(var(--app-bottom-clearance)-0.75rem)] z-10 flex items-end gap-2 border-t border-line-soft bg-card p-3 lg:static ${pinnedTop === null ? 'rounded-b-2xl' : 'rounded-2xl border shadow-lg'}`} onSubmit={event => { event.preventDefault(); void send(draft) }}>
           <textarea ref={composer} autoFocus={!!initialDraft} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(draft) } }} rows={1} maxLength={4000} placeholder="Ask about a place or a trip…" aria-label="Message Postcard" className="max-h-40 min-h-11 flex-1 resize-none overflow-y-auto rounded-xl border border-line bg-white px-3 py-2.5 text-base lg:text-sm outline-none focus:border-link" />
           <button type="submit" disabled={thinking || !draft.trim()} aria-label="Send" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ink text-white disabled:opacity-40"><ArrowUp size={18} /></button>
         </form>

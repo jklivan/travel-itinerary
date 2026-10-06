@@ -5,6 +5,7 @@ import { enrichPlaceIds } from '@/lib/enrichPlaceIds'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { locateTripPlaces } from '@/lib/locatePlaces'
 import type { ImportedPlace } from '@/lib/planImport'
 
 export async function importIntoPlan(planId: string, requestId: string, places: ImportedPlace[]) {
@@ -31,6 +32,7 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
       }
     }, { timeout: 60000 })
     after(() => enrichPlaceIds(places.map((_, index) => `${requestId}:${index}`), new Map(places.flatMap((place, index) => place.near?.name.trim() ? [[`${requestId}:${index}`, place.near] as const] : []))).catch(() => undefined))
+    after(() => locateTripPlaces(planId).catch(() => {}))
     for (const path of ['/', '/plan', `/plan/${planId}`, `/itinerary/${planId}`]) revalidatePath(path)
     return { success: true }
   } catch { return { error: 'Could not add these places. Your review is still here; please try again.' } }

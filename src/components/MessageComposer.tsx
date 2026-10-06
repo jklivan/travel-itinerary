@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import MessageAttachment from './MessageAttachment'
+import { Plus } from 'lucide-react'
 import ItineraryAttachmentPicker from './ItineraryAttachmentPicker'
 import { sendDirectMessage } from '@/actions/messages'
 import { messageThreadHref } from '@/lib/messageThread'
@@ -52,10 +53,13 @@ export default function MessageComposer({ recipientId, itineraryId, attachment, 
     <label className="block text-sm font-medium text-ink">Private message
       <textarea ref={textarea} required={!selected} maxLength={4000} rows={4} value={content} disabled={pending} onChange={event => { setContent(event.target.value); clientId.current = null }} placeholder={replyTo ? 'Write your reply…' : 'Write a message…'} className="mt-2 w-full rounded-xl border-2 border-mist-edge bg-card p-3 text-base leading-relaxed placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-link/25 focus:border-link" />
     </label>
-    <button type="button" aria-label="Attach an itinerary" aria-expanded={showPicker} disabled={pending} onClick={() => setShowPicker(value => !value)} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-mist-edge px-3 text-sm font-medium text-link hover:bg-mist disabled:opacity-50"><span aria-hidden="true" className="text-2xl leading-none">+</span> Add itinerary</button>
+    {/* Send right under the message, since that's what you usually want; attaching a trip is the extra. */}
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <button disabled={pending || (!content.trim() && !selected)} className="btn btn-primary">{pending ? 'Sending…' : 'Send message'}</button>
+      <button type="button" aria-label="Attach an itinerary" aria-expanded={showPicker} disabled={pending} onClick={() => setShowPicker(value => !value)} className="chip"><Plus size={14} />Add itinerary</button>
+    </div>
     {showPicker && <ItineraryAttachmentPicker disabled={pending} onSelect={trip => { onClearReply?.(); setSelected({ id: trip.id, name: trip.title, kind: 'trip' }); setShowPicker(false); clientId.current = null }} />}
-    <p className="text-xs text-brown">Only you and this traveler can see this conversation.</p>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-    <button disabled={pending || (!content.trim() && !selected)} className="rounded-full bg-link px-5 py-2.5 text-sm font-medium text-white hover:bg-ink transition-colors disabled:opacity-50">{pending ? 'Sending…' : 'Send message'}</button>
+    <p className="text-xs text-brown">Only you and this traveler can see this conversation.</p>
   </form>
 }

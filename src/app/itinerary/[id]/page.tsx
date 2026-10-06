@@ -16,7 +16,11 @@ import { eventPhotos, pickEventPhoto, tripPhotoGallery } from '@/lib/eventPhotos
 import DeleteButton from '@/components/DeleteButton'
 import { TRIP_STAMPS, STAMP_COLORS } from '@/lib/tripStamps'
 import { tripLocationLabel } from '@/lib/tripLocation'
+import { locateTripPlaces, needsLocating } from '@/lib/locatePlaces'
+import { after } from 'next/server'
 import TagChip, { TAG_PILL } from '@/components/ui/TagChip'
+import DestinationPeopleButton from '@/components/DestinationPeopleButton'
+import LikesSheetButton from '@/components/LikesSheet'
 import Stamp from '@/components/ui/Stamp'
 import ItineraryMap from '@/components/ItineraryMap'
 import type { ItemPin } from '@/components/ItineraryMapInner'
@@ -391,6 +395,9 @@ export default async function ItineraryPage({
   const displayTags = it.tags
 
   // Build map pins from geocoded items
+  // Posted trips with places that have no saved map spot (e.g. built in the planner before it saved them), or a pin
+  // far from the rest: look them up in the background, so the map is right on the next visit.
+  if (it.visibility !== 'draft' && needsLocating(it.destinations.flatMap(d => d.items))) after(() => locateTripPlaces(it.id).catch(() => {}))
   const mapPins: ItemPin[] = it.destinations.flatMap(d => {
     const zeroBased = d.items.some(item => item.type !== 'hotel' && item.dayIndex === 0)
     return d.items
@@ -552,10 +559,11 @@ export default async function ItineraryPage({
           <div className="flex flex-wrap gap-2 items-center">
             {itineraryFriendBucketers.length > 0 && (
               <span className="text-xs text-brown">
-                🔖 <span className="font-medium text-ink-soft">
+                {/* Opens everyone who saved (liked) this trip, as on the feed. */}
+                <LikesSheetButton itineraryId={it.id} title={it.title} plain>🔖 <span className="font-medium text-ink-soft">
                   {itineraryFriendBucketers.slice(0, 3).map(n => n.split(' ')[0]).join(', ')}
                 </span>
-                {itineraryFriendBucketers.length > 3 && ` +${itineraryFriendBucketers.length - 3} more`} saved this
+                {itineraryFriendBucketers.length > 3 && ` +${itineraryFriendBucketers.length - 3} more`} saved this</LikesSheetButton>
               </span>
             )}
           </div>
@@ -606,11 +614,11 @@ export default async function ItineraryPage({
                         {(dFriends.length > 0 || dSaved > 0) && (
                           <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3 text-xs text-brown">
                             {dFriends.length > 0 && (
-                              <span>👫 <span className="font-medium text-ink-soft">{dFriends.slice(0, 3).map(n => n.split(' ')[0]).join(', ')}</span>
+                              <DestinationPeopleButton itineraryId={it.id} destination={dest.name} kind="visited">👫 <span className="font-medium text-ink-soft">{dFriends.slice(0, 3).map(n => n.split(' ')[0]).join(', ')}</span>
                                 {dFriends.length > 3 && ` +${dFriends.length - 3} more`} also visited
-                              </span>
+                              </DestinationPeopleButton>
                             )}
-                            {dSaved > 0 && <span>🔖 Saved by {dSaved} {dSaved === 1 ? 'traveler' : 'travelers'}</span>}
+                            {dSaved > 0 && <DestinationPeopleButton itineraryId={it.id} destination={dest.name} kind="saved">🔖 Saved by {dSaved} {dSaved === 1 ? 'traveler' : 'travelers'}</DestinationPeopleButton>}
                           </div>
                         )}
                         {dest.notes && <p className="text-xs text-brown italic mb-3 border-l-2 border-line-strong pl-2">{dest.notes}</p>}

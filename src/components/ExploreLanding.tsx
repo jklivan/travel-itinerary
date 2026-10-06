@@ -24,7 +24,7 @@ export default function ExploreLanding() {
     <nav aria-label="Ways to explore" className={styles.grid}>
       {/* Same polaroid tiles as Search by trip type and the new-plan choices, with an arrow. */}
       {cards.map((card, index) => <Link key={card.href} href={card.href} className={styles.card}>
-        <PolaroidTile photo="/explore-photos.webp" photoPosition={card.position} photoSize="200% 200%" label={card.title} index={index} trailing="arrow" size="lg" />
+        <PolaroidTile photo="/explore-photos.webp" photoPosition={card.position} photoSize="200% 200%" label={card.title} index={index} trailing="arrow" size="lg" labelStyle="serif" />
       </Link>)}
     </nav>
   </div>

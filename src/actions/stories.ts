@@ -6,6 +6,8 @@ import { revalidatePath } from 'next/cache'
 import { samePlanDestination, sameSnapshotPlace } from '@/lib/planPlaceIdentity'
 import { fileUnderDestination, type DestinationQuestion } from '@/lib/fileUnderDestination'
 import { locateDestinations } from '@/lib/locateDestinations'
+import { locateTripPlaces } from '@/lib/locatePlaces'
+import { after } from 'next/server'
 import { eventPhotos } from '@/lib/eventPhotos'
 import { getRecommendation, recommendationTags, type PlaceRecommendation } from '@/lib/placeRecommendation'
 import { STORY_LIFETIME_MS, visibleStoriesWhere, type StoryCard } from '@/lib/stories'
@@ -242,6 +244,7 @@ export async function copyStoryToPlan(storyId: string, planId: string, clientId:
       } })
       return { success: true }
     })
+    if (!result.chooseDestination) after(() => locateTripPlaces(planId).catch(() => {}))
     if (!result.chooseDestination) for (const path of ['/', '/plan', `/plan/${planId}`, `/itinerary/${planId}`]) revalidatePath(path)
     return result
   } catch { return { error: 'Could not save this place. Please try again.' } }

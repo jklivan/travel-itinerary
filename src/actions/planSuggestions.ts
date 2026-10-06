@@ -7,6 +7,8 @@ import { revalidatePath } from 'next/cache'
 import { samePlanPlace } from '@/lib/planPlaceIdentity'
 import { fileUnderDestination, type DestinationQuestion } from '@/lib/fileUnderDestination'
 import { locateDestinations } from '@/lib/locateDestinations'
+import { locateTripPlaces } from '@/lib/locatePlaces'
+import { after } from 'next/server'
 import type { Prisma } from '@/generated/prisma/client'
 
 const unavailable = 'This plan is unavailable or belongs to another account.'
@@ -106,6 +108,7 @@ export async function copyPlacesToPlan(sourceIds: string[], planId: string, choi
       return { added: data.length, skipped: ids.length - data.length }
     }, { timeout: 20000 })
     if (!result.error) {
+      after(() => locateTripPlaces(planId).catch(() => {}))
       for (const path of ['/plan', `/plan/${planId}`, `/plan/${planId}/friends`, `/itinerary/${planId}`, `/user/${userId}`]) revalidatePath(path)
     }
     return result

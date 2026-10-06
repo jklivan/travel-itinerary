@@ -152,7 +152,9 @@ function AddPlace({ trip, maxDay, initialDestination, initialDay, onClose }: { t
   const [nights, setNights] = useState('')
   // New places are saved as "Want to go"; there's no booking-status choice.
   const status = 'considering'
-  const [destination, setDestination] = useState(initialDestination ?? (trip.destinations[0]?.name === 'Destination to decide' ? '' : trip.destinations[0]?.name ?? ''))
+  // Added from a destination or a day: that destination. Otherwise the person picks (a one-destination trip picks itself).
+  const realDestinations = trip.destinations.filter(d => d.name !== 'Destination to decide')
+  const [destination, setDestination] = useState(initialDestination ?? (realDestinations.length === 1 ? realDestinations[0].name : ''))
   const selectedDestination = trip.destinations.find(d => d.name === destination)
   const city = [destination, selectedDestination?.country].filter(Boolean).join(', ')
   function changeDestination(value: string) { setDestination(value) }
@@ -167,8 +169,7 @@ function AddPlace({ trip, maxDay, initialDestination, initialDay, onClose }: { t
 
   const nightsSelect = <label className="block text-xs uppercase tracking-wide text-link">How many nights?<select value={nights} onChange={event => setNights(event.target.value)} className={inputClass}><option value="">Not sure yet</option>{Array.from({ length: 30 }, (_, index) => index + 1).map(value => <option key={value} value={value}>{value} {value === 1 ? 'night' : 'nights'}</option>)}</select></label>
   return <section className="panel mb-4 space-y-3 p-4" aria-label="Add a place"><button type="button" onClick={onClose} className="text-sm text-link">← Back</button><h2 className="font-[family-name:var(--font-playfair)] text-2xl uppercase">Add a place</h2><p className="text-sm text-muted">Save places to your trip. Add notes now. If you’ve already been, add a rating too.</p><fieldset disabled={busy || uploading} className="space-y-3">
-    <label className="block text-sm">Destination<PlacesAutocomplete name="destination" required maxLength={160} value={destination} onChange={changeDestination} onSelect={(main, secondary) => changeDestination([main, secondary].filter(Boolean).join(', '))} type="destination" placeholder="City or area" className={inputClass} /></label>
-    {trip.destinations.length > 1 && <div className="flex flex-wrap gap-2">{trip.destinations.filter(d => d.name !== 'Destination to decide').map(d => <button type="button" key={d.id} onClick={() => changeDestination(d.name)} className="btn btn-outline">{d.name}</button>)}</div>}
+    <DestinationPicker names={trip.destinations.map(d => d.name)} value={destination} onChange={changeDestination} labelClass="mb-1 text-sm" />
     <fieldset><legend className="mb-2 text-sm">Category</legend><div className="flex flex-wrap gap-2">
       {[
         { value: 'hotel', label: 'Hotel / Airbnb', Icon: Hotel, color: 'peer-checked:border-ink peer-checked:bg-ink peer-checked:text-white' },
@@ -304,8 +305,7 @@ function PlaceRow({ tripId, place, maxDay, destinationNames, dayChips, dayRange 
           initial={{ name: place.name, mealType: place.mealType ?? '', rating: place.rating ?? 0, notes: place.notes ?? '', tags: place.tags, isHighlight: false, alternative: place.alternative ?? '', description: place.description ?? '', link: place.link ?? '', address: place.address ?? '' }}>
           <div className="space-y-1"><p className="text-xs text-muted">Photos</p><EventPhotoInput photos={photos} name={place.name} onChange={setPhotos} onBusyChange={setUploading} /></div>
           {/* Moving a place to another destination puts it under that destination's heading. */}
-          <div className="space-y-1.5"><label className="block text-xs text-muted">Destination<PlacesAutocomplete maxLength={160} value={destination} onChange={setDestination} onSelect={(main, secondary) => setDestination([main, secondary].filter(Boolean).join(', '))} type="destination" placeholder="City or area" className={inputClass} /></label>
-            {destinationNames.length > 1 && <div className="flex flex-wrap gap-1.5">{destinationNames.filter(name => name !== 'Destination to decide').map(name => <button key={name} type="button" aria-pressed={destination === name} onClick={() => setDestination(name)} className="chip">{name}</button>)}</div>}</div>
+          <DestinationPicker names={destinationNames} value={destination} onChange={setDestination} labelClass="mb-1 text-xs text-muted" />
           <fieldset><legend className="mb-1 text-xs text-muted">Category</legend><div className="flex flex-wrap gap-1.5">{categories.map(option => <button key={option.value} type="button" aria-pressed={type === option.value} onClick={() => setType(option.value)} className="chip"><option.Icon size={14} />{option.label}</button>)}</div></fieldset>
           <label className="block text-xs text-muted">{type === 'hotel' ? 'Check-in day (optional)' : 'Day (optional)'}<select value={day} onChange={event => setDay(event.target.value)} className={inputClass}><option value="">Unscheduled</option>{Array.from({ length: maxDay }, (_, index) => index + 1).map(value => <option key={value} value={value}>Day {value}</option>)}</select></label>
           {/* Hotels: how many nights, from the check-in day. The itinerary shows the stay on those days. */}
@@ -337,6 +337,23 @@ function TripExtras({ budget, onBudget, rating, onRating, tags, onTags, legendCl
     <fieldset><legend className={legendClass}>Tags</legend><div className="flex flex-wrap gap-2">{TAGS.filter(tag => tag.id !== 'day-trip').map(tag => <TagChip key={tag.id} id={tag.id} selected={tags.includes(tag.id)} onToggle={() => onTags(tags.includes(tag.id) ? tags.filter(value => value !== tag.id) : [...tags, tag.id])} />)}</div></fieldset>
   </>
 }
+// "Positano, SA, Italy, Italy" → "Positano, SA, Italy": a name saved with its country added twice.
+function cleanDestination(name: string) { return name.split(',').map(part => part.trim()).filter((part, index, parts) => part && part.toLowerCase() !== parts[index - 1]?.toLowerCase()).join(', ') }
+
+// Which destination a place goes under: your trip's destinations as buttons, or "Somewhere else…" to type a new one.
+// Nothing is chosen for you unless the place already belongs somewhere (editing) or was added from a destination or day.
+function DestinationPicker({ names, value, onChange, labelClass }: { names: string[]; value: string; onChange: (value: string) => void; labelClass: string }) {
+  const options = names.filter(name => name !== 'Destination to decide')
+  const [typing, setTyping] = useState(!options.length || (!!value && !options.includes(value)))
+  return <fieldset className="space-y-1.5"><legend className={labelClass}>Destination</legend>
+    {options.length > 0 && <div className="flex flex-wrap gap-1.5">
+      {options.map(name => <button key={name} type="button" aria-pressed={!typing && value === name} onClick={() => { setTyping(false); onChange(name) }} className="chip">{cleanDestination(name)}</button>)}
+      <button type="button" aria-pressed={typing} onClick={() => { setTyping(true); onChange('') }} className="chip"><Plus size={14} />Somewhere else…</button>
+    </div>}
+    {typing && <PlacesAutocomplete maxLength={160} value={value} onChange={onChange} onSelect={(main, secondary) => onChange(cleanDestination([main, secondary].filter(Boolean).join(', ')))} type="destination" placeholder="City or area" aria-label="New destination" className={inputClass} />}
+  </fieldset>
+}
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 // "When to go": the months the poster recommends, shown on the posted trip.
 function MonthPicker({ value, onChange, legendClass = 'mb-1 text-sm' }: { value: string[]; onChange: (months: string[]) => void; legendClass?: string }) {

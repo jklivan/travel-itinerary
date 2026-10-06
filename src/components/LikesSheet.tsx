@@ -47,11 +47,12 @@ function Sheet({ itineraryId, title, onClose }: { itineraryId: string; title: st
   </BottomSheet>
 }
 
-export default function LikesSheetButton({ itineraryId, title, children }: { itineraryId: string; title: string; children: React.ReactNode }) {
+// plain: no bold, for lines that already style their own text.
+export default function LikesSheetButton({ itineraryId, title, children, plain = false }: { itineraryId: string; title: string; children: React.ReactNode; plain?: boolean }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   return <>
-    <button type="button" onClick={() => setOpen(true)} className="font-semibold text-ink hover:underline">{children}</button>
+    <button type="button" onClick={() => setOpen(true)} className={plain ? 'text-left underline-offset-2 hover:underline' : 'font-semibold text-ink hover:underline'}>{children}</button>
     {open && <Sheet itineraryId={itineraryId} title={title} onClose={changed => { setOpen(false); if (changed) router.refresh() }} />}
   </>
 }

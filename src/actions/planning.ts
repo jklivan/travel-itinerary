@@ -9,6 +9,7 @@ import { after } from 'next/server'
 import { samePlanDestination } from '@/lib/planPlaceIdentity'
 import { fileUnderDestination, type DestinationQuestion } from '@/lib/fileUnderDestination'
 import { locateDestinations } from '@/lib/locateDestinations'
+import { locateTripPlaces } from '@/lib/locatePlaces'
 import { scheduleTripPublishedNotifications } from '@/lib/tripPublishedNotifications'
 
 type Result = { error?: string; success?: boolean; id?: string; chooseDestination?: DestinationQuestion }
@@ -48,6 +49,8 @@ function duration(form: FormData) {
   return value
 }
 function refresh(id: string, userId: string) {
+  // Map spots for any places that don't have one yet (new, renamed or copied places), after the response is sent.
+  after(() => locateTripPlaces(id).catch(() => {}))
   for (const path of ['/', '/plan', `/plan/${id}`, `/itinerary/${id}`, `/user/${userId}`, '/trips', '/explore']) revalidatePath(path)
 }
 function stringList(form: FormData, key: string, limit: number, maxLength: number) {

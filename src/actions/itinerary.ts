@@ -1,7 +1,7 @@
 'use server'
 
 import { scheduleTripPublishedNotifications } from '@/lib/tripPublishedNotifications'
-import { resolvePlaceIdentity } from '@/lib/placeIdentity'
+import { locateTripPlaces } from '@/lib/locatePlaces'
 import { eventPhotos } from '@/lib/eventPhotos'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
@@ -9,7 +9,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { fetchStockPhoto } from '@/lib/stockPhoto'
 import { generateTags } from '@/lib/generateTags'
-import { geocode, geocodePlaceByName } from '@/lib/geocode'
+import { geocode } from '@/lib/geocode'
 import { inferPlaceAttributes } from '@/lib/inferPriceLevels'
 import { generateDescriptions } from '@/lib/generateDescriptions'
 
@@ -169,29 +169,8 @@ async function geocodeItineraryDests(itineraryId: string): Promise<void> {
   }
 }
 
-// Geocodes individual items (hotels, restaurants, activities) that have no coordinates yet.
-// Uses Google Places Text Search with destination context to disambiguate — e.g.
-// "The Edition, Rome, Italy" — so imported itineraries appear as map pins immediately.
-async function geocodeItineraryItems(itineraryId: string): Promise<void> {
-  const items = await prisma.destItem.findMany({
-    where: { type: { not: 'transport' }, destination: { itineraryId }, OR: [{ lat: null }, { placeId: null }, { placeId: '' }], name: { not: '' } },
-    select: { id: true, name: true, placeId: true, lat: true, lng: true, destination: { select: { name: true, country: true, lat: true, lng: true } } },
-  })
-  for (const item of items) {
-    if (!item.placeId) {
-      const result = await resolvePlaceIdentity(item).catch(() => null)
-      if (result?.match) {
-        await prisma.destItem.updateMany({ where: { id: item.id, name: item.name, OR: [{ placeId: null }, { placeId: '' }] }, data: { placeId: result.match.id!, ...(item.lat === null ? { lat: result.match.location!.latitude, lng: result.match.location!.longitude } : {}) } })
-        continue
-      }
-    }
-    if (item.lat === null) {
-      const query = [item.name, item.destination.name, item.destination.country].filter(Boolean).join(', ')
-      const coords = await geocodePlaceByName(query)
-      if (coords) await prisma.destItem.updateMany({ where: { id: item.id, name: item.name, lat: null }, data: coords })
-    }
-  }
-}
+// Places' map spots: shared with the planner (lib/locatePlaces).
+const geocodeItineraryItems = (itineraryId: string) => locateTripPlaces(itineraryId)
 
 export async function createItinerary(
   state: ItineraryState,
