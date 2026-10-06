@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
-import { getConversation } from '@/actions/messages'
+import { getConversation, unreadMessageIds } from '@/actions/messages'
 import MessageThread from '@/components/MessageThread'
 import MessageRefresh from '@/components/MessageRefresh'
 import MarkMessagesRead from '@/components/MarkMessagesRead'
@@ -27,6 +27,8 @@ export default async function ConversationPage({ params, searchParams }: { param
   const tripId = attachment?.destination.itinerary.id ?? requestedTripId
   const result = await getConversation(id, before, tripId)
   if (!result.messages) notFound()
+  // Looked up before they're marked read, so the new ones can be highlighted on this visit.
+  const newIds = await unreadMessageIds(result.messages.filter(message => message.recipientId === userId).map(message => message.id))
   const trip = tripId ? await prisma.itinerary.findFirst({ where: { id: tripId, visibility: { not: 'draft' } }, select: { id: true, title: true } }) : null
   const previous = tripId && !trip ? await prisma.directMessage.findFirst({ where: { itineraryId: tripId, OR: [{ senderId: userId, recipientId: id }, { senderId: id, recipientId: userId }] }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { itineraryTitle: true } }) : null
   if (tripId && !trip && !previous) notFound()
@@ -41,6 +43,6 @@ export default async function ConversationPage({ params, searchParams }: { param
     {result.messages.length === 0 && <p className="text-sm text-brown">Start a private conversation with {person.name}{tripId ? ` about ${title}` : ''}.</p>}
     {placeId && !attachment && <p role="alert" className="mt-4 text-sm text-red-700">The attached place is no longer available.</p>}
     {tripId && !trip && <p className="mt-4 text-sm text-brown">This trip is no longer shared, but you can continue your conversation here.</p>}
-    <MessageThread messages={result.messages} userId={userId} person={person} itineraryId={tripId} key={`${id}:${tripId ?? 'general'}:${placeId ?? ''}`} attachment={attachment ? { kind: 'place', id: attachment.id, name: attachment.name, trip: attachment.destination.itinerary.title } : undefined} />
+    <MessageThread messages={result.messages} newIds={newIds} userId={userId} person={person} itineraryId={tripId} key={`${id}:${tripId ?? 'general'}:${placeId ?? ''}`} attachment={attachment ? { kind: 'place', id: attachment.id, name: attachment.name, trip: attachment.destination.itinerary.title } : undefined} />
   </div>
 }

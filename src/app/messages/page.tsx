@@ -20,11 +20,12 @@ export default async function InboxPage() {
     </section>}
     {forumReplies.length > 0 && <h2 className="mb-3 font-[family-name:var(--font-playfair)] text-xl text-ink">Private conversations</h2>}
     {result.threads.length === 0 && forumReplies.length === 0 && <p className="rounded-xl border border-sand bg-cream p-6 text-sm leading-relaxed text-brown">No messages yet. Open a traveler’s profile or a place on their trip to start a conversation.</p>}
-    <div className="space-y-3">{result.threads.map(thread => <Link key={JSON.stringify([thread.person.id, thread.itineraryId])} href={messageThreadHref(thread.person.id, thread.itineraryId)} className="block rounded-xl border border-line bg-cream p-4 shadow-sm hover:border-link transition-colors">
-      <h2 className="font-[family-name:var(--font-playfair)] text-lg text-ink">{thread.person.name}</h2>
+    {/* Conversations with messages you haven't opened stand out: a blue edge, bold preview and a "new" count. */}
+    <div className="space-y-3">{result.threads.map(thread => <Link key={JSON.stringify([thread.person.id, thread.itineraryId])} href={messageThreadHref(thread.person.id, thread.itineraryId)} className={`block rounded-xl border p-4 shadow-sm hover:border-link transition-colors ${thread.unread ? 'border-link border-l-4 bg-card' : 'border-line bg-cream'}`}>
+      <div className="flex items-start justify-between gap-3"><h2 className="font-[family-name:var(--font-playfair)] text-lg text-ink">{thread.person.name}</h2>{thread.unread > 0 && <span className="shrink-0 rounded-full bg-link px-2.5 py-0.5 text-xs font-semibold text-white">{thread.unread} new</span>}</div>
       <p className="text-sm font-semibold text-link mt-1">{thread.itineraryId ? thread.itineraryTitle || 'Trip conversation' : 'General conversation'}</p>
       {thread.placeName && <p className="text-xs text-link mt-1">📍 {thread.placeName}</p>}
-      <p className="line-clamp-2 break-words text-sm text-brown mt-1">{thread.content}</p>
+      <p className={`line-clamp-2 break-words text-sm mt-1 ${thread.unread ? 'font-semibold text-ink' : 'text-brown'}`}>{thread.content}</p>
       <time className="text-xs text-brown" dateTime={thread.createdAt.toISOString()}>{thread.createdAt.toLocaleDateString('en-US')}</time>
     </Link>)}</div>
   </div>

@@ -35,13 +35,23 @@ export async function getMessageInbox() {
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     include: { sender: { select: { id: true, name: true } }, recipient: { select: { id: true, name: true } } },
   })
+  // Messages to you that you haven't opened yet (their notification is unread), counted per conversation.
+  const unread = await prisma.notification.findMany({
+    where: { recipientId: userId, kind: 'message', readAt: null, messageId: { not: null }, message: { recipientId: userId } },
+    select: { message: { select: { senderId: true, itineraryId: true } } },
+  })
+  const unreadCounts = new Map<string, number>()
+  for (const { message } of unread) if (message) {
+    const key = JSON.stringify([message.senderId, message.itineraryId ?? null])
+    unreadCounts.set(key, (unreadCounts.get(key) ?? 0) + 1)
+  }
   const seen = new Set<string>()
   return { threads: latest.flatMap(message => {
     const person = message.senderId === userId ? message.recipient : message.sender
     const key = JSON.stringify([person.id, message.itineraryId ?? null])
     if (seen.has(key)) return []
     seen.add(key)
-    return [{ person, itineraryId: message.itineraryId, content: message.content, placeName: message.placeName, itineraryTitle: message.itineraryTitle, createdAt: message.createdAt }]
+    return [{ person, itineraryId: message.itineraryId, content: message.content, placeName: message.placeName, itineraryTitle: message.itineraryTitle, createdAt: message.createdAt, unread: unreadCounts.get(key) ?? 0 }]
   }) }
 }
 
@@ -117,6 +127,14 @@ export async function sendDirectMessage(input: { recipientId: string; content: s
   revalidatePath(`/messages/${input.recipientId}`)
   revalidatePath('/notifications')
   return { success: true, itineraryId: sent.itineraryId }
+}
+
+// Of these messages to you, the ones you haven't opened yet (read before they're marked read, to highlight them).
+export async function unreadMessageIds(messageIds: string[]) {
+  const userId = (await auth())?.user?.id
+  if (!userId || !messageIds.length) return []
+  const unread = await prisma.notification.findMany({ where: { recipientId: userId, kind: 'message', readAt: null, messageId: { in: messageIds } }, select: { messageId: true } })
+  return unread.flatMap(notification => notification.messageId ? [notification.messageId] : [])
 }
 
 export async function markMessagesRead(senderId: string, messageIds: string[]) {
