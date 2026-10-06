@@ -3,6 +3,8 @@ import { hasTripDates, tripDuration } from '@/lib/dayTrips'
 import CopyTripButton from '@/components/CopyTripButton'
 import RatingStars from '@/components/RatingStars'
 import { prisma } from '@/lib/prisma'
+import { after } from 'next/server'
+import { fillPlaceCoordinates } from '@/lib/placeCoordinates'
 import { Prisma } from '@/generated/prisma/client'
 import { auth } from '@/auth'
 import Image from 'next/image'
@@ -391,6 +393,9 @@ export default async function ItineraryPage({
   const displayTags = it.tags
 
   // Build map pins from geocoded items
+  // Places with a Google ID but no coordinates get them in the background, so they're on the map next time.
+  const unpinned = it.destinations.flatMap(d => d.items).flatMap(item => item.placeId && (item.lat == null || item.lng == null) && item.type !== 'transport' ? [{ id: item.id, placeId: item.placeId }] : [])
+  if (unpinned.length) after(() => fillPlaceCoordinates(unpinned).catch(() => undefined))
   const mapPins: ItemPin[] = it.destinations.flatMap(d => {
     const zeroBased = d.items.some(item => item.type !== 'hotel' && item.dayIndex === 0)
     return d.items
@@ -517,34 +522,30 @@ export default async function ItineraryPage({
             </p>
           )}
 
-          {/* Author / meta / actions row */}
-          <div className="flex items-center justify-between flex-wrap gap-3 border-t border-b border-line-strong py-3 mb-2">
-            <div className="flex items-center gap-3 flex-wrap">
-              <Link href={`/user/${it.user.id}`} className="flex items-center gap-2 hover:opacity-80">
-                <UserAvatar name={it.user.name} image={it.user.image} size={32} />
-                <span className="text-sm font-medium text-ink">{it.user.name}</span>
-              </Link>
-              {isGuide && <span className="text-xs text-brown">Guide</span>}
-              {days !== null && (
-                <span className="text-xs text-brown">
-                  {hasTripDates(it) && `${fmtShort(it.startDate)} – ${fmtShort(it.endDate)} · `}{days} {days === 1 ? 'day' : 'days'}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {session?.user && !isOwn && (
-                <form action={async () => {
-                  'use server'
-                  if (followStatus === 'accepted') await unfollowUser(it.user.id)
-                  else if (followStatus === 'pending') await cancelFollowRequest(it.user.id)
-                  else await sendFollowRequest(it.user.id)
-                }}>
-                  <button type="submit" aria-pressed={followStatus === 'accepted'} className="chip">
-                    {followStatus === 'accepted' ? 'Following' : followStatus === 'pending' ? 'Requested' : '+ Follow'}
-                  </button>
-                </form>
-              )}
-            </div>
+          {/* Author row, one line: who posted it | when and how long, with Follow on the right. */}
+          <div className="flex items-center gap-3 border-t border-b border-line-strong py-3 mb-2">
+            <Link href={`/user/${it.user.id}`} className="flex shrink-0 items-center gap-2 hover:opacity-80">
+              <UserAvatar name={it.user.name} image={it.user.image} size={32} />
+              <span className="text-sm text-ink">{it.user.name}</span>
+            </Link>
+            {(isGuide || days !== null) && <>
+              <span aria-hidden="true" className="h-5 w-px shrink-0 bg-line-strong" />
+              <span className="min-w-0 flex-1 text-[11px] leading-snug text-brown">
+                {isGuide ? 'Guide' : <>{hasTripDates(it) && `${fmtShort(it.startDate)} – ${fmtShort(it.endDate)} · `}{days} {days === 1 ? 'day' : 'days'}</>}
+              </span>
+            </>}
+            {session?.user && !isOwn && (
+              <form className="ml-auto shrink-0" action={async () => {
+                'use server'
+                if (followStatus === 'accepted') await unfollowUser(it.user.id)
+                else if (followStatus === 'pending') await cancelFollowRequest(it.user.id)
+                else await sendFollowRequest(it.user.id)
+              }}>
+                <button type="submit" aria-pressed={followStatus === 'accepted'} className="chip">
+                  {followStatus === 'accepted' ? 'Following' : followStatus === 'pending' ? 'Requested' : '+ Follow'}
+                </button>
+              </form>
+            )}
           </div>
 
 
@@ -565,7 +566,7 @@ export default async function ItineraryPage({
         <nav aria-label="Itinerary view" className="tabs mb-5">
           <Link href={`/itinerary/${it.id}`} scroll={false} aria-current={!showMap && !showDayByDay ? 'page' : undefined} className="tab">Summary</Link>
           {hasDailyPlan && <Link href={`/itinerary/${it.id}?view=day-by-day`} scroll={false} aria-current={showDayByDay ? 'page' : undefined} className="tab">Itinerary</Link>}
-          {mapPins.length > 0 && <Link href={`/itinerary/${it.id}?view=map`} scroll={false} aria-current={showMap ? 'page' : undefined} className="tab">Map</Link>}
+          {mapPins.length > 0 && <Link href={`/itinerary/${it.id}?view=map`} scroll={false} aria-current={showMap ? 'page' : undefined} className="tab">Map View</Link>}
         </nav>
 
         {showMap && (
