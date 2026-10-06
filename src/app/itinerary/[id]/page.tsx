@@ -28,6 +28,7 @@ import PublishPreviewBar from '@/components/PublishPreviewBar'
 import GooglePlaceThumb from '@/components/GooglePlaceThumb'
 import UserAvatar from '@/components/UserAvatar'
 import FriendRatingsButton from '@/components/FriendRatingsButton'
+import DestinationSocial, { type DestinationFriend } from '@/components/DestinationSocial'
 import { getRecommendation, partitionPlaces } from '@/lib/placeRecommendation'
 import { mapDayNumber } from '@/lib/mapDays'
 import { distanceMiles } from '@/lib/distance'
@@ -273,8 +274,8 @@ export default async function ItineraryPage({
       })).map(f => f.followingId)
     : []
 
-  type SocialRow = { name: string; count: bigint }
-  type FriendNameRow = { name: string; friend_name: string }
+  type SaverRow = { name: string; user_id: string; user_name: string }
+  type FriendNameRow = { name: string; friend_name: string; itinerary_id: string }
   type FriendDetailRow = { name: string; type: string; friend_name: string; user_id: string; rating: number | null; itinerary_id: string; place_id: string | null }
   type AvgRow = { item_id: string; total: bigint; avg_rating: number | null; trips: bigint }
   type BucketerRow = { friend_name: string }
@@ -283,7 +284,7 @@ export default async function ItineraryPage({
     // Which friends visited the same destinations (exclude the current itinerary itself)
     friendIds.length > 0 && destNamesLower.length > 0
       ? prisma.$queryRaw<FriendNameRow[]>(Prisma.sql`
-          SELECT DISTINCT ON (LOWER(d.name), i."userId") LOWER(d.name) AS name, u.name AS friend_name
+          SELECT DISTINCT ON (LOWER(d.name), i."userId") LOWER(d.name) AS name, u.name AS friend_name, i.id AS itinerary_id
           FROM "Destination" d
           JOIN "Itinerary" i ON i.id = d."itineraryId"
           JOIN "User" u ON u.id = i."userId"
@@ -291,21 +292,21 @@ export default async function ItineraryPage({
             AND LOWER(d.name) IN (${Prisma.join(destNamesLower)})
             AND i.visibility != 'draft'
             AND i.id != ${id}
-          ORDER BY LOWER(d.name), i."userId"
+          ORDER BY LOWER(d.name), i."userId", i."createdAt" DESC
         `)
       : Promise.resolve([] as FriendNameRow[]),
-    // How many travelers saved itineraries containing each destination
+    // Who saved shared trips with each destination (only friends' names are shown; others are counted)
     destNamesLower.length > 0
-      ? prisma.$queryRaw<SocialRow[]>(Prisma.sql`
-          SELECT LOWER(d.name) AS name, COUNT(DISTINCT b."userId") AS count
+      ? prisma.$queryRaw<SaverRow[]>(Prisma.sql`
+          SELECT DISTINCT LOWER(d.name) AS name, b."userId" AS user_id, u.name AS user_name
           FROM "BucketListItem" b
           JOIN "Itinerary" i ON i.id = b."itineraryId"
           JOIN "Destination" d ON d."itineraryId" = i.id
+          JOIN "User" u ON u.id = b."userId"
           WHERE LOWER(d.name) IN (${Prisma.join(destNamesLower)})
             AND i.visibility != 'draft'
-          GROUP BY LOWER(d.name)
         `)
-      : Promise.resolve([] as SocialRow[]),
+      : Promise.resolve([] as SaverRow[]),
     // Friends' shared trips, and all of your own trips, with any of this trip's places (by Google place or name).
     (friendIds.length > 0 || viewerId) && (placeNamesLower.length > 0 || placeIds.length > 0)
       ? prisma.$queryRaw<FriendDetailRow[]>(Prisma.sql`
@@ -358,12 +359,16 @@ export default async function ItineraryPage({
   ])
 
   // destination name → [friend names]
-  const friendDestNames = new Map<string, string[]>()
-  for (const r of friendDestRows) {
-    if (!friendDestNames.has(r.name)) friendDestNames.set(r.name, [])
-    friendDestNames.get(r.name)!.push(r.friend_name)
+  // Each destination (lowercase name) → friends who've been, and who saved a trip there.
+  const friendDestNames = new Map<string, DestinationFriend[]>()
+  for (const r of friendDestRows) friendDestNames.set(r.name, [...(friendDestNames.get(r.name) ?? []), { name: r.friend_name, itineraryId: r.itinerary_id }])
+  const savedDestMap = new Map<string, { names: string[]; total: number }>()
+  for (const r of savedDestRows) {
+    const current = savedDestMap.get(r.name) ?? { names: [], total: 0 }
+    const name = r.user_id === session?.user?.id ? 'You' : friendIds.includes(r.user_id) ? r.user_name : null
+    savedDestMap.set(r.name, { names: name ? [...current.names, name] : current.names, total: current.total + 1 })
   }
-  const savedDestMap = new Map(savedDestRows.map(r => [r.name, Number(r.count)]))
+  const destinationSocial = (dest: { name: string }) => <DestinationSocial destination={dest.name} friends={friendDestNames.get(dest.name.toLowerCase()) ?? []} savers={savedDestMap.get(dest.name.toLowerCase()) ?? { names: [], total: 0 }} />
 
   // Each place → the friends who have it (one entry per friend, their best rating), with you first.
   // The same Google place matches in any category; otherwise the name must match in the same category.
@@ -595,8 +600,6 @@ export default async function ItineraryPage({
                     const multiStay = groups.length > 1
                     const dayOffset = dest.items.some(item => item.type !== 'hotel' && item.dayIndex === 0) ? 1 : 0
                     const dayNumber = (day: number) => Math.max(1, day + dayOffset)
-                    const dFriends = friendDestNames.get(dest.name.toLowerCase()) ?? []
-                    const dSaved = savedDestMap.get(dest.name.toLowerCase()) ?? 0
                     return (
                       <div key={dest.id}>
                         {mainDestinations.length > 1 && (
@@ -604,16 +607,7 @@ export default async function ItineraryPage({
                             <MapPin size={11} /> {dest.name}{dest.country ? `, ${dest.country}` : ''}
                           </p>
                         )}
-                        {(dFriends.length > 0 || dSaved > 0) && (
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3 text-xs text-brown">
-                            {dFriends.length > 0 && (
-                              <span>👫 <span className="font-medium text-ink-soft">{dFriends.slice(0, 3).map(n => n.split(' ')[0]).join(', ')}</span>
-                                {dFriends.length > 3 && ` +${dFriends.length - 3} more`} also visited
-                              </span>
-                            )}
-                            {dSaved > 0 && <span>🔖 Saved by {dSaved} {dSaved === 1 ? 'traveler' : 'travelers'}</span>}
-                          </div>
-                        )}
+                        {destinationSocial(dest)}
                         {dest.notes && <p className="text-xs text-brown italic mb-3 border-l-2 border-line-strong pl-2">{dest.notes}</p>}
                         <div className="space-y-5">
                           {groups.map((group, gi) => {
@@ -683,6 +677,7 @@ export default async function ItineraryPage({
                             <MapPin size={11} /> {dest.name}{dest.country ? `, ${dest.country}` : ''}
                           </p>
                         )}
+                        {destinationSocial(dest)}
                         {dest.notes && <p className="text-xs text-brown italic mb-3 border-l-2 border-line-strong pl-2">{dest.notes}</p>}
                         <div className={styles.categoryStack}>
                           {dHotels.length > 0 && (
