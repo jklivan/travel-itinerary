@@ -6,7 +6,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
-import { samePlanDestination } from '@/lib/planPlaceIdentity'
+import { pickPlanDestination } from '@/lib/planPlaceIdentity'
 import { fileUnderDestination, type DestinationQuestion } from '@/lib/fileUnderDestination'
 import { locateDestinations } from '@/lib/locateDestinations'
 import { locateTripPlaces } from '@/lib/locatePlaces'
@@ -258,6 +258,7 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
     const placeId = form.has('placeId') ? text(form, 'placeId', 512) || null : undefined
     const type = text(form, 'type', 20)
     const destinationName = text(form, 'destination', 160)
+    const destinationId = form.has('destinationId') ? text(form, 'destinationId', 60) : ''
     const notes = text(form, 'notes', 8000)
     const clientId = text(form, 'clientId', 50)
     const status = form.has('status') ? text(form, 'status', 20) : 'considering'
@@ -281,7 +282,7 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
         if (existing.destination.itineraryId !== id) throw new InputError(unavailable)
         return
       }
-      let dest = (await tx.destination.findMany({ where: { itineraryId: id }, orderBy: { order: 'asc' } })).find(existing => samePlanDestination(existing, { name: destinationName })) ?? null
+      let dest = pickPlanDestination(await tx.destination.findMany({ where: { itineraryId: id }, orderBy: { order: 'asc' } }), { id: destinationId, name: destinationName })
       if (!dest) dest = await tx.destination.create({ data: { itineraryId: id, name: destinationName, order: await tx.destination.count({ where: { itineraryId: id } }) } })
       const last = await tx.destItem.aggregate({ where: { destinationId: dest.id }, _max: { order: true, groupIndex: true } })
       const zeroBased = await tx.destItem.count({ where: { destinationId: dest.id, dayIndex: 0, type: { not: 'hotel' } } })
@@ -315,6 +316,7 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     // Category can be corrected (e.g. a restaurant posted as an activity from a snapshot).
     const nextType = form.has('category') ? text(form, 'category', 20) : ''
     const nextDestination = form.has('destination') ? text(form, 'destination', 160) : ''
+    const nextDestinationId = form.has('destinationId') ? text(form, 'destinationId', 60) : ''
     if (nextType && !['hotel', 'food_drink', 'activity', 'transport'].includes(nextType)) throw new InputError('Choose a category.')
     if (form.has('mealType')) {
       const mealType = text(form, 'mealType', 100)
@@ -348,15 +350,14 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     }
     const nextPlaceId = placeId === undefined ? (name === item.name ? item.placeId : null) : placeId
     const identityChanged = nextPlaceId !== item.placeId || name !== item.name
-    const moving = !!nextDestination && !samePlanDestination(item.destination, { name: nextDestination })
     await prisma.$transaction(async tx => {
-      // Moving to another destination: an existing one with that name, or a new one at the end of the trip.
+      // Moving to another destination: the one picked, an existing one with that name, or a new one at the end of the trip.
       let moveTo: { destinationId: string; order: number; groupIndex?: number } | null = null
-      if (moving) {
-        const tripId = item.destination.itineraryId
-        const destinations = await tx.destination.findMany({ where: { itineraryId: tripId }, orderBy: { order: 'asc' } })
-        const target = destinations.find(d => samePlanDestination(d, { name: nextDestination }))
-          ?? await tx.destination.create({ data: { itineraryId: tripId, name: nextDestination, order: Math.max(-1, ...destinations.map(d => d.order)) + 1 } })
+      const tripId = item.destination.itineraryId
+      const destinations = nextDestination || nextDestinationId ? await tx.destination.findMany({ where: { itineraryId: tripId }, orderBy: { order: 'asc' } }) : []
+      const picked = destinations.length ? pickPlanDestination(destinations, { id: nextDestinationId, name: nextDestination }) : null
+      if ((picked && picked.id !== item.destinationId) || (!picked && nextDestination)) {
+        const target = picked ?? await tx.destination.create({ data: { itineraryId: tripId, name: nextDestination, order: Math.max(-1, ...destinations.map(d => d.order)) + 1 } })
         const last = await tx.destItem.aggregate({ where: { destinationId: target.id }, _max: { order: true, groupIndex: true } })
         moveTo = { destinationId: target.id, order: (last._max.order ?? -1) + 1, ...((extra.type ?? item.type) === 'hotel' ? { groupIndex: (last._max.groupIndex ?? -1) + 1 } : {}) }
       }
@@ -413,6 +414,18 @@ export async function sharePlan(id: string, format: PublishFormat = 'itinerary',
     refresh(id, userId)
     return { success: true }
   } catch { return { error: 'Could not share your trip. Please try again.' } }
+}
+
+// Removes one of a trip's destination headings, only while it has no places in it.
+export async function removePlanDestination(tripId: string, destinationId: string): Promise<Result> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  try {
+    const removed = await prisma.destination.deleteMany({ where: { id: destinationId, itineraryId: tripId, itinerary: { userId }, items: { none: {} } } })
+    if (!removed.count) return { error: 'Move or remove its places first.' }
+    refresh(tripId, userId)
+    return { success: true }
+  } catch (error) { return message(error) }
 }
 
 export async function removePlanPlace(itemId: string): Promise<Result> {
