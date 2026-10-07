@@ -12,6 +12,10 @@ function load(file, deps = {}) {
   return exports
 }
 const hrefs = load('../src/lib/messageThread.ts')
+// Each conversation link the grouped inbox (MessageInbox) will show, in order.
+function inboxLinks(rendered) {
+  return rendered.filter(n => n.type === 'message-inbox').flatMap(n => n.props.people.flatMap(({ person, threads }) => threads.map(thread => ({ href: hrefs.messageThreadHref(person.id, thread.itineraryId), title: thread.title }))))
+}
 function nodes(node) {
   if (Array.isArray(node)) return node.flatMap(nodes)
   if (!node || typeof node !== 'object') return []
@@ -20,7 +24,7 @@ function nodes(node) {
 const common = {
   '@/actions/questions': { getForumReplyInbox: async () => [] }, '@/actions/notifications': { openNotification() {} },
   'next/link': 'a', 'next/navigation': { notFound() { throw Error('notFound') }, redirect(path) { throw Error(`redirect:${path}`) } },
-  '@/lib/messageThread': hrefs, '@/components/MessageRefresh': 'message-refresh', '@/components/MessageThread': 'message-thread', '@/components/MarkMessagesRead': 'mark-read',
+  '@/lib/messageThread': hrefs, '@/components/MessageRefresh': 'message-refresh', '@/components/MessageInbox': { __esModule: true, default: 'message-inbox' }, '@/components/MessageThread': 'message-thread', '@/components/MarkMessagesRead': 'mark-read',
   '@/auth': { auth: async () => ({ user: { id: 'me' } }) },
 }
 test('inbox presents separate links for two trips with the same person and general messages', async () => {
@@ -30,8 +34,9 @@ test('inbox presents separate links for two trips with the same person and gener
     { person: { id: 'jen', name: 'Jen' }, itineraryId: null, content: 'Hello', createdAt: new Date() },
   ] }) } }).default
   const rendered = nodes(await Inbox())
-  assert.deepEqual(rendered.filter(n => n.type === 'a').map(n => n.props.href), ['/messages/jen?trip=london', '/messages/jen?trip=capri', '/messages/jen'])
-  assert.ok(rendered.some(n => n.props?.children === 'General conversation'))
+  const links = inboxLinks(rendered)
+  assert.deepEqual(links.map(link => link.href), ['/messages/jen?trip=london', '/messages/jen?trip=capri', '/messages/jen'])
+  assert.ok(links.some(link => link.title === 'General conversation'))
 })
 test('trip and place entry points filter reads and keep the selected trip through pagination and composing', async () => {
   for (const search of [{ trip: 'london', before: 'older' }, { place: 'museum' }]) {
@@ -72,5 +77,5 @@ test('forum replies coexist with trip-specific private conversations in Messages
   assert.ok(rendered.some(n => n.props?.children === 'Where should we stay?'))
   assert.ok(rendered.some(n => n.type === 'form' && n.props.action === openNotification))
   assert.ok(rendered.some(n => n.type === 'input' && n.props.value === 'alert'))
-  assert.ok(rendered.some(n => n.type === 'a' && n.props.href === '/messages/jen?trip=capri'))
+  assert.ok(inboxLinks(rendered).some(link => link.href === '/messages/jen?trip=capri'))
 })
