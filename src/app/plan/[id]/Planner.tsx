@@ -548,7 +548,7 @@ function DeleteDay({ tripId, day, places }: { tripId: string; day: number; place
     catch { setError('Could not delete this day. Please try again.') } finally { setBusy(false) }
   }
   return <div className="mt-2 text-right text-xs">
-    {!confirming ? <button type="button" onClick={() => places ? setConfirming(true) : void remove()} disabled={busy} className="min-h-9 text-red-700 hover:underline disabled:opacity-50">{busy ? 'Deleting…' : `Delete day ${day}`}</button>
+    {!confirming ? <button type="button" onClick={() => places ? setConfirming(true) : void remove()} disabled={busy} className="min-h-9 text-red-700 hover:underline disabled:opacity-50">{busy ? 'Deleting…' : `Delete ${dayName(day)}`}</button>
     : <span className="inline-flex flex-wrap items-center justify-end gap-3 text-ink">Delete {dayName(day)}? Its {places === 1 ? 'place moves' : `${places} places move`} to Unscheduled.
       <button type="button" disabled={busy} onClick={() => void remove()} className="min-h-9 font-semibold text-red-700">{busy ? 'Deleting…' : 'Delete'}</button>
       <button type="button" disabled={busy} onClick={() => setConfirming(false)} className="min-h-9">Keep</button></span>}
