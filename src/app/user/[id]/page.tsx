@@ -159,7 +159,7 @@ export default async function UserProfilePage({
           <section aria-labelledby="your-trips-heading">
             <div><h1 id="your-trips-heading" className="type-display">Your trips</h1><Link href="/plan" className="btn btn-primary mt-4">Start planning!</Link></div>
             <section className="mt-5" aria-labelledby="private-plans-heading">
-              <div className="mb-4"><h2 id="private-plans-heading" className="type-title">Private plans <span className="font-sans text-sm tracking-normal">({drafts.length})</span></h2><p className="mt-1 max-w-sm text-sm leading-snug text-muted">Only you can see these. Keep planning or publish whenever you’re ready.</p></div>
+              <div className="mb-4"><h2 id="private-plans-heading" className="type-title text-brown">Private plans <span className="font-sans text-sm tracking-normal">({drafts.length})</span></h2><p className="mt-1 max-w-sm text-sm leading-snug text-muted">Only you can see these. Keep planning or publish whenever you’re ready.</p></div>
               {drafts.length === 0 ? <div className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">No private plans yet.</div> : <div className="space-y-4">{drafts.map(trip => {
                 const tripHref = `/plan/${trip.id}`
                 return <article key={trip.id} className="panel grid grid-cols-[minmax(0,38%)_minmax(0,1fr)] gap-x-4 gap-y-3 p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)]">
