@@ -18,7 +18,7 @@ export default async function QuestionPage({ params, searchParams }: { params: P
   const { question, replies } = result
   return <div className="mx-auto max-w-2xl space-y-5 px-4 py-6">
     <div className="flex items-center justify-between gap-3"><h1 className="type-display">{question.authorId === userId ? 'Your question' : `${question.author.name} asked`}</h1><MessageRefresh /></div>
-    <article className="space-y-4 rounded-2xl border border-line-strong bg-cream p-5">
+    <article className="panel space-y-4 p-5">
       <p className="whitespace-pre-wrap break-words text-lg leading-relaxed text-ink">{question.content}</p>
       {question.itineraryTitle && <MessageAttachment kind="trip" name={question.itineraryTitle} href={question.itineraryId ? `/itinerary/${question.itineraryId}` : undefined} />}
       <p className="text-xs text-brown">Visible to {question.authorId === userId ? 'you and the people you follow' : `${question.author.name} and the people they follow`}.</p>
@@ -28,7 +28,7 @@ export default async function QuestionPage({ params, searchParams }: { params: P
       {result.hasOlder && <Link className="inline-block text-sm text-link underline" href={`/explore/questions/${id}?before=${replies[0].id}`}>Earlier replies</Link>}
       {before && <Link className="block text-sm text-link underline" href={`/explore/questions/${id}`}>Latest replies</Link>}
       {replies.length === 0 && <p className="text-sm text-brown">No replies yet. Share an idea to get the conversation started.</p>}
-      {replies.map(reply => <article key={reply.id} id={`reply-${reply.id}`} className="space-y-3 rounded-xl border border-line bg-card p-4">
+      {replies.map(reply => <article key={reply.id} id={`reply-${reply.id}`} className="panel space-y-3 p-4">
         <Link href={`/user/${reply.authorId}`} className="text-sm font-semibold text-link">{reply.authorId === userId ? 'You' : reply.author.name}</Link>
         <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink">{reply.content}</p>
         {reply.itineraryTitle && <MessageAttachment kind="trip" name={reply.itineraryTitle} href={reply.itineraryId ? `/itinerary/${reply.itineraryId}` : undefined} />}

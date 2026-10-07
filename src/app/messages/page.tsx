@@ -23,11 +23,11 @@ export default async function InboxPage() {
       <h2 className="type-title">Replies to your questions</h2>
       {forumReplies.map(reply => {
         const body = <><p className="text-xs font-semibold text-link">Your forum question</p><p className="mt-1 line-clamp-2 text-sm text-muted">{reply.question.content}</p><p className="mt-3 text-sm font-semibold text-ink">{reply.author.name} replied{reply.notification && !reply.notification.readAt && <span className="ml-2 inline-block size-2 rounded-full bg-link" aria-label="Unread" />}</p><p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">{reply.content}</p><span className="mt-3 block text-sm font-medium text-link">Open discussion →</span></>
-        return <article key={reply.id} className="rounded-xl border border-line bg-cream shadow-card">{reply.notification ? <form action={openNotification}><input type="hidden" name="id" value={reply.notification.id} /><button className="block w-full p-4 text-left">{body}</button></form> : <Link className="block p-4" href={`/explore/questions/${reply.question.id}`}>{body}</Link>}</article>
+        return <article key={reply.id} className="panel">{reply.notification ? <form action={openNotification}><input type="hidden" name="id" value={reply.notification.id} /><button className="block w-full p-4 text-left">{body}</button></form> : <Link className="block p-4" href={`/explore/questions/${reply.question.id}`}>{body}</Link>}</article>
       })}
     </section>}
     {forumReplies.length > 0 && <h2 className="type-title mb-3">Private conversations</h2>}
-    {result.threads.length === 0 && forumReplies.length === 0 && <p className="rounded-xl border border-sand bg-cream p-6 text-sm leading-relaxed text-brown">No messages yet. Open a traveler’s profile or a place on their trip to start a conversation.</p>}
+    {result.threads.length === 0 && forumReplies.length === 0 && <p className="panel p-6 text-sm leading-relaxed text-brown">No messages yet. Open a traveler’s profile or a place on their trip to start a conversation.</p>}
     <MessageInbox people={people} />
   </div>
 }

@@ -18,7 +18,7 @@ function RegisterForm() {
           <p className="text-sm text-brown mt-1">Join Postcard. Good places ahead.</p>
         </div>
 
-        <div className="bg-cream rounded-2xl border border-sand p-6">
+        <div className="panel p-6">
           <form action={action} className="space-y-4">
             <input type="hidden" name="saveTrip" value={tripId} />
             {state?.message && (

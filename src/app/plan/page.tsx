@@ -18,7 +18,7 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
         <PostcardLogo size={84} className="absolute -top-1 right-0 rotate-[8deg]" />
         <p className="mt-2 text-sm text-muted">{posting ? 'Add your places, then post it when you’re ready.' : 'Collect places now. Add details later.'}</p>
       </header>
-      {!posting && <Link href="/testplan" className="group mb-5 flex items-center gap-3 rounded-2xl border border-mist-line bg-mist p-4 text-ink transition-colors hover:bg-mist-strong">
+      {!posting && <Link href="/testplan" className="panel-hint group mb-5 flex items-center gap-3 p-4 text-ink transition-colors hover:bg-mist-strong">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Sparkles size={20} /></span>
         <span className="min-w-0 flex-1"><span className="block font-semibold">Plan with AI</span><span className="block text-sm text-link">Ask where to go, using what you and your friends loved.</span></span>
         <ChevronRight size={20} className="shrink-0 text-link transition-transform group-hover:translate-x-0.5" />

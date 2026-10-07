@@ -27,7 +27,7 @@ export default function PlaceIdBackfill() {
     } catch { setError('Could not finish this batch. Sign in as an administrator and try again.') }
     finally { active.current = false; setRunning(false) }
   }
-  return <section className="mb-8 rounded-xl border border-line bg-white p-5">
+  return <section className="panel mb-8 p-5">
     <h2 className="type-title">Connect older places to Google</h2>
     <p className="mt-2 text-sm text-muted">Find missing place IDs using the saved name and destination. Existing IDs, ratings, notes, and photos stay unchanged. Ambiguous matches are skipped.</p>
     <div className="mt-4 flex flex-wrap gap-3"><button type="button" disabled={running} onClick={() => void run(false)} className="btn btn-outline">Preview matches</button><button type="button" disabled={running} onClick={() => void run(true)} className="btn btn-primary">Fill missing IDs</button>{running && <button type="button" onClick={() => { stopped.current = true }} className="btn btn-outline">Stop after this batch</button>}</div>

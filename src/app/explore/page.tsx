@@ -94,7 +94,7 @@ function ItineraryList({
 }) {
   if (itineraries.length === 0) {
     return (
-      <div className="text-center py-20 bg-cream rounded-xl border border-sand">
+      <div className="panel text-center py-20">
         <p className="text-display-lg mb-4">🌍</p>
         <p className="text-base font-medium text-ink">No trips here yet.</p>
       </div>

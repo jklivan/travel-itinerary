@@ -56,7 +56,7 @@ export default async function MyTripsPage() {
 function TripSection({ title, description, empty, children }: { title: string; description: string; empty: string; children: React.ReactNode[] }) {
   return <section className="mt-7 first-of-type:mt-0" aria-label={title}>
     <div className="mb-4"><h2 className="type-title text-brown">{title} <span className="font-sans text-sm tracking-normal">({children.length})</span></h2><p className="page-subtitle mt-1">{description}</p></div>
-    {children.length ? <div className="space-y-3">{children}</div> : <div className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">{empty}</div>}
+    {children.length ? <div className="space-y-3">{children}</div> : <div className="panel-dashed p-6 text-center text-sm text-muted">{empty}</div>}
   </section>
 }
 

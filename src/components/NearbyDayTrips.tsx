@@ -66,7 +66,7 @@ export default function NearbyDayTrips({ entries }: { entries: Entry[] }) {
   useEffect(() => () => clearTimeout(safetyTimer.current), [])
 
   return <section aria-label="Nearby day trips">
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sand bg-cream p-4">
+    <div className="panel mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
       <div className="flex items-start gap-3">
         <div>
           <p className="text-sm font-semibold text-ink">Find day trips near you</p>
@@ -77,8 +77,8 @@ export default function NearbyDayTrips({ entries }: { entries: Entry[] }) {
         : <button type="button" onClick={useLocation} disabled={loading} className="chip"><LocateFixed size={14} />{loading ? 'Finding you…' : 'Near me'}</button>}
     </div>
     {position && nearby.length > 0 && <p role="status" className="mb-3 text-sm font-medium text-link">Showing day trips within 50 miles of you</p>}
-    {error && !browseAll && <div role="alert" className="mb-4 rounded-2xl border border-line bg-cream p-4 text-sm text-brown"><p>{error}</p><button type="button" onClick={() => setBrowseAll(true)} className="btn btn-outline mt-3">Show all day trips instead</button></div>}
-    {position && nearby.length === 0 && <p role="status" className="rounded-xl border border-dashed border-sand p-6 text-center text-sm text-muted">No day trips within 50 miles yet. Try all trips to explore farther away.</p>}
+    {error && !browseAll && <div role="alert" className="panel mb-4 p-4 text-sm text-brown"><p>{error}</p><button type="button" onClick={() => setBrowseAll(true)} className="btn btn-outline mt-3">Show all day trips instead</button></div>}
+    {position && nearby.length === 0 && <p role="status" className="panel-dashed p-6 text-center text-sm text-muted">No day trips within 50 miles yet. Try all trips to explore farther away.</p>}
     <div className="mx-auto flex w-full max-w-xl flex-col gap-3 sm:gap-5">
       {(!error || browseAll) && nearby.map(entry => <div key={entry.id}>
         {entry.miles !== null && <p className="mb-1 px-1 text-xs font-medium text-link">{Math.round(entry.miles)} miles from you</p>}

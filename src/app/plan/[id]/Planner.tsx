@@ -147,7 +147,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       {mapOpened && <div hidden={tab !== 'map'}><PlanningMap places={places.filter(place => place.type !== 'transport' || place.placeId || (place.lat !== null && place.lng !== null)).map(place => ({ id: place.id, name: place.name, city: place.destination, type: place.type === 'hotel' ? 'hotel' : place.type === 'food_drink' ? 'food_drink' : place.type === 'transport' ? 'transport' : 'activity', day: place.day, placeId: place.placeId ?? undefined, lat: place.lat, lng: place.lng }))} /></div>}
       {tab === 'itinerary' && !places.length && (trip.durationDays ? <p className="mb-4 text-sm text-muted">Your {trip.durationDays}-day trip. Add places and choose a day for each.</p> : <TripDaysPrompt tripId={trip.id} />)}
       {/* A plan with several destinations shows their headings (each with Add a place) even before anything is added. */}
-      {tab === 'map' ? null : !places.length && !(multiDestination && tab === 'places') && !(tab === 'itinerary' && trip.durationDays) ? <div className="rounded-2xl border border-dashed border-line p-8 text-center"><MapPin className="mx-auto mb-3 text-link" /><h2 className="type-title">A place to start</h2><p className="mt-2 text-sm text-muted">A hotel you love, a restaurant someone mentioned, something you want to do. Add it now and decide when later.</p></div> : tab === 'places' ? <>
+      {tab === 'map' ? null : !places.length && !(multiDestination && tab === 'places') && !(tab === 'itinerary' && trip.durationDays) ? <div className="panel-dashed p-8 text-center"><MapPin className="mx-auto mb-3 text-link" /><h2 className="type-title">A place to start</h2><p className="mt-2 text-sm text-muted">A hotel you love, a restaurant someone mentioned, something you want to do. Add it now and decide when later.</p></div> : tab === 'places' ? <>
         <p className="mb-5 text-sm text-muted">Everything you’re considering, all in one place. Days are optional.</p>
         {lookAlikes.map(group => <MergeLookAlikes key={group.keep.id} tripId={trip.id} keep={group.keep} others={group.others} />)}
         {multiDestination ? destinations.map(destination => { const items = places.filter(p => p.destinationId === destination.id); return <section key={destination.id} aria-label={destination.name} className="mb-10">
@@ -491,7 +491,7 @@ function DetailsForm({ trip }: { trip: Trip }) {
   const [tags, setTags] = useState<string[]>([...new Set((trip.tags ?? []).map(tag => tagMeta(tag)?.id ?? tag).filter(tag => tag !== 'day-trip'))])
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
-  return <><form className="space-y-3 rounded-xl border border-line bg-white p-4" onSubmit={async event => {
+  return <><form className="panel space-y-3 p-4" onSubmit={async event => {
     event.preventDefault(); if (busy) return
     setBusy(true); setMessage('')
     const data = new FormData(event.currentTarget)
@@ -625,7 +625,7 @@ function OrganizeWithAI({ tripId, places }: { tripId: string; places: (Place & {
   const byDay = plan ? [...new Set(plan.assignments.map(a => a.day))].sort((a, b) => a - b) : []
   return <div className="mb-4">
     {state !== 'review' && state !== 'applying' ? <button type="button" disabled={state === 'thinking'} onClick={() => void organize()} className="btn btn-outline w-full bg-mist hover:bg-mist-strong"><Sparkles size={17} />{state === 'thinking' ? 'Organizing your days…' : 'Organize with AI'}</button>
-    : plan && <div className="rounded-2xl border border-mist-line bg-card p-4">
+    : plan && <div className="panel p-4">
       <p className="flex items-center gap-2 text-sm font-semibold text-ink"><Sparkles size={16} />Suggested days</p>
       <p className="mt-1 text-xs text-muted">Nothing moves until you apply. You can change any day afterwards.</p>
       <div className="mt-3 space-y-3">{byDay.map(day => { const theme = plan.days.find(d => d.day === day); return <section key={day} className="rounded-xl bg-paper p-3">

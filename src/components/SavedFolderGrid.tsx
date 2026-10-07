@@ -56,7 +56,7 @@ export default function SavedFolderGrid({ folders, total, allPhoto }: { folders:
       <p className="page-subtitle">Trips you’ve saved, sorted into folders.</p>
     </header>
     {!creating && <button type="button" disabled={pending} onClick={() => { setCreating(true); setName(''); setError('') }} className="chip mb-5"><Plus size={14} />New folder</button>}
-    {creating && <form className="mb-5 rounded-xl border border-line-soft bg-card p-4" onSubmit={event => {
+    {creating && <form className="panel mb-5 p-4" onSubmit={event => {
       event.preventDefault(); setError('')
       startTransition(async () => {
         try {
@@ -94,7 +94,7 @@ export function SavedFolderActions({ folder }: { folder: { id: string; name: str
       <button type="button" onClick={() => { setMode('rename'); setName(folder.name); setError('') }}>Rename folder</button>
       <button type="button" onClick={() => { setMode('delete'); setError('') }}>Delete folder</button>
     </div>}
-    {mode === 'rename' && <form className="rounded-xl border border-line-soft bg-card p-4" onSubmit={event => {
+    {mode === 'rename' && <form className="panel p-4" onSubmit={event => {
       event.preventDefault(); setError('')
       startTransition(async () => {
         try {
@@ -112,7 +112,7 @@ export function SavedFolderActions({ folder }: { folder: { id: string; name: str
         <button type="button" disabled={pending} onClick={() => setMode(null)}>Cancel</button>
       </div>
     </form>}
-    {mode === 'delete' && <div className="rounded-xl border border-line-soft bg-card p-4 text-sm text-ink-soft">
+    {mode === 'delete' && <div className="panel p-4 text-sm text-ink-soft">
       <p>Delete “{folder.name}”? Its trips will stay in All saved.</p>
       <div className="mt-3 flex gap-3">
         <button type="button" disabled={pending} className="btn btn-danger btn-sm" onClick={() => {

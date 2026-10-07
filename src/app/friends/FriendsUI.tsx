@@ -127,7 +127,7 @@ export default function FriendsUI({
     <div className="space-y-5">
       {/* Incoming requests */}
       {requests.length > 0 && (
-        <section className="bg-cream rounded-xl border border-sand overflow-hidden">
+        <section className="panel overflow-hidden">
           <div className="bg-sand border-b border-sand px-5 py-3 flex items-center gap-2">
             <Users size={16} className="text-brown" />
             <h2 className="type-label text-ink">
@@ -159,7 +159,7 @@ export default function FriendsUI({
       )}
 
       {/* Search */}
-      <section className="bg-cream rounded-xl border border-sand overflow-hidden">
+      <section className="panel overflow-hidden">
         <div className="px-5 py-3 border-b border-sand flex items-center gap-2">
           <Search size={16} className="text-brown" />
           <h2 className="type-label text-ink">Find travelers</h2>
@@ -191,7 +191,7 @@ export default function FriendsUI({
       </section>
 
       {/* Following list */}
-      <section className="bg-cream rounded-xl border border-sand overflow-hidden">
+      <section className="panel overflow-hidden">
         <div className="px-5 py-3 border-b border-sand flex items-center gap-2">
           <Users size={16} className="text-brown" />
           <h2 className="type-label text-ink">

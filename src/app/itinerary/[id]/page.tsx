@@ -494,7 +494,7 @@ export default async function ItineraryPage({
       <div className={`max-w-4xl mx-auto px-4 ${isOwn ? 'pt-2 pb-6' : 'py-6'}`}>
 
         {previewing ? (
-          <div className="mb-4 rounded-lg border border-mist-line bg-mist px-3 py-2 text-xs font-medium text-ink">
+          <div className="panel-hint mb-4 px-3 py-2 text-xs font-medium text-ink">
             Preview — only you can see this. It’s how your trip will look once you post it.
           </div>
         ) : it.visibility === 'draft' && (

@@ -28,7 +28,7 @@ export default function MessageInbox({ people }: { people: InboxPerson[] }) {
         <ChevronDown size={22} aria-hidden="true" className={`shrink-0 text-link transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && <div className="mt-4 space-y-3">{threads.map(thread => <Link key={thread.itineraryId ?? 'general'} href={messageThreadHref(person.id, thread.itineraryId)}
-        className={`flex items-center gap-3 rounded-xl border p-4 transition-colors hover:border-link ${thread.unread ? 'border-link border-l-4 bg-card' : 'border-line bg-cream'}`}>
+        className={`panel flex items-center gap-3 p-4 transition-colors hover:border-link ${thread.unread ? 'border-l-4 !border-link' : ''}`}>
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2"><span className="type-card normal-case tracking-normal">{thread.title}</span>{thread.unread > 0 && <span className="rounded-full bg-link px-2 py-0.5 text-xs font-semibold text-white">{thread.unread} new</span>}</span>
           {thread.placeName && <span className="type-meta mt-0.5 block">📍 {thread.placeName}</span>}

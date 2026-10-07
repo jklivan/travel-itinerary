@@ -236,7 +236,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
       {history.length ? <div className="min-h-0 overflow-y-auto p-2"><PastChats history={history} currentId={chat?.id} /></div> : <p className="p-4 text-sm text-muted">Your conversations will appear here.</p>}
     </aside>
     <div className="flex min-h-0 flex-col gap-4">
-      <section aria-label="New trip" className={`min-h-0 overflow-y-auto rounded-2xl border border-line bg-card p-4 ${places.length ? 'lg:flex-1' : 'lg:flex-none'}`}>
+      <section aria-label="New trip" className={`panel min-h-0 overflow-y-auto p-4 ${places.length ? 'lg:flex-1' : 'lg:flex-none'}`}>
         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><Sparkles size={14} />Plan with Postcard</p>
         <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="type-title">{trip?.title ?? 'Your next trip'}</h1>
@@ -298,7 +298,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
     </div>
 
     {mapView === 'hidden' || (mapView === 'auto' && !wide) ? null
-    : <section aria-label="Map" className={`relative isolate order-first overflow-hidden rounded-2xl border border-line bg-card lg:order-none lg:h-auto ${mapView === 'small' ? 'h-[22dvh]' : 'h-[32dvh]'}`}>
+    : <section aria-label="Map" className={`panel relative isolate order-first overflow-hidden lg:order-none lg:h-auto ${mapView === 'small' ? 'h-[22dvh]' : 'h-[32dvh]'}`}>
       <div className="absolute right-3 top-3 z-[1000] flex gap-1.5">
         <button type="button" onClick={() => setMapView(mapView === 'small' ? 'normal' : 'small')} aria-label={mapView === 'small' ? 'Restore map size' : 'Shrink map'} title={mapView === 'small' ? 'Restore map size' : 'Shrink map'} className="flex size-9 items-center justify-center rounded-lg border border-line bg-card/95 text-ink shadow-card hover:bg-white">{mapView === 'small' ? <Maximize2 size={16} /> : <Minimize2 size={16} />}</button>
         <button type="button" onClick={() => setMapView('hidden')} aria-label="Hide map" title="Hide map" className="flex size-9 items-center justify-center rounded-lg border border-line bg-card/95 text-ink shadow-card hover:bg-white"><EyeOff size={16} /></button>
@@ -315,7 +315,7 @@ function RecommendationCard({ rec, color, grouped = false, added, busy, disabled
   const category = categories.find(category => category.value === rec.type) ?? categories[2]
   const [open, setOpen] = useState(false)
   const addButton = <button type="button" onClick={onAdd} disabled={added || disabled} className="chip">{added ? <><Check size={14} />Added</> : busy ? 'Adding…' : <><Plus size={14} />Add to trip</>}</button>
-  return <article className="flex flex-col rounded-xl border border-line-soft bg-white p-3 transition-shadow hover:shadow-card">
+  return <article className="panel-inset flex flex-col p-3 transition-shadow hover:shadow-card">
     <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={`View details for ${rec.name}`} className="flex flex-1 flex-col text-left">
       {/* In a grouped reply the idea and category are already in the headings above. */}
       {!grouped && <p className="mb-1 flex w-full items-center gap-1.5 text-label font-semibold uppercase tracking-wider text-muted"><span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: color }} /><span className="min-w-0 truncate" style={{ color }}>{optionOf(rec)}</span><span aria-hidden="true">·</span><category.Icon size={12} className="shrink-0" />{category.eyebrow}</p>}

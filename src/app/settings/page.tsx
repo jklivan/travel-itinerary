@@ -13,7 +13,7 @@ export default async function SettingsPage() {
       <h1 className="type-display mb-6">Settings</h1>
       <NotificationPreferences />
 
-      <section className="bg-cream rounded-xl border border-sand p-5">
+      <section className="panel p-5">
         <div>
           <h2 className="type-label text-ink">Public profiles</h2>
           <p className="text-sm text-brown mt-0.5">

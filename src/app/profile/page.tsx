@@ -20,7 +20,7 @@ export default async function ProfilePage() {
   ])
   if (!user) redirect('/login')
   return <main className="mx-auto max-w-xl px-5 py-7 text-ink sm:px-8">
-    <section className="rounded-2xl border border-mist-line bg-mist p-5">
+    <section className="panel-hint p-5">
       <div className="flex items-center gap-4">
         <ProfilePhotoPicker name={user.name} image={user.image} />
         <div className="min-w-0 flex-1">
@@ -47,7 +47,7 @@ export default async function ProfilePage() {
     </div>
     <section className="mt-6" aria-labelledby="shared-trips-heading">
       <div className="mb-3"><h2 id="shared-trips-heading" className="type-title text-brown">Shared trips <span className="font-sans text-sm">({sharedTrips.length})</span></h2><p className="mt-1 text-sm text-muted">Trips you’ve published for others to explore.</p></div>
-      {sharedTrips.length === 0 ? <div className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">No shared trips yet.</div> : <div className="space-y-4">{sharedTrips.map(it => <ItineraryCard fullWidth key={it.id} id={it.id} postType={it.postType} tags={it.tags} durationDays={it.durationDays} title={it.title} bestMonths={it.bestMonths} datesFlexible={it.datesFlexible} startDate={it.startDate} endDate={it.endDate} audience={it.audience} budget={it.budget} tripRating={it.tripRating} authorName={user.name} authorImage={user.image} authorId={user.id} destinations={it.destinations} coverPhoto={it.coverPhoto ?? it.photos[0]?.url ?? null} photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items), it.coverPhoto)} currentUserId={userId} isOwn isBucketed={false} likeCount={it._count.likes} isLiked={it.likes.length > 0} />)}</div>}
+      {sharedTrips.length === 0 ? <div className="panel-dashed p-6 text-center text-sm text-muted">No shared trips yet.</div> : <div className="space-y-4">{sharedTrips.map(it => <ItineraryCard fullWidth key={it.id} id={it.id} postType={it.postType} tags={it.tags} durationDays={it.durationDays} title={it.title} bestMonths={it.bestMonths} datesFlexible={it.datesFlexible} startDate={it.startDate} endDate={it.endDate} audience={it.audience} budget={it.budget} tripRating={it.tripRating} authorName={user.name} authorImage={user.image} authorId={user.id} destinations={it.destinations} coverPhoto={it.coverPhoto ?? it.photos[0]?.url ?? null} photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items), it.coverPhoto)} currentUserId={userId} isOwn isBucketed={false} likeCount={it._count.likes} isLiked={it.likes.length > 0} />)}</div>}
     </section>
   </main>
 }

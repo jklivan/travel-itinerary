@@ -130,7 +130,7 @@ export default async function UserProfilePage({
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
 
       {/* Public profile header */}
-      {!isOwn && <div className="bg-cream rounded-xl border border-sand p-5 mb-5 flex items-center gap-4">
+      {!isOwn && <div className="panel p-5 mb-5 flex items-center gap-4">
         <UserAvatar name={user.name} image={user.image} size={64} className="text-title" />
         <div className="flex-1 min-w-0">
           <h1 className="type-title">{user.name}</h1>
@@ -160,7 +160,7 @@ export default async function UserProfilePage({
             <div><h1 id="your-trips-heading" className="type-display">Your trips</h1><Link href="/plan" className="btn btn-primary mt-4">Start planning!</Link></div>
             <section className="mt-5" aria-labelledby="private-plans-heading">
               <div className="mb-4"><h2 id="private-plans-heading" className="type-title text-brown">Private plans <span className="font-sans text-sm tracking-normal">({drafts.length})</span></h2><p className="mt-1 max-w-sm text-sm leading-snug text-muted">Only you can see these. Keep planning or publish whenever you’re ready.</p></div>
-              {drafts.length === 0 ? <div className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">No private plans yet.</div> : <div className="space-y-4">{drafts.map(trip => {
+              {drafts.length === 0 ? <div className="panel-dashed p-6 text-center text-sm text-muted">No private plans yet.</div> : <div className="space-y-4">{drafts.map(trip => {
                 const tripHref = `/plan/${trip.id}`
                 return <article key={trip.id} className="panel grid grid-cols-[minmax(0,38%)_minmax(0,1fr)] gap-x-4 gap-y-3 p-3 shadow-card">
                   <Link href={tripHref} aria-label={`Open ${trip.title}`} className="photo-polaroid row-span-2 self-start"><span className="photo-polaroid-image">{draftCoverPhotos.get(trip.id) ? <Image src={draftCoverPhotos.get(trip.id)!} alt="" fill sizes="(max-width: 640px) 34vw, 180px" className="object-cover" /> : <span className="grid h-full place-items-center text-center text-micro uppercase tracking-wider text-link">Postcard</span>}</span></Link>
@@ -178,7 +178,7 @@ export default async function UserProfilePage({
       ) : showDrafts ? (
         <>
           <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="type-label text-ink">In progress</h2><p className="mt-1 text-sm text-brown">All your unpublished trips, ready to pick up anytime.</p></div></div>
-          {drafts.length === 0 ? <div className="rounded-xl border border-sand bg-cream p-8 text-center"><p className="text-sm text-brown">No trips in progress yet.</p><Link href="/plan" className="btn btn-primary mt-4">Start planning</Link></div> : <div className="space-y-3">
+          {drafts.length === 0 ? <div className="panel p-8 text-center"><p className="text-sm text-brown">No trips in progress yet.</p><Link href="/plan" className="btn btn-primary mt-4">Start planning</Link></div> : <div className="space-y-3">
             {drafts.map(trip => <Link key={trip.id} href={`/plan/${trip.id}`} className="panel flex items-center gap-3 p-4 transition-colors hover:bg-mist">
               <span className="min-w-0 flex-1"><span className="text-xs font-semibold uppercase tracking-wide text-link">Only you · Not posted</span><span className="mt-1 block break-words font-[family-name:var(--font-playfair)] text-title text-ink">{trip.title || 'Untitled trip'}</span><span className="mt-1 block text-sm text-muted">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places · Open to keep planning</span></span><ChevronRight size={20} className="shrink-0 text-link" />
             </Link>)}
@@ -190,7 +190,7 @@ export default async function UserProfilePage({
             {isOwn ? 'Your itineraries' : 'Itineraries'}
           </h2>
           {itineraries.length === 0 ? (
-            <div className="bg-cream rounded-xl border border-sand p-8 text-center">
+            <div className="panel p-8 text-center">
               <p className="text-brown italic text-sm">No public itineraries yet.</p>
             </div>
           ) : (
@@ -232,7 +232,7 @@ export default async function UserProfilePage({
           <p className="mb-5 mt-2 text-sm text-muted">All your saved trips and folders, ready for your next adventure.</p>
           {isOwn && <SavedFolders key={selectedFolder} userId={id} folders={folders.map(f => ({ ...f, count: bucketItems.filter(item => item.folderId === f.id).length }))} selected={selectedFolder} total={bucketItems.length} />}
           {visibleBucketItems.length === 0 ? (
-            <div className="bg-cream rounded-xl border border-sand p-8 text-center">
+            <div className="panel p-8 text-center">
               <p className="text-display-lg mb-3">❤️</p>
               <p className="text-brown text-sm">{selectedFolder ? 'No trips in this folder yet.' : 'Nothing saved yet.'}</p>
               <p className="text-brown text-xs mt-1">

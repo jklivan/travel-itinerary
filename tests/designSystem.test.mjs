@@ -92,3 +92,39 @@ test('text boxes, note boxes and dropdowns use the shared field style', () => {
     assert.match(readFileSync(root + file, 'utf8'), new RegExp(`export const ${name} = '(?:[\\w.-]+ )*field(?: [\\w.-]+)*'`), `${file} ${name}`)
 })
 
+
+// Boxes allowed to look their own way, each for a reason: [file, a bit of its className].
+const BOX_EXCEPTIONS = [
+  ['components/CopyTripButton', 'fixed inset-0'], // pop-up dialog
+  ['components/PlacesAutocomplete', 'absolute z-50'], // dropdown of place suggestions
+  ['components/MessageThread', 'w-fit'], // chat bubbles
+  ['app/testplan/TestPlanner', 'sticky bottom'], // the AI chat's message bar
+  ['app/testplan/TestPlanner', 'ml-auto w-fit'], // a chat bubble
+  ['components/ItineraryCard', 'p-2.5'], // the text block on a trip card
+  ['components/MessageAttachment', 'border-t-2'], // a trip attached to a message
+  ['components/MessageComposer', 'border-l-4'], // the quoted message you're replying to
+  ['components/PlaceEntryForm', 'cfg.color'], // tinted by place category
+  ['app/itinerary/[id]/page', 'bg-sand'], // the "visible to" notice on your own trip
+  ['components/PlanFriendsBrowser', 'fixed inset-x-4'], // floating "Add places" bar
+  ['components/ui/SearchField', 'pl-10'], // the search box (a field, not a box)
+]
+
+test('boxes use the shared panel styles', () => {
+  const handBuilt = tsx.flatMap(path => {
+    const name = path.replace(root, ''), text = readFileSync(path, 'utf8')
+    return [...text.matchAll(/<([A-Za-z]\w*)\b/g)].flatMap(m => {
+      const tag = m[1], whole = text.slice(m.index, tagEnd(text, m.index + 1))
+      const found = whole.match(/className=(?:"([^"]*)"|\{`([^`]*)`\})/)
+      if (!found) return []
+      const cls = found[1] ?? found[2]
+      if (['button', 'input', 'textarea', 'select', 'img'].includes(tag)) return [] // buttons and fields have their own checks
+      if (/(?<![\w-])(?:panel|panel-hint|panel-dashed|panel-inset|chip|btn|btn-icon|field|photo-polaroid)(?![\w-])/.test(cls)) return []
+      const boxy = /\brounded-(?:lg|xl|2xl)\b/.test(cls) && /(?<![:\w-])border(?![\w-]*-[tblr]\b)(?:-(?:dashed|line|line-soft|line-strong|sand|mist-line|mist-edge|link))?(?![\w-])/.test(cls)
+      const filled = /(?<![:\w-])bg-(?:cream|card|white|mist|sand|paper)(?![\w/-])/.test(cls) || /\bborder-dashed\b/.test(cls)
+      if (!boxy || !filled) return []
+      if (BOX_EXCEPTIONS.some(([file, bit]) => name.startsWith(file) && cls.includes(bit))) return []
+      return [`${name}:${text.slice(0, m.index).split('\n').length} <${tag}> ${cls.slice(0, 120)}`]
+    })
+  })
+  assert.deepEqual(handBuilt, [])
+})

@@ -61,7 +61,7 @@ export default function ExploreTripFilters({
   ]
 
   return (
-    <div className="rounded-2xl border border-line-strong bg-cream overflow-hidden">
+    <div className="panel overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}

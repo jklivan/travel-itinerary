@@ -20,7 +20,7 @@ export default function ItineraryAttachmentPicker({ onSelect, disabled = false }
     }, 200)
     return () => { active = false; clearTimeout(timer) }
   }, [query, attempt])
-  return <section aria-label="Your itineraries" className="space-y-3 rounded-xl border border-line bg-card p-3">
+  return <section aria-label="Your itineraries" className="panel-inset space-y-3 p-3">
     <label className="block text-sm font-semibold text-ink">Choose from your itineraries
       <input type="search" aria-label="Search your itineraries" disabled={disabled} value={query} maxLength={160} onChange={event => { setQuery(event.target.value); setLoading(true); setError('') }} onKeyDown={event => { if (event.key === 'Enter') event.preventDefault() }} placeholder="Search by title…" className="field mt-2" />
     </label>

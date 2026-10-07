@@ -30,7 +30,7 @@ export default function QuestionComposer({ questionId }: { questionId?: string }
     })
   }
 
-  return <form className="space-y-3 rounded-2xl border border-line-strong bg-cream p-5" onSubmit={event => {
+  return <form className="panel space-y-3 p-5" onSubmit={event => {
     event.preventDefault()
     if (pending) return
     setError('')
@@ -53,7 +53,7 @@ export default function QuestionComposer({ questionId }: { questionId?: string }
       <MessageAttachment kind="trip" name={trip.title} trip={`By ${trip.user.name}`} href={`/itinerary/${trip.id}`} />
       <button type="button" disabled={pending} onClick={() => { setTrip(undefined); clientId.current = null }} className="text-xs text-brown underline">Remove itinerary</button>
     </div> : <button type="button" disabled={pending} onClick={() => setShowPicker(!showPicker)} className="text-sm font-medium text-link underline">{showPicker ? 'Cancel itinerary search' : '+ Tag an itinerary'}</button>}
-    {showPicker && !trip && <div className="space-y-2 rounded-xl border border-line bg-card p-3">
+    {showPicker && !trip && <div className="panel-inset space-y-2 p-3">
       <label className="block text-xs font-medium text-brown">Find an itinerary by title or paste its link
         <SearchField className="mt-1" value={query} disabled={pending || searching} onChange={event => { setQuery(event.target.value); setSearched(false); setResults([]) }} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); searchTrips() } }} maxLength={300}
           buttonLabel={searching ? 'Searching…' : 'Search'} buttonDisabled={pending || searching || query.trim().length < 2} onButtonClick={searchTrips} />

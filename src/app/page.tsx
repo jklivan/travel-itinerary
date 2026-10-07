@@ -96,12 +96,12 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
 
       {justPosted && feed === 'all' && <p role="status" className="mb-3 rounded-xl bg-mist px-4 py-3 text-sm text-ink">Your postcard is posted.</p>}
       {feed !== 'all' ? (
-        <div className="rounded-xl border border-dashed border-line bg-cream px-5 py-10 text-center">
+        <div className="panel-dashed px-5 py-10 text-center">
           <p className="font-[family-name:var(--font-playfair)] text-title text-ink">{feed === 'friends' ? 'Friends’ trips are coming soon.' : 'Expert recommendations are coming soon.'}</p>
           <p className="mt-2 text-sm text-muted">For now, browse every trip in All.</p>
         </div>
       ) : itineraries.length === 0 ? (
-        <div className="text-center py-20 bg-cream rounded-xl border border-sand">
+        <div className="panel text-center py-20">
           <p className="text-display-lg mb-4">🌍</p>
           <p className="text-base font-medium text-ink">
             {searchQuery ? 'No trips match your search.' : 'No itineraries yet.'}

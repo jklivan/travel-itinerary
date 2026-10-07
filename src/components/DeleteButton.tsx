@@ -39,7 +39,7 @@ export default function DeleteButton({ id, visibility, returnTo = '/', label = '
 
   return <div className="min-w-0 max-w-full flex-[0_0_auto]">
     {confirming ? <div className="space-y-3">
-      {visibility !== 'draft' && <div className="rounded-xl border border-mist-line bg-mist p-4">
+      {visibility !== 'draft' && <div className="panel-hint p-4">
         <p className="text-sm font-semibold text-ink">Unpublish this trip?</p>
         <p className="mt-1 text-sm text-muted">Keep all your places, notes, and photos as a private plan. Find it in Profile → In progress, and share it again whenever you’re ready.</p>
         <button type="button" onClick={() => void handleKeepPrivate()} disabled={pending} className="btn btn-primary mt-3"><LockKeyhole size={16} />{keeping ? 'Making private…' : 'Unpublish & keep privately'}</button>
