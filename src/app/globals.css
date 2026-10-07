@@ -61,9 +61,12 @@
 
   .chip { display: inline-flex; align-items: center; gap: .25rem; min-height: 1.75rem; padding: 0 .75rem; border-radius: 9999px; border: 1px solid transparent; background: var(--color-chip); color: var(--color-ink); font-size: .75rem; font-weight: 500; white-space: nowrap; }
   /* Tappable chips (buttons and links): the outlined pill. Selected = navy. */
-  button.chip, a.chip { min-height: 2.25rem; border-color: var(--color-line); background: var(--color-card); color: var(--color-link); }
-  button.chip:hover:not(:disabled):not([aria-pressed="true"]), a.chip:hover { background: var(--color-cream); }
-  button.chip[aria-pressed="true"] { border-color: var(--color-ink); background: var(--color-ink); color: #fff; }
+  /* Tappable chips: buttons, links, and radio options (a hidden radio followed by <span class="chip">). */
+  button.chip, a.chip, input + span.chip { min-height: 2.25rem; border-color: var(--color-line); background: var(--color-card); color: var(--color-link); cursor: pointer; }
+  button.chip:hover:not(:disabled):not([aria-pressed="true"]), a.chip:hover, input:not(:checked) + span.chip:hover { background: var(--color-cream); }
+  button.chip[aria-pressed="true"], input:checked + span.chip { border-color: var(--color-ink); background: var(--color-ink); color: #fff; }
+  input:focus-visible + span.chip { outline: 2px solid var(--color-link); outline-offset: 2px; }
+  input:disabled + span.chip { opacity: .5; }
   /* The Like pill: red instead of navy once liked. */
   button.chip.chip-like:hover:not(:disabled) { color: var(--color-danger); }
   button.chip.chip-like[aria-pressed="true"] { border-color: color-mix(in srgb, var(--color-danger) 40%, transparent); background: color-mix(in srgb, var(--color-danger) 10%, transparent); color: var(--color-danger); }

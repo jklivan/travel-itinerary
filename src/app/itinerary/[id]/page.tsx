@@ -541,7 +541,8 @@ export default async function ItineraryPage({
             {(isGuide || days !== null) && <>
               <span aria-hidden="true" className="h-5 w-px shrink-0 bg-line-strong" />
               <span className="min-w-0 flex-1 text-label leading-snug text-brown">
-                {isGuide ? 'Guide' : <>{hasTripDates(it) && `${fmtShort(it.startDate)} – ${fmtShort(it.endDate)} · `}{days} {days === 1 ? 'day' : 'days'}</>}
+                {/* Exact dates are private to the person who made the trip; everyone else sees the length. */}
+                {isGuide ? 'Guide' : <>{isOwn && hasTripDates(it) && `${fmtShort(it.startDate)} – ${fmtShort(it.endDate)} · `}{days} {days === 1 ? 'day' : 'days'}</>}
               </span>
             </>}
             {session?.user && !isOwn && (

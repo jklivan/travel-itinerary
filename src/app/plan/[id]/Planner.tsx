@@ -218,13 +218,13 @@ function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, init
     <DestinationPicker destinations={trip.destinations.map(d => ({ id: d.id, name: d.name }))} value={destination} selectedId={destinationId} onChange={changeDestination} labelClass="mb-1 text-sm" />
     <fieldset><legend className="mb-2 text-sm">Category</legend><div className="flex flex-wrap gap-2">
       {[
-        { value: 'hotel', label: 'Hotel / Airbnb', Icon: Hotel, color: 'peer-checked:border-ink peer-checked:bg-ink peer-checked:text-white' },
-        { value: 'food_drink', label: 'Food / Drink', Icon: Utensils, color: 'peer-checked:border-ink peer-checked:bg-ink peer-checked:text-white' },
-        { value: 'activity', label: 'Activity', Icon: Camera, color: 'peer-checked:border-ink peer-checked:bg-ink peer-checked:text-white' },
-        { value: 'transport', label: 'Transport', Icon: Plane, color: 'peer-checked:border-ink peer-checked:bg-ink peer-checked:text-white' },
-      ].map(({ value, label, Icon, color }) => <label key={value} className="cursor-pointer">
+        { value: 'hotel', label: 'Hotel / Airbnb', Icon: Hotel },
+        { value: 'food_drink', label: 'Food / Drink', Icon: Utensils },
+        { value: 'activity', label: 'Activity', Icon: Camera },
+        { value: 'transport', label: 'Transport', Icon: Plane },
+      ].map(({ value, label, Icon }) => <label key={value}>
         <input type="radio" name="type" value={value} checked={category === value} onChange={() => setCategory(value as 'hotel' | 'food_drink' | 'activity' | 'transport')} className="peer sr-only" />
-        <span className={`flex min-h-11 items-center gap-2 rounded-full border border-line bg-white px-3 py-2 text-sm font-medium text-muted transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-link peer-disabled:opacity-50 ${color}`}><Icon size={16} />{label}</span>
+        <span className="chip"><Icon size={14} />{label}</span>
       </label>)}
     </div></fieldset>
     </fieldset>
