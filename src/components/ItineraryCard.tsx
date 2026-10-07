@@ -13,11 +13,13 @@ import PhotoStrip from './PhotoStrip'
 import BucketButton from './BucketButton'
 import UserAvatar from './UserAvatar'
 import PostcardLogo from '@/components/PostcardLogo'
+import CardPlacePhoto from './CardPlacePhoto'
+import { sizedPhoto } from '@/lib/photoSizing'
 
 
 const AUDIENCE_CHIP = 'w-fit rounded-lg bg-cream/95 px-2.5 py-1 text-label font-medium uppercase tracking-label text-ink'
 
-type DestItem = { type: string; name: string; dayIndex?: number | null }
+type DestItem = { id?: string; type: string; name: string; dayIndex?: number | null }
 type Destination = { lat?: number | null; name: string; country: string | null; items: DestItem[] }
 
 type Props = {
@@ -72,6 +74,10 @@ export default function ItineraryCard({
   const isGuide = days === null
   const stamp = TRIP_STAMPS.find(stamp => stamp.value === tripRating)
   const coverColor = hashPick(title, COVER_COLORS)
+  // The picture: the chosen cover, else any photo on the trip (trip or place photos), else a Google photo of
+  // one of its places. The colour only shows when none of those exist.
+  const cover = coverPhoto ?? photos[0]?.url ?? null
+  const placeIds = cover ? [] : destinations.flatMap(destination => destination.items).flatMap(item => item.id ? [item.id] : []).slice(0, 4)
   const season = tripSeason({ startDate, endDate, datesFlexible: !hasTripDates({ startDate, endDate, datesFlexible, postType }), postType: isGuide ? 'guide' : postType, bestMonths, latitude: destinations.find(destination => destination.lat != null)?.lat })
 
   const location = tripLocationLabel(destinations)
@@ -83,7 +89,12 @@ export default function ItineraryCard({
       <div className="rounded-lg border border-line-soft bg-card p-2.5 shadow-card sm:p-3">
         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg" style={{ backgroundColor: coverColor }}>
           {fullWidth && photos.length > 0 ? <PhotoStrip href={`/itinerary/${id}`} photos={photos.map(photo => ({ ...photo, caption: null }))} title={title} fillContainer counterPosition="left" /> : <Link href={`/itinerary/${id}`} aria-label={`Open ${title}`} className="absolute inset-0">
-            {coverPhoto && <Image src={coverPhoto} alt="" fill sizes={fullWidth ? '(max-width: 575px) calc(100vw - 44px), 516px' : '(max-width: 727px) 44vw, 320px'} className="object-cover" />}
+            {!cover && placeIds.length > 0 && <CardPlacePhoto itemIds={placeIds} />}
+            {/* Photos from other sites (e.g. a place photo saved from Google) can't go through image resizing. */}
+            {cover && (sizedPhoto(cover, 640) !== cover
+              ? <Image src={cover} alt="" fill sizes={fullWidth ? '(max-width: 575px) calc(100vw - 44px), 516px' : '(max-width: 727px) 44vw, 320px'} className="object-cover" />
+              // eslint-disable-next-line @next/next/no-img-element
+              : <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />)}
           </Link>}
 
           <div className="pointer-events-none absolute left-3 top-3 z-10 flex max-w-[55%] flex-col gap-1">
