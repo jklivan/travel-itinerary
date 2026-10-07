@@ -137,7 +137,7 @@ function TestPushButton() {
         const response = await sendTestPush()
         setResult('error' in response && response.error ? response.error : 'results' in response ? `Sent to ${response.ok} of ${response.devices} iPhone${response.devices === 1 ? '' : 's'} (${response.environment}): ${response.results?.join(', ')}. ${response.ok ? 'It should arrive in a few seconds; close the app to see it as a banner.' : ''}` : '')
       } catch { setResult('Could not send a test. Please try again.') } finally { setBusy(false) }
-    }} className="rounded-full border border-link px-4 py-2 text-sm text-link disabled:opacity-50">{busy ? 'Sending…' : 'Send a test notification'}</button>
+    }} className="btn btn-outline btn-sm">{busy ? 'Sending…' : 'Send a test notification'}</button>
     {result && <p role="status" className="basis-full text-sm text-muted">{result}</p>}
   </>
 }

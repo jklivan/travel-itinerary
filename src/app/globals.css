@@ -64,6 +64,9 @@
   button.chip, a.chip { min-height: 2.25rem; border-color: var(--color-line); background: var(--color-card); color: var(--color-link); }
   button.chip:hover:not(:disabled):not([aria-pressed="true"]), a.chip:hover { background: var(--color-cream); }
   button.chip[aria-pressed="true"] { border-color: var(--color-ink); background: var(--color-ink); color: #fff; }
+  /* The Like pill: red instead of navy once liked. */
+  button.chip.chip-like:hover:not(:disabled) { color: var(--color-danger); }
+  button.chip.chip-like[aria-pressed="true"] { border-color: color-mix(in srgb, var(--color-danger) 40%, transparent); background: color-mix(in srgb, var(--color-danger) 10%, transparent); color: var(--color-danger); }
 
   /* View tabs (planner Places/Itinerary/Map, postcard Summary/Itinerary/Map): underlined, current one in blue. */
   .tabs { display: flex; border-bottom: 1px solid var(--color-line); }

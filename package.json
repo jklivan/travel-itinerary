@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "npm run check:design && prisma generate && prisma migrate deploy && next build",
+    "check:design": "node --test tests/designSystem.test.mjs",
     "migrate:deploy": "prisma migrate deploy",
     "start": "next start",
     "lint": "eslint",

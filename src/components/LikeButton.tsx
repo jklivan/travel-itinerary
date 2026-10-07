@@ -23,7 +23,7 @@ export default function LikeButton({ itineraryId, initialLiked, initialCount, is
     })
   }
   if (variant === 'pill') return <button type="button" disabled={pending} onClick={toggle} aria-pressed={liked} aria-label={liked ? 'Unlike trip' : 'Like trip'}
-    className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${liked ? 'border-danger/40 bg-danger/10 text-danger' : 'border-line-strong text-muted hover:border-danger/40 hover:text-danger'}`}>
+    className="chip chip-like">
     <Heart size={15} className={liked ? 'fill-danger' : ''} />{liked ? 'Liked' : 'Like'}{count > 0 && <span className="text-xs">{count}</span>}
   </button>
   return <button type="button" disabled={pending} onClick={toggle} aria-pressed={liked} aria-label={`${liked ? 'Unlike' : 'Like'} trip · ${count} ${count === 1 ? 'like' : 'likes'}`}

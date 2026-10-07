@@ -88,10 +88,10 @@ export default function PlaceQuickEdit({ itemId, name, type, tags, rating, photo
       {error && <p role="alert" className="px-2 py-1 text-danger">{error}</p>}
       {mode === 'rating' ? <div className="flex items-center justify-end gap-3 pt-2">
         <p role="status" className="text-xs text-link">{saving ? 'Saving…' : saved}</p>
-        <button type="button" disabled={saving} onClick={() => { setMode(null); setError(''); setSaved('') }} className="min-h-11 rounded-lg bg-link px-4 text-white disabled:opacity-50">Done</button>
+        <button type="button" disabled={saving} onClick={() => { setMode(null); setError(''); setSaved('') }} className="btn btn-primary">Done</button>
       </div> : <div className="flex justify-end gap-2 pt-2">
-        <button type="button" disabled={saving || uploading} onClick={() => { setMode(null); setError('') }} className="min-h-11 px-3 disabled:opacity-50">Cancel</button>
-        <button type="button" disabled={saving || uploading} onClick={() => void save()} className="min-h-11 rounded-lg bg-link px-4 text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>
+        <button type="button" disabled={saving || uploading} onClick={() => { setMode(null); setError('') }} className="btn btn-outline">Cancel</button>
+        <button type="button" disabled={saving || uploading} onClick={() => void save()} className="btn btn-primary">{saving ? 'Saving…' : 'Save'}</button>
       </div>}
     </>}
     {saved && !mode && <p role="status" className="px-2 text-xs text-link">{saved}</p>}

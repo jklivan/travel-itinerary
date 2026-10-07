@@ -32,7 +32,8 @@ export default function SavedFolders({ userId, folders, selected, total, basePat
       </div>
       <nav aria-label="Saved folders" className="flex flex-wrap gap-2">
         {options.map(folder => <Link key={folder.id} href={folder.id ? folderHref(folder.id) : base} aria-current={selected === folder.id ? 'page' : undefined}
-          className={`max-w-full rounded-lg border px-3 py-2 text-sm break-words ${selected === folder.id ? 'border-ink bg-ink text-white' : 'border-sand text-ink-soft hover:bg-sand'}`}>
+          aria-pressed={selected === folder.id}
+          className="chip max-w-full whitespace-normal break-words">
           {folder.name} <span className="opacity-70">({folder.count})</span>
         </Link>)}
       </nav>

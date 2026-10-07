@@ -17,7 +17,7 @@ export default function CopyTripButton({ itineraryId, title, isOwn }: { itinerar
   const router = useRouter()
 
   return <>
-    <button type="button" onClick={() => { setError(''); dialog.current?.showModal() }} className="min-h-11 rounded-full border border-mist-edge bg-card px-4 py-2 text-sm font-semibold text-link">Copy trip</button>
+    <button type="button" onClick={() => { setError(''); dialog.current?.showModal() }} className="btn btn-outline">Copy trip</button>
     <dialog ref={dialog} aria-labelledby={headingId} onCancel={event => { if (saving.current) event.preventDefault() }} className="fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl border border-line bg-cream p-5 text-ink shadow-pop backdrop:bg-black/50">
       <h2 id={headingId} className="type-title">Copy into a new plan</h2>
       <p className="mt-2 text-sm leading-relaxed text-muted">Start a private plan with this trip’s places. Set new dates and change places for your next visit.</p>
@@ -41,7 +41,7 @@ export default function CopyTripButton({ itineraryId, title, isOwn }: { itinerar
           <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={keepDays} onChange={event => setKeepDays(event.target.checked)} className="h-5 w-5 accent-link" />Keep the day-by-day layout</label>
           {isOwn && <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={keepNotes} onChange={event => setKeepNotes(event.target.checked)} className="h-5 w-5 accent-link" />Include my notes</label>}
           <p className="text-xs leading-relaxed text-muted">Places start as Considering with flexible dates. Photos and ratings stay with the original visit{isOwn ? '.' : ', along with the author’s notes.'}</p>
-          <div className="flex flex-wrap gap-3"><button disabled={!name.trim()} className="btn btn-primary">{busy ? 'Copying…' : 'Create private copy'}</button><button type="button" onClick={() => dialog.current?.close()} className="min-h-11 px-3 text-sm">Cancel</button></div>
+          <div className="flex flex-wrap gap-3"><button disabled={!name.trim()} className="btn btn-primary">{busy ? 'Copying…' : 'Create private copy'}</button><button type="button" onClick={() => dialog.current?.close()} className="btn btn-outline">Cancel</button></div>
         </fieldset>
         {error && <p role="alert" className="text-sm text-danger">{error}</p>}
       </form>

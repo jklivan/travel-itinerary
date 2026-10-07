@@ -263,7 +263,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
       <section aria-label="Chat with Postcard" className="panel flex min-h-0 flex-col lg:h-auto lg:flex-[1.2]">
         <div ref={scroller} className="min-h-0 flex-1 space-y-4 p-4 lg:overflow-y-auto" aria-live="polite">
           {!turns.length && !skippedSetup && <TripSetup hasOwnTrips={hasOwnTrips} initial={lastPreferences} disabled={thinking} onSubmit={preferences => void send(SETUP_MESSAGE, preferences)} onSkip={() => setSkippedSetup(true)} />}
-          {!turns.length && skippedSetup && <div className="text-sm text-muted"><p>Postcard uses your trips and your friends’ trips—their ratings and notes—plus its own picks. Try:</p><div className="mt-3 flex flex-wrap gap-2">{starters.map(starter => <button key={starter} type="button" onClick={() => void send(starter)} className="rounded-full border border-line px-3 py-1.5 text-left text-xs text-link hover:bg-paper">{starter}</button>)}</div></div>}
+          {!turns.length && skippedSetup && <div className="text-sm text-muted"><p>Postcard uses your trips and your friends’ trips—their ratings and notes—plus its own picks. Try:</p><div className="mt-3 flex flex-wrap gap-2">{starters.map(starter => <button key={starter} type="button" onClick={() => void send(starter)} className="chip text-left">{starter}</button>)}</div></div>}
           {turns.map((turn, index) => turn.role === 'preferences'
             ? <PreferencesSummary key={index} preferences={turn.preferences} />
             : turn.role === 'user'
@@ -292,7 +292,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
         {/* On phones the composer sticks just above the bottom navigation so it is always reachable. */}
         <form ref={form} style={pinnedTop === null ? undefined : { position: 'fixed', top: pinnedTop, left: 12, right: 12, bottom: 'auto', zIndex: 60 }} className={`sticky bottom-[calc(var(--app-bottom-clearance)-0.75rem)] z-10 flex items-end gap-2 border-t border-line-soft bg-card p-3 lg:static ${pinnedTop === null ? 'rounded-b-2xl' : 'rounded-2xl border shadow-pop'}`} onSubmit={event => { event.preventDefault(); void send(draft) }}>
           <textarea ref={composer} autoFocus={!!initialDraft} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(draft) } }} rows={1} maxLength={4000} placeholder="Ask about a place or a trip…" aria-label="Message Postcard" className="max-h-40 min-h-11 flex-1 resize-none overflow-y-auto rounded-xl border border-line bg-white px-3 py-2.5 text-base lg:text-sm outline-none focus:border-link" />
-          <button type="submit" disabled={thinking || !draft.trim()} aria-label="Send" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ink text-white disabled:opacity-40"><ArrowUp size={18} /></button>
+          <button type="submit" disabled={thinking || !draft.trim()} aria-label="Send" className="btn btn-primary w-11 shrink-0 !px-0"><ArrowUp size={18} /></button>
         </form>
       </section>
     </div>

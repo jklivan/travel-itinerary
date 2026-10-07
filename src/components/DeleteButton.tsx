@@ -51,7 +51,7 @@ export default function DeleteButton({ id, visibility, returnTo = '/', label = '
       </div>
     </div> : <div className="flex flex-wrap items-center gap-2">
       {visibility !== 'draft' && <button type="button" onClick={() => setConfirming('unpublish')} className="chip"><LockKeyhole size={14} />Unpublish</button>}
-      <button type="button" onClick={() => setConfirming('delete')} aria-label={label} title={label} className="flex size-9 items-center justify-center rounded-full border border-line bg-card text-danger hover:bg-cream"><Trash2 size={16} /></button></div>}
+      <button type="button" onClick={() => setConfirming('delete')} aria-label={label} title={label} className="btn-icon text-danger"><Trash2 size={16} /></button></div>}
     {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
   </div>
 }

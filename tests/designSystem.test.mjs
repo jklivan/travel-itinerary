@@ -15,6 +15,13 @@ function files(dir, ext) {
 }
 const tsx = files(root, ['.tsx'])
 const css = files(root, ['.module.css'])
+// Buttons allowed to look their own way, each for a reason: [file, a bit of its className].
+const BUTTON_EXCEPTIONS = [
+  ['components/WelcomeScreen', ''], // sign-in buttons over the harbour photo
+  ['components/EventPhotoInput', 'absolute -top-1'], // tiny remove-x on a photo thumbnail
+  ['components/SwipeToDelete', 'absolute inset-y-0'], // the red panel revealed by swiping
+  ['components/ui/TagChip', 'TAG_PILL'], // the shared tag pill itself
+]
 const problems = (list, pattern) => list.flatMap(path => [...readFileSync(path, 'utf8').matchAll(pattern)].map(m => `${path.replace(root, '')}: ${m[0].trim()}`))
 
 test('colours come from the palette (no stock Tailwind colours or hex in class names)', () => {
@@ -38,7 +45,15 @@ test('buttons, corner rounding and shadows use the approved styles', () => {
   // Shadows: shadow-card, shadow-pop, shadow-nav (or none). Rounding: lg, xl, 2xl, full, and corner variants.
   assert.deepEqual(problems(tsx, /(?<![\w-])shadow(?:-(?:sm|md|lg|xl|2xl)|-\[[^\]]+\])?(?![\w\[-])/g).filter(line => !/transition-shadow|drop-shadow|box-shadow/.test(line)), [])
   assert.deepEqual(problems(tsx, /(?<![\w-])rounded(?:-(?:sm|md|3xl|\[[^\]]+\]))?(?![\w\[-])/g), [])
-  // Solid filled pill buttons are the shared btn styles, not hand-built.
-  assert.deepEqual(problems(tsx, /<(?:button|Link)\b(?:[^>]|=>)*?className="(?![^"]*\bbtn\b)[^"]*\brounded-full\b[^"]*(?<![:\w-])bg-(?:ink|link|danger)(?![\w/-])[^"]*"/g).filter(line => !line.startsWith('components/WelcomeScreen') && !line.startsWith('components/EventPhotoInput')), [])
+  // Every button is a shared style (btn / chip / btn-icon / tab). Catches hand-built ones: filled, outlined boxes or pills, or button-sized.
+  const buttons = tsx.flatMap(path => [...readFileSync(path, 'utf8').matchAll(/<(?:button|Link)\b(?:[^>]|=>)*?className=(?:"([^"]*)"|\{`([^`]*)`\})/g)]
+    .map(m => [path.replace(root, ''), m[1] ?? m[2]]))
+  const handBuilt = buttons.filter(([, cls]) => !/(?<![\w-])(?:btn|chip|btn-icon|tab)(?![\w-])/.test(cls)
+    && !/\bborder-dashed\b/.test(cls) // dashed "+ Add" rows are their own pattern
+    && (/(?<![:\w-])bg-(?:ink|link|danger)(?![\w/-])/.test(cls) // filled
+      || (/\brounded-(?:full|lg|xl)\b/.test(cls) && /(?<![:\w-])border(?![\w-])/.test(cls) && /\bpx-/.test(cls)))) // outlined box or pill
+    .filter(([name, cls]) => !BUTTON_EXCEPTIONS.some(([file, bit]) => name.startsWith(file) && cls.includes(bit)))
+    .map(([name, cls]) => `${name}: ${cls}`)
+  assert.deepEqual(handBuilt, [])
 })
 

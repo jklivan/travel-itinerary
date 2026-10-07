@@ -106,8 +106,8 @@ export default function PlanFriendsBrowser({ plan, initialQuery, initialResults 
           </div>
         </details>
       })}
-      {hasMore && <button type="button" disabled={loading || saving} onClick={() => void search(searchedQuery, true)} className="min-h-11 w-full rounded-xl border border-mist-edge text-sm text-link">{loading ? 'Loading…' : 'More friends’ trips'}</button>}
+      {hasMore && <button type="button" disabled={loading || saving} onClick={() => void search(searchedQuery, true)} className="btn btn-outline w-full">{loading ? 'Loading…' : 'More friends’ trips'}</button>}
     </div>
-    {selected.size > 0 && <div className="fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-[40rem] rounded-2xl border border-mist-edge bg-card p-3 shadow-pop"><button type="button" disabled={saving || loading} onClick={() => void addSelected()} className="min-h-12 w-full rounded-xl bg-link px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{saving ? 'Adding places…' : `Add ${selected.size} ${selected.size === 1 ? 'place' : 'places'} to your plan`}</button><button type="button" disabled={saving || loading} onClick={() => setSelected(new Map())} className="mt-1 min-h-9 w-full text-xs text-muted underline">Clear selection</button></div>}
+    {selected.size > 0 && <div className="fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-[40rem] rounded-2xl border border-mist-edge bg-card p-3 shadow-pop"><button type="button" disabled={saving || loading} onClick={() => void addSelected()} className="btn btn-primary w-full">{saving ? 'Adding places…' : `Add ${selected.size} ${selected.size === 1 ? 'place' : 'places'} to your plan`}</button><button type="button" disabled={saving || loading} onClick={() => setSelected(new Map())} className="mt-1 min-h-9 w-full text-xs text-muted underline">Clear selection</button></div>}
   </div>
 }

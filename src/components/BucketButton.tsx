@@ -133,9 +133,8 @@ export default function BucketButton({
           onClick={handleClick}
           title={label}
           aria-label={label}
-          className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
-            bucketed ? 'border-ink bg-ink text-white' : 'border-line-strong text-muted hover:border-ink hover:text-ink'
-          }`}
+          aria-pressed={bucketed}
+          className="chip"
         >
           <Bookmark size={15} className={bucketed ? 'fill-white' : ''} />
           {bucketed ? 'Saved' : 'Save'}

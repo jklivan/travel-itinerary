@@ -31,7 +31,7 @@ function FollowButton({
   if (status === 'following') {
     return (
       <button onClick={() => onUnfollow(userId)}
-        className="text-xs font-medium px-3 py-1.5 rounded-full border border-line-strong text-ink-soft hover:border-danger/40 hover:text-danger transition-colors">
+        className="chip">
         Following
       </button>
     )
@@ -39,7 +39,7 @@ function FollowButton({
   if (status === 'pending') {
     return (
       <button onClick={() => onCancel(userId)}
-        className="text-xs font-medium px-3 py-1.5 rounded-full border border-gold-faint text-brown hover:border-danger/40 hover:text-danger transition-colors">
+        className="chip">
         Requested
       </button>
     )
@@ -147,7 +147,7 @@ export default function FriendsUI({
                     Accept
                   </button>
                   <button onClick={() => handleReject(user.id)}
-                    className="text-xs font-medium px-3 py-1.5 rounded-full border border-line-strong text-ink-soft hover:border-danger/40 hover:text-danger transition-colors">
+                    className="chip">
                     Decline
                   </button>
                 </div>
@@ -218,7 +218,7 @@ export default function FriendsUI({
                   <p className="text-sm font-medium text-ink">{user.name}</p>
                 </Link>
                 <button onClick={() => handleUnfollow(user.id)}
-                  className="text-xs font-medium px-3 py-1.5 rounded-full border border-line-strong text-ink-soft hover:border-danger/40 hover:text-danger transition-colors">
+                  className="chip">
                   Unfollow
                 </button>
               </li>
