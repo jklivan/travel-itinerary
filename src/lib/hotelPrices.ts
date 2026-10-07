@@ -172,11 +172,11 @@ export async function runHotelPrices(raw: unknown): Promise<{ content: string; i
     }
     priced = priced.filter(hotel => !input.max_price_per_night || hotel.pricePerNight <= input.max_price_per_night)
       .sort((a, b) => a.pricePerNight - b.pricePerNight).slice(0, 8)
-    if (priced.length) return result('liteapi', 'priced', 'Live rates for these dates from LiteAPI, cheapest first; prices cover all the rooms together, can be booked, and can change.', priced)
+    if (priced.length) return result('liteapi', 'priced', 'Live rates for these dates, cheapest first; prices cover all the rooms together and can change.', priced)
 
     const why = name ? (listed ? 'LiteAPI has this hotel but no rooms for these dates and guests (often sold out, or not released yet).' : 'This hotel is not on LiteAPI\'s feed.') : 'LiteAPI had no rooms in this city for these dates and guests.'
     const google = await googleHotelPrices(input, nights)
-    if (google?.length) return result('google_hotels', 'priced_elsewhere', `${why} Prices shown are Google Hotels' (from booking sites), for reference only: they can't be booked through Postcard. Each is per night for the whole group together; Google Hotels doesn't say how many rooms that covers, so say it's for all the guests and don't compare it with a price for a set number of rooms.`, google)
+    if (google?.length) return result('google_hotels', 'priced_elsewhere', `${why} Prices shown are Google Hotels' (from booking sites), for reference only. Each is per night for the whole group together; Google Hotels doesn't say how many rooms that covers, so say it's for all the guests and don't compare it with a price for a set number of rooms.`, google)
     return result('liteapi', name && listed ? 'no_availability' : name ? 'not_listed' : 'no_availability', `${why}${process.env.SERPAPI_KEY ? ' Google Hotels had no prices either.' : ''}`, [])
   } catch {
     return { content: 'The price lookup timed out. Try again or suggest checking the hotel directly.', isError: true }
