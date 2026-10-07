@@ -9,7 +9,7 @@ import planningStyles from './Planner.module.css'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, MapPin, Trash2, LockKeyhole, Check, Hotel, Utensils, Camera, Plane, Upload, Pencil, Sparkles, Users } from 'lucide-react'
-import { addPlanPlace, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, removePlanDestination, renamePlanDestination, mergePlanDestination, setPlanDays, deletePlanDay, setPlaceDay, applyDayPlan, setTripCover } from '@/actions/planning'
+import { addPlanPlace, setPlanStartDate, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, removePlanDestination, renamePlanDestination, mergePlanDestination, setPlanDays, deletePlanDay, setPlaceDay, applyDayPlan, setTripCover } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
 import PlaceEntryForm from '@/components/PlaceEntryForm'
 import PlaceEditForm, { type PlaceEditValues, type PlaceType } from '@/components/PlaceEditForm'
@@ -62,7 +62,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   function chooseDayNames(dates: boolean) { setByDate(dates); try { localStorage.setItem(DAY_MODE_KEY, dates ? 'dates' : 'days') } catch { /* storage unavailable */ } }
   const showDates = byDate && !!trip.start
   const dayName: DayName = day => showDates ? dateOfDay(trip.start, day) : `Day ${day}`
-  function openDetails() { const details = document.getElementById('trip-details') as HTMLDetailsElement | null; if (details) { details.open = true; details.scrollIntoView({ behavior: 'smooth', block: 'start' }) } }
+  const [askingStart, setAskingStart] = useState(false)
   // Where the add-a-place form is open: the top button, under a destination's heading, or on an empty day.
   // The destination heading whose Edit panel is open.
   const [editingDestination, setEditingDestination] = useState<string | null>(null)
@@ -163,9 +163,11 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
           <span className="type-label">Show</span>
           <button type="button" aria-pressed={!showDates} onClick={() => chooseDayNames(false)} className="chip">Day 1, Day 2…</button>
           {trip.start ? <button type="button" aria-pressed={showDates} onClick={() => chooseDayNames(true)} className="chip">Dates</button>
-            : <button type="button" onClick={openDetails} className="chip">Dates — add your start date</button>}
+            : <button type="button" aria-expanded={askingStart} onClick={() => setAskingStart(value => !value)} className="chip">Dates — add your start date</button>}
           {showDates && <span className="type-meta">Posted trips show Day 1, Day 2…</span>}
         </div>}
+        {/* Right here, so you don't have to scroll up to the trip details. */}
+        {askingStart && !trip.start && <StartDateForm tripId={trip.id} onDone={() => { setAskingStart(false); chooseDayNames(true) }} />}
         {Array.from({ length: maxDay }, (_, index) => index + 1).filter(day => trip.durationDays || scheduled.includes(day)).map(day => { const dayPlaces = places.filter(p => p.day === day); const stay = stayOn(day, trip.destinations, ranges); const dayLocation = stay.destination ?? [...new Set(dayPlaces.map(p => p.destinationName))].filter(name => name !== 'Destination to decide').join(' · '); return <section key={day} className="mb-6"><h2 className={styles.dayHeading}>{dayName(day)}{showDates && <span className="font-sans text-sm text-muted">Day {day}</span>}{dayLocation && <span className="font-sans text-sm text-muted">{dayLocation}</span>}</h2>{stay.hotel && <p className="mb-3 flex items-center gap-1.5 text-sm text-link"><Hotel size={15} />Staying at {stay.hotel}</p>}{/* Add a place stays at the bottom of each day, also once the day has places. */}{dayPlaces.length > 0 && <div className="mb-3 space-y-3">{dayPlaces.map(renderPlace)}</div>}{adding?.at !== `day:${day}` && <button type="button" onClick={() => { setImporting(false); setAdding({ at: `day:${day}`, day, destination: dayDestination(day) }) }} className="flex w-full items-center gap-1.5 rounded-xl border border-dashed border-line px-4 py-3 text-sm font-semibold text-link hover:bg-mist"><Plus size={15} />Add a place</button>}
           {addForm(`day:${day}`)}
           {!!trip.durationDays && trip.durationDays > 1 && <DeleteDay tripId={trip.id} day={day} places={dayPlaces.length} />}</section> })}
@@ -521,6 +523,24 @@ function TripDaysPrompt({ tripId, current, onDone }: { tripId: string; current?:
 }
 
 // Itinerary tab: a dotted "+ Add a day" after the last day, which makes the trip one day longer.
+// "When does the trip start?" under the Days / Dates switch; the end date follows from the trip's length.
+function StartDateForm({ tripId, onDone }: { tripId: string; onDone: () => void }) {
+  const router = useRouter()
+  const [start, setStart] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  return <form className="panel mb-5 flex flex-wrap items-end gap-3 p-4" onSubmit={async event => {
+    event.preventDefault(); if (!start || busy) return
+    setBusy(true); setError('')
+    try { const result = await setPlanStartDate(tripId, start); if (result.error) setError(result.error); else { router.refresh(); onDone() } }
+    catch { setError('Could not save. Please try again.') } finally { setBusy(false) }
+  }}>
+    <label className="min-w-0 flex-1"><span className="type-label">When does the trip start?</span><input type="date" required value={start} onChange={event => setStart(event.target.value)} className={inputClass} /></label>
+    <button className="btn btn-primary" disabled={!start || busy}>{busy ? 'Saving…' : 'Use dates'}</button>
+    {error && <p role="alert" className="w-full text-sm text-danger">{error}</p>}
+  </form>
+}
+
 function AddDay({ tripId, days }: { tripId: string; days: number }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)

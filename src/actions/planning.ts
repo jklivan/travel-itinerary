@@ -105,6 +105,22 @@ export async function startPlan(form: FormData): Promise<Result> {
   } catch (error) { return message(error) }
 }
 
+// The planner's "Dates" switch: set just the start date; the end date follows from the trip's length.
+export async function setPlanStartDate(id: string, start: string): Promise<Result> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  if (typeof start !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(start) || !Number.isFinite(Date.parse(start)) || new Date(start).toISOString().slice(0, 10) !== start) return { error: 'Choose a start date.' }
+  try {
+    const trip = await prisma.itinerary.findFirst({ where: { id, userId }, select: { durationDays: true } })
+    if (!trip) return { error: unavailable }
+    const startDate = new Date(start), endDate = new Date(start)
+    endDate.setUTCDate(endDate.getUTCDate() + Math.max(1, trip.durationDays ?? 1) - 1)
+    await prisma.itinerary.updateMany({ where: { id, userId }, data: { datesFlexible: false, startDate, endDate } })
+    refresh(id, userId)
+    return { success: true }
+  } catch (error) { return message(error) }
+}
+
 export async function savePlanDetails(id: string, form: FormData): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
