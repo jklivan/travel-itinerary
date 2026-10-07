@@ -25,8 +25,8 @@ export default function DestinationSocial({ destination, friends, savers }: { de
   const others = savers.total - savers.names.length
   return <>
     <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-left text-xs text-brown">
-      {friends.length > 0 && <span className="inline-flex items-center gap-1"><Users size={13} aria-hidden="true" /><span><span className="font-medium text-ink-soft">{first.slice(0, 2).join(', ')}{first.length > 2 ? ` +${first.length - 2}` : ''}</span> {friends.length === 1 ? 'has' : 'have'} been to {destination}</span></span>}
-      {savers.total > 0 && <span className="inline-flex items-center gap-1"><Bookmark size={13} aria-hidden="true" />{savers.total} {savers.total === 1 ? 'traveler' : 'travelers'} saved a trip here</span>}
+      {friends.length > 0 && <span className="inline-flex items-center gap-1"><Users size={12} aria-hidden="true" /><span><span className="font-medium text-ink-soft">{first.slice(0, 2).join(', ')}{first.length > 2 ? ` +${first.length - 2}` : ''}</span> {friends.length === 1 ? 'has' : 'have'} been to {destination}</span></span>}
+      {savers.total > 0 && <span className="inline-flex items-center gap-1"><Bookmark size={12} aria-hidden="true" />{savers.total} {savers.total === 1 ? 'traveler' : 'travelers'} saved a trip here</span>}
       <span className="text-link underline underline-offset-2">See who</span>
     </button>
     <dialog ref={dialog} aria-labelledby={titleId} onClose={() => setOpen(false)}
@@ -38,7 +38,7 @@ export default function DestinationSocial({ destination, friends, savers }: { de
             <h2 id={titleId} className="type-title normal-case">{destination}</h2>
             <p className="mt-1 text-sm text-muted">About this destination, not one place.</p>
           </div>
-          <button type="button" autoFocus aria-label="Close" onClick={() => dialog.current?.close()} className="flex size-10 shrink-0 items-center justify-center rounded-full"><X size={20} /></button>
+          <button type="button" autoFocus aria-label="Close" onClick={() => dialog.current?.close()} className="flex size-10 shrink-0 items-center justify-center rounded-full"><X size={18} /></button>
         </header>
         <div className="space-y-4 overflow-y-auto px-5 py-3">
           {friends.length > 0 && <section><h3 className="type-label">Friends who’ve been</h3>

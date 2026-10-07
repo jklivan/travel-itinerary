@@ -136,7 +136,7 @@ export default function BucketButton({
           aria-pressed={bucketed}
           className="chip"
         >
-          <Bookmark size={15} className={bucketed ? 'fill-white' : ''} />
+          <Bookmark size={16} className={bucketed ? 'fill-white' : ''} />
           {bucketed ? 'Saved' : 'Save'}
         </button>
         {folderDialog}

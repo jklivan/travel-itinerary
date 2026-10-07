@@ -29,7 +29,7 @@ export default async function NotificationList({ userId, alertsOnly = false, tak
       <form action={openNotification} className="min-w-0 flex-1">
         <input type="hidden" name="id" value={n.id} />
         <button className="flex w-full items-start gap-3 p-4 text-left hover:bg-chip">
-          {n.kind === 'follow' ? <UserPlus className="mt-1 shrink-0 text-link" size={20} /> : n.kind === 'published' ? <Plane className="mt-1 shrink-0 text-link" size={20} /> : (n.kind === 'forum_reply' || n.kind === 'forum' || n.kind === 'comment' || n.kind === 'message') ? <MessageCircle className="mt-1 shrink-0 text-link" size={20} /> : <Heart className="mt-1 shrink-0 text-terracotta" size={20} />}
+          {n.kind === 'follow' ? <UserPlus className="mt-1 shrink-0 text-link" size={18} /> : n.kind === 'published' ? <Plane className="mt-1 shrink-0 text-link" size={18} /> : (n.kind === 'forum_reply' || n.kind === 'forum' || n.kind === 'comment' || n.kind === 'message') ? <MessageCircle className="mt-1 shrink-0 text-link" size={18} /> : <Heart className="mt-1 shrink-0 text-terracotta" size={18} />}
           <span className="min-w-0 flex-1">
             <span className={`block text-sm text-ink ${n.readAt ? '' : 'font-semibold'}`}>{notificationText(n.kind, n.actor.name, n.itinerary?.title ?? '')}</span>
             {n.comment && <span className="mt-1 block line-clamp-2 text-sm text-muted">{n.comment.content}</span>}

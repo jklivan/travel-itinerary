@@ -29,12 +29,12 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
     <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl border-t border-line-soft bg-cream shadow-nav">
       <div className="max-w-2xl mx-auto grid grid-cols-5 items-center py-2">
         <Link href="/" aria-current={isFeed ? 'page' : undefined} className={cls(isFeed)}>
-          <span className={iconClass(isFeed)}><Home className="w-6 h-6" /></span>
+          <span className={iconClass(isFeed)}><Home size={22} /></span>
           <span className={label}>Feed</span>
         </Link>
 
         <Link href="/explore" aria-current={isExplore ? 'page' : undefined} className={cls(isExplore)}>
-          <span className={iconClass(isExplore)}><Compass className="w-5 h-5" /></span>
+          <span className={iconClass(isExplore)}><Compass size={22} /></span>
           <span className={label}>Explore</span>
         </Link>
 
@@ -45,12 +45,12 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
         </Link>
 
         <Link href={userId ? '/trips' : '/login'} aria-current={isTrips ? 'page' : undefined} className={cls(isTrips)}>
-          <span className={iconClass(isTrips)}><BriefcaseBusiness className="w-5 h-5" /></span>
+          <span className={iconClass(isTrips)}><BriefcaseBusiness size={22} /></span>
           <span className={label}>My Trips</span>
         </Link>
 
         <Link href={userId ? '/saved' : '/login'} aria-current={isSaved ? 'page' : undefined} className={cls(isSaved)}>
-          <span className={iconClass(isSaved)}><Bookmark className="w-5 h-5" /></span>
+          <span className={iconClass(isSaved)}><Bookmark size={22} /></span>
           <span className={label}>Saved</span>
         </Link>
       </div>

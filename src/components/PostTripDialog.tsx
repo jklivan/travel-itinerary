@@ -40,7 +40,7 @@ export default function PostTripDialog({ onClose }: { onClose: () => void }) {
   }
 
   return <dialog ref={dialog} className={styles.composer} aria-labelledby={titleId} onClose={onClose}>
-    <header className={styles.composerHeader}><div><h2 id={titleId}>Post a trip</h2><p>Share one of your private plans, or start a new one from scratch.</p></div><button type="button" className={styles.close} aria-label="Close" onClick={() => dialog.current?.close()}><X size={20} /></button></header>
+    <header className={styles.composerHeader}><div><h2 id={titleId}>Post a trip</h2><p>Share one of your private plans, or start a new one from scratch.</p></div><button type="button" className={styles.close} aria-label="Close" onClick={() => dialog.current?.close()}><X size={18} /></button></header>
     <form onSubmit={event => { event.preventDefault(); go() }}>
       {!plans ? <p role="status" className={styles.empty}>Loading…</p> : <fieldset className={styles.fields}>
         <label>Which trip?<select value={choice} onChange={event => setChoice(event.target.value)}>

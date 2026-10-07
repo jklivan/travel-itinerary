@@ -5,7 +5,7 @@ export default function MessageAttachment({ name, trip, notes, href, kind = 'pla
   return (
     <div className="rounded-lg border border-line-soft border-t-2 border-t-link bg-card p-3 shadow-card">
       <div className="flex items-start gap-3">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-mist text-link"><MapPin size={19} strokeWidth={1.5} /></span>
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-mist text-link"><MapPin size={18} strokeWidth={1.5} /></span>
         <div className="min-w-0">
           <p className="text-label font-semibold uppercase tracking-widest text-link">{kind === 'trip' ? 'About this trip' : 'Place from the trip'}</p>
           <p className="font-[family-name:var(--font-playfair)] text-lg leading-snug text-ink break-words">{name}</p>

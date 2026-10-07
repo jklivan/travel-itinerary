@@ -70,7 +70,7 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
           <span className={styles.detailsHint}>{editHref ? 'Edit notes & details →' : 'View notes & details →'}</span>
         </button>
         {children}
-        {canSave && <button type="button" className={styles.savePlace} aria-label={`Save ${place.name} to a trip`} title="Save to a trip" aria-haspopup="dialog" onClick={() => setSaveOpen(true)}>{saved ? <Check size={19} /> : <Plus size={20} />}</button>}
+        {canSave && <button type="button" className={styles.savePlace} aria-label={`Save ${place.name} to a trip`} title="Save to a trip" aria-haspopup="dialog" onClick={() => setSaveOpen(true)}>{saved ? <Check size={18} /> : <Plus size={18} />}</button>}
       </article>
       <dialog ref={dialog} className={styles.dialog} aria-labelledby={titleId}
         onClose={() => setOpen(false)}
@@ -96,13 +96,13 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
             {place.description && <section><h3 className={styles.sectionTitle}>About this place</h3><p className={styles.text}>{place.description}</p></section>}
             {photos.length > 0 ? <PhotoStrip photos={photos.map((url, index) => ({ id: String(index), url, caption: null }))} title={place.name} contain />
               : place.id && <PlacePhoto itemId={place.id} name={place.name} thumbnailClass={styles.providerPhoto} fallback={null} fullWidth />}
-            {place.address && <section><h3 className={styles.sectionTitle}>Address</h3><p className={styles.address}><MapPin size={17} />{place.address}</p></section>}
+            {place.address && <section><h3 className={styles.sectionTitle}>Address</h3><p className={styles.address}><MapPin size={16} />{place.address}</p></section>}
             {place.alternative && <section><h3 className={styles.sectionTitle}>Suggested alternative</h3><p className={styles.text}>{place.alternative}</p></section>}
             {editHref && <Link href={editHref} onClick={() => dialog.current?.close()} className={styles.editInline}>Edit notes &amp; details</Link>}
-            {canSave && <button type="button" className={styles.saveInline} aria-haspopup="dialog" onClick={() => setSaveOpen(true)}><span>{saved ? <Check size={19} /> : <Plus size={20} />}</span>Save to a trip</button>}
+            {canSave && <button type="button" className={styles.saveInline} aria-haspopup="dialog" onClick={() => setSaveOpen(true)}><span>{saved ? <Check size={18} /> : <Plus size={18} />}</span>Save to a trip</button>}
             {messageHref && <Link href={messageHref} onClick={() => dialog.current?.close()} className="btn btn-primary">Message about this place</Link>}
             <div className={styles.actions}>
-              <a href={mapUrl.toString()} target="_blank" rel="noopener noreferrer" className={styles.mapLink}><MapPin size={17} />View on map<span className="sr-only"> (opens Google Maps in a new tab)</span></a>
+              <a href={mapUrl.toString()} target="_blank" rel="noopener noreferrer" className={styles.mapLink}><MapPin size={16} />View on map<span className="sr-only"> (opens Google Maps in a new tab)</span></a>
               {website && <a href={website} target="_blank" rel="noopener noreferrer" className={styles.website}>Official website<ArrowUpRight size={16} /><span className="sr-only"> (opens in a new tab)</span></a>}
             </div>
           </div>

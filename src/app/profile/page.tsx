@@ -30,7 +30,7 @@ export default async function ProfilePage() {
           <h1 className="type-title mt-1 break-words">{user.name}</h1>
           <p className="mt-1 text-xs text-link"><Link href={`/user/${user.id}/people`} className="hover:underline">{followers} {followers === 1 ? 'follower' : 'followers'}</Link> · <Link href={`/user/${user.id}/people?tab=following`} className="hover:underline">{following} following</Link></p>
         </div>
-        <Link href="/settings" aria-label="Settings" className="btn-icon"><Settings size={19} /></Link>
+        <Link href="/settings" aria-label="Settings" className="btn-icon"><Settings size={18} /></Link>
       </div>
     </section>
     {/* Alerts: likes, comments, saves, new followers, new trips from people you follow, Ask your friends posts.
@@ -43,15 +43,15 @@ export default async function ProfilePage() {
     <div className="mt-6 space-y-3">
       <Link href="/trips" className="panel group flex min-h-20 items-center gap-4 p-4 hover:bg-paper">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Map size={22} /></span>
-        <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-title">My Trips</span><span className="mt-0.5 block text-sm text-muted">View your posts and plans</span></span><ChevronRight size={20} className="text-link" />
+        <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-title">My Trips</span><span className="mt-0.5 block text-sm text-muted">View your posts and plans</span></span><ChevronRight size={18} className="text-link" />
       </Link>
       <Link href="/friends" className="panel group flex min-h-20 items-center gap-4 p-4 hover:bg-paper">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Users size={22} /></span>
-        <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-title">Friends</span><span className="mt-0.5 block text-sm text-muted">{pending ? `${pending} friend request${pending === 1 ? '' : 's'} waiting` : 'Find friends & see who you follow'}</span></span>{pending > 0 && <span className="rounded-full bg-link px-2 py-1 text-xs font-semibold text-white">{pending}</span>}<ChevronRight size={20} className="text-link" />
+        <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-title">Friends</span><span className="mt-0.5 block text-sm text-muted">{pending ? `${pending} friend request${pending === 1 ? '' : 's'} waiting` : 'Find friends & see who you follow'}</span></span>{pending > 0 && <span className="rounded-full bg-link px-2 py-1 text-xs font-semibold text-white">{pending}</span>}<ChevronRight size={18} className="text-link" />
       </Link>
       <Link href="/settings" className="panel group flex min-h-20 items-center gap-4 p-4 hover:bg-paper">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Settings size={22} /></span>
-        <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-title">Settings</span><span className="mt-0.5 block text-sm text-muted">Account and notification preferences</span></span><ChevronRight size={20} className="text-link" />
+        <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-title">Settings</span><span className="mt-0.5 block text-sm text-muted">Account and notification preferences</span></span><ChevronRight size={18} className="text-link" />
       </Link>
     </div>
     <section className="mt-6" aria-labelledby="shared-trips-heading">

@@ -32,7 +32,7 @@ export default function PlacePeople({ placeId, name, location = '', itemId = '',
   if (compact && !result.people.length) return null
   return <>
     {result.people.length ? <button type="button" className={`${styles.cue} ${compact ? styles.compact : ''}`} aria-haspopup="dialog" onClick={() => setOpen(true)}>
-      <span className={styles.icon}>{liked.length ? <Heart size={19} /> : <Users size={19} />}</span><span><strong>{label}</strong><small>{compact && friendRatings ? friendRatings : 'See visits, guides & recommendations'}</small></span><ChevronRight size={18} />
+      <span className={styles.icon}>{liked.length ? <Heart size={18} /> : <Users size={18} />}</span><span><strong>{label}</strong><small>{compact && friendRatings ? friendRatings : 'See visits, guides & recommendations'}</small></span><ChevronRight size={18} />
     </button> : <p className={styles.status}>{label}</p>}
     {open && <PeopleDialog name={name} people={result.people} onClose={() => setOpen(false)} />}
   </>
@@ -55,7 +55,7 @@ function PeopleDialog({ name, people, onClose }: { name: string; people: Result[
     <div id={`${titleId}-panel`} role="tabpanel" aria-labelledby={`${titleId}-${tab}`} className={styles.list}>
       {!shown.length && <p className={styles.status}>No shared visits or recommendations from friends yet.</p>}
       {shown.map(person => <article key={person.userId} className={styles.person}>
-        <div className={styles.personHeader}><Link href={`/user/${person.userId}`} className={styles.personName}><span className={styles.avatar} aria-hidden="true">{person.name.split(' ').filter(Boolean).map(part => part[0]).slice(0, 2).join('')}</span>{person.name}</Link>{person.liked && <span className={styles.liked}><Heart size={13} />Liked it</span>}</div>
+        <div className={styles.personHeader}><Link href={`/user/${person.userId}`} className={styles.personName}><span className={styles.avatar} aria-hidden="true">{person.name.split(' ').filter(Boolean).map(part => part[0]).slice(0, 2).join('')}</span>{person.name}</Link>{person.liked && <span className={styles.liked}><Heart size={12} />Liked it</span>}</div>
         <p className={styles.rating}>{person.visited ? 'Visited' : person.inGuide ? 'Included in a guide' : 'Shared a recommendation'}{person.rating !== null && <> · <RatingStars value={person.rating} size={12} /></>}{person.recommendation === 'avoid' && ' · Would avoid'}</p>
         {person.notes && <p className={styles.notes}>{person.notes}</p>}
         <Link className={styles.trip} href={`/itinerary/${person.tripId}`}>View {person.tripTitle}<ChevronRight size={16} /></Link>

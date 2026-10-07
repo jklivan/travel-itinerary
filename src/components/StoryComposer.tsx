@@ -104,7 +104,7 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
   }
 
   return <dialog ref={dialog} tabIndex={-1} className={`${styles.composer} outline-none`} aria-labelledby={titleId} onClose={onClose} onCancel={event => { if (busy || uploading) event.preventDefault() }}>
-    <header className={styles.composerHeader}><div><h2 id={titleId}>Your polaroid story</h2><p>Share a few trip moments. Each stays for 24 hours.</p></div><button type="button" className={styles.close} disabled={busy || uploading} aria-label="Close story composer" onClick={() => dialog.current?.close()}><X size={20} /></button></header>
+    <header className={styles.composerHeader}><div><h2 id={titleId}>Your polaroid story</h2><p>Share a few trip moments. Each stays for 24 hours.</p></div><button type="button" className={styles.close} disabled={busy || uploading} aria-label="Close story composer" onClick={() => dialog.current?.close()}><X size={18} /></button></header>
     <form onSubmit={async event => {
       event.preventDefault()
       if (saving.current || uploading || !selectedPhotos.length) return

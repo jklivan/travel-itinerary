@@ -34,7 +34,7 @@ export default function StoriesBar({ stories, userId, following, serverTime }: {
   return <section aria-label="24-hour stories" className={styles.bar}>
     <div className={styles.barHeading}><h2>SNAPSHOTS</h2></div>
     <div className={styles.tray}>
-      {userId ? <button type="button" className={styles.addStory} onClick={() => { setMessage(''); setComposing(true) }}><span><Plus size={25} /></span>Your story</button> : <Link href="/login" className={styles.addStory}><span><Plus size={25} /></span>Your story</Link>}
+      {userId ? <button type="button" className={styles.addStory} onClick={() => { setMessage(''); setComposing(true) }}><span><Plus size={28} /></span>Your story</button> : <Link href="/login" className={styles.addStory}><span><Plus size={28} /></span>Your story</Link>}
       {groups.map(group => { const latest = group.items[0]; return <button key={group.authorId} type="button" className={styles.storyThumb} disabled={!!loading} aria-label={`View ${group.authorId === userId ? 'your' : latest.authorName + '’s'} stories, ${group.items.length} ${group.items.length === 1 ? 'story' : 'stories'}`} onClick={async () => {
         setLoading(group.authorId); setMessage('')
         try {
@@ -126,17 +126,17 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
               </div>
               <span className={styles.placeType}>{typeLabel(story.type)}</span>
               <h3 className={styles.storyTitle}>{story.placeName}</h3>
-              <p className={styles.storyPlace}><MapPin size={15} aria-hidden="true" />{story.destination}</p>
+              <p className={styles.storyPlace}><MapPin size={16} aria-hidden="true" />{story.destination}</p>
               {/* Always there (empty when no caption) so the buttons sit in the same spot on every snapshot. */}
               <p className={styles.storyCaption}>{story.caption}</p>
             </article>
           </div>
           <div className={styles.viewerActions}>
-            {story.tripHref && <Link href={story.tripHref} className={styles.pillOutline} onClick={() => dialog.current?.close()}><ArrowRight size={17} />View trip</Link>}
-            {(story.authorId !== userId || !story.hasTrip) && <button type="button" className={styles.pillDark} onClick={() => setSaveOpen(true)} aria-haspopup="dialog">{saved.includes(story.id) ? <Check size={17} /> : <Plus size={17} />}Save to a trip</button>}
+            {story.tripHref && <Link href={story.tripHref} className={styles.pillOutline} onClick={() => dialog.current?.close()}><ArrowRight size={16} />View trip</Link>}
+            {(story.authorId !== userId || !story.hasTrip) && <button type="button" className={styles.pillDark} onClick={() => setSaveOpen(true)} aria-haspopup="dialog">{saved.includes(story.id) ? <Check size={16} /> : <Plus size={16} />}Save to a trip</button>}
             <span className={styles.actionIcons}>
-              {userId && story.authorId !== userId && <Link href={`/messages/${story.authorId}`} aria-label={`Message ${story.authorName}`} onClick={() => dialog.current?.close()}><MessageCircle size={21} /></Link>}
-              {story.authorId === userId && <button type="button" aria-label="Delete story" onClick={() => setConfirmDelete(true)}><Trash2 size={19} /></button>}
+              {userId && story.authorId !== userId && <Link href={`/messages/${story.authorId}`} aria-label={`Message ${story.authorName}`} onClick={() => dialog.current?.close()}><MessageCircle size={18} /></Link>}
+              {story.authorId === userId && <button type="button" aria-label="Delete story" onClick={() => setConfirmDelete(true)}><Trash2 size={18} /></button>}
             </span>
           </div>
           {confirmDelete && <div className={styles.deletePrompt}><p>{story.removesTripPhoto ? `Remove this story now? Its photo will also come off ${story.placeName} in your trip.` : 'Remove this story now?'}</p><button type="button" disabled={deleting} onClick={async () => {

@@ -16,7 +16,7 @@ export default function TagChip({ id, selected = false, onToggle }: { id: string
   const meta = tagMeta(id)
   if (!meta) return null
   const Icon = ICONS[meta.id]
-  const content = <>{Icon && <Icon size={15} strokeWidth={1.5} aria-hidden="true" />}{meta.label}</>
+  const content = <>{Icon && <Icon size={16} strokeWidth={1.5} aria-hidden="true" />}{meta.label}</>
   if (!onToggle) return <span className={`${TAG_PILL} bg-mist text-ink`}>{content}</span>
   return <button type="button" aria-pressed={selected} onClick={onToggle}
     className={`${TAG_PILL} ${selected ? 'bg-ink text-white' : 'bg-mist text-ink hover:bg-mist-strong'}`}>{content}</button>

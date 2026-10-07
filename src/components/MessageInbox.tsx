@@ -35,7 +35,7 @@ export default function MessageInbox({ people }: { people: InboxPerson[] }) {
           <span className={`mt-1 line-clamp-1 block break-words text-sm ${thread.unread ? 'font-semibold text-ink' : 'text-muted'}`}>{thread.content}</span>
         </span>
         <time className="type-meta shrink-0" dateTime={thread.createdAt}>{new Date(thread.createdAt).toLocaleDateString('en-US')}</time>
-        <ChevronRight size={20} aria-hidden="true" className="shrink-0 text-link" />
+        <ChevronRight size={18} aria-hidden="true" className="shrink-0 text-link" />
       </Link>)}</div>}
     </section>
   })}</div>

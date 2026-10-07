@@ -36,7 +36,7 @@ export default function SavedFolderPicker({ itineraryId, label = 'Save to folder
   return (
     <>
       <button type="button" onClick={open} className="chip max-w-full">
-        <Folder size={15} className="shrink-0" /><span className="truncate">{label}</span>
+        <Folder size={16} className="shrink-0" /><span className="truncate">{label}</span>
       </button>
       <dialog ref={dialog} onCancel={event => { if (pending) event.preventDefault() }} aria-labelledby={titleId} className="m-auto w-[calc(100%_-_2rem)] max-w-sm rounded-2xl bg-cream p-5 text-ink shadow-pop backdrop:bg-black/40">
         <div className="mb-4 flex items-center justify-between gap-3">

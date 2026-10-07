@@ -10,7 +10,7 @@ export default function HeaderPostButton() {
   return <>
     <button type="button" aria-label="Post a trip" aria-haspopup="dialog" onClick={() => setPosting(true)}
       className="flex size-11 shrink-0 items-center justify-center rounded-full bg-slate text-white shadow-card transition-colors hover:bg-link">
-      <Plus size={24} />
+      <Plus size={22} />
     </button>
     {posting && <PostTripDialog onClose={() => setPosting(false)} />}
   </>

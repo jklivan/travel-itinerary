@@ -47,7 +47,7 @@ export default function CommentsSheetButton({ itineraryId, title, count, variant
   const [open, setOpen] = useState(false)
   return <>
     {variant === 'icon'
-      ? <button type="button" onClick={() => setOpen(true)} aria-label={`${count} comments`} className="flex min-h-8 items-center gap-1 text-label hover:text-link"><MessageCircle size={15} />{count}</button>
+      ? <button type="button" onClick={() => setOpen(true)} aria-label={`${count} comments`} className="flex min-h-8 items-center gap-1 text-label hover:text-link"><MessageCircle size={16} />{count}</button>
       : <button type="button" onClick={() => setOpen(true)} className="block text-left text-muted hover:text-link">View all {count} comments</button>}
     {open && <Sheet itineraryId={itineraryId} title={title} onClose={changed => { setOpen(false); if (changed) router.refresh() }} />}
   </>

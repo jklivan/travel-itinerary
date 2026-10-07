@@ -11,7 +11,7 @@ export default function CoverPhotoPicker({ photos, value, onChange, disabled = f
       onClick={() => onChange(url)} className={`relative size-20 shrink-0 snap-start overflow-hidden rounded-lg disabled:opacity-60 ${url === selected ? 'ring-2 ring-ink ring-offset-2 ring-offset-card' : 'opacity-80 hover:opacity-100'}`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={sizedPhoto(url, 256)} alt="" className="h-full w-full object-cover" />
-      {url === selected && <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-0.5 bg-ink/85 py-0.5 text-micro font-semibold uppercase tracking-wide text-white"><Check size={10} />Cover</span>}
+      {url === selected && <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-0.5 bg-ink/85 py-0.5 text-micro font-semibold uppercase tracking-wide text-white"><Check size={12} />Cover</span>}
     </button>)}
   </div>
 }

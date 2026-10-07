@@ -38,7 +38,7 @@ export default function FriendRatingsButton({ friends, placeName, verb }: { frie
             <h2 id={titleId} className="type-title normal-case">Friends’ rating</h2>
             <p className="mt-1 text-sm text-muted">{placeName}{average !== null ? ` · ${average.toFixed(1)} from ${rated.length} ${rated.length === 1 ? 'friend' : 'friends'}` : ''}</p>
           </div>
-          <button type="button" autoFocus aria-label="Close" onClick={() => dialog.current?.close()} className="flex size-10 shrink-0 items-center justify-center rounded-full"><X size={20} /></button>
+          <button type="button" autoFocus aria-label="Close" onClick={() => dialog.current?.close()} className="flex size-10 shrink-0 items-center justify-center rounded-full"><X size={18} /></button>
         </header>
         <ul className="overflow-y-auto px-5 py-2">
           {friends.map((friend, index) => <li key={`${friend.itineraryId}-${index}`} className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line-soft py-3 last:border-0">

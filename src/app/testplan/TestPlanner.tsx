@@ -280,7 +280,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
                   </span>
                 </summary>
                 {sectionOrder.map(({ type, label, Icon }) => { const items = recs.filter(rec => rec.type === type); return items.length > 0 && <div key={type} className="mt-3">
-                  <h4 className="type-label mb-1.5 flex items-center gap-1.5"><Icon size={13} />{label}</h4>
+                  <h4 className="type-label mb-1.5 flex items-center gap-1.5"><Icon size={12} />{label}</h4>
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-2">{items.map(rec => <RecommendationCard key={rec.key} rec={rec} color={colorOf(rec)} grouped added={inTrip(rec)} busy={adding === rec.key} disabled={adding !== null} onAdd={() => void add(rec)} />)}</div>
                 </div> })}
               </details>)}
@@ -373,7 +373,7 @@ function PreferencesSummary({ preferences }: { preferences: TravelPreferences })
 }
 
 function SourceBadge({ rec }: { rec: Recommendation }) {
-  return <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-label font-semibold ${rec.source === 'claude' ? 'bg-mist text-link' : 'bg-mist text-link'}`}>{rec.source === 'claude' ? <><Sparkles size={11} />Postcard’s pick</> : rec.source === 'you' ? <><MapPin size={11} />Your past trip</> : <><Users size={11} />{rec.friendName}</>}</span>
+  return <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-label font-semibold ${rec.source === 'claude' ? 'bg-mist text-link' : 'bg-mist text-link'}`}>{rec.source === 'claude' ? <><Sparkles size={12} />Postcard’s pick</> : rec.source === 'you' ? <><MapPin size={12} />Your past trip</> : <><Users size={12} />{rec.friendName}</>}</span>
 }
 
 type PickInfo = { author: string | null; notes: string | null; rating: number | null; description: string | null; googleRating?: { value: number; count: number } | null; photos: { url: string; credit: string | null }[]; photosFromGoogle: boolean; address: string | null; website: string | null; placeId: string | null; trip: { title: string; href: string } | null }
@@ -452,11 +452,11 @@ function PickDetails({ rec, color, addButton, onClose }: { rec: Recommendation; 
         {info?.description && info.description !== rec.description && <p className={`${detailStyles.text} ${rec.description ? 'mt-2 text-muted' : ''}`}>{info.description}</p>}
         {info?.googleRating && <p className="mt-2 text-sm text-muted">★ {info.googleRating.value.toFixed(1)} on Google · {info.googleRating.count.toLocaleString()} reviews</p>}
       </section>}
-      {info?.address && <section><h3 className={detailStyles.sectionTitle}>Address</h3><p className={detailStyles.address}><MapPin size={17} />{info.address}</p></section>}
+      {info?.address && <section><h3 className={detailStyles.sectionTitle}>Address</h3><p className={detailStyles.address}><MapPin size={16} />{info.address}</p></section>}
       {failed && <p className={detailStyles.muted}>Couldn’t load photos and details right now.</p>}
 
       <div className={detailStyles.actions}>
-        <a href={mapUrl.toString()} target="_blank" rel="noopener noreferrer" className={detailStyles.mapLink}><MapPin size={17} />View on map<span className="sr-only"> (opens Google Maps in a new tab)</span></a>
+        <a href={mapUrl.toString()} target="_blank" rel="noopener noreferrer" className={detailStyles.mapLink}><MapPin size={16} />View on map<span className="sr-only"> (opens Google Maps in a new tab)</span></a>
         {website && <a href={website} target="_blank" rel="noopener noreferrer" className={detailStyles.website}>Official website<ArrowUpRight size={16} /><span className="sr-only"> (opens in a new tab)</span></a>}
         {addButton}
       </div>

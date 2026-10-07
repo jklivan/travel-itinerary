@@ -128,3 +128,22 @@ test('boxes use the shared panel styles', () => {
   })
   assert.deepEqual(handBuilt, [])
 })
+
+// Icon sizes (lucide-react): 12 tiny · 14 in pills · 16 next to text · 18 in buttons and rows · 22 header and nav · 28 large.
+const ICON_SIZES = new Set([12, 14, 16, 18, 22, 28])
+test('icons use the approved sizes', () => {
+  const wrong = tsx.flatMap(path => {
+    const name = path.replace(root, ''), text = readFileSync(path, 'utf8')
+    const icons = new Set([...text.matchAll(/import\s*\{([^}]*)\}\s*from\s*'lucide-react'/g)].flatMap(m => m[1].split(',').map(s => s.trim().split(/\s+as\s+/).pop()).filter(Boolean)))
+    if (!icons.size) return []
+    return [...text.matchAll(/<([A-Z]\w*)\b/g)].filter(m => icons.has(m[1])).flatMap(m => {
+      const tag = text.slice(m.index, tagEnd(text, m.index + 1))
+      const size = tag.match(/\bsize=\{(\d+)\}/)?.[1]
+      // Every icon gives an approved size (not the 24px default, and not sized with h-/w- classes).
+      if (name.startsWith('components/ui/Stars') && /\bsize=\{size\}/.test(tag)) return [] // the star rating picker, sized for tapping
+      if (size && ICON_SIZES.has(Number(size)) && !/className=["`{][^"`}]*(?<![:\w-])(?:size|h|w)-\d/.test(tag)) return []
+      return [`${name}:${text.slice(0, m.index).split('\n').length} ${m[1]} ${size ? `size ${size}` : 'no size'}`]
+    })
+  })
+  assert.deepEqual(wrong, [])
+})

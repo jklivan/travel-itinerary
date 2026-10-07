@@ -447,7 +447,7 @@ export default async function ItineraryPage({
       <div key={item.id} id={`place-${item.id}`} className="scroll-mt-24">
       <PlaceDetailsCard messageHref={!isOwn ? `/messages/${it.user.id}?place=${encodeURIComponent(item.id)}` : undefined} editHref={isOwn ? editHref : undefined} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} ratings={<RatingsDetails itemId={item.id} authorName={isOwn ? 'You' : it.user.name} authorRating={item.rating} friends={friends} avg={avg} total={total} trips={trips} />} className={`${styles.card} ${styles[type]} ${isOwn ? styles.ownerPolaroid : ''} ${recommendation !== 'none' && recommendation !== 'must' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
         {recommendation === 'must' && <Stamp small label={type === 'hotel' ? 'Must stay!' : 'Must do!'} color={STAMP_COLORS[5]} className={`${styles.mustDoStamp} ${styles.verdictStamp}`} />}
-        {recommendation === 'avoid' && <span className={`${styles.mustDoStamp} ${styles.textStamp} ${styles.avoidStamp}`}><Ban size={24} aria-hidden="true" /><span>Avoid</span></span>}
+        {recommendation === 'avoid' && <span className={`${styles.mustDoStamp} ${styles.textStamp} ${styles.avoidStamp}`}><Ban size={22} aria-hidden="true" /><span>Avoid</span></span>}
         {recommendation === 'option' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><span>Alternative</span></span>}
         {tilePhoto ? (
           <div className={`${styles.thumbnail} photo-polaroid`}>
@@ -458,7 +458,7 @@ export default async function ItineraryPage({
             <span className="photo-polaroid-image">
               <span className={styles.keepsake} aria-hidden="true">
                 <span>{eyebrow}</span>
-                <Icon size={25} strokeWidth={1} />
+                <Icon size={28} strokeWidth={1} />
                 <span>{item.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span>
               </span>
               {type !== 'transport' && <GooglePlaceThumb itemId={item.id} />}
@@ -518,7 +518,7 @@ export default async function ItineraryPage({
             {/* One chip style for everything here; the verdict uses its stamp colour, as on the trip cards. */}
             {stamp && <span className={`${TAG_PILL} text-white`} style={{ backgroundColor: STAMP_COLORS[stamp.value] }}><Star size={14} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />{stamp.label}</span>}
             {!!it.budget && it.budget > 0 && <span aria-label={`Budget ${it.budget} out of 5`} className={`${TAG_PILL} gap-1 bg-chip`}>{[1, 2, 3, 4, 5].map(n => <span key={n} className={n <= it.budget! ? 'text-ink' : 'text-gold-faint'}>$</span>)}</span>}
-            {audienceLabel && <span className={`${TAG_PILL} bg-chip text-ink`}><Users size={15} strokeWidth={1.5} aria-hidden="true" />{audienceLabel}</span>}
+            {audienceLabel && <span className={`${TAG_PILL} bg-chip text-ink`}><Users size={16} strokeWidth={1.5} aria-hidden="true" />{audienceLabel}</span>}
             {displayTags.map(tag => <TagChip key={tag} id={tag} />)}
             {it.bestMonths && it.bestMonths.length > 0 && it.bestMonths.map(m => (
               <span key={m} className={`${TAG_PILL} bg-mist text-ink`}>{m}</span>
@@ -611,7 +611,7 @@ export default async function ItineraryPage({
                       <div key={dest.id}>
                         {mainDestinations.length > 1 && (
                           <p className="text-xs uppercase tracking-widest text-brown font-semibold mb-2 flex items-center gap-1">
-                            <MapPin size={11} /> {dest.name}{dest.country ? `, ${dest.country}` : ''}
+                            <MapPin size={12} /> {dest.name}{dest.country ? `, ${dest.country}` : ''}
                           </p>
                         )}
                         {destinationSocial(dest)}
@@ -681,7 +681,7 @@ export default async function ItineraryPage({
                       <div key={dest.id}>
                         {mainDestinations.length > 1 && (
                           <p className="text-xs uppercase tracking-widest text-brown font-semibold mb-3 flex items-center gap-1">
-                            <MapPin size={11} /> {dest.name}{dest.country ? `, ${dest.country}` : ''}
+                            <MapPin size={12} /> {dest.name}{dest.country ? `, ${dest.country}` : ''}
                           </p>
                         )}
                         {destinationSocial(dest)}

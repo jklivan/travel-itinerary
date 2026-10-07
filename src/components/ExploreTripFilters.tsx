@@ -77,8 +77,8 @@ export default function ExploreTripFilters({
             </p>
           )}
         </div>
-        <ChevronDown
-          className="shrink-0 h-5 w-5 text-brown transition-transform duration-200"
+        <ChevronDown size={18}
+          className="shrink-0 text-brown transition-transform duration-200"
           style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
         />
       </button>
@@ -129,7 +129,7 @@ export default function ExploreTripFilters({
           <div className="mb-6">
             <p className="mb-3 font-[family-name:var(--font-playfair)] text-title text-ink">Where?</p>
             <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-brown pointer-events-none" />
+              <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-brown pointer-events-none" />
               <input
                 type="text"
                 value={location}
