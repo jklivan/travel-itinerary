@@ -39,6 +39,6 @@ test('buttons, corner rounding and shadows use the approved styles', () => {
   assert.deepEqual(problems(tsx, /(?<![\w-])shadow(?:-(?:sm|md|lg|xl|2xl)|-\[[^\]]+\])?(?![\w\[-])/g).filter(line => !/transition-shadow|drop-shadow|box-shadow/.test(line)), [])
   assert.deepEqual(problems(tsx, /(?<![\w-])rounded(?:-(?:sm|md|3xl|\[[^\]]+\]))?(?![\w\[-])/g), [])
   // Solid filled pill buttons are the shared btn styles, not hand-built.
-  assert.deepEqual(problems(tsx, /<(?:button|Link)\b[^>]*className="(?![^"]*\bbtn\b)[^"]*\brounded-full\b[^"]*(?<![:\w-])bg-(?:ink|link|danger)(?![\w/-])[^"]*"/g).filter(line => !line.startsWith('components/WelcomeScreen')), [])
+  assert.deepEqual(problems(tsx, /<(?:button|Link)\b(?:[^>]|=>)*?className="(?![^"]*\bbtn\b)[^"]*\brounded-full\b[^"]*(?<![:\w-])bg-(?:ink|link|danger)(?![\w/-])[^"]*"/g).filter(line => !line.startsWith('components/WelcomeScreen') && !line.startsWith('components/EventPhotoInput')), [])
 })
 

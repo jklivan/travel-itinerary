@@ -507,7 +507,7 @@ function TripDaysPrompt({ tripId, current, onDone }: { tripId: string; current?:
   const [days, setDays] = useState(current ? String(current) : '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  return <form className="mb-5 rounded-2xl border border-mist-line bg-mist p-4" onSubmit={async event => {
+  return <form className="panel mb-5 p-4" onSubmit={async event => {
     event.preventDefault(); if (busy) return
     setBusy(true); setError('')
     try { const result = await setPlanDays(tripId, Number(days)); if (result.error) setError(result.error); else { onDone?.(); router.refresh() } }
@@ -515,7 +515,7 @@ function TripDaysPrompt({ tripId, current, onDone }: { tripId: string; current?:
   }}>
     <label className="block text-sm font-semibold text-ink">How many days is your trip?
       <span className="mt-0.5 block text-xs font-normal text-muted">Then give each place a day.</span>
-      <span className="mt-2 flex gap-2"><input type="number" inputMode="numeric" min={1} max={365} step={1} required value={days} onChange={event => setDays(event.target.value)} placeholder="e.g. 5" className={`${inputClass} !mt-0 max-w-32`} />
+      <span className="mt-2 flex items-center gap-2"><input type="number" inputMode="numeric" min={1} max={365} step={1} required value={days} onChange={event => setDays(event.target.value)} placeholder="e.g. 5" className={`${inputClass} !mt-0 h-11 max-w-32 !py-0`} />
       <button disabled={busy} className={buttonClass}>{busy ? 'Saving…' : 'Set days'}</button></span>
     </label>
     {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
@@ -535,7 +535,7 @@ function StartDateForm({ tripId, initial = '', onDone }: { tripId: string; initi
     try { const result = await setPlanStartDate(tripId, start); if (result.error) setError(result.error); else { router.refresh(); onDone() } }
     catch { setError('Could not save. Please try again.') } finally { setBusy(false) }
   }}>
-    <label className="min-w-0 flex-1"><span className="type-label">{initial ? 'Start date' : 'When does the trip start?'}</span><input type="date" required value={start} onChange={event => setStart(event.target.value)} className={inputClass} /></label>
+    <label className="min-w-0 flex-1"><span className="type-label">{initial ? 'Start date' : 'When does the trip start?'}</span><input type="date" required value={start} onChange={event => setStart(event.target.value)} className={`${inputClass} h-11 !py-0`} /></label>
     <button className="btn btn-primary" disabled={!start || busy}>{busy ? 'Saving…' : initial ? 'Save' : 'Use dates'}</button>
     {error && <p role="alert" className="w-full text-sm text-danger">{error}</p>}
   </form>

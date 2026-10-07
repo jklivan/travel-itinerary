@@ -100,7 +100,7 @@ export default function PlaceDetailsCard({ place, destination, category, recomme
             {place.alternative && <section><h3 className={styles.sectionTitle}>Suggested alternative</h3><p className={styles.text}>{place.alternative}</p></section>}
             {editHref && <Link href={editHref} onClick={() => dialog.current?.close()} className={styles.editInline}>Edit notes &amp; details</Link>}
             {canSave && <button type="button" className={styles.saveInline} aria-haspopup="dialog" onClick={() => setSaveOpen(true)}><span>{saved ? <Check size={19} /> : <Plus size={20} />}</span>Save to a trip</button>}
-            {messageHref && <Link href={messageHref} onClick={() => dialog.current?.close()} className="inline-block rounded-full bg-link px-4 py-2 text-sm text-white">Message about this place</Link>}
+            {messageHref && <Link href={messageHref} onClick={() => dialog.current?.close()} className="btn btn-primary">Message about this place</Link>}
             <div className={styles.actions}>
               <a href={mapUrl.toString()} target="_blank" rel="noopener noreferrer" className={styles.mapLink}><MapPin size={17} />View on map<span className="sr-only"> (opens Google Maps in a new tab)</span></a>
               {website && <a href={website} target="_blank" rel="noopener noreferrer" className={styles.website}>Official website<ArrowUpRight size={16} /><span className="sr-only"> (opens in a new tab)</span></a>}
