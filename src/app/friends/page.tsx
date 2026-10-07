@@ -31,7 +31,7 @@ export default async function FriendsPage() {
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
       <div className="mb-5">
-        <h1 className="font-[family-name:var(--font-playfair)] text-title text-ink">Friends</h1>
+        <h1 className="type-display">Friends</h1>
         <p className="text-brown text-sm mt-0.5">
           Follow travelers to see their itineraries in your feed.
         </p>

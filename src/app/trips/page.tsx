@@ -55,7 +55,7 @@ export default async function MyTripsPage() {
 
 function TripSection({ title, description, empty, children }: { title: string; description: string; empty: string; children: React.ReactNode[] }) {
   return <section className="mt-7 first-of-type:mt-0" aria-label={title}>
-    <div className="mb-4"><h2 className="font-[family-name:var(--font-playfair)] text-title uppercase tracking-[0.1em] text-brown">{title} <span className="font-sans text-sm tracking-normal">({children.length})</span></h2><p className="page-subtitle mt-1">{description}</p></div>
+    <div className="mb-4"><h2 className="type-title">{title} <span className="font-sans text-sm tracking-normal">({children.length})</span></h2><p className="page-subtitle mt-1">{description}</p></div>
     {children.length ? <div className="space-y-3">{children}</div> : <div className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">{empty}</div>}
   </section>
 }
@@ -63,6 +63,6 @@ function TripSection({ title, description, empty, children }: { title: string; d
 function TripRow({ id, href, title, photo, detail, cta }: { id: string; href: string; title: string; photo: { saved: string | null; itemId: string | null; stock: string | null }; detail: string; cta: string }) {
   return <SwipeToDeleteTrip id={id} title={title}><Link href={href} draggable={false} className="panel flex items-center gap-4 p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)] transition-colors hover:bg-chip">
     <span className="photo-polaroid w-24 shrink-0"><span className="photo-polaroid-image"><TripCover {...photo} /></span></span>
-    <span className="min-w-0 flex-1"><span className="block break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-ink">{title}</span><span className="mt-2 block text-label font-semibold uppercase tracking-[0.12em] text-muted">{detail}</span><span className="mt-1 block text-sm text-link">{cta}</span></span>
+    <span className="min-w-0 flex-1"><span className="block break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-ink">{title}</span><span className="mt-2 block text-label font-semibold uppercase tracking-widest text-muted">{detail}</span><span className="mt-1 block text-sm text-link">{cta}</span></span>
   </Link></SwipeToDeleteTrip>
 }

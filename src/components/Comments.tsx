@@ -189,7 +189,7 @@ export default function Comments({
 }) {
   return (
     <div id="comments" className="mt-6 pt-6 border-t border-line-soft scroll-mt-24">
-      <h2 className="text-sm font-semibold text-ink-soft mb-4">
+      <h2 className="type-label mb-4">
         Comments {initialComments.length > 0 && <span className="text-muted font-normal">({initialComments.length})</span>}
       </h2>
 

@@ -35,18 +35,18 @@ export default function DestinationSocial({ destination, friends, savers }: { de
       {open && <div className="flex max-h-[75dvh] flex-col">
         <header className="flex items-start justify-between gap-3 border-b border-line-soft p-5 pb-3">
           <div>
-            <h2 id={titleId} className="font-[family-name:var(--font-playfair)] text-title normal-case">{destination}</h2>
+            <h2 id={titleId} className="type-title normal-case">{destination}</h2>
             <p className="mt-1 text-sm text-muted">About this destination, not one place.</p>
           </div>
           <button type="button" autoFocus aria-label="Close" onClick={() => dialog.current?.close()} className="flex size-10 shrink-0 items-center justify-center rounded-full"><X size={20} /></button>
         </header>
         <div className="space-y-4 overflow-y-auto px-5 py-3">
-          {friends.length > 0 && <section><h3 className="text-xs font-semibold text-link">Friends who’ve been</h3>
+          {friends.length > 0 && <section><h3 className="type-label">Friends who’ve been</h3>
             <ul>{friends.map(friend => <li key={friend.itineraryId} className="flex items-center gap-2 border-b border-line-soft py-3 last:border-0">
               <span className="font-semibold text-link">{friend.name}</span>
               <Link href={`/itinerary/${friend.itineraryId}`} onClick={() => dialog.current?.close()} className="ml-auto text-sm text-link underline underline-offset-2">See trip →</Link>
             </li>)}</ul></section>}
-          {savers.total > 0 && <section><h3 className="text-xs font-semibold text-link">Saved a trip to {destination}</h3>
+          {savers.total > 0 && <section><h3 className="type-label">Saved a trip to {destination}</h3>
             <p className="py-3 text-sm">{savers.names.length > 0 && <span className="font-semibold text-link">{savers.names.join(', ')}</span>}{savers.names.length > 0 && others > 0 && ' and '}{others > 0 && `${others} ${others === 1 ? 'other traveler' : 'other travelers'}`}</p></section>}
         </div>
       </div>}

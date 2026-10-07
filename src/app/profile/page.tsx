@@ -24,8 +24,8 @@ export default async function ProfilePage() {
       <div className="flex items-center gap-4">
         <ProfilePhotoPicker name={user.name} image={user.image} />
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-link">Profile</p>
-          <h1 className="mt-1 break-words font-[family-name:var(--font-playfair)] text-title text-ink">{user.name}</h1>
+          <p className="text-xs font-semibold uppercase tracking-label text-link">Profile</p>
+          <h1 className="type-title mt-1 break-words">{user.name}</h1>
           <p className="mt-1 text-xs text-link">{followers} followers · {following} following</p>
         </div>
         <Link href="/settings" aria-label="Settings" className="flex size-11 shrink-0 items-center justify-center rounded-full border border-mist-line text-link hover:bg-white/60"><Settings size={19} /></Link>
@@ -46,7 +46,7 @@ export default async function ProfilePage() {
       </Link>
     </div>
     <section className="mt-6" aria-labelledby="shared-trips-heading">
-      <div className="mb-3"><h2 id="shared-trips-heading" className="font-[family-name:var(--font-playfair)] text-title uppercase tracking-wide text-brown">Shared trips <span className="font-sans text-sm">({sharedTrips.length})</span></h2><p className="mt-1 text-sm text-muted">Trips you’ve published for others to explore.</p></div>
+      <div className="mb-3"><h2 id="shared-trips-heading" className="type-title">Shared trips <span className="font-sans text-sm">({sharedTrips.length})</span></h2><p className="mt-1 text-sm text-muted">Trips you’ve published for others to explore.</p></div>
       {sharedTrips.length === 0 ? <div className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">No shared trips yet.</div> : <div className="space-y-4">{sharedTrips.map(it => <ItineraryCard fullWidth key={it.id} id={it.id} postType={it.postType} tags={it.tags} durationDays={it.durationDays} title={it.title} bestMonths={it.bestMonths} datesFlexible={it.datesFlexible} startDate={it.startDate} endDate={it.endDate} audience={it.audience} budget={it.budget} tripRating={it.tripRating} authorName={user.name} authorImage={user.image} authorId={user.id} destinations={it.destinations} coverPhoto={it.coverPhoto ?? it.photos[0]?.url ?? null} photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items), it.coverPhoto)} currentUserId={userId} isOwn isBucketed={false} saveCount={it._count.bucketedBy} />)}</div>}
     </section>
   </main>

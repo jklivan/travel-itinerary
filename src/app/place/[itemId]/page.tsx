@@ -40,7 +40,7 @@ export default async function PlacePage({ params }: { params: Promise<{ itemId: 
   const average = ratings.length ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null
 
   return <div className="mx-auto max-w-xl px-5 py-6 text-ink sm:px-8">
-    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-link">{CATEGORY[item.type] ?? 'Place'} · {[item.destination.name, item.destination.country].filter(Boolean).join(', ')}</p>
+    <p className="text-xs font-semibold uppercase tracking-label text-link">{CATEGORY[item.type] ?? 'Place'} · {[item.destination.name, item.destination.country].filter(Boolean).join(', ')}</p>
     <h1 className="trip-title mt-2 font-[family-name:var(--font-playfair)] text-display text-ink">{item.name}</h1>
     <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
       {average !== null ? <><RatingStars value={average} label={`Community rating ${average.toFixed(1)} out of 5`} /><span>{average.toFixed(1)} · {ratings.length} {ratings.length === 1 ? 'rating' : 'ratings'}</span></> : <span>No ratings yet</span>}

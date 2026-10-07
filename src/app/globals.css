@@ -5,6 +5,10 @@
 @theme static {
   /* Approved text sizes (see /styleguide): micro 9 · label 11 · xs 12 · sm 14 · base 16 (form fields) · lg 18 · title 22 · display 32 / 40. */
   --text-micro: 0.5625rem;
+  /* Approved letter spacing: wider (.05em) tight-fit labels · caps (.08em) serif capitals · widest (.1em) · label (.14em) small capital labels · brand (.3em) the tagline. */
+  --tracking-caps: 0.08em;
+  --tracking-label: 0.14em;
+  --tracking-brand: 0.3em;
   --text-label: 0.6875rem;
   --text-title: 1.375rem;
   --text-display: 2rem;

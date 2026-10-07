@@ -22,7 +22,7 @@ export default function BottomSheet({ title, label, onClose, footer, children }:
     <div className="flex h-full flex-col">
       <header className="relative border-b border-line-soft px-5 pb-3 pt-2 text-center">
         <span aria-hidden="true" className="mx-auto mb-2 block h-1 w-10 rounded-full bg-line" />
-        <h2 className="text-sm font-semibold">{title}</h2>
+        <h2 className="type-label">{title}</h2>
         <button type="button" aria-label={`Close ${title.toLowerCase()}`} onClick={() => dialog.current?.close()} className="absolute right-3 top-2 grid size-10 place-items-center rounded-full text-muted outline-none hover:bg-chip focus-visible:ring-2 focus-visible:ring-link"><X size={18} /></button>
       </header>
       <div ref={body} tabIndex={-1} className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 outline-none">{children}</div>

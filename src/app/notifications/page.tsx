@@ -18,7 +18,7 @@ export default async function NotificationsPage() {
   })
   return <div className="max-w-2xl mx-auto px-4 py-6">
     <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-      <h1 className="font-[family-name:var(--font-playfair)] text-display text-ink">Notifications</h1>
+      <h1 className="type-display">Notifications</h1>
       <MarkNotificationsRead />
     </div>
     <NotificationPreferences />

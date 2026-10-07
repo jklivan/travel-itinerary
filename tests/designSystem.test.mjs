@@ -27,3 +27,11 @@ test('text sizes come from the approved scale', () => {
   const scale = new Set(['9px', '11px', '12px', '14px', '16px', '18px', '22px', '32px', '40px'])
   assert.deepEqual(problems(css, /font-size:\s*[0-9.]+(?:px|rem)/g).filter(line => !scale.has(line.split(/font-size:\s*/)[1])), [])
 })
+test('letter spacing and headings use the approved styles', () => {
+  // Letter spacing: tracking-tight/normal/wide/wider/widest/caps/label/brand only, no one-off values.
+  assert.deepEqual(problems(tsx, /(?<![\w-])tracking-\[[^\]]+\]/g), [])
+  // Headings with a fixed class list name one of the approved text styles.
+  const headings = problems(tsx, /<h[1-4](?:\s[^>]*?)?\sclassName="[^"]*"/g).filter(line => !/\b(type-(display|title|card|body|meta|label|micro)|page-title|trip-title|sr-only)\b/.test(line))
+  assert.deepEqual(headings, [])
+})
+

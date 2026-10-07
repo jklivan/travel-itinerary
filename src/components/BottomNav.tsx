@@ -23,7 +23,7 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
   function iconClass(active: boolean) {
     return active ? 'flex size-9 items-center justify-center rounded-full bg-ink text-white' : 'flex size-9 items-center justify-center'
   }
-  const label = 'text-label font-medium uppercase tracking-[0.12em]'
+  const label = 'text-label font-medium uppercase tracking-widest'
 
   return (
     <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl border-t border-line-soft bg-cream shadow-[0_-4px_18px_rgba(31,51,84,0.08)]">

@@ -113,7 +113,7 @@ export function NotificationPreferences() {
   const push = useContext(PushContext)
   if (!push) return null
   return <section className="mb-5 rounded-xl border border-line-soft bg-cream p-4">
-    <h2 className="font-semibold text-ink">iPhone notifications</h2>
+    <h2 className="type-label text-ink">iPhone notifications</h2>
     <p className="mt-1 text-sm text-muted">Get an alert for forum posts, private messages, new trips from people you follow, and activity on your trips.</p>
     {!push.native ? <p className="mt-2 text-sm text-muted">Open the iPhone app to enable push notifications.</p> :
       !push.available ? <p className="mt-2 text-sm text-muted">Update the iPhone app to enable notifications.</p> :

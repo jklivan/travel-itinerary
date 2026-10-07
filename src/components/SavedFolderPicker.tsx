@@ -40,7 +40,7 @@ export default function SavedFolderPicker({ itineraryId, label = 'Save to folder
       </button>
       <dialog ref={dialog} onCancel={event => { if (pending) event.preventDefault() }} aria-labelledby={titleId} className="m-auto w-[calc(100%_-_2rem)] max-w-sm rounded-2xl bg-cream p-5 text-ink shadow-xl backdrop:bg-black/40">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 id={titleId} className="text-lg font-semibold">Save to folder</h2>
+          <h2 id={titleId} className="type-title">Save to folder</h2>
           <button type="button" aria-label="Close folder picker" disabled={pending} onClick={() => dialog.current?.close()} className="p-2"><X size={18} /></button>
         </div>
         <form onSubmit={event => {

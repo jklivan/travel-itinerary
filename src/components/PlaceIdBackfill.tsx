@@ -28,7 +28,7 @@ export default function PlaceIdBackfill() {
     finally { active.current = false; setRunning(false) }
   }
   return <section className="mb-8 rounded-xl border border-line bg-white p-5">
-    <h2 className="text-lg font-semibold">Connect older places to Google</h2>
+    <h2 className="type-title">Connect older places to Google</h2>
     <p className="mt-2 text-sm text-muted">Find missing place IDs using the saved name and destination. Existing IDs, ratings, notes, and photos stay unchanged. Ambiguous matches are skipped.</p>
     <div className="mt-4 flex flex-wrap gap-3"><button type="button" disabled={running} onClick={() => void run(false)} className="min-h-11 rounded-lg border px-4 text-sm disabled:opacity-50">Preview matches</button><button type="button" disabled={running} onClick={() => void run(true)} className="min-h-11 rounded-lg bg-link px-4 text-sm text-white disabled:opacity-50">Fill missing IDs</button>{running && <button type="button" onClick={() => { stopped.current = true }} className="min-h-11 px-3 text-sm underline">Stop after this batch</button>}</div>
     <p role="status" className="mt-3 text-sm">{running ? `${mode}…` : rows.length ? 'Finished.' : ''} {rows.length > 0 && `${rows.length} checked · ${rows.filter(row => row.status === 'matched').length} clear matches · ${rows.filter(row => row.status === 'saved').length} saved · ${rows.filter(row => row.status === 'skipped').length} need review`}</p>

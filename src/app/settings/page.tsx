@@ -10,12 +10,12 @@ export default async function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <h1 className="font-[family-name:var(--font-playfair)] text-title text-ink mb-6">Settings</h1>
+      <h1 className="type-display mb-6">Settings</h1>
       <NotificationPreferences />
 
       <section className="bg-cream rounded-xl border border-sand p-5">
         <div>
-          <h2 className="font-semibold text-ink">Public profiles</h2>
+          <h2 className="type-label text-ink">Public profiles</h2>
           <p className="text-sm text-brown mt-0.5">
             Profiles and published itineraries are public for now. You can still follow friends to see their trips together.
           </p>

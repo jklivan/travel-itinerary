@@ -11,10 +11,10 @@ export default function WelcomeScreen() {
     <div className="relative flex h-full flex-col items-center px-8 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(3rem,calc(env(safe-area-inset-top)+1.25rem))]">
       {/* The stamp with the photo showing through it. */}
       <Image src="/brand/postcard-stamp-clear.png" alt="Postcard" width={512} height={512} priority className="size-[min(190px,46vw)]" />
-      <p className="mt-3 text-center font-[family-name:var(--font-playfair)] text-sm font-semibold uppercase tracking-[0.32em] text-ink">Places worth<br />sharing</p>
+      <p className="mt-3 text-center font-[family-name:var(--font-playfair)] text-sm font-semibold uppercase tracking-brand text-ink">Places worth<br />sharing</p>
       <div className="mt-auto w-full max-w-sm space-y-3">
-        <Link href="/register" className="flex min-h-14 items-center justify-center rounded-full bg-ink text-sm font-semibold uppercase tracking-[0.2em] text-white shadow-lg">Sign up</Link>
-        <Link href="/login" className="flex min-h-14 items-center justify-center rounded-full border border-white/80 bg-black/20 text-sm font-semibold uppercase tracking-[0.2em] text-white backdrop-blur-sm">Log in</Link>
+        <Link href="/register" className="flex min-h-14 items-center justify-center rounded-full bg-ink text-sm font-semibold uppercase tracking-label text-white shadow-lg">Sign up</Link>
+        <Link href="/login" className="flex min-h-14 items-center justify-center rounded-full border border-white/80 bg-black/20 text-sm font-semibold uppercase tracking-label text-white backdrop-blur-sm">Log in</Link>
       </div>
     </div>
   </div>

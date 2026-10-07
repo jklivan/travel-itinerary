@@ -14,7 +14,7 @@ function RegisterForm() {
     <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="font-[family-name:var(--font-playfair)] text-display text-ink">Create an account</h1>
+          <h1 className="type-display">Create an account</h1>
           <p className="text-sm text-brown mt-1">Join Postcard. Good places ahead.</p>
         </div>
 

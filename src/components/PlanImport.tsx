@@ -61,7 +61,7 @@ export default function PlanImport({ tripId, destinations = [], onClose }: { tri
     finally { busy.current = false; setStage('') }
   }
   return <section className="panel my-5 space-y-4 p-4" aria-label="Import into this trip">
-    <div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">Add places from notes or a file</h2><p className="mt-1 text-sm text-muted">Review the places, then add them to this trip. You can assign days whenever you’re ready.</p></div><button type="button" disabled={!!stage} onClick={onClose} className="min-h-11 px-2 text-sm text-link">Close</button></div>
+    <div className="flex items-start justify-between gap-3"><div><h2 className="type-title">Add places from notes or a file</h2><p className="mt-1 text-sm text-muted">Review the places, then add them to this trip. You can assign days whenever you’re ready.</p></div><button type="button" disabled={!!stage} onClick={onClose} className="min-h-11 px-2 text-sm text-link">Close</button></div>
     {!places.length ? <>
       <fieldset disabled={!!stage} className="space-y-4">
         <div className="space-y-2"><label className="block text-sm">Destination<PlacesAutocomplete required maxLength={160} value={typedDestination} onChange={value => { setTypedDestination(value); setDestination(destinations.find(d => d.name === value) ?? null) }} onSelect={(main, secondary) => { setTypedDestination([main, secondary].filter(Boolean).join(', ')); setDestination(null) }} type="destination" placeholder="City or area" className="mt-2 w-full rounded-xl border border-line bg-white p-3 text-base" /></label>

@@ -17,7 +17,7 @@ function LoginForm() {
     <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="font-[family-name:var(--font-playfair)] text-display text-ink">Welcome back</h1>
+          <h1 className="type-display">Welcome back</h1>
           <p className="text-sm text-brown mt-1">{tripId ? 'Sign in to save this trip. We’ll bring you back so you can add it to your saved trips.' : 'Sign in to Postcard. Your places are waiting.'}</p>
         </div>
 

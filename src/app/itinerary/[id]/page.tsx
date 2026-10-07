@@ -593,7 +593,7 @@ export default async function ItineraryPage({
             {/* ── Day by Day (itineraries) ── */}
             {showDayByDay && !it.isPlan && mainDestinations.length > 0 && (
               <div className="mb-10">
-                <h2 className="font-[family-name:var(--font-playfair)] text-title text-ink mb-1">Day by Day</h2>
+                <h2 className="type-title mb-1">Day by Day</h2>
                 <div className="h-px bg-line-strong mb-5" />
                 {/* Cards two across on wider screens, the same size as the Summary view's. */}
                 <div className="space-y-10">
@@ -663,7 +663,7 @@ export default async function ItineraryPage({
             {/* All places grouped by category, for both itineraries and guides. */}
             {!showDayByDay && mainDestinations.length > 0 && (
               <div className="mb-10">
-                <h2 className="font-[family-name:var(--font-playfair)] text-title text-ink mb-1">Places from the trip</h2>
+                <h2 className="type-title mb-1">Places from the trip</h2>
                 <div className="h-px bg-line-strong mb-5" />
                 <div className="space-y-10">
                   {mainDestinations.map((dest) => {
@@ -698,7 +698,7 @@ export default async function ItineraryPage({
                                   return (
                                     <section key={group.value} aria-label={group.label}>
                                       {/* No heading when no restaurant has a meal type. */}
-                                      {!(group.value === 'other' && meals.length === dFood.length) && <h4 className="text-xs font-semibold uppercase tracking-wider text-terracotta mb-2">{group.label}</h4>}
+                                      {!(group.value === 'other' && meals.length === dFood.length) && <h4 className="type-label mb-2">{group.label}</h4>}
                                       <div className={styles.cardColumns}>{meals.map(item => renderFoodCard(item))}</div>
                                     </section>
                                   )
@@ -723,7 +723,7 @@ export default async function ItineraryPage({
 
             {alternativeDestinations.length > 0 && (
               <section aria-labelledby="alternatives-heading" className="mb-10">
-                <h2 id="alternatives-heading" className="font-[family-name:var(--font-playfair)] text-title text-ink mb-1">Alternatives</h2>
+                <h2 id="alternatives-heading" className="type-title mb-1">Alternatives</h2>
                 <p className="text-sm text-brown mb-5">Other places to consider.</p>
                 <div className="space-y-6">
                   {alternativeDestinations.map(dest => (
@@ -741,7 +741,7 @@ export default async function ItineraryPage({
             {/* The poster's general notes and tips come after the places. */}
             {it.notes && (
               <section className="mb-10 border-l-2 border-line-strong pl-4">
-                <h2 className="text-xs uppercase tracking-widest text-brown font-semibold mb-2">Notes &amp; Tips</h2>
+                <h2 className="type-label mb-2">Notes &amp; Tips</h2>
                 <p className="text-sm leading-relaxed text-ink-soft whitespace-pre-line break-words">{it.notes}</p>
               </section>
             )}
@@ -753,7 +753,7 @@ export default async function ItineraryPage({
               isLoggedIn={!!session?.user}
             />}
             {!isOwn && <div className="mt-6 border-t border-line-strong pt-6">
-              <h2 className="font-semibold mb-2">Have a question about this trip?</h2>
+              <h2 className="type-label mb-2">Have a question about this trip?</h2>
               <Link href={`/messages/${it.user.id}?trip=${encodeURIComponent(it.id)}`} className="inline-block rounded-full bg-link px-4 py-2 text-sm text-white">Message {it.user.name} privately</Link>
             </div>}
           </>
@@ -765,7 +765,7 @@ export default async function ItineraryPage({
           if (!gallery.length) return null
           return <section aria-labelledby="trip-photos-heading" className="mt-8 border-t border-line-strong pt-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 id="trip-photos-heading" className="font-[family-name:var(--font-playfair)] text-title uppercase text-ink">Trip photos</h2>
+              <h2 id="trip-photos-heading" className="type-title">Trip photos</h2>
             </div>
             <PhotoStrip photos={gallery} title={it.title} gallery />
           </section>

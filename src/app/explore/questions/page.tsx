@@ -15,12 +15,12 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
   if (!result.questions) notFound()
   return <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
     <div className="flex items-center justify-between gap-3">
-      <div><h1 className="font-[family-name:var(--font-playfair)] text-display text-ink">Ask your friends</h1><p className="mt-2 text-sm text-brown">Trip questions, trusted advice, and ideas worth sharing.</p></div>
+      <div><h1 className="type-display">Ask your friends</h1><p className="mt-2 text-sm text-brown">Trip questions, trusted advice, and ideas worth sharing.</p></div>
       <MessageRefresh />
     </div>
     <QuestionComposer />
     <section aria-label="Questions from your circle" className="space-y-3">
-      <h2 className="font-[family-name:var(--font-playfair)] text-title text-ink">Questions from your circle</h2>
+      <h2 className="type-title">Questions from your circle</h2>
       {before && <Link href="/explore/questions" className="inline-block text-sm text-link underline">Latest questions</Link>}
       {result.questions.length === 0 && <div className="rounded-xl border border-line bg-cream p-5 text-sm leading-relaxed text-brown">No questions yet. Ask the first one above. Questions from people who follow you will appear here too. <Link href="/friends" className="text-link underline">Find friends</Link></div>}
       {result.questions.map(question => <Link key={question.id} href={`/explore/questions/${question.id}`} className="block rounded-xl border border-line bg-cream p-5 shadow-sm hover:border-link">

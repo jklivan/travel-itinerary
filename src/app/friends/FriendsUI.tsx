@@ -129,7 +129,7 @@ export default function FriendsUI({
         <section className="bg-cream rounded-xl border border-sand overflow-hidden">
           <div className="bg-sand border-b border-sand px-5 py-3 flex items-center gap-2">
             <Users size={16} className="text-brown" />
-            <h2 className="font-semibold text-ink text-sm">
+            <h2 className="type-label text-ink">
               Follow requests
               <span className="ml-2 text-brown">({requests.length})</span>
             </h2>
@@ -161,7 +161,7 @@ export default function FriendsUI({
       <section className="bg-cream rounded-xl border border-sand overflow-hidden">
         <div className="px-5 py-3 border-b border-sand flex items-center gap-2">
           <Search size={16} className="text-brown" />
-          <h2 className="font-semibold text-ink text-sm">Find travelers</h2>
+          <h2 className="type-label text-ink">Find travelers</h2>
         </div>
         <div className="p-4">
           <form onSubmit={handleNameSearch} className="flex gap-2">
@@ -198,7 +198,7 @@ export default function FriendsUI({
       <section className="bg-cream rounded-xl border border-sand overflow-hidden">
         <div className="px-5 py-3 border-b border-sand flex items-center gap-2">
           <Users size={16} className="text-brown" />
-          <h2 className="font-semibold text-ink text-sm">
+          <h2 className="type-label text-ink">
             People you follow
             {followingList.length > 0 && (
               <span className="ml-2 text-brown font-normal">({followingList.length})</span>

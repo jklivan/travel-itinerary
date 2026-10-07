@@ -86,11 +86,11 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
     <div className="max-w-xl mx-auto px-4 py-3 sm:px-8 sm:py-5">
       <Suspense fallback={null}><StoryFeed userId={userId} following={false} /></Suspense>
       <section className="mb-3 mt-3 flex items-center justify-between gap-2 px-1" aria-label="Trip recommendations">
-        <h1 className="shrink-0 font-[family-name:var(--font-playfair)] text-lg font-medium tracking-[0.2em] text-ink">FOR YOU</h1>
+        <h1 className="type-title shrink-0 tracking-widest">FOR YOU</h1>
         <FeedTabs active={feed} search={searchQuery} />
       </section>
       {searchQuery && <div className="mb-5">
-        <h1 className="font-[family-name:var(--font-playfair)] text-title text-ink">&quot;{searchQuery}&quot;</h1>
+        <h1 className="type-display">&quot;{searchQuery}&quot;</h1>
         <Link href="/" className="text-sm text-ink-soft hover:underline">Clear search</Link>
       </div>}
 

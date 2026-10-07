@@ -321,7 +321,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <div className="mb-5">
-          <h1 className="font-[family-name:var(--font-playfair)] text-title tracking-wide text-ink">
+          <h1 className="type-display">
             {meta?.label ?? tag}
           </h1>
           <p className="text-sm text-brown">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
@@ -352,7 +352,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <div className="mb-5">
-          <h2 className="font-[family-name:var(--font-playfair)] text-title text-ink flex items-center gap-2">
+          <h2 className="type-title flex items-center gap-2">
             <MapPin size={18} className="text-ink-soft" />
             {city}, {country}
           </h2>
@@ -443,7 +443,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
         <div className="mb-5">
-          <h2 className="font-[family-name:var(--font-playfair)] text-title text-ink">{country}</h2>
+          <h2 className="type-title">{country}</h2>
           <p className="text-sm text-brown">{cities.length} destination{cities.length !== 1 ? 's' : ''}</p>
         </div>
         {cities.length === 0 ? (
@@ -503,7 +503,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <div className="mb-5">
-          <h2 className="font-[family-name:var(--font-playfair)] text-title text-ink">{meta.emoji} {meta.label}</h2>
+          <h2 className="type-title">{meta.emoji} {meta.label}</h2>
           <p className="text-sm text-brown">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
@@ -518,7 +518,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
     return (
       <div className="max-w-xl mx-auto px-4 py-6 sm:px-8">
-        <h1 className="font-[family-name:var(--font-playfair)] text-title sm:text-display tracking-wide text-ink mb-5">SEARCH BY TRIP TYPE</h1>
+        <h1 className="type-display mb-5">SEARCH BY TRIP TYPE</h1>
         <ExploreTripFilters key={`${filters.types.join(',')}|${filters.tags.join(',')}|${filters.location}`} types={filters.types} tags={filters.tags} location={filters.location} />
         <div className="mt-7">
           <p role="status" className="text-sm text-brown mb-4">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
@@ -534,7 +534,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <div className="text-center py-24">
           <p className="text-display-lg mb-4">🔥</p>
-          <h2 className="font-[family-name:var(--font-playfair)] text-title text-ink mb-2">Hot Spots</h2>
+          <h2 className="type-title mb-2">Hot Spots</h2>
           <p className="text-sm text-brown">Coming soon</p>
         </div>
       </div>
@@ -547,7 +547,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <div className="text-center py-24">
           <p className="text-display-lg mb-4">👥</p>
-          <h2 className="font-[family-name:var(--font-playfair)] text-title text-ink mb-2">Friends&apos; Trips</h2>
+          <h2 className="type-title mb-2">Friends&apos; Trips</h2>
           <Link href="/friends" className="text-sm text-ink-soft hover:underline">See your friends</Link>
         </div>
       </div>
@@ -597,7 +597,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
-        <h1 className="font-[family-name:var(--font-playfair)] text-title text-ink mb-5">{region}</h1>
+        <h1 className="type-display mb-5">{region}</h1>
         {cards.length === 0 ? (
           <p className="text-sm text-brown italic">No destinations yet.</p>
         ) : (
@@ -640,7 +640,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
       <div className="mb-5">
-        <h1 className="font-[family-name:var(--font-playfair)] text-display text-ink">Destinations</h1>
+        <h1 className="type-display">Destinations</h1>
       </div>
 
       <ExploreSearchBar />

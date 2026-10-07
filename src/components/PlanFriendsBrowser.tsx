@@ -72,7 +72,7 @@ export default function PlanFriendsBrowser({ plan, initialQuery, initialResults 
   }
 
   return <div className="mx-auto max-w-2xl px-4 py-6 pb-64 text-ink">
-    <h1 className="mt-5 font-[family-name:var(--font-playfair)] text-display">Browse friends’ places</h1>
+    <h1 className="type-display mt-5">Browse friends’ places</h1>
     <p className="mt-2 text-sm leading-relaxed text-muted">Pick places from several trips and add them to {plan.title} together. Keep browsing without leaving your plan.</p>
     <form className="mt-5" onSubmit={event => { event.preventDefault(); void search(query) }}>
       <label className="block text-sm font-semibold" htmlFor="friends-destination">City or destination</label>
@@ -87,7 +87,7 @@ export default function PlanFriendsBrowser({ plan, initialQuery, initialResults 
     {error && <p role="alert" className="mt-4 rounded-xl bg-danger/10 p-3 text-sm text-danger">{error}</p>}
     {success && <div role="status" className="mt-4 rounded-xl border border-mist-edge bg-mist p-4 text-sm"><p>{success}</p><Link href={`/plan/${plan.id}`} className="mt-2 inline-block font-semibold text-link underline">Open your plan →</Link><p className="mt-2 text-xs">New places are unscheduled, ready for your own notes and days.</p></div>}
     <div aria-busy={loading} className="mt-6 space-y-4">
-      <h2 className="text-lg font-semibold">{searchedQuery ? `Friends’ trips for ${searchedQuery}` : 'Find ideas from your friends'}</h2>
+      <h2 className="type-title">{searchedQuery ? `Friends’ trips for ${searchedQuery}` : 'Find ideas from your friends'}</h2>
       {!trips.length && !loading && !error && <p className="rounded-xl border border-dashed border-line p-5 text-sm text-muted">{searchedQuery ? 'No matching trips from the people you follow yet. Try another city or a broader destination.' : 'Enter a destination to see trips from the people you follow.'} <Link href="/friends" className="text-link underline">Find friends</Link></p>}
       {trips.map((trip, index) => {
         const available = trip.places.filter(place => !place.alreadyAdded)

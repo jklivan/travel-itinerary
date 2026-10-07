@@ -35,7 +35,7 @@ function Row({ href, name, count, photo, Icon }: { href: string; name: string; c
       </span>
     </span>
     <span className="min-w-0 flex-1">
-      <span className="block font-[family-name:var(--font-playfair)] text-sm uppercase leading-snug tracking-[0.14em] text-ink [overflow-wrap:anywhere]">{name}</span>
+      <span className="block font-[family-name:var(--font-playfair)] text-sm uppercase leading-snug tracking-label text-ink [overflow-wrap:anywhere]">{name}</span>
       <span className="mt-1 block text-sm text-muted">{count} {count === 1 ? 'trip' : 'trips'}</span>
     </span>
     <ChevronRight size={18} className="shrink-0 text-ink" />
