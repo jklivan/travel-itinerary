@@ -6,7 +6,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core'
 import { Keyboard } from '@capacitor/keyboard'
 import { useRouter } from 'next/navigation'
-import { ArrowUp, ArrowUpRight, Camera, Check, EyeOff, History, Hotel, Map as MapIcon, Maximize2, Minimize2, Plane, Plus, Sparkles, Users, Utensils, MapPin, SquarePen, X } from 'lucide-react'
+import { ArrowUp, ArrowUpRight, Camera, Check, ChevronRight, EyeOff, History, Hotel, Map as MapIcon, Maximize2, Minimize2, Plane, Plus, Sparkles, Users, Utensils, MapPin, SquarePen, X } from 'lucide-react'
 import styles from '../itinerary/[id]/places.module.css'
 import planningStyles from '../plan/[id]/Planner.module.css'
 import detailStyles from '@/components/PlaceDetailsCard.module.css'
@@ -32,6 +32,11 @@ const optionOf = (rec: Recommendation) => rec.tripOption || rec.country || rec.d
 
 // Order within each suggested destination: where to stay, then what to do, then where to eat.
 const sectionOrder = [{ type: 'hotel', label: 'Where to stay', Icon: Hotel }, { type: 'activity', label: 'Things to do', Icon: Camera }, { type: 'food_drink', label: 'Where to eat', Icon: Utensils }] as const
+// The AI marks names with **bold**; show them bold instead of as asterisks.
+function BoldText({ text }: { text: string }) {
+  return <>{text.split(/(\*\*[^*\n]+\*\*)/g).map((part, index) => part.startsWith('**') && part.endsWith('**') && part.length > 4 ? <strong key={index} className="font-semibold">{part.slice(2, -2)}</strong> : part)}</>
+}
+
 function groupByOption(recs: Recommendation[]) {
   const groups = new Map<string, Recommendation[]>()
   for (const rec of recs) groups.set(optionOf(rec), [...(groups.get(optionOf(rec)) ?? []), rec])
@@ -146,6 +151,10 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
     if (firstRender.current) {
       if (question && box && box.scrollHeight > box.clientHeight) box.scrollTop += question.getBoundingClientRect().top - box.getBoundingClientRect().top - 16
       else question?.scrollIntoView({ behavior: 'auto', block: 'start' })
+    } else if (!thinking && question && turns.at(-1)?.role === 'assistant') {
+      // A reply arrived: show it from the top (your question, then the reply), not the end of its cards.
+      if (box && box.scrollHeight > box.clientHeight) box.scrollTo({ top: box.scrollTop + question.getBoundingClientRect().top - box.getBoundingClientRect().top - 16, behavior: 'smooth' })
+      else question.scrollIntoView({ behavior: 'smooth', block: 'start' })
     } else if (box && box.scrollHeight > box.clientHeight) box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' })
     else endOfChat.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
     firstRender.current = false
@@ -259,15 +268,22 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
             ? <PreferencesSummary key={index} preferences={turn.preferences} />
             : turn.role === 'user'
             ? <p key={index} ref={index === lastQuestionIndex ? lastQuestion : undefined} className="ml-auto w-fit max-w-[85%] scroll-mt-28 whitespace-pre-wrap rounded-2xl rounded-br-sm bg-ink px-4 py-2 text-sm text-white">{turn.text}</p>
-            : <div key={index} className="space-y-3"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed">{turn.text}</p>
-              {groupByOption(turn.recommendations).map(([option, recs]) => <section key={option} aria-label={option} className="rounded-xl border-l-4 bg-cream py-3 pl-3 pr-2" style={{ borderColor: colorOf(recs[0]) }}>
-                <h3 className="font-[family-name:var(--font-playfair)] text-lg leading-tight" style={{ color: colorOf(recs[0]) }}>{option}</h3>
-                <p className="text-xs text-muted">{[...new Set(recs.map(rec => [rec.destination, rec.country].filter(Boolean).join(', ')))].join(' · ')}</p>
+            : <div key={index} className="space-y-3"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed"><BoldText text={turn.text} /></p>
+              {/* Each option folds up to its name, places and counts; tap to see its cards. A short single answer starts open. */}
+              {groupByOption(turn.recommendations).map(([option, recs], _i, options) => <details key={option} open={options.length === 1 && recs.length <= 4} className="group rounded-xl border-l-4 bg-cream py-3 pl-3 pr-2" style={{ borderColor: colorOf(recs[0]) }}>
+                <summary className="flex cursor-pointer list-none items-start gap-2 [&::-webkit-details-marker]:hidden">
+                  <ChevronRight size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-muted transition-transform group-open:rotate-90" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-[family-name:var(--font-playfair)] text-lg leading-tight" style={{ color: colorOf(recs[0]) }}>{option}</span>
+                    <span className="block text-xs text-muted">{(towns => towns.length > 3 ? `${towns.slice(0, 3).join(' · ')} & more` : towns.join(' · '))([...new Set(recs.map(rec => rec.destination.split(',')[0].trim()).filter(Boolean))])}</span>
+                    <span className="mt-0.5 block text-xs text-ink-soft">{([['hotel', 'hotel', 'hotels'], ['food_drink', 'restaurant', 'restaurants'], ['activity', 'thing to do', 'things to do']] as const).map(([type, one, many]) => { const n = recs.filter(rec => rec.type === type).length; return n ? `${n} ${n === 1 ? one : many}` : null }).filter(Boolean).join(' · ')}</span>
+                  </span>
+                </summary>
                 {sectionOrder.map(({ type, label, Icon }) => { const items = recs.filter(rec => rec.type === type); return items.length > 0 && <div key={type} className="mt-3">
                   <h4 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-link"><Icon size={13} />{label}</h4>
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-2">{items.map(rec => <RecommendationCard key={rec.key} rec={rec} color={colorOf(rec)} grouped added={inTrip(rec)} busy={adding === rec.key} disabled={adding !== null} onAdd={() => void add(rec)} />)}</div>
                 </div> })}
-              </section>)}
+              </details>)}
             </div>)}
           {thinking && <p className="text-sm text-muted">Postcard is looking through your trips…</p>}
         </div>
