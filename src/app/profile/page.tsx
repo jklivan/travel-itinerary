@@ -4,7 +4,7 @@ import MarkNotificationsRead from '@/components/MarkNotificationsRead'
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
-import { ChevronRight, Settings, Users, Map } from 'lucide-react'
+import { ChevronRight, Settings, Users } from 'lucide-react'
 import ItineraryCard from '@/components/ItineraryCard'
 import ProfilePhotoPicker from '@/components/ProfilePhotoPicker'
 import { tripPhotoGallery } from '@/lib/eventPhotos'
@@ -41,10 +41,6 @@ export default async function ProfilePage() {
       <Link href="/notifications" className="mt-2 inline-block text-sm text-link hover:underline">See all alerts →</Link>
     </section>
     <div className="mt-6 space-y-3">
-      <Link href="/trips" className="panel group flex min-h-20 items-center gap-4 p-4 hover:bg-paper">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Map size={22} /></span>
-        <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-title">My Trips</span><span className="mt-0.5 block text-sm text-muted">View your posts and plans</span></span><ChevronRight size={18} className="text-link" />
-      </Link>
       <Link href="/friends" className="panel group flex min-h-20 items-center gap-4 p-4 hover:bg-paper">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Users size={22} /></span>
         <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-title">Friends</span><span className="mt-0.5 block text-sm text-muted">{pending ? `${pending} friend request${pending === 1 ? '' : 's'} waiting` : 'Find friends & see who you follow'}</span></span>{pending > 0 && <span className="rounded-full bg-link px-2 py-1 text-xs font-semibold text-white">{pending}</span>}<ChevronRight size={18} className="text-link" />
