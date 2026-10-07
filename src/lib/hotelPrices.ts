@@ -59,49 +59,122 @@ type RatesResponse = {
   error?: { message?: string }
 }
 
-// Returns the text the planner reads as the tool result (JSON), or an error message.
+const words = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(word => word.length > 2 && !['hotel', 'resort', 'the', 'and', 'spa'].includes(word))
+// A nearby hotel is the one asked for when they share a distinctive word ("Bürgenstock Resort" / "Bürgenstock Hotel").
+const sameHotel = (asked: string, found: string) => { const wanted = words(asked); return wanted.length > 0 && words(found).some(word => wanted.includes(word)) }
+
+async function liteapi<T>(key: string, path: string, init?: RequestInit): Promise<{ ok: boolean; data: T }> {
+  const response = await fetch(`${LITEAPI}${path}`, { ...init, headers: { 'Content-Type': 'application/json', 'X-API-Key': key }, signal: AbortSignal.timeout(15_000) })
+  return { ok: response.ok, data: await response.json().catch(() => ({})) as T }
+}
+
+// Where a named hotel is, from Google Places (the hotel's own city in LiteAPI can differ from the one the traveler says,
+// e.g. Bürgenstock Resort is filed under Obbürgen, not Lucerne).
+async function locateHotel(name: string, city: string, country: string) {
+  const key = process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_PLACES_API
+  if (!key) return null
+  const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+    method: 'POST', signal: AbortSignal.timeout(8000),
+    headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': 'places.location' },
+    body: JSON.stringify({ textQuery: `${name}, ${city}, ${country}`, pageSize: 1 }),
+  }).catch(() => null)
+  const location = response?.ok ? ((await response.json()) as { places?: { location?: { latitude: number; longitude: number } }[] }).places?.[0]?.location : undefined
+  return location ? { latitude: location.latitude, longitude: location.longitude } : null
+}
+
+type Priced = { hotel: string; stars: number | null; guestRating: number | null; reviews: number | null; address: string | null; totalPrice: number; pricePerNight: number; currency: string; rooms: string[]; board: string | null; refundable: boolean }
+function pricedHotels(data: RatesResponse, nights: number, extraHotels: RatesResponse['hotels'] = []): Priced[] {
+  const hotels = new Map([...(data.hotels ?? []), ...(extraHotels ?? [])].map(hotel => [hotel.id, hotel]))
+  return (data.data ?? []).flatMap(entry => {
+    // Each hotel's cheapest offer for the dates; an offer covers all the rooms asked for, with one rate per room.
+    const cheapest = (entry.roomTypes ?? []).filter(room => room.offerRetailRate?.amount).sort((a, b) => a.offerRetailRate!.amount - b.offerRetailRate!.amount)[0]
+    if (!cheapest?.offerRetailRate) return []
+    const hotel = hotels.get(entry.hotelId)
+    const rates = cheapest.rates ?? []
+    const rate = rates[0]
+    return [{
+      hotel: hotel?.name ?? entry.hotelId, stars: hotel?.stars ?? null, guestRating: hotel?.rating ?? null, reviews: hotel?.review_count ?? null,
+      address: hotel?.address ?? null, totalPrice: Math.round(cheapest.offerRetailRate.amount), pricePerNight: Math.round(cheapest.offerRetailRate.amount / nights), currency: cheapest.offerRetailRate.currency,
+      rooms: rates.map(r => r.name ?? 'Room'), board: rate?.boardName ?? rate?.boardType ?? null, refundable: rates.length > 0 && rates.every(r => r.cancellationPolicies?.refundableTag === 'RFN'),
+    }]
+  })
+}
+
+type GoogleProperty = { name?: string; hotel_class?: string; extracted_hotel_class?: number; overall_rating?: number; reviews?: number; rate_per_night?: { extracted_lowest?: number }; total_rate?: { extracted_lowest?: number }; prices?: { source?: string; rate_per_night?: { extracted_lowest?: number } }[] }
+// Backup when LiteAPI has no price: Google Hotels' prices (from Booking.com, Expedia, the hotel's site…) via SerpApi.
+// Only with SERPAPI_KEY set. These can't be booked through Postcard.
+async function googleHotelPrices(input: Input, nights: number) {
+  const key = process.env.SERPAPI_KEY
+  if (!key) return null
+  const children = input.rooms.flatMap(room => room.children_ages ?? [])
+  const params = new URLSearchParams({
+    engine: 'google_hotels', api_key: key, q: input.hotel_name?.trim() ? `${input.hotel_name.trim()} ${input.city}` : `hotels in ${input.city}`,
+    check_in_date: input.checkin, check_out_date: input.checkout, adults: String(input.rooms.reduce((sum, room) => sum + room.adults, 0)),
+    currency: 'USD', gl: 'us', hl: 'en', ...(children.length ? { children: String(children.length), children_ages: children.join(',') } : {}),
+  })
+  const response = await fetch(`https://serpapi.com/search.json?${params}`, { signal: AbortSignal.timeout(15_000) }).catch(() => null)
+  if (!response?.ok) return null
+  const data = await response.json() as GoogleProperty & { properties?: GoogleProperty[] }
+  // A query naming one hotel can come back as that hotel's own page rather than a list.
+  const properties = data.properties ?? (data.name ? [data] : [])
+  return properties.flatMap(property => {
+    const perNight = property.rate_per_night?.extracted_lowest
+    if (!property.name || !perNight || (input.hotel_name?.trim() && !sameHotel(input.hotel_name, property.name))) return []
+    return [{
+      hotel: property.name, stars: property.extracted_hotel_class ?? null, guestRating: property.overall_rating ?? null, reviews: property.reviews ?? null,
+      pricePerNight: Math.round(perNight), totalPrice: Math.round(property.total_rate?.extracted_lowest ?? perNight * nights), currency: 'USD',
+      sources: (property.prices ?? []).flatMap(price => price.source && price.rate_per_night?.extracted_lowest ? [`${price.source} $${Math.round(price.rate_per_night.extracted_lowest)}`] : []).slice(0, 4),
+    }]
+  }).filter(hotel => !input.max_price_per_night || hotel.pricePerNight <= input.max_price_per_night)
+    .sort((a, b) => a.pricePerNight - b.pricePerNight).slice(0, 8)
+}
+
+// Returns the text the planner reads as the tool result (JSON), or an error message. LiteAPI first (bookable, earns
+// commission); a named hotel it can't find by city is looked up by its location; Google Hotels is the backup.
 export async function runHotelPrices(raw: unknown): Promise<{ content: string; isError?: boolean }> {
   const key = process.env.LITEAPI_KEY
   if (!key) return { content: 'Live hotel prices are not set up yet.', isError: true }
   const input = parseInput(raw)
   if (typeof input === 'string') return { content: input, isError: true }
   const nights = Math.round((Date.parse(input.checkout) - Date.parse(input.checkin)) / 86_400_000)
+  const name = input.hotel_name?.trim()
+  const stay = {
+    checkin: input.checkin, checkout: input.checkout, currency: 'USD', guestNationality: 'US',
+    occupancies: input.rooms.map(room => ({ adults: room.adults, ...(room.children_ages?.length ? { children: room.children_ages } : {}) })),
+    maxRatesPerHotel: 1, timeout: 8, includeHotelData: true,
+  }
+  const result = (provider: string, status: string, note: string, hotels: unknown[]) => ({ content: JSON.stringify({
+    provider, status, checkin: input.checkin, checkout: input.checkout, nights,
+    rooms: input.rooms.map(room => ({ adults: room.adults, children: room.children_ages?.length ?? 0 })), note, hotels,
+  }) })
   try {
-    const response = await fetch(`${LITEAPI}/hotels/rates`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-API-Key': key },
-      body: JSON.stringify({
-        cityName: input.city.trim(), countryCode: input.country_code.toUpperCase(),
-        ...(input.hotel_name?.trim() ? { hotelName: input.hotel_name.trim() } : {}),
-        checkin: input.checkin, checkout: input.checkout, currency: 'USD', guestNationality: 'US',
-        occupancies: input.rooms.map(room => ({ adults: room.adults, ...(room.children_ages?.length ? { children: room.children_ages } : {}) })),
-        limit: input.hotel_name?.trim() ? 10 : 60, maxRatesPerHotel: 1, timeout: 8, includeHotelData: true,
-      }),
-      signal: AbortSignal.timeout(15_000),
-    })
-    const data = await response.json().catch(() => ({})) as RatesResponse
-    if (!response.ok) return { content: `Price lookup failed: ${data.error?.message ?? response.status}`, isError: true }
-    const hotels = new Map((data.hotels ?? []).map(hotel => [hotel.id, hotel]))
-    const priced = (data.data ?? []).flatMap(entry => {
-      // Each hotel's cheapest offer for the dates; an offer covers all the rooms asked for, with one rate per room.
-      const cheapest = (entry.roomTypes ?? []).filter(room => room.offerRetailRate?.amount).sort((a, b) => a.offerRetailRate!.amount - b.offerRetailRate!.amount)[0]
-      if (!cheapest?.offerRetailRate) return []
-      const hotel = hotels.get(entry.hotelId)
-      const rates = cheapest.rates ?? []
-      const rate = rates[0]
-      const perNight = Math.round(cheapest.offerRetailRate.amount / nights)
-      return [{
-        hotel: hotel?.name ?? entry.hotelId, stars: hotel?.stars ?? null, guestRating: hotel?.rating ?? null, reviews: hotel?.review_count ?? null,
-        address: hotel?.address ?? null, totalPrice: Math.round(cheapest.offerRetailRate.amount), pricePerNight: perNight, currency: cheapest.offerRetailRate.currency,
-        rooms: rates.map(r => r.name ?? 'Room'), board: rate?.boardName ?? rate?.boardType ?? null, refundable: rates.length > 0 && rates.every(r => r.cancellationPolicies?.refundableTag === 'RFN'),
-      }]
-    }).filter(hotel => !input.max_price_per_night || hotel.pricePerNight <= input.max_price_per_night)
+    const first = await liteapi<RatesResponse>(key, '/hotels/rates', { method: 'POST', body: JSON.stringify({
+      ...stay, cityName: input.city.trim(), countryCode: input.country_code.toUpperCase(), ...(name ? { hotelName: name } : {}), limit: name ? 10 : 60,
+    }) })
+    if (!first.ok) return { content: `Price lookup failed: ${first.data.error?.message ?? 'LiteAPI error'}`, isError: true }
+    let priced = pricedHotels(first.data, nights)
+    // Whether LiteAPI has the named hotel at all, so "no rooms" (sold out) and "not on this feed" can be told apart.
+    let listed = !!name && (first.data.hotels ?? []).some(hotel => hotel.name && sameHotel(name, hotel.name))
+    if (name && !priced.length && !listed) {
+      const spot = await locateHotel(name, input.city, input.country_code)
+      if (spot) {
+        const nearby = await liteapi<{ data?: NonNullable<RatesResponse['hotels']> & { name?: string }[] }>(key, `/data/hotels?${new URLSearchParams({ countryCode: input.country_code.toUpperCase(), latitude: String(spot.latitude), longitude: String(spot.longitude), radius: '2000', limit: '50' })}`)
+        const matches = (nearby.data.data ?? []).filter(hotel => hotel.name && sameHotel(name, hotel.name))
+        listed = matches.length > 0
+        if (listed) {
+          const second = await liteapi<RatesResponse>(key, '/hotels/rates', { method: 'POST', body: JSON.stringify({ ...stay, hotelIds: matches.slice(0, 5).map(hotel => hotel.id) }) })
+          if (second.ok) priced = pricedHotels(second.data, nights, matches)
+        }
+      }
+    }
+    priced = priced.filter(hotel => !input.max_price_per_night || hotel.pricePerNight <= input.max_price_per_night)
       .sort((a, b) => a.pricePerNight - b.pricePerNight).slice(0, 8)
-    return { content: JSON.stringify({
-      checkin: input.checkin, checkout: input.checkout, nights, rooms: input.rooms.map(room => ({ adults: room.adults, children: room.children_ages?.length ?? 0 })),
-      note: 'Live rates for these dates from LiteAPI, cheapest first; prices cover all the rooms together and can change.',
-      hotels: priced,
-    }) }
+    if (priced.length) return result('liteapi', 'priced', 'Live rates for these dates from LiteAPI, cheapest first; prices cover all the rooms together, can be booked, and can change.', priced)
+
+    const why = name ? (listed ? 'LiteAPI has this hotel but no rooms for these dates and guests (often sold out, or not released yet).' : 'This hotel is not on LiteAPI\'s feed.') : 'LiteAPI had no rooms in this city for these dates and guests.'
+    const google = await googleHotelPrices(input, nights)
+    if (google?.length) return result('google_hotels', 'priced_elsewhere', `${why} Prices shown are Google Hotels' (from booking sites, per night for the whole group; may assume one room), for reference only: they can't be booked through Postcard.`, google)
+    return result('liteapi', name && listed ? 'no_availability' : name ? 'not_listed' : 'no_availability', `${why}${process.env.SERPAPI_KEY ? ' Google Hotels had no prices either.' : ''}`, [])
   } catch {
     return { content: 'The price lookup timed out. Try again or suggest checking the hotel directly.', isError: true }
   }
