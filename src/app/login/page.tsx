@@ -24,6 +24,7 @@ function LoginForm() {
         <div className="bg-cream rounded-2xl border border-sand p-6">
           <form action={action} className="space-y-4">
             <input type="hidden" name="saveTrip" value={tripId} />
+            {registered && <input type="hidden" name="registered" value="1" />}
             {registered && (
               <p className="text-sm text-link bg-mist border border-mist-line rounded-lg px-4 py-3">
                 Account created! Sign in to get started.

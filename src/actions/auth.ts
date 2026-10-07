@@ -38,12 +38,18 @@ export async function register(state: RegisterState, formData: FormData): Promis
 
 export type LoginState = { message?: string } | undefined
 
+// First sign-in after creating an account goes to the suggested people to follow (then on to the trip they were saving, if any).
+function loginDestination(tripId: string, justRegistered: boolean) {
+  if (justRegistered) return tripId ? `/welcome?saveTrip=${encodeURIComponent(tripId)}` : '/welcome'
+  return tripId ? `/itinerary/${tripId}` : '/'
+}
+
 export async function login(state: LoginState, formData: FormData): Promise<LoginState> {
   try {
     await signIn('credentials', {
       email: formData.get('email'),
       password: formData.get('password'),
-      redirectTo: saveTripId(formData.get('saveTrip')) ? `/itinerary/${saveTripId(formData.get('saveTrip'))}` : '/',
+      redirectTo: loginDestination(saveTripId(formData.get('saveTrip')), formData.get('registered') === '1'),
     })
   } catch (e) {
     if (e instanceof AuthError) {
