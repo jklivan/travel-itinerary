@@ -54,7 +54,7 @@ export default function SavedFolders({ userId, folders, selected, total, basePat
         })
       }}>
         <label className="block text-sm text-ink-soft">{editing === 'new' ? 'New folder name' : 'Folder name'}
-          <input autoFocus required maxLength={80} value={name} onChange={event => setName(event.target.value)} placeholder="Beach ideas" disabled={pending} className="mt-2 w-full rounded-lg border border-line-strong bg-white px-3 py-2" />
+          <input autoFocus required maxLength={80} value={name} onChange={event => setName(event.target.value)} placeholder="Beach ideas" disabled={pending} className="field mt-2" />
         </label>
         <div className="mt-2 flex gap-3 text-sm">
           <button disabled={pending} className="btn btn-primary">{pending ? 'Saving…' : editing === 'new' ? 'Create folder' : 'Save name'}</button>

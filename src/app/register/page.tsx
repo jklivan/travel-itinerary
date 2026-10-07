@@ -37,7 +37,7 @@ function RegisterForm() {
                 type="text"
                 autoComplete="name"
                 required
-                className="w-full rounded-lg border border-line-strong px-4 py-2.5 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-brown focus:border-transparent"
+                className="field"
                 placeholder="Jane Smith"
               />
               {state?.errors?.name && (
@@ -55,7 +55,7 @@ function RegisterForm() {
                 type="email"
                 autoComplete="email"
                 required
-                className="w-full rounded-lg border border-line-strong px-4 py-2.5 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-brown focus:border-transparent"
+                className="field"
                 placeholder="you@example.com"
               />
               {state?.errors?.email && (
@@ -73,7 +73,7 @@ function RegisterForm() {
                 type="password"
                 autoComplete="new-password"
                 required
-                className="w-full rounded-lg border border-line-strong px-4 py-2.5 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-brown focus:border-transparent"
+                className="field"
                 placeholder="Min. 8 characters"
               />
               {state?.errors?.password && (

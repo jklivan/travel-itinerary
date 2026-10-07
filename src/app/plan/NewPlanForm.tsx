@@ -13,7 +13,7 @@ import { saveImportNotes } from '@/actions/importNotes'
 import { readFileForUpload, fetchExtraction } from '@/lib/importFiles'
 import { importedPlaces } from '@/lib/planImport'
 
-export const inputClass = 'mt-1.5 w-full min-w-0 rounded-xl border border-line bg-card px-3 py-3 text-sm font-normal normal-case tracking-normal text-ink'
+export const inputClass = 'field mt-1.5'
 // The shared dark button (see .btn in globals.css).
 export const buttonClass = 'btn btn-primary'
 
@@ -38,7 +38,7 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
   // One destination uses "How many days?"; with several, each gets its own days box instead, and they add up.
   const multiStop = style === 'days' && moreDestinations.length > 0
   const stopTotal = stopDays.slice(0, moreDestinations.length + 1).reduce((sum, value) => sum + (Number(value) || 0), 0)
-  const stopDaysInput = (index: number, name: string) => multiStop && <input type="number" min={1} max={365} step={1} inputMode="numeric" required aria-label={`Days in ${name || `destination ${index + 1}`}`} value={stopDays[index] ?? ''} onChange={event => setStopDay(index, event.target.value)} placeholder="Days" className="mt-1.5 w-20 shrink-0 rounded-xl border border-line bg-card px-3 py-3 text-sm" />
+  const stopDaysInput = (index: number, name: string) => multiStop && <input type="number" min={1} max={365} step={1} inputMode="numeric" required aria-label={`Days in ${name || `destination ${index + 1}`}`} value={stopDays[index] ?? ''} onChange={event => setStopDay(index, event.target.value)} placeholder="Days" className="field mt-1.5 w-20 shrink-0" />
   const [audience, setAudience] = useState('family')
   // "Import notes or a file" opens here, under the buttons; places are read before the plan is made, so
   // notes with no places don't leave an empty plan behind.
@@ -123,7 +123,7 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
       <button type="button" aria-expanded={importOpen} aria-controls="new-plan-import" onClick={() => setImportOpen(open => !open)} className="btn btn-outline w-full">Import notes or a file</button>
       {importOpen && <div id="new-plan-import" className="space-y-4 rounded-xl border border-line p-4">
         <p className="text-sm text-muted">{destination.trim() ? <>Places from your notes go under <strong className="text-ink">{destination}</strong>. Each one shows its own town once it’s found on Google.</> : 'Add where you’re going above, then paste your notes or choose a file.'}</p>
-        <label className="block text-sm">Paste notes<textarea value={notes} onChange={event => { setNotes(event.target.value); setFile(null) }} maxLength={200000} rows={5} placeholder="Hotels, restaurants, activities…" className="mt-2 w-full rounded-xl border border-line bg-white p-3 text-base" /></label>
+        <label className="block text-sm">Paste notes<textarea value={notes} onChange={event => { setNotes(event.target.value); setFile(null) }} maxLength={200000} rows={5} placeholder="Hotels, restaurants, activities…" className="field mt-2" /></label>
         <label className="block text-sm">Or choose a file<input key={file?.name ?? 'empty'} type="file" accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.html,.htm,image/jpeg,image/png,image/gif,image/webp" onChange={event => setFile(event.target.files?.[0] ?? null)} className="mt-2 block w-full min-w-0 text-sm" /></label>
         {file && <p className="break-words text-xs text-muted">Selected: {file.name}</p>}
         <button type="submit" value="import" disabled={!destination.trim() || (!file && !notes.trim())} className={`${buttonClass} w-full`}>{stage || (destination.trim() ? 'Import and start planning →' : 'Add a destination first')}</button>

@@ -67,7 +67,7 @@ export default function SavedFolderGrid({ folders, total, allPhoto }: { folders:
       })
     }}>
       <label className="block text-sm text-ink-soft">New folder name
-        <input autoFocus required maxLength={80} value={name} onChange={event => setName(event.target.value)} placeholder="Ski trips" disabled={pending} className="mt-2 w-full rounded-lg border border-line-strong bg-white px-3 py-2" />
+        <input autoFocus required maxLength={80} value={name} onChange={event => setName(event.target.value)} placeholder="Ski trips" disabled={pending} className="field mt-2" />
       </label>
       <div className="mt-3 flex gap-3 text-sm">
         <button disabled={pending} className="btn btn-primary">{pending ? 'Creating…' : 'Create folder'}</button>
@@ -105,7 +105,7 @@ export function SavedFolderActions({ folder }: { folder: { id: string; name: str
       })
     }}>
       <label className="block text-sm text-ink-soft">Folder name
-        <input autoFocus required maxLength={80} value={name} onChange={event => setName(event.target.value)} disabled={pending} className="mt-2 w-full rounded-lg border border-line-strong bg-white px-3 py-2" />
+        <input autoFocus required maxLength={80} value={name} onChange={event => setName(event.target.value)} disabled={pending} className="field mt-2" />
       </label>
       <div className="mt-3 flex gap-3 text-sm">
         <button disabled={pending} className="btn btn-primary">{pending ? 'Saving…' : 'Save name'}</button>

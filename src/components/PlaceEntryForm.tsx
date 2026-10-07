@@ -16,7 +16,7 @@ export const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', '
 export const MEAL_EMOJI: Record<string, string> = {
   breakfast: '🍳', lunch: '☀️', dinner: '🌙', drinks: '🍹', coffee: '☕', dessert: '🍰', bakery: '🥐',
 }
-export const inputCls = 'w-full rounded-xl border border-line px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-link focus:border-transparent bg-white'
+export const inputCls = 'field'
 
 const FOOD_TAGS  = ['Worth the Hype', 'Great Food', 'Hidden Gem', 'Local Favorite', "Can't-Miss", 'Good for Groups', 'Family Friendly', 'Great Cocktails', 'Great Ambiance', 'Lively', 'Romantic', 'Casual', 'Outdoor Dining', 'Great Views']
 const HOTEL_TAGS = ['Great Service', 'Worth the Splurge', 'Great Value', 'Hidden Gem', 'Boutique', 'Luxury', 'Romantic', 'Family-Friendly', 'Great Location', 'Great Views', 'Amazing Spa']
@@ -82,9 +82,9 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
           <X size={16} />
         </button>
       </div>
-      {type === 'transport' ? <input aria-label="Transport name" maxLength={240} value={name} onChange={event => setName(event.target.value)} placeholder={cfg.placeholder} className={planning ? `${inputCls} !border-line focus:!ring-link` : inputCls} /> : <PlacesAutocomplete value={name} onChange={v => { setName(v); setPlaceId('') }}
+      {type === 'transport' ? <input aria-label="Transport name" maxLength={240} value={name} onChange={event => setName(event.target.value)} placeholder={cfg.placeholder} className={inputCls} /> : <PlacesAutocomplete value={name} onChange={v => { setName(v); setPlaceId('') }}
         onSelect={(_m, _s, pid) => { setPlaceId(pid ?? ''); setPlaceLocation(_s); setPlaceContext(JSON.stringify([city, type])) }}
-        aria-label="Place name" maxLength={240} type={cfg.placeType} placeholder={cfg.placeholder} className={planning ? `${inputCls} !border-line focus:!ring-link` : inputCls} city={city} />}
+        aria-label="Place name" maxLength={240} type={cfg.placeType} placeholder={cfg.placeholder} className={inputCls} city={city} />}
       {type !== 'transport' && placeId && placeContext === JSON.stringify([city, type]) && <PlacePeople key={placeId} placeId={placeId} name={name} location={[city, placeLocation].filter(Boolean).join(', ')} />}
       {type === 'food_drink' && (
         <div className="flex flex-wrap gap-1.5">
@@ -109,7 +109,7 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
       <div className="space-y-1">
         <p className="text-xs text-muted">Notes</p>
         <textarea aria-label="Notes" maxLength={8000} rows={4} value={notes} onChange={e => setNotes(e.target.value)}
-          placeholder={cfg.notesPh} className={planning ? `${inputCls} !border-line focus:!ring-link` : inputCls} />
+          placeholder={cfg.notesPh} className={inputCls} />
       </div>
       {/* Planning: rating and Must do / Avoid are optional here too, for places you've already been. */}
       {planning && <>

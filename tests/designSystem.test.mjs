@@ -57,3 +57,38 @@ test('buttons, corner rounding and shadows use the approved styles', () => {
   assert.deepEqual(handBuilt, [])
 })
 
+// Finds where a JSX tag ends, skipping over {…} and strings, so arrow functions inside don't cut it short.
+function tagEnd(text, i) {
+  let depth = 0, quote = null
+  for (; i < text.length; i++) {
+    const c = text[i]
+    if (quote) { if (c === quote && text[i - 1] !== '\\') quote = null; continue }
+    if (c === '"' || c === '`' || (c === "'" && depth)) { quote = c; continue }
+    if (c === '{') depth++
+    else if (c === '}') depth--
+    else if (c === '>' && depth === 0) return i
+  }
+  return text.length
+}
+// Fields allowed to look their own way: the search boxes (ui/SearchField and the Explore landing pill) and the
+// snapshot composer, whose fields are styled to match in Stories.module.css.
+const FIELD_EXCEPTIONS = ['components/ui/SearchField', 'components/ExploreLanding', 'components/StoryComposer', 'components/PostTripDialog']
+
+test('text boxes, note boxes and dropdowns use the shared field style', () => {
+  const handBuilt = tsx.flatMap(path => {
+    const name = path.replace(root, ''), text = readFileSync(path, 'utf8')
+    if (FIELD_EXCEPTIONS.some(prefix => name.startsWith(prefix))) return []
+    return [...text.matchAll(/<(input|textarea|select)\b/g)].flatMap(m => {
+      const tag = text.slice(m.index, tagEnd(text, m.index + 1))
+      if (/type="(?:checkbox|radio|hidden|file|range)"/.test(tag)) return []
+      const cls = tag.match(/className=("[^"]*"|\{`[^`]*`\}|\{[^{}]*\})/)?.[1] ?? '(no className)'
+      // `field` directly, or a shared constant that is `field` (inputClass, inputCls, subInputCls), or a passed-in className.
+      return /(?<![\w-])field(?![\w-])|\{`?\$?\{?(?:inputClass|inputCls|subInputCls|className)\b/.test(cls) ? [] : [`${name}:${text.slice(0, m.index).split('\n').length} ${cls}`]
+    })
+  })
+  assert.deepEqual(handBuilt, [])
+  // The shared constants really are the shared style.
+  for (const [file, name] of [['app/plan/NewPlanForm.tsx', 'inputClass'], ['components/PlaceEditForm.tsx', 'inputCls'], ['components/PlaceEditForm.tsx', 'subInputCls'], ['components/PlaceEntryForm.tsx', 'inputCls']])
+    assert.match(readFileSync(root + file, 'utf8'), new RegExp(`export const ${name} = '(?:[\\w.-]+ )*field(?: [\\w.-]+)*'`), `${file} ${name}`)
+})
+

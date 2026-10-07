@@ -45,7 +45,7 @@ function LoginForm() {
                 type="email"
                 autoComplete="email"
                 required
-                className="w-full rounded-lg border border-line-strong px-4 py-2.5 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-brown focus:border-transparent"
+                className="field"
                 placeholder="you@example.com"
               />
             </div>
@@ -60,7 +60,7 @@ function LoginForm() {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="w-full rounded-lg border border-line-strong px-4 py-2.5 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-brown focus:border-transparent"
+                className="field"
                 placeholder="••••••••"
               />
             </div>

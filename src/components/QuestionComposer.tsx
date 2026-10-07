@@ -47,7 +47,7 @@ export default function QuestionComposer({ questionId }: { questionId?: string }
     })
   }}>
     <label className="block text-sm font-semibold text-ink">{questionId ? 'Your reply' : 'What would you like to ask?'}
-      <textarea required maxLength={4000} rows={3} disabled={pending} value={content} onChange={event => { setContent(event.target.value); clientId.current = null }} placeholder={questionId ? 'Share your advice or recommend a trip…' : 'Any favorite places to stay in Portugal with kids?'} className="mt-2 w-full rounded-xl border-2 border-mist-edge bg-card p-3 text-base font-normal text-ink focus:outline-none focus:ring-2 focus:ring-link/25" />
+      <textarea required maxLength={4000} rows={3} disabled={pending} value={content} onChange={event => { setContent(event.target.value); clientId.current = null }} placeholder={questionId ? 'Share your advice or recommend a trip…' : 'Any favorite places to stay in Portugal with kids?'} className="field mt-2" />
     </label>
     {trip ? <div className="space-y-2">
       <MessageAttachment kind="trip" name={trip.title} trip={`By ${trip.user.name}`} href={`/itinerary/${trip.id}`} />
@@ -63,6 +63,6 @@ export default function QuestionComposer({ questionId }: { questionId?: string }
     </div>}
     <p className="text-xs leading-relaxed text-brown">{questionId ? 'Your reply is visible to everyone who can see this question.' : 'Visible to you and the people you follow. They can read and reply to the whole discussion.'}</p>
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}
-    <button disabled={pending || searching || !content.trim()} className="btn btn-primary">{pending ? 'Posting…' : questionId ? 'Post reply' : 'Ask your friends'}</button>
+    <button disabled={pending || searching || !content.trim()} className="btn btn-primary btn-sm">{pending ? 'Posting…' : questionId ? 'Post reply' : 'Ask your friends'}</button>
   </form>
 }

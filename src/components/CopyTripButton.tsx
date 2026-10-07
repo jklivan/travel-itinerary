@@ -37,7 +37,7 @@ export default function CopyTripButton({ itineraryId, title, isOwn }: { itinerar
         finally { saving.current = false; setBusy(false) }
       }}>
         <fieldset disabled={busy} className="space-y-4">
-          <label className="block text-sm font-semibold">New trip name<input autoFocus required maxLength={160} value={name} onChange={event => setName(event.target.value)} className="mt-2 w-full rounded-xl border border-mist-edge bg-white p-3 text-base font-normal" /></label>
+          <label className="block text-sm font-semibold">New trip name<input autoFocus required maxLength={160} value={name} onChange={event => setName(event.target.value)} className="field mt-2" /></label>
           <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={keepDays} onChange={event => setKeepDays(event.target.checked)} className="h-5 w-5 accent-link" />Keep the day-by-day layout</label>
           {isOwn && <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={keepNotes} onChange={event => setKeepNotes(event.target.checked)} className="h-5 w-5 accent-link" />Include my notes</label>}
           <p className="text-xs leading-relaxed text-muted">Places start as Considering with flexible dates. Photos and ratings stay with the original visit{isOwn ? '.' : ', along with the author’s notes.'}</p>

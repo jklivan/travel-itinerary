@@ -63,14 +63,14 @@ export default function SavedFolderPicker({ itineraryId, label = 'Save to folder
           })
         }}>
           <label className="block text-sm">Folder
-            <select value={folderId} onChange={event => setFolderId(event.target.value)} disabled={!loaded || pending} className="mt-2 w-full rounded-lg border border-line-strong bg-white p-3">
+            <select value={folderId} onChange={event => setFolderId(event.target.value)} disabled={!loaded || pending} className="field mt-2">
               <option value="">All saved only</option>
               {folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
               <option value="new">+ Create new folder</option>
             </select>
           </label>
           {folderId === 'new' && <label className="mt-4 block text-sm">New folder name
-            <input autoFocus required maxLength={80} value={name} onChange={event => setName(event.target.value)} placeholder="Beach ideas" disabled={pending} className="mt-2 w-full rounded-lg border border-line-strong bg-white p-3" />
+            <input autoFocus required maxLength={80} value={name} onChange={event => setName(event.target.value)} placeholder="Beach ideas" disabled={pending} className="field mt-2" />
           </label>}
           <p className="mt-3 text-xs text-brown">Folders are only visible to you. Trips also appear in All saved.</p>
           {error && <p role="alert" className="mt-3 text-sm text-danger">{error}</p>}

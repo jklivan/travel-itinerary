@@ -117,6 +117,14 @@
     .stamp-sm .stamp-inner { padding-top: .4rem; padding-bottom: .24rem; }
   }
 
+  /* Every text box, note box and dropdown. Add layout utilities (mt-2, w-20, flex-1) only. Phones get 16px text
+     (see the iOS rule below) so tapping a box doesn't zoom. */
+  .field { display: block; width: 100%; min-width: 0; min-height: 2.75rem; border: 1px solid var(--color-line); border-radius: .75rem; background: var(--color-card); padding: .625rem .75rem; font-size: .875rem; font-weight: 400; line-height: 1.4; letter-spacing: normal; text-transform: none; color: var(--color-ink); transition: border-color .15s, box-shadow .15s; }
+  .field::placeholder { color: var(--color-muted); }
+  .field:focus { outline: none; border-color: var(--color-link); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-link) 18%, transparent); }
+  .field:disabled { opacity: .6; }
+  textarea.field { line-height: 1.5; resize: vertical; }
+
   /* Form section labels (small spaced capitals), e.g. the new-plan form. */
   .field-label { font-size: .75rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--color-link); }
 

@@ -31,16 +31,11 @@ export default async function Navbar() {
               </Link>
             </>
           ) : (
-            <>
-              <Link href="/login"
-                className="text-xs text-ink/80 hover:text-ink transition-colors">
-                Sign in
-              </Link>
-              <Link href="/register"
-                className="btn btn-primary btn-sm">
-                Get started
-              </Link>
-            </>
+            // Just Sign in: the welcome screen already asks new visitors to sign up.
+            <Link href="/login"
+              className="text-xs text-ink/80 hover:text-ink transition-colors">
+              Sign in
+            </Link>
           )}
         </div>
       </div>

@@ -152,7 +152,7 @@ export default async function UserProfilePage({
         )}
       </div>}
 
-      {!isOwn && <Link href={`/messages/${id}`} className="btn btn-primary mb-5">Send private message</Link>}
+      {!isOwn && <Link href={`/messages/${id}`} className="btn btn-primary btn-sm mb-5">Send message</Link>}
 
       {isOwn && !showBucket ? (
         <>

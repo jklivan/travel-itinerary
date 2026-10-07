@@ -136,7 +136,7 @@ export default function ExploreTripFilters({
                 onChange={e => setLocation(e.target.value)}
                 placeholder="e.g. Europe, Japan, beach…"
                 disabled={pending}
-                className="w-full rounded-full border border-line-strong bg-card pl-9 pr-4 py-2.5 text-sm text-ink placeholder:text-line-strong focus:outline-2 focus:outline-link disabled:opacity-60"
+                className="field pl-9"
               />
             </div>
           </div>

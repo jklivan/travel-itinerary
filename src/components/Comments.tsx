@@ -61,7 +61,7 @@ export function CommentInput({
         aria-label={onCancel ? 'Your reply' : 'Your comment'}
         autoFocus={autoFocus}
         rows={3}
-        className="w-full text-sm text-ink bg-card border-2 border-mist-edge rounded-xl px-3 py-3 shadow-card placeholder:text-muted resize-y focus:outline-none focus:ring-2 focus:ring-link/25 focus:border-link transition-colors"
+        className="field"
         onKeyDown={(e) => {
           if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit()
         }}

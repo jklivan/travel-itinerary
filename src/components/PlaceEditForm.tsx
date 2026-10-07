@@ -23,8 +23,8 @@ export type PlaceEditValues = {
   address: string
 }
 
-export const inputCls = 'w-full rounded-xl border border-line-soft px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-link focus:border-transparent bg-card'
-export const subInputCls = 'w-full rounded-xl border border-line-soft px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-link bg-card'
+export const inputCls = 'field'
+export const subInputCls = 'field'
 
 export const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] as const
 export const MEAL_EMOJI: Record<string, string> = {

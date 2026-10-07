@@ -111,7 +111,7 @@ export default function BucketButton({
           </div>
           <form onSubmit={saveWithFolder}>
             <label className="block text-sm">Save to folder <span className="text-brown">(optional)</span>
-              <select value={folderId} onChange={event => setFolderId(event.target.value)} disabled={!foldersLoaded || pending} className="mt-2 w-full rounded-lg border border-line-strong bg-white p-3">
+              <select value={folderId} onChange={event => setFolderId(event.target.value)} disabled={!foldersLoaded || pending} className="field mt-2">
                 <option value="">All saved</option>
                 {folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
               </select>

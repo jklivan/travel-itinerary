@@ -51,11 +51,11 @@ export default function MessageComposer({ recipientId, itineraryId, attachment, 
       <button type="button" disabled={pending} className="text-xs text-brown underline" onClick={() => { setSelected(undefined); setShowPicker(false); clientId.current = null }}>Remove attachment</button>
     </div>}
     <label className="block text-sm font-medium text-ink">Private message
-      <textarea ref={textarea} required={!selected} maxLength={4000} rows={4} value={content} disabled={pending} onChange={event => { setContent(event.target.value); clientId.current = null }} placeholder={replyTo ? 'Write your reply…' : 'Write a message…'} className="mt-2 w-full rounded-xl border-2 border-mist-edge bg-card p-3 text-base leading-relaxed placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-link/25 focus:border-link" />
+      <textarea ref={textarea} required={!selected} maxLength={4000} rows={4} value={content} disabled={pending} onChange={event => { setContent(event.target.value); clientId.current = null }} placeholder={replyTo ? 'Write your reply…' : 'Write a message…'} className="field mt-2" />
     </label>
     {/* Send right under the message, since that's what you usually want; attaching a trip is the extra. */}
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <button disabled={pending || (!content.trim() && !selected)} className="btn btn-primary">{pending ? 'Sending…' : 'Send message'}</button>
+      <button disabled={pending || (!content.trim() && !selected)} className="btn btn-primary btn-sm">{pending ? 'Sending…' : 'Send message'}</button>
       <button type="button" aria-label="Attach an itinerary" aria-expanded={showPicker} disabled={pending} onClick={() => setShowPicker(value => !value)} className="chip"><Plus size={14} />Add itinerary</button>
     </div>
     {showPicker && <ItineraryAttachmentPicker disabled={pending} onSelect={trip => { onClearReply?.(); setSelected({ id: trip.id, name: trip.title, kind: 'trip' }); setShowPicker(false); clientId.current = null }} />}

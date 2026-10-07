@@ -758,7 +758,7 @@ export default async function ItineraryPage({
             />}
             {!isOwn && <div className="mt-6 border-t border-line-strong pt-6">
               <h2 className="type-label mb-2">Have a question about this trip?</h2>
-              <Link href={`/messages/${it.user.id}?trip=${encodeURIComponent(it.id)}`} className="btn btn-primary">Message {it.user.name} privately</Link>
+              <Link href={`/messages/${it.user.id}?trip=${encodeURIComponent(it.id)}`} className="btn btn-primary btn-sm">Message {it.user.name} privately</Link>
             </div>}
           </>
         )}
