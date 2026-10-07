@@ -16,7 +16,7 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
       <header className="relative mb-5 px-1">
         <h1 id="start-planning-heading" className="max-w-sm pr-20 sm:pr-8 font-[family-name:var(--font-playfair)] text-4xl uppercase leading-[0.98] tracking-[0.03em] text-ink">Your next trip starts here</h1>
         <PostcardLogo size={84} className="absolute -top-1 right-0 rotate-[8deg]" />
-        <p className="mt-2 text-sm text-muted">{posting ? 'Add your places, then post it when you’re ready.' : 'Collect places now. Work out the details later.'}</p>
+        <p className="mt-2 text-sm text-muted">{posting ? 'Add your places, then post it when you’re ready.' : 'Collect places now. Add details later.'}</p>
       </header>
       {!posting && <Link href="/testplan" className="group mb-5 flex items-center gap-3 rounded-2xl border border-mist-line bg-mist p-4 text-ink transition-colors hover:bg-mist-strong">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Sparkles size={20} /></span>
