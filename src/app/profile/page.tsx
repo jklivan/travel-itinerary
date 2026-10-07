@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import NotificationList from '@/components/NotificationList'
+import MarkNotificationsRead from '@/components/MarkNotificationsRead'
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
@@ -31,7 +33,14 @@ export default async function ProfilePage() {
         <Link href="/settings" aria-label="Settings" className="btn-icon"><Settings size={19} /></Link>
       </div>
     </section>
-    <div className="mt-5 space-y-3">
+    {/* Alerts: likes, comments, saves, new followers, new trips from people you follow, Ask your friends posts.
+        The profile icon in the header shows a red dot while any are unread. */}
+    <section className="mt-6" aria-labelledby="alerts-heading">
+      <div className="mb-3 flex items-center justify-between gap-3"><h2 id="alerts-heading" className="type-title">Alerts</h2><MarkNotificationsRead /></div>
+      <NotificationList userId={userId} alertsOnly take={5} empty="Likes, comments, new followers and trips from people you follow show up here." />
+      <Link href="/notifications" className="mt-2 inline-block text-sm text-link hover:underline">See all alerts →</Link>
+    </section>
+    <div className="mt-6 space-y-3">
       <Link href="/trips" className="panel group flex min-h-20 items-center gap-4 p-4 hover:bg-paper">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Map size={22} /></span>
         <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-title">My Trips</span><span className="mt-0.5 block text-sm text-muted">View your posts and plans</span></span><ChevronRight size={20} className="text-link" />

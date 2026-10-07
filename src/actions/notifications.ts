@@ -10,12 +10,13 @@ import { notificationPath, forumNotificationWhere, forumReplyNotificationWhere }
 
 export async function notificationStatus() {
   const session = await auth()
-  if (!session?.user?.id) return { unread: 0, unreadMessages: 0, pushReady: false }
+  if (!session?.user?.id) return { unread: 0, unreadMessages: 0, unreadAlerts: 0, pushReady: false }
   const [unread, unreadMessages] = await Promise.all([
     prisma.notification.count({ where: { recipientId: session.user.id, readAt: null, OR: [forumReplyNotificationWhere(session.user.id), forumNotificationWhere(session.user.id), { kind: 'message', messageId: { not: null } }, { kind: 'follow' }, { itinerary: { visibility: { not: 'draft' } } }] } }),
     prisma.notification.count({ where: { recipientId: session.user.id, readAt: null, OR: [{ kind: 'message', messageId: { not: null } }, forumReplyNotificationWhere(session.user.id)] } }),
   ])
-  return { unread, unreadMessages, pushReady: pushConfigured() }
+  // Alerts (shown on Profile, red dot on the profile icon) are everything except messages and replies to your questions.
+  return { unread, unreadMessages, unreadAlerts: Math.max(0, unread - unreadMessages), pushReady: pushConfigured() }
 }
 
 export async function registerPushDevice(token: string) {
@@ -47,6 +48,7 @@ export async function markAllNotificationsRead() {
   await prisma.notification.updateMany({ where: { recipientId: session.user.id, readAt: null }, data: { readAt: new Date() } })
   revalidatePath('/notifications')
   revalidatePath('/messages')
+  revalidatePath('/profile')
 }
 
 export async function openNotification(form: FormData) {

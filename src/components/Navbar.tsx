@@ -2,8 +2,8 @@ import Link from 'next/link'
 import PostcardBrand from './PostcardBrand'
 import { auth } from '@/auth'
 import HeaderMessagesLink from './HeaderMessagesLink'
+import HeaderProfileLink from './HeaderProfileLink'
 import HeaderLeft from './HeaderLeft'
-import { User } from 'lucide-react'
 
 export default async function Navbar() {
   const session = await auth()
@@ -25,10 +25,7 @@ export default async function Navbar() {
                 className="text-xs text-ink/80 hover:text-ink px-3 py-1.5 rounded-lg transition-colors hidden sm:block">
                 Settings
               </Link>
-              <Link href="/profile" aria-label="Profile"
-                className="flex size-10 shrink-0 items-center justify-center rounded-full text-ink hover:bg-ink/10 transition-colors sm:size-11">
-                <User size={22} />
-              </Link>
+              <HeaderProfileLink />
             </>
           ) : (
             // Just Sign in: the welcome screen already asks new visitors to sign up.

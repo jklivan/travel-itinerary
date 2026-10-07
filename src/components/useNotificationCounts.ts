@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { notificationStatus } from '@/actions/notifications'
 
 export default function useNotificationCounts() {
-  const [counts, setCounts] = useState({ unread: 0, unreadMessages: 0 })
+  const [counts, setCounts] = useState({ unread: 0, unreadMessages: 0, unreadAlerts: 0 })
   const pathname = usePathname()
   useEffect(() => {
     let active = true
@@ -15,7 +15,7 @@ export default function useNotificationCounts() {
       const current = ++revision
       try {
         const status = await notificationStatus()
-        if (active && current === revision) setCounts({ unread: status.unread, unreadMessages: status.unreadMessages })
+        if (active && current === revision) setCounts({ unread: status.unread, unreadMessages: status.unreadMessages, unreadAlerts: status.unreadAlerts })
       } catch { /* Keep the last known count when offline. */ }
     }
     void refresh()
