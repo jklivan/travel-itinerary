@@ -33,7 +33,7 @@ export async function getMessageInbox() {
     where: { OR: [{ senderId: userId }, { recipientId: userId }] },
     distinct: ['senderId', 'recipientId', 'itineraryId'],
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    include: { sender: { select: { id: true, name: true } }, recipient: { select: { id: true, name: true } } },
+    include: { sender: { select: { id: true, name: true, image: true } }, recipient: { select: { id: true, name: true, image: true } } },
   })
   // Messages to you that you haven't opened yet (their notification is unread), counted per conversation.
   const unread = await prisma.notification.findMany({
