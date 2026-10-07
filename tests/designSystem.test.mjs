@@ -34,4 +34,11 @@ test('letter spacing and headings use the approved styles', () => {
   const headings = problems(tsx, /<h[1-4](?:\s[^>]*?)?\sclassName="[^"]*"/g).filter(line => !/\b(type-(display|title|card|body|meta|label|micro)|page-title|trip-title|sr-only)\b/.test(line))
   assert.deepEqual(headings, [])
 })
+test('buttons, corner rounding and shadows use the approved styles', () => {
+  // Shadows: shadow-card, shadow-pop, shadow-nav (or none). Rounding: lg, xl, 2xl, full, and corner variants.
+  assert.deepEqual(problems(tsx, /(?<![\w-])shadow(?:-(?:sm|md|lg|xl|2xl)|-\[[^\]]+\])?(?![\w\[-])/g).filter(line => !/transition-shadow|drop-shadow|box-shadow/.test(line)), [])
+  assert.deepEqual(problems(tsx, /(?<![\w-])rounded(?:-(?:sm|md|3xl|\[[^\]]+\]))?(?![\w\[-])/g), [])
+  // Solid filled pill buttons are the shared btn styles, not hand-built.
+  assert.deepEqual(problems(tsx, /<(?:button|Link)\b[^>]*className="(?![^"]*\bbtn\b)[^"]*\brounded-full\b[^"]*(?<![:\w-])bg-(?:ink|link|danger)(?![\w/-])[^"]*"/g).filter(line => !line.startsWith('components/WelcomeScreen')), [])
+})
 

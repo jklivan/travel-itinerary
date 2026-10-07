@@ -115,7 +115,7 @@ export function SavedFolderActions({ folder }: { folder: { id: string; name: str
     {mode === 'delete' && <div className="rounded-xl border border-line-soft bg-card p-4 text-sm text-ink-soft">
       <p>Delete “{folder.name}”? Its trips will stay in All saved.</p>
       <div className="mt-3 flex gap-3">
-        <button type="button" disabled={pending} className="rounded-lg bg-danger px-3 py-2 text-white disabled:opacity-50" onClick={() => {
+        <button type="button" disabled={pending} className="btn btn-danger btn-sm" onClick={() => {
           setError('')
           startTransition(async () => {
             try {

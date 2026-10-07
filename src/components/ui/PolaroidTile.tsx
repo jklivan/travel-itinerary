@@ -11,7 +11,7 @@ export default function PolaroidTile({ photo, label, selected = false, index = 0
   photo: string; label: string; selected?: boolean; index?: number; dimmed?: boolean; trailing?: 'tick' | 'arrow'; size?: 'sm' | 'lg'; photoPosition?: string; photoSize?: string; labelStyle?: 'caps' | 'serif'
 }) {
   return <span style={{ transform: `rotate(${TILTS[index % TILTS.length]}deg)` }} className={[
-    'block select-none border bg-card text-left shadow-[0_3px_8px_rgba(45,38,27,0.16)] transition-all',
+    'block select-none border bg-card text-left shadow-card transition-all',
     size === 'lg' ? 'p-1.5 pb-0' : 'p-1 pb-0',
     selected ? 'border-link ring-2 ring-link' : 'border-line-soft',
     dimmed ? 'opacity-60' : '',

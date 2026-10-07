@@ -28,7 +28,7 @@ export default async function ProfilePage() {
           <h1 className="type-title mt-1 break-words">{user.name}</h1>
           <p className="mt-1 text-xs text-link">{followers} followers · {following} following</p>
         </div>
-        <Link href="/settings" aria-label="Settings" className="flex size-11 shrink-0 items-center justify-center rounded-full border border-mist-line text-link hover:bg-white/60"><Settings size={19} /></Link>
+        <Link href="/settings" aria-label="Settings" className="btn-icon"><Settings size={19} /></Link>
       </div>
     </section>
     <div className="mt-5 space-y-3">

@@ -255,7 +255,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
 
       {/* Between the trip card and the chat: start over, or (on phones) open a past conversation. */}
       <div className="flex gap-2">
-        <button type="button" disabled={thinking} onClick={startNewChat} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-mist-edge bg-card px-4 text-sm font-semibold text-ink disabled:opacity-50"><SquarePen size={16} />Start a new chat</button>
+        <button type="button" disabled={thinking} onClick={startNewChat} className="btn btn-outline flex-1"><SquarePen size={16} />Start a new chat</button>
         {history.length > 0 && <button type="button" onClick={() => setShowHistory(value => !value)} aria-expanded={showHistory} aria-controls="past-chats-phone" className="btn btn-outline lg:hidden"><History size={16} />Past chats</button>}
       </div>
       {showHistory && history.length > 0 && <div id="past-chats-phone" className="panel p-2 lg:hidden"><p className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-link">Past chats</p><PastChats history={history} currentId={chat?.id} limit={5} /></div>}
@@ -290,7 +290,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
         {error && <p role="alert" className="px-4 pb-2 text-sm text-danger">{error}</p>}
         <div ref={endOfChat} aria-hidden="true" style={{ scrollMarginBottom: 'calc(var(--app-bottom-clearance) + 4.5rem)' }} />
         {/* On phones the composer sticks just above the bottom navigation so it is always reachable. */}
-        <form ref={form} style={pinnedTop === null ? undefined : { position: 'fixed', top: pinnedTop, left: 12, right: 12, bottom: 'auto', zIndex: 60 }} className={`sticky bottom-[calc(var(--app-bottom-clearance)-0.75rem)] z-10 flex items-end gap-2 border-t border-line-soft bg-card p-3 lg:static ${pinnedTop === null ? 'rounded-b-2xl' : 'rounded-2xl border shadow-lg'}`} onSubmit={event => { event.preventDefault(); void send(draft) }}>
+        <form ref={form} style={pinnedTop === null ? undefined : { position: 'fixed', top: pinnedTop, left: 12, right: 12, bottom: 'auto', zIndex: 60 }} className={`sticky bottom-[calc(var(--app-bottom-clearance)-0.75rem)] z-10 flex items-end gap-2 border-t border-line-soft bg-card p-3 lg:static ${pinnedTop === null ? 'rounded-b-2xl' : 'rounded-2xl border shadow-pop'}`} onSubmit={event => { event.preventDefault(); void send(draft) }}>
           <textarea ref={composer} autoFocus={!!initialDraft} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(draft) } }} rows={1} maxLength={4000} placeholder="Ask about a place or a trip…" aria-label="Message Postcard" className="max-h-40 min-h-11 flex-1 resize-none overflow-y-auto rounded-xl border border-line bg-white px-3 py-2.5 text-base lg:text-sm outline-none focus:border-link" />
           <button type="submit" disabled={thinking || !draft.trim()} aria-label="Send" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ink text-white disabled:opacity-40"><ArrowUp size={18} /></button>
         </form>
@@ -300,12 +300,12 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
     {mapView === 'hidden' || (mapView === 'auto' && !wide) ? null
     : <section aria-label="Map" className={`relative isolate order-first overflow-hidden rounded-2xl border border-line bg-card lg:order-none lg:h-auto ${mapView === 'small' ? 'h-[22dvh]' : 'h-[32dvh]'}`}>
       <div className="absolute right-3 top-3 z-[1000] flex gap-1.5">
-        <button type="button" onClick={() => setMapView(mapView === 'small' ? 'normal' : 'small')} aria-label={mapView === 'small' ? 'Restore map size' : 'Shrink map'} title={mapView === 'small' ? 'Restore map size' : 'Shrink map'} className="flex size-9 items-center justify-center rounded-lg border border-line bg-card/95 text-ink shadow-sm hover:bg-white">{mapView === 'small' ? <Maximize2 size={16} /> : <Minimize2 size={16} />}</button>
-        <button type="button" onClick={() => setMapView('hidden')} aria-label="Hide map" title="Hide map" className="flex size-9 items-center justify-center rounded-lg border border-line bg-card/95 text-ink shadow-sm hover:bg-white"><EyeOff size={16} /></button>
+        <button type="button" onClick={() => setMapView(mapView === 'small' ? 'normal' : 'small')} aria-label={mapView === 'small' ? 'Restore map size' : 'Shrink map'} title={mapView === 'small' ? 'Restore map size' : 'Shrink map'} className="flex size-9 items-center justify-center rounded-lg border border-line bg-card/95 text-ink shadow-card hover:bg-white">{mapView === 'small' ? <Maximize2 size={16} /> : <Minimize2 size={16} />}</button>
+        <button type="button" onClick={() => setMapView('hidden')} aria-label="Hide map" title="Hide map" className="flex size-9 items-center justify-center rounded-lg border border-line bg-card/95 text-ink shadow-card hover:bg-white"><EyeOff size={16} /></button>
       </div>
       <TripMap places={mapPlaces} />
-      {legend.length > 0 && <div aria-label="Trip ideas on the map" className="absolute bottom-3 left-3 z-[1000] max-w-[70%] space-y-1 rounded-xl bg-card/95 px-3 py-2 text-xs shadow-md">
-        {legend.map(option => <p key={option} className="flex items-center gap-2"><span aria-hidden="true" className="size-3 shrink-0 rounded-full border-2 border-white shadow" style={{ background: optionColors[options.indexOf(option) % optionColors.length] }} /><span className="truncate">{option}</span></p>)}
+      {legend.length > 0 && <div aria-label="Trip ideas on the map" className="absolute bottom-3 left-3 z-[1000] max-w-[70%] space-y-1 rounded-xl bg-card/95 px-3 py-2 text-xs shadow-card">
+        {legend.map(option => <p key={option} className="flex items-center gap-2"><span aria-hidden="true" className="size-3 shrink-0 rounded-full border-2 border-white shadow-card" style={{ background: optionColors[options.indexOf(option) % optionColors.length] }} /><span className="truncate">{option}</span></p>)}
       </div>}
     </section>}
   </div>
@@ -314,8 +314,8 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
 function RecommendationCard({ rec, color, grouped = false, added, busy, disabled, onAdd }: { rec: Recommendation; color: string; grouped?: boolean; added: boolean; busy: boolean; disabled: boolean; onAdd: () => void }) {
   const category = categories.find(category => category.value === rec.type) ?? categories[2]
   const [open, setOpen] = useState(false)
-  const addButton = <button type="button" onClick={onAdd} disabled={added || disabled} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-mist-edge bg-white px-3 text-xs font-semibold text-ink disabled:opacity-60">{added ? <><Check size={14} />Added</> : busy ? 'Adding…' : <><Plus size={14} />Add to trip</>}</button>
-  return <article className="flex flex-col rounded-xl border border-line-soft bg-white p-3 transition-shadow hover:shadow-md">
+  const addButton = <button type="button" onClick={onAdd} disabled={added || disabled} className="chip">{added ? <><Check size={14} />Added</> : busy ? 'Adding…' : <><Plus size={14} />Add to trip</>}</button>
+  return <article className="flex flex-col rounded-xl border border-line-soft bg-white p-3 transition-shadow hover:shadow-card">
     <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={`View details for ${rec.name}`} className="flex flex-1 flex-col text-left">
       {/* In a grouped reply the idea and category are already in the headings above. */}
       {!grouped && <p className="mb-1 flex w-full items-center gap-1.5 text-label font-semibold uppercase tracking-wider text-muted"><span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: color }} /><span className="min-w-0 truncate" style={{ color }}>{optionOf(rec)}</span><span aria-hidden="true">·</span><category.Icon size={12} className="shrink-0" />{category.eyebrow}</p>}
@@ -441,7 +441,7 @@ function PickDetails({ rec, color, addButton, onClose }: { rec: Recommendation; 
           <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto rounded-lg">{info.photos.map(photo => <figure key={photo.url} className="relative h-56 w-[85%] shrink-0 snap-center overflow-hidden rounded-lg bg-chip sm:w-[70%]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photo.url} alt="" loading="lazy" className="h-full w-full object-cover" />
-            {photo.credit && <figcaption className="absolute bottom-1 right-2 rounded bg-black/50 px-1.5 text-label text-white">{photo.credit}</figcaption>}
+            {photo.credit && <figcaption className="absolute bottom-1 right-2 rounded-lg bg-black/50 px-1.5 text-label text-white">{photo.credit}</figcaption>}
           </figure>)}</div>
           {info.photosFromGoogle && <p className="mt-1 text-label text-muted">Photos from Google{rec.source !== 'claude' ? ` · ${rec.source === 'you' ? 'you' : rec.friendName} didn’t add any` : ''}</p>}
         </section>}

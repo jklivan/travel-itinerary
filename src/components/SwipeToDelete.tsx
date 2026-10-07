@@ -45,7 +45,7 @@ export default function SwipeToDelete({ title, message, confirmLabel, keepLabel,
     <p className="text-ink">{message}</p>
     {error && <p role="alert" className="mt-2 text-danger">{error}</p>}
     <div className="mt-3 flex flex-wrap gap-2">
-      <button type="button" disabled={busy} onClick={() => void remove()} className="btn bg-danger text-white hover:opacity-90">{busy ? 'Deleting…' : confirmLabel}</button>
+      <button type="button" disabled={busy} onClick={() => void remove()} className="btn btn-danger">{busy ? 'Deleting…' : confirmLabel}</button>
       <button type="button" disabled={busy} onClick={() => { setConfirming(false); setOffset(0) }} className="btn btn-outline">{keepLabel}</button>
     </div>
   </div>
@@ -77,7 +77,7 @@ export default function SwipeToDelete({ title, message, confirmLabel, keepLabel,
     </div>
     {/* Computers: no swipe, so a trash button shows when you hover over the card. */}
     {hoverButton && !open && <button type="button" aria-label={`Delete ${title}`} onClick={() => setConfirming(true)}
-      className="absolute right-3 top-3 z-[3] hidden h-9 w-9 items-center justify-center rounded-full border border-line bg-card text-muted opacity-0 shadow-sm transition-opacity hover:text-danger focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:hover)_and_(pointer:fine)]:flex">
+      className="absolute right-3 top-3 z-[3] hidden h-9 w-9 items-center justify-center rounded-full border border-line bg-card text-muted opacity-0 shadow-card transition-opacity hover:text-danger focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:hover)_and_(pointer:fine)]:flex">
       <Trash2 size={16} />
     </button>}
   </div>

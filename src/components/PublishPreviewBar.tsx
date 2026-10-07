@@ -27,7 +27,7 @@ export default function PublishPreviewBar({ id, postType, budget, tripRating, ta
   }
 
   return <div className="pointer-events-none fixed bottom-[var(--app-bottom-clearance)] left-0 right-0 z-40 px-4 pb-2">
-    <div className="panel pointer-events-auto mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-3 p-3 shadow-lg backdrop-blur">
+    <div className="panel pointer-events-auto mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-3 p-3 shadow-pop backdrop-blur">
       <div className="min-w-0 text-sm">
         <p className="font-semibold text-ink">Ready to post?</p>
         <p className="text-xs text-muted">This is how your trip will look. <Link href={`/plan/${id}?post=1`} className="underline">Change type, budget or tags</Link></p>

@@ -104,7 +104,7 @@ export default function BucketButton({
     })
   }
 
-  const folderDialog = choosing && typeof document !== 'undefined' ? createPortal(<dialog ref={dialog} onClose={() => setChoosing(false)} onClick={event => event.stopPropagation()} onCancel={event => { if (pending) event.preventDefault() }} aria-labelledby={titleId} className="m-auto w-[calc(100%_-_2rem)] max-w-sm rounded-2xl bg-cream p-5 text-ink shadow-xl backdrop:bg-black/40">
+  const folderDialog = choosing && typeof document !== 'undefined' ? createPortal(<dialog ref={dialog} onClose={() => setChoosing(false)} onClick={event => event.stopPropagation()} onCancel={event => { if (pending) event.preventDefault() }} aria-labelledby={titleId} className="m-auto w-[calc(100%_-_2rem)] max-w-sm rounded-2xl bg-cream p-5 text-ink shadow-pop backdrop:bg-black/40">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 id={titleId} className="type-title">Save this trip</h2>
             <button type="button" aria-label="Close" disabled={pending} onClick={() => dialog.current?.close()} className="p-2"><X size={18} /></button>
@@ -120,7 +120,7 @@ export default function BucketButton({
             {folderError && <p role="alert" className="mt-3 text-sm text-danger">{folderError}</p>}
             <div className="mt-5 flex flex-wrap gap-2">
               <button type="submit" disabled={pending || !foldersLoaded} className="btn btn-primary flex-1">{pending ? 'Please wait…' : bucketed ? 'Update' : 'Save'}</button>
-              {bucketed && <button type="button" onClick={unlikeTrip} disabled={pending} className="min-h-11 rounded-lg border border-danger/30 px-4 py-3 text-sm font-medium text-danger disabled:opacity-50">Remove</button>}
+              {bucketed && <button type="button" onClick={unlikeTrip} disabled={pending} className="btn btn-outline text-danger">Remove</button>}
             </div>
           </form>
         </dialog>, document.body) : null

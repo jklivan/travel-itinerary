@@ -23,7 +23,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
       <h2 className="type-title">Questions from your circle</h2>
       {before && <Link href="/explore/questions" className="inline-block text-sm text-link underline">Latest questions</Link>}
       {result.questions.length === 0 && <div className="rounded-xl border border-line bg-cream p-5 text-sm leading-relaxed text-brown">No questions yet. Ask the first one above. Questions from people who follow you will appear here too. <Link href="/friends" className="text-link underline">Find friends</Link></div>}
-      {result.questions.map(question => <Link key={question.id} href={`/explore/questions/${question.id}`} className="block rounded-xl border border-line bg-cream p-5 shadow-sm hover:border-link">
+      {result.questions.map(question => <Link key={question.id} href={`/explore/questions/${question.id}`} className="block rounded-xl border border-line bg-cream p-5 shadow-card hover:border-link">
         <p className="text-xs font-semibold text-link">{question.authorId === userId ? 'You' : question.author.name} asked</p>
         <p className="mt-2 line-clamp-4 whitespace-pre-wrap break-words text-base text-ink">{question.content}</p>
         {question.itineraryTitle && <p className="mt-3 text-sm text-link">About: {question.itineraryTitle}</p>}

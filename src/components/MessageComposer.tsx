@@ -24,7 +24,7 @@ export default function MessageComposer({ recipientId, itineraryId, attachment, 
     clientId.current = null
     if (replyTo) textarea.current?.focus()
   }, [replyTo])
-  return <form className="mt-6 space-y-3 rounded-xl border border-line bg-cream p-4 shadow-sm" onSubmit={event => {
+  return <form className="mt-6 space-y-3 rounded-xl border border-line bg-cream p-4 shadow-card" onSubmit={event => {
     event.preventDefault()
     if (pending) return
     setError('')

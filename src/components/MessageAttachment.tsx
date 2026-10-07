@@ -3,7 +3,7 @@ import { MapPin } from 'lucide-react'
 
 export default function MessageAttachment({ name, trip, notes, href, kind = 'place' }: { name: string; trip?: string | null; notes?: string | null; href?: string; kind?: 'place' | 'trip' }) {
   return (
-    <div className="rounded-sm border border-line-soft border-t-2 border-t-link bg-card p-3 shadow-sm">
+    <div className="rounded-lg border border-line-soft border-t-2 border-t-link bg-card p-3 shadow-card">
       <div className="flex items-start gap-3">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-mist text-link"><MapPin size={19} strokeWidth={1.5} /></span>
         <div className="min-w-0">

@@ -42,7 +42,7 @@ export default function StyleGuide() {
         <button type="button" className="btn btn-outline">Import notes</button>
         <button type="button" className="chip"><Plus size={14} />New folder</button>
         <button type="button" aria-pressed="true" className="chip">Selected</button>
-        <button type="button" aria-label="Delete" className="flex size-9 items-center justify-center rounded-full border border-line bg-card text-danger"><Trash2 size={16} /></button>
+        <button type="button" aria-label="Delete" className="btn-icon text-danger"><Trash2 size={16} /></button>
       </div>
       <div className="flex flex-wrap gap-2"><TagChip id="beach" /><TagChip id="romantic" /><TagChip id="skiing" /></div>
       <div className="flex gap-4 pt-2"><Stamp label="Must go!" color={STAMP_COLORS[5]} /><Stamp small label="Must do!" color={STAMP_COLORS[5]} /></div>

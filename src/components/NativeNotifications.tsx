@@ -119,7 +119,7 @@ export function NotificationPreferences() {
       !push.available ? <p className="mt-2 text-sm text-muted">Update the iPhone app to enable notifications.</p> :
         !push.ready ? <p className="mt-2 text-sm text-muted">Push notifications are not available yet. You can still check your activity here.</p> :
           <div className="mt-3 flex flex-wrap gap-2">
-            <button onClick={push.toggle} disabled={push.busy} className="rounded-full bg-link px-4 py-2 text-sm text-white disabled:opacity-50">{push.busy ? 'Updating…' : push.enabled ? 'Turn off on this iPhone' : 'Enable notifications'}</button>
+            <button onClick={push.toggle} disabled={push.busy} className="btn btn-primary btn-sm">{push.busy ? 'Updating…' : push.enabled ? 'Turn off on this iPhone' : 'Enable notifications'}</button>
             {push.enabled && <TestPushButton />}
           </div>}
     {push.message && <p role="status" className="mt-2 text-sm text-muted">{push.message}</p>}

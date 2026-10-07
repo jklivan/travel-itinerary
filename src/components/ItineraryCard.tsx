@@ -15,7 +15,7 @@ import UserAvatar from './UserAvatar'
 import PostcardLogo from '@/components/PostcardLogo'
 
 
-const AUDIENCE_CHIP = 'w-fit rounded-md bg-cream/95 px-2.5 py-1 text-label font-medium uppercase tracking-label text-ink'
+const AUDIENCE_CHIP = 'w-fit rounded-lg bg-cream/95 px-2.5 py-1 text-label font-medium uppercase tracking-label text-ink'
 
 type DestItem = { type: string; name: string; dayIndex?: number | null }
 type Destination = { lat?: number | null; name: string; country: string | null; items: DestItem[] }
@@ -80,8 +80,8 @@ export default function ItineraryCard({
 
   return (
     <article className={`block ${fullWidth ? 'w-full' : 'w-[clamp(200px,44vw,320px)]'} relative`}>
-      <div className="rounded-md border border-line-soft bg-card p-2.5 shadow-[0_4px_16px_rgba(31,51,84,0.09)] sm:p-3">
-        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[2px]" style={{ backgroundColor: coverColor }}>
+      <div className="rounded-lg border border-line-soft bg-card p-2.5 shadow-card sm:p-3">
+        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg" style={{ backgroundColor: coverColor }}>
           {fullWidth && photos.length > 0 ? <PhotoStrip href={`/itinerary/${id}`} photos={photos.map(photo => ({ ...photo, caption: null }))} title={title} fillContainer counterPosition="left" /> : <Link href={`/itinerary/${id}`} aria-label={`Open ${title}`} className="absolute inset-0">
             {coverPhoto && <Image src={coverPhoto} alt="" fill sizes={fullWidth ? '(max-width: 575px) calc(100vw - 44px), 516px' : '(max-width: 727px) 44vw, 320px'} className="object-cover" />}
           </Link>}
@@ -93,7 +93,7 @@ export default function ItineraryCard({
           </div>
 
           {/* The Postcard stamp, on a white square (its own shape) so it reads on dark photos. */}
-          <div aria-hidden="true" className="pointer-events-none absolute right-2.5 top-2.5 z-20 size-[64px] rotate-[8deg] rounded-md bg-white/95 p-1 shadow-md">
+          <div aria-hidden="true" className="pointer-events-none absolute right-2.5 top-2.5 z-20 size-[64px] rotate-[8deg] rounded-lg bg-white/95 p-1 shadow-card">
             <PostcardLogo size={60} className="size-full" />
           </div>
         </div>

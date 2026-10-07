@@ -47,7 +47,7 @@ export default function QuestionComposer({ questionId }: { questionId?: string }
       <label className="block text-xs font-medium text-brown">Find an itinerary by title or paste its link
         <input value={query} disabled={pending || searching} onChange={event => { setQuery(event.target.value); setSearched(false); setResults([]) }} onKeyDown={event => { if (event.key === 'Enter') event.preventDefault() }} maxLength={300} className="mt-1 w-full rounded-lg border border-mist-edge bg-white p-2 text-base text-ink" />
       </label>
-      <button type="button" disabled={pending || searching || query.trim().length < 2} className="rounded-full border border-mist-edge px-3 py-1.5 text-sm text-link disabled:opacity-50" onClick={() => {
+      <button type="button" disabled={pending || searching || query.trim().length < 2} className="chip" onClick={() => {
         setError('')
         startSearch(async () => {
           try { setResults(await searchQuestionItineraries(query)); setSearched(true) }
@@ -59,6 +59,6 @@ export default function QuestionComposer({ questionId }: { questionId?: string }
     </div>}
     <p className="text-xs leading-relaxed text-brown">{questionId ? 'Your reply is visible to everyone who can see this question.' : 'Visible to you and the people you follow. They can read and reply to the whole discussion.'}</p>
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}
-    <button disabled={pending || searching || !content.trim()} className="rounded-full bg-link px-5 py-2.5 text-sm font-medium text-white hover:bg-ink disabled:opacity-50">{pending ? 'Posting…' : questionId ? 'Post reply' : 'Ask your friends'}</button>
+    <button disabled={pending || searching || !content.trim()} className="btn btn-primary">{pending ? 'Posting…' : questionId ? 'Post reply' : 'Ask your friends'}</button>
   </form>
 }

@@ -61,7 +61,7 @@ export function CommentInput({
         aria-label={onCancel ? 'Your reply' : 'Your comment'}
         autoFocus={autoFocus}
         rows={3}
-        className="w-full text-sm text-ink bg-card border-2 border-mist-edge rounded-xl px-3 py-3 shadow-sm placeholder:text-muted resize-y focus:outline-none focus:ring-2 focus:ring-link/25 focus:border-link transition-colors"
+        className="w-full text-sm text-ink bg-card border-2 border-mist-edge rounded-xl px-3 py-3 shadow-card placeholder:text-muted resize-y focus:outline-none focus:ring-2 focus:ring-link/25 focus:border-link transition-colors"
         onKeyDown={(e) => {
           if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit()
         }}
@@ -71,14 +71,14 @@ export function CommentInput({
         <button
           onClick={handleSubmit}
           disabled={pending || !text.trim()}
-          className="text-xs font-medium px-3 py-1.5 bg-ink text-white rounded-full hover:bg-ink-soft disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="btn btn-primary btn-sm"
         >
           {pending ? 'Posting…' : 'Post'}
         </button>
         {onCancel && (
           <button
             onClick={onCancel}
-            className="text-xs font-medium px-3 py-1.5 border border-line-strong text-muted rounded-full hover:bg-cream transition-colors"
+            className="btn btn-outline btn-sm"
           >
             Cancel
           </button>

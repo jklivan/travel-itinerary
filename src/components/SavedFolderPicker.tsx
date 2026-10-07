@@ -35,10 +35,10 @@ export default function SavedFolderPicker({ itineraryId, label = 'Save to folder
 
   return (
     <>
-      <button type="button" onClick={open} className="inline-flex max-w-full items-center gap-2 rounded-full border border-line-strong px-4 py-2 text-sm text-ink-soft hover:bg-sand">
+      <button type="button" onClick={open} className="chip max-w-full">
         <Folder size={15} className="shrink-0" /><span className="truncate">{label}</span>
       </button>
-      <dialog ref={dialog} onCancel={event => { if (pending) event.preventDefault() }} aria-labelledby={titleId} className="m-auto w-[calc(100%_-_2rem)] max-w-sm rounded-2xl bg-cream p-5 text-ink shadow-xl backdrop:bg-black/40">
+      <dialog ref={dialog} onCancel={event => { if (pending) event.preventDefault() }} aria-labelledby={titleId} className="m-auto w-[calc(100%_-_2rem)] max-w-sm rounded-2xl bg-cream p-5 text-ink shadow-pop backdrop:bg-black/40">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 id={titleId} className="type-title">Save to folder</h2>
           <button type="button" aria-label="Close folder picker" disabled={pending} onClick={() => dialog.current?.close()} className="p-2"><X size={18} /></button>

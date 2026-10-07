@@ -5,6 +5,10 @@
 @theme static {
   /* Approved text sizes (see /styleguide): micro 9 · label 11 · xs 12 · sm 14 · base 16 (form fields) · lg 18 · title 22 · display 32 / 40. */
   --text-micro: 0.5625rem;
+  /* Approved shadows: card (cards, tiles, buttons that lift) · pop (dialogs, sheets, menus) · nav (the bottom bar, casting upward). */
+  --shadow-card: 0 2px 8px rgb(45 38 27 / 0.1);
+  --shadow-pop: 0 12px 32px rgb(31 51 84 / 0.22);
+  --shadow-nav: 0 -4px 18px rgb(31 51 84 / 0.08);
   /* Approved letter spacing: wider (.05em) tight-fit labels · caps (.08em) serif capitals · widest (.1em) · label (.14em) small capital labels · brand (.3em) the tagline. */
   --tracking-caps: 0.08em;
   --tracking-label: 0.14em;
@@ -48,6 +52,12 @@
   .btn-outline { border: 1px solid var(--color-line); background: var(--color-card); color: var(--color-link); }
   .btn-outline:hover:not(:disabled) { background: var(--color-cream); }
   .btn-sm { min-height: 2.25rem; padding: 0 .875rem; font-size: .75rem; }
+  /* Delete / Remove: solid red for the final confirm. */
+  .btn-danger { background: var(--color-danger); color: #fff; }
+  .btn-danger:hover:not(:disabled) { opacity: .9; }
+  /* Round icon-only buttons (settings, delete): one size, one outline. */
+  .btn-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 2.5rem; height: 2.5rem; border-radius: 9999px; border: 1px solid var(--color-line); background: var(--color-card); color: var(--color-link); transition: background-color .15s; }
+  .btn-icon:hover:not(:disabled) { background: var(--color-cream); }
 
   .chip { display: inline-flex; align-items: center; gap: .25rem; min-height: 1.75rem; padding: 0 .75rem; border-radius: 9999px; border: 1px solid transparent; background: var(--color-chip); color: var(--color-ink); font-size: .75rem; font-weight: 500; white-space: nowrap; }
   /* Tappable chips (buttons and links): the outlined pill. Selected = navy. */

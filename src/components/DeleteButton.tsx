@@ -46,7 +46,7 @@ export default function DeleteButton({ id, visibility, returnTo = '/', label = '
       </div>}
       {confirming === 'delete' && <p className="max-w-full break-words text-sm text-muted">Delete this entire post and all its places, notes, and photos? This cannot be undone.</p>}
       <div className="flex flex-wrap items-center gap-2">
-        {confirming === 'delete' && <button type="button" onClick={() => void handleDelete()} disabled={pending} className="min-h-11 rounded-full bg-danger px-4 py-2 text-sm font-medium text-white hover:bg-danger/90 disabled:opacity-50">{pending && !keeping ? 'Deleting…' : 'Permanently delete entire post'}</button>}
+        {confirming === 'delete' && <button type="button" onClick={() => void handleDelete()} disabled={pending} className="btn btn-danger">{pending && !keeping ? 'Deleting…' : 'Permanently delete entire post'}</button>}
         <button type="button" onClick={() => { setConfirming(null); setError('') }} disabled={pending} className="btn btn-outline text-muted">Cancel</button>
       </div>
     </div> : <div className="flex flex-wrap items-center gap-2">

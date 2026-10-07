@@ -137,7 +137,7 @@ export default async function UserProfilePage({
           {/* Same plain stats line as your own profile. */}
           <p className="mt-1 text-xs text-link">{followerCount} follower{followerCount !== 1 ? 's' : ''} · {followingCount} following · {itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
-        {isOwn && <Link href="/settings" aria-label="Settings" className="flex size-10 shrink-0 items-center justify-center rounded-full border border-sand text-link hover:bg-line-soft"><Settings size={18} /></Link>}
+        {isOwn && <Link href="/settings" aria-label="Settings" className="btn-icon"><Settings size={18} /></Link>}
         {session?.user && !isOwn && (
           <form action={async () => {
             'use server'
@@ -152,7 +152,7 @@ export default async function UserProfilePage({
         )}
       </div>}
 
-      {!isOwn && <Link href={`/messages/${id}`} className="mb-5 inline-block rounded-full bg-link px-4 py-2 text-sm text-white">Send private message</Link>}
+      {!isOwn && <Link href={`/messages/${id}`} className="btn btn-primary mb-5">Send private message</Link>}
 
       {isOwn && !showBucket ? (
         <>
@@ -162,7 +162,7 @@ export default async function UserProfilePage({
               <div className="mb-4"><h2 id="private-plans-heading" className="type-title text-brown">Private plans <span className="font-sans text-sm tracking-normal">({drafts.length})</span></h2><p className="mt-1 max-w-sm text-sm leading-snug text-muted">Only you can see these. Keep planning or publish whenever you’re ready.</p></div>
               {drafts.length === 0 ? <div className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">No private plans yet.</div> : <div className="space-y-4">{drafts.map(trip => {
                 const tripHref = `/plan/${trip.id}`
-                return <article key={trip.id} className="panel grid grid-cols-[minmax(0,38%)_minmax(0,1fr)] gap-x-4 gap-y-3 p-3 shadow-[0_2px_8px_rgba(45,38,27,0.08)]">
+                return <article key={trip.id} className="panel grid grid-cols-[minmax(0,38%)_minmax(0,1fr)] gap-x-4 gap-y-3 p-3 shadow-card">
                   <Link href={tripHref} aria-label={`Open ${trip.title}`} className="photo-polaroid row-span-2 self-start"><span className="photo-polaroid-image">{draftCoverPhotos.get(trip.id) ? <Image src={draftCoverPhotos.get(trip.id)!} alt="" fill sizes="(max-width: 640px) 34vw, 180px" className="object-cover" /> : <span className="grid h-full place-items-center text-center text-micro uppercase tracking-wider text-link">Postcard</span>}</span></Link>
                   <Link href={tripHref} className="min-w-0 pt-2"><h3 className="type-card break-words">{trip.title || 'Untitled trip'}</h3><p className="mt-2 text-label font-semibold uppercase tracking-widest text-muted">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places</p><p className="mt-1 text-sm text-muted">Keep planning →</p></Link>
                   <div className="flex min-w-0 flex-wrap items-end justify-between gap-2 self-end">

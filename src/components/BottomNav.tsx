@@ -26,7 +26,7 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
   const label = 'text-label font-medium uppercase tracking-widest'
 
   return (
-    <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl border-t border-line-soft bg-cream shadow-[0_-4px_18px_rgba(31,51,84,0.08)]">
+    <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl border-t border-line-soft bg-cream shadow-nav">
       <div className="max-w-2xl mx-auto grid grid-cols-5 items-center py-2">
         <Link href="/" aria-current={isFeed ? 'page' : undefined} className={cls(isFeed)}>
           <span className={iconClass(isFeed)}><Home className="w-6 h-6" /></span>
@@ -40,7 +40,7 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
 
         {/* Plan sits raised in the middle: a navy disc with the Postcard compass star. */}
         <Link href={userId ? '/plan' : '/login'} aria-current={isPlanner ? 'page' : undefined} className={`${cls(isPlanner)} -mt-7`}>
-          <span className="flex size-[62px] items-center justify-center rounded-full border-4 border-cream bg-ink text-white shadow-[0_4px_12px_rgba(31,51,84,0.3)]"><CompassStar /></span>
+          <span className="flex size-[62px] items-center justify-center rounded-full border-4 border-cream bg-ink text-white shadow-pop"><CompassStar /></span>
           <span className={label}>Plan</span>
         </Link>
 

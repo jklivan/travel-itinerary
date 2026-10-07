@@ -18,7 +18,7 @@ export default function BottomSheet({ title, label, onClose, footer, children }:
   }, [])
   return <dialog ref={dialog} aria-label={label} onClose={onClose}
     onClick={event => { if (event.target === dialog.current) dialog.current?.close() }}
-    className="bottom-sheet m-0 mt-auto h-[78dvh] max-h-none w-full max-w-none rounded-t-3xl bg-card p-0 text-ink shadow-2xl backdrop:bg-ink/40 sm:mx-auto sm:max-w-xl">
+    className="bottom-sheet m-0 mt-auto h-[78dvh] max-h-none w-full max-w-none rounded-t-3xl bg-card p-0 text-ink shadow-pop backdrop:bg-ink/40 sm:mx-auto sm:max-w-xl">
     <div className="flex h-full flex-col">
       <header className="relative border-b border-line-soft px-5 pb-3 pt-2 text-center">
         <span aria-hidden="true" className="mx-auto mb-2 block h-1 w-10 rounded-full bg-line" />

@@ -116,7 +116,7 @@ export default function PlacesAutocomplete({
       />
       {error && resultKey === currentKey && <p role="status" className="mt-1 text-xs text-brown">{error}</p>}
       {open && resultKey === currentKey && suggestions.length > 0 && (
-        <ul className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-line shadow-lg overflow-hidden">
+        <ul className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-line shadow-pop overflow-hidden">
           <li
             onPointerDown={event => { event.preventDefault(); closeSuggestions() }}
             className="px-3 py-2.5 cursor-pointer text-sm bg-cream border-b border-line-soft text-muted hover:bg-chip flex items-center gap-1.5"

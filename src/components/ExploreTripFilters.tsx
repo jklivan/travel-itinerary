@@ -145,7 +145,7 @@ export default function ExploreTripFilters({
             <button
               type="submit"
               disabled={pending}
-              className="min-h-11 rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-cream transition-colors hover:bg-ink-soft disabled:opacity-60"
+              className="btn btn-primary"
             >
               {pending ? 'Finding trips\u2026' : 'Find trips'}
             </button>

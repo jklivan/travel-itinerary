@@ -63,7 +63,7 @@ export default function SavedFolders({ userId, folders, selected, total, basePat
       {deleting && active && <div className="mt-4 text-sm text-ink-soft">
         <p>Delete “{active.name}”? Its trips will stay in All saved.</p>
         <div className="mt-2 flex gap-3">
-          <button type="button" disabled={pending} className="rounded-lg bg-danger px-3 py-2 text-white disabled:opacity-50" onClick={() => {
+          <button type="button" disabled={pending} className="btn btn-danger btn-sm" onClick={() => {
             setError('')
             startTransition(async () => {
               try {

@@ -26,7 +26,7 @@ export default async function SettingsPage() {
         await unregisterPushDevice()
         await signOut({ redirectTo: '/' })
       }}>
-        <button type="submit" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line-strong px-4 py-2 text-sm text-ink-soft hover:bg-line-soft"><LogOut size={16} />Sign out</button>
+        <button type="submit" className="btn btn-outline"><LogOut size={16} />Sign out</button>
       </form>
     </div>
   )
