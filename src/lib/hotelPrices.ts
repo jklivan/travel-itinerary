@@ -42,6 +42,9 @@ function parseInput(raw: unknown): Input | string {
   if (typeof value.country_code !== 'string' || !/^[A-Za-z]{2}$/.test(value.country_code)) return 'country_code must be a 2-letter code.'
   if (typeof value.checkin !== 'string' || !date.test(value.checkin) || typeof value.checkout !== 'string' || !date.test(value.checkout)) return 'checkin and checkout must be YYYY-MM-DD.'
   if (value.checkout <= value.checkin) return 'checkout must be after checkin.'
+  // Past dates have no rooms, which would read as "sold out".
+  const today = new Date().toISOString().slice(0, 10)
+  if (value.checkin < today) return `checkin ${value.checkin} is in the past (today is ${today}). Search upcoming dates: a month with no year means its next one.`
   if (!Array.isArray(value.rooms) || value.rooms.length < 1 || value.rooms.length > 4) return 'rooms must list 1-4 rooms.'
   for (const room of value.rooms as Room[]) {
     if (!room || !Number.isInteger(room.adults) || room.adults < 1 || room.adults > 6) return 'Each room needs 1-6 adults.'
@@ -173,7 +176,7 @@ export async function runHotelPrices(raw: unknown): Promise<{ content: string; i
 
     const why = name ? (listed ? 'LiteAPI has this hotel but no rooms for these dates and guests (often sold out, or not released yet).' : 'This hotel is not on LiteAPI\'s feed.') : 'LiteAPI had no rooms in this city for these dates and guests.'
     const google = await googleHotelPrices(input, nights)
-    if (google?.length) return result('google_hotels', 'priced_elsewhere', `${why} Prices shown are Google Hotels' (from booking sites, per night for the whole group; may assume one room), for reference only: they can't be booked through Postcard.`, google)
+    if (google?.length) return result('google_hotels', 'priced_elsewhere', `${why} Prices shown are Google Hotels' (from booking sites), for reference only: they can't be booked through Postcard. Each is per night for the whole group together; Google Hotels doesn't say how many rooms that covers, so say it's for all the guests and don't compare it with a price for a set number of rooms.`, google)
     return result('liteapi', name && listed ? 'no_availability' : name ? 'not_listed' : 'no_availability', `${why}${process.env.SERPAPI_KEY ? ' Google Hotels had no prices either.' : ''}`, [])
   } catch {
     return { content: 'The price lookup timed out. Try again or suggest checking the hotel directly.', isError: true }
