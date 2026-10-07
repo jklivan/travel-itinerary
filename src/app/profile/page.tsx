@@ -33,11 +33,11 @@ export default async function ProfilePage() {
         <Link href="/settings" aria-label="Settings" className="btn-icon"><Settings size={18} /></Link>
       </div>
     </section>
-    {/* Alerts: likes, comments, saves, new followers, new trips from people you follow, Ask your friends posts.
+    {/* Alerts (the latest two): likes, comments, saves, new followers, new trips from people you follow, Ask your friends posts.
         The profile icon in the header shows a red dot while any are unread. */}
     <section className="mt-6" aria-labelledby="alerts-heading">
       <div className="mb-3 flex items-center justify-between gap-3"><h2 id="alerts-heading" className="type-title">Alerts</h2><MarkNotificationsRead /></div>
-      <NotificationList userId={userId} alertsOnly take={5} empty="Likes, comments, new followers and trips from people you follow show up here." />
+      <NotificationList userId={userId} alertsOnly take={2} empty="Likes, comments, new followers and trips from people you follow show up here." />
       <Link href="/notifications" className="mt-2 inline-block text-sm text-link hover:underline">See all alerts →</Link>
     </section>
     <div className="mt-6 space-y-3">
