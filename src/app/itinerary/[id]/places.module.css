@@ -267,6 +267,8 @@
 
 .note {
   display: -webkit-box;
+  /* A place visited twice shows each visit's note on its own line. */
+  white-space: pre-line;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   overflow: hidden;

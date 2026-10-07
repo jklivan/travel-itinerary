@@ -32,6 +32,7 @@ import UserAvatar from '@/components/UserAvatar'
 import FriendRatingsButton from '@/components/FriendRatingsButton'
 import DestinationSocial, { type DestinationFriend } from '@/components/DestinationSocial'
 import { getRecommendation, partitionPlaces } from '@/lib/placeRecommendation'
+import { mergeRepeatVisits } from '@/lib/repeatVisits'
 import { mapDayNumber } from '@/lib/mapDays'
 import { distanceMiles } from '@/lib/distance'
 
@@ -672,7 +673,8 @@ export default async function ItineraryPage({
                 <div className="h-px bg-line-strong mb-5" />
                 <div className="space-y-10">
                   {mainDestinations.map((dest) => {
-                    const dItems = dest.items as DestItemRow[]
+                    // A place visited more than once shows once here, with every visit's notes, tags and photos.
+                    const dItems = mergeRepeatVisits(dest.items as DestItemRow[])
                     const dHotels = dItems.filter(i => i.type === 'hotel')
                     const dFood = dItems.filter(i => i.type === 'food_drink')
                     const dActs = dItems.filter(i => i.type === 'activity')
