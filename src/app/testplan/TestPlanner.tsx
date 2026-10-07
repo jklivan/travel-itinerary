@@ -79,15 +79,27 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
     if (!box || !viewport) return
     let typing = false
     let keyboard = 0
-    // The page's height with the keyboard closed.
-    let fullHeight = window.innerHeight
+    // The page's height with the keyboard closed, per screen width (portrait and landscape). Only ever grows:
+    // the page can come back from the background still shrunk, and a too-small value put the box at the top.
+    const fullHeights = new Map<number, number>()
+    const fullHeight = () => {
+      const height = Math.max(fullHeights.get(window.innerWidth) ?? 0, window.innerHeight)
+      fullHeights.set(window.innerWidth, height)
+      return height
+    }
+    fullHeight()
     function measure() {
-      if (!typing || !viewport) { if (!typing) fullHeight = window.innerHeight; return }
+      const full = fullHeight()
+      if (!typing || !viewport) return
       if (window.matchMedia('(min-width: 1024px)').matches) { setPinnedTop(null); return }
       const height = form.current?.offsetHeight ?? 64
-      const visibleBottom = viewport.offsetTop + viewport.height
-      const keyboardTop = keyboard ? viewport.offsetTop + fullHeight - keyboard : visibleBottom
-      setPinnedTop(Math.min(visibleBottom, keyboardTop) - height - 8)
+      // If the page already shrank for the keyboard, its visible bottom is the keyboard's top. Only when it didn't
+      // (the keyboard slides over the page) does the keyboard's own height need taking off.
+      const shrank = !keyboard || viewport.height < full - keyboard / 2
+      const keyboardTop = shrank ? viewport.offsetTop + viewport.height : viewport.offsetTop + full - keyboard
+      const top = keyboardTop - height - 8
+      // A position up under the header means the numbers were off; leave the box where it normally sits.
+      setPinnedTop(top > viewport.offsetTop + 80 ? top : null)
     }
     const later = () => { measure(); setTimeout(measure, 150); setTimeout(measure, 400) }
     function focus() { typing = true; later() }
