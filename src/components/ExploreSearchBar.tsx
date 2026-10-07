@@ -37,7 +37,7 @@ export default function ExploreSearchBar() {
       <button
         type="submit"
         disabled={isPending}
-        className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-link text-white text-sm font-medium rounded-lg hover:bg-[#414f39] transition-colors disabled:opacity-50"
+        className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-link text-white text-sm font-medium rounded-lg hover:bg-ink transition-colors disabled:opacity-50"
       >
         {isPending ? 'Searching…' : 'Search'}
       </button>

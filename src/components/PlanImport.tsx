@@ -83,6 +83,6 @@ export default function PlanImport({ tripId, destinations = [], onClose }: { tri
       {!attemptedSave && <button type="button" disabled={!!stage} onClick={() => { setPlaces([]); setError('') }} className="min-h-11 text-sm text-link">Back to import</button>}
     </>}
     {stage && <div role="status" className="text-sm text-link">{stage}{stage !== 'Adding places…' && <button type="button" onClick={() => controller.current?.abort()} className="ml-3 min-h-11 underline">Cancel</button>}</div>}
-    {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+    {error && <p role="alert" className="text-sm text-danger">{error}</p>}
   </section>
 }

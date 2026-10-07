@@ -91,7 +91,7 @@ export const PIN_EMOJI: Record<string, string> = { hotel: 'ğŸ¨', food_drink: 'ğ
 export default function ItineraryMapInner({ pins }: { pins: ItemPin[] }) {
   if (pins.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+      <div className="flex items-center justify-center h-full text-muted text-sm">
         No location data available for this itinerary.
       </div>
     )

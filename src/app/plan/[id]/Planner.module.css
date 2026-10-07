@@ -2,7 +2,7 @@
 .card { border: 0; box-shadow: none; background: transparent; }
 .controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; padding: 4px 10px; border-top: 1px solid var(--color-line-soft); }
 .location { color: var(--color-muted); font-size: 11px; margin-top: 7px; }
-.meta { display: flex; flex-wrap: wrap; gap: 5px 10px; margin-top: 12px; color: var(--place-accent); font-size: 10px; }
+.meta { display: flex; flex-wrap: wrap; gap: 5px 10px; margin-top: 12px; color: var(--place-accent); font-size: 11px; }
 .meta span:first-child { font-weight: 600; }
-.rating { display: flex; align-items: center; gap: 5px; color: var(--color-gold); font-size: 19px; margin-top: 6px; }
-.rating span { color: var(--color-muted); font-size: 10px; }
+.rating { display: flex; align-items: center; gap: 5px; color: var(--color-gold); font-size: 18px; margin-top: 6px; }
+.rating span { color: var(--color-muted); font-size: 11px; }

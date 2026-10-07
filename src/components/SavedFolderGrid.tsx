@@ -35,7 +35,7 @@ function Row({ href, name, count, photo, Icon }: { href: string; name: string; c
       </span>
     </span>
     <span className="min-w-0 flex-1">
-      <span className="block font-[family-name:var(--font-playfair)] text-[13px] uppercase leading-snug tracking-[0.14em] text-ink [overflow-wrap:anywhere]">{name}</span>
+      <span className="block font-[family-name:var(--font-playfair)] text-sm uppercase leading-snug tracking-[0.14em] text-ink [overflow-wrap:anywhere]">{name}</span>
       <span className="mt-1 block text-sm text-muted">{count} {count === 1 ? 'trip' : 'trips'}</span>
     </span>
     <ChevronRight size={18} className="shrink-0 text-ink" />
@@ -73,7 +73,7 @@ export default function SavedFolderGrid({ folders, total, allPhoto }: { folders:
         <button disabled={pending} className="btn btn-primary">{pending ? 'Creating…' : 'Create folder'}</button>
         <button type="button" disabled={pending} onClick={() => setCreating(false)}>Cancel</button>
       </div>
-      {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
     </form>}
     <nav aria-label="Saved folders" className="panel px-4">
       <Row href="/saved?folder=all" name="All saved" count={total} photo={allPhoto} Icon={Bookmark} />
@@ -115,7 +115,7 @@ export function SavedFolderActions({ folder }: { folder: { id: string; name: str
     {mode === 'delete' && <div className="rounded-xl border border-line-soft bg-card p-4 text-sm text-ink-soft">
       <p>Delete “{folder.name}”? Its trips will stay in All saved.</p>
       <div className="mt-3 flex gap-3">
-        <button type="button" disabled={pending} className="rounded-lg bg-red-700 px-3 py-2 text-white disabled:opacity-50" onClick={() => {
+        <button type="button" disabled={pending} className="rounded-lg bg-danger px-3 py-2 text-white disabled:opacity-50" onClick={() => {
           setError('')
           startTransition(async () => {
             try {
@@ -128,6 +128,6 @@ export function SavedFolderActions({ folder }: { folder: { id: string; name: str
         <button type="button" disabled={pending} onClick={() => setMode(null)}>Cancel</button>
       </div>
     </div>}
-    {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+    {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
   </div>
 }

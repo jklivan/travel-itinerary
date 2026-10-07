@@ -58,7 +58,7 @@ export default function QuestionComposer({ questionId }: { questionId?: string }
       <ul className="space-y-1">{results.map(result => <li key={result.id}><button type="button" disabled={pending} className="w-full rounded-lg p-2 text-left hover:bg-mist" onClick={() => { setTrip(result); setShowPicker(false); clientId.current = null }}><span className="block text-sm font-medium text-ink">{result.title}</span><span className="text-xs text-brown">By {result.user.name}</span></button></li>)}</ul>
     </div>}
     <p className="text-xs leading-relaxed text-brown">{questionId ? 'Your reply is visible to everyone who can see this question.' : 'Visible to you and the people you follow. They can read and reply to the whole discussion.'}</p>
-    {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+    {error && <p role="alert" className="text-sm text-danger">{error}</p>}
     <button disabled={pending || searching || !content.trim()} className="rounded-full bg-link px-5 py-2.5 text-sm font-medium text-white hover:bg-ink disabled:opacity-50">{pending ? 'Posting…' : questionId ? 'Post reply' : 'Ask your friends'}</button>
   </form>
 }

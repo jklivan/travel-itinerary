@@ -35,7 +35,7 @@ export default function FriendRatingsButton({ friends, placeName, verb }: { frie
       {open && <div className="flex max-h-[75dvh] flex-col">
         <header className="flex items-start justify-between gap-3 border-b border-line-soft p-5 pb-3">
           <div>
-            <h2 id={titleId} className="font-[family-name:var(--font-playfair)] text-xl normal-case">Friends’ rating</h2>
+            <h2 id={titleId} className="font-[family-name:var(--font-playfair)] text-title normal-case">Friends’ rating</h2>
             <p className="mt-1 text-sm text-muted">{placeName}{average !== null ? ` · ${average.toFixed(1)} from ${rated.length} ${rated.length === 1 ? 'friend' : 'friends'}` : ''}</p>
           </div>
           <button type="button" autoFocus aria-label="Close" onClick={() => dialog.current?.close()} className="flex size-10 shrink-0 items-center justify-center rounded-full"><X size={20} /></button>

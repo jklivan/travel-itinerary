@@ -14,7 +14,7 @@ function RegisterForm() {
     <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-ink">Create an account</h1>
+          <h1 className="font-[family-name:var(--font-playfair)] text-display text-ink">Create an account</h1>
           <p className="text-sm text-brown mt-1">Join Postcard. Good places ahead.</p>
         </div>
 
@@ -22,7 +22,7 @@ function RegisterForm() {
           <form action={action} className="space-y-4">
             <input type="hidden" name="saveTrip" value={tripId} />
             {state?.message && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+              <p className="text-sm text-danger bg-danger/10 border border-danger/30 rounded-lg px-4 py-3">
                 {state.message}
               </p>
             )}
@@ -41,7 +41,7 @@ function RegisterForm() {
                 placeholder="Jane Smith"
               />
               {state?.errors?.name && (
-                <p className="text-xs text-red-500 mt-1">{state.errors.name[0]}</p>
+                <p className="text-xs text-danger mt-1">{state.errors.name[0]}</p>
               )}
             </div>
 
@@ -59,7 +59,7 @@ function RegisterForm() {
                 placeholder="you@example.com"
               />
               {state?.errors?.email && (
-                <p className="text-xs text-red-500 mt-1">{state.errors.email[0]}</p>
+                <p className="text-xs text-danger mt-1">{state.errors.email[0]}</p>
               )}
             </div>
 
@@ -77,7 +77,7 @@ function RegisterForm() {
                 placeholder="Min. 8 characters"
               />
               {state?.errors?.password && (
-                <p className="text-xs text-red-500 mt-1">{state.errors.password[0]}</p>
+                <p className="text-xs text-danger mt-1">{state.errors.password[0]}</p>
               )}
             </div>
 
@@ -88,7 +88,7 @@ function RegisterForm() {
             >
               {pending ? 'Creating account…' : 'Create account'}
             </button>
-            <p className="text-center text-xs text-[#8B6F4E]">By creating an account you agree to our <Link href="/privacy" className="underline">Privacy Policy</Link>.</p>
+            <p className="text-center text-xs text-brown">By creating an account you agree to our <Link href="/privacy" className="underline">Privacy Policy</Link>.</p>
           </form>
         </div>
 

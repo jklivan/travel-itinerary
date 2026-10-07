@@ -31,7 +31,7 @@ export default function PublishPreviewBar({ id, postType, budget, tripRating, ta
       <div className="min-w-0 text-sm">
         <p className="font-semibold text-ink">Ready to post?</p>
         <p className="text-xs text-muted">This is how your trip will look. <Link href={`/plan/${id}?post=1`} className="underline">Change type, budget or tags</Link></p>
-        {error && <p role="alert" className="mt-1 text-xs text-red-700">{error}</p>}
+        {error && <p role="alert" className="mt-1 text-xs text-danger">{error}</p>}
       </div>
       <div className="flex shrink-0 gap-2">
         <Link href={`/plan/${id}`} className="btn btn-outline">Make changes</Link>

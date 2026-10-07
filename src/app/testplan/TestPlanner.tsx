@@ -239,7 +239,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
       <section aria-label="New trip" className={`min-h-0 overflow-y-auto rounded-2xl border border-line bg-card p-4 ${places.length ? 'lg:flex-1' : 'lg:flex-none'}`}>
         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><Sparkles size={14} />Plan with Postcard</p>
         <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
-          <h1 className="font-[family-name:var(--font-playfair)] text-2xl">{trip?.title ?? 'Your next trip'}</h1>
+          <h1 className="font-[family-name:var(--font-playfair)] text-title">{trip?.title ?? 'Your next trip'}</h1>
           <div className="flex items-center gap-4 text-sm font-semibold text-link">
             {/* For a trip the chat built, a link to open it. From the planner, the header's Back returns there. */}
             {trip && !fromPlanner && <Link href={`/plan/${trip.id}`}>Open in planner →</Link>}
@@ -280,14 +280,14 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
                   </span>
                 </summary>
                 {sectionOrder.map(({ type, label, Icon }) => { const items = recs.filter(rec => rec.type === type); return items.length > 0 && <div key={type} className="mt-3">
-                  <h4 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-link"><Icon size={13} />{label}</h4>
+                  <h4 className="mb-1.5 flex items-center gap-1.5 text-label font-semibold uppercase tracking-wider text-link"><Icon size={13} />{label}</h4>
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-2">{items.map(rec => <RecommendationCard key={rec.key} rec={rec} color={colorOf(rec)} grouped added={inTrip(rec)} busy={adding === rec.key} disabled={adding !== null} onAdd={() => void add(rec)} />)}</div>
                 </div> })}
               </details>)}
             </div>)}
           {thinking && <p className="text-sm text-muted">Postcard is looking through your trips…</p>}
         </div>
-        {error && <p role="alert" className="px-4 pb-2 text-sm text-red-700">{error}</p>}
+        {error && <p role="alert" className="px-4 pb-2 text-sm text-danger">{error}</p>}
         <div ref={endOfChat} aria-hidden="true" style={{ scrollMarginBottom: 'calc(var(--app-bottom-clearance) + 4.5rem)' }} />
         {/* On phones the composer sticks just above the bottom navigation so it is always reachable. */}
         <form ref={form} style={pinnedTop === null ? undefined : { position: 'fixed', top: pinnedTop, left: 12, right: 12, bottom: 'auto', zIndex: 60 }} className={`sticky bottom-[calc(var(--app-bottom-clearance)-0.75rem)] z-10 flex items-end gap-2 border-t border-line-soft bg-card p-3 lg:static ${pinnedTop === null ? 'rounded-b-2xl' : 'rounded-2xl border shadow-lg'}`} onSubmit={event => { event.preventDefault(); void send(draft) }}>
@@ -318,7 +318,7 @@ function RecommendationCard({ rec, color, grouped = false, added, busy, disabled
   return <article className="flex flex-col rounded-xl border border-line-soft bg-white p-3 transition-shadow hover:shadow-md">
     <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={`View details for ${rec.name}`} className="flex flex-1 flex-col text-left">
       {/* In a grouped reply the idea and category are already in the headings above. */}
-      {!grouped && <p className="mb-1 flex w-full items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted"><span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: color }} /><span className="min-w-0 truncate" style={{ color }}>{optionOf(rec)}</span><span aria-hidden="true">·</span><category.Icon size={12} className="shrink-0" />{category.eyebrow}</p>}
+      {!grouped && <p className="mb-1 flex w-full items-center gap-1.5 text-label font-semibold uppercase tracking-wider text-muted"><span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: color }} /><span className="min-w-0 truncate" style={{ color }}>{optionOf(rec)}</span><span aria-hidden="true">·</span><category.Icon size={12} className="shrink-0" />{category.eyebrow}</p>}
       <h3 className="font-semibold leading-snug">{rec.name}</h3>
       <p className="text-xs text-muted">{[rec.destination, rec.country].filter(Boolean).join(', ')}</p>
       {rec.price && <p className="mt-2 text-sm font-semibold text-ink">{rec.price}</p>}
@@ -350,7 +350,7 @@ function TripSetup({ hasOwnTrips, initial, disabled, onSubmit, onSkip }: { hasOw
   const toggle = (list: string[], value: string) => list.includes(value) ? list.filter(item => item !== value) : [...list, value]
   const chip = (selected: boolean) => `min-h-10 rounded-full border px-3 text-sm ${selected ? 'border-link bg-mist font-semibold text-ink' : 'border-line text-link hover:bg-paper'}`
   return <section aria-label="Tell us about this trip" className="rounded-xl bg-cream p-4">
-    <h2 className="font-[family-name:var(--font-playfair)] text-xl">Tell us about this trip</h2>
+    <h2 className="font-[family-name:var(--font-playfair)] text-title">Tell us about this trip</h2>
     <p className="mt-1 text-sm text-muted">{askTaste ? 'A few quick picks so the ideas actually fit you.' : 'We’ll use your past trips for your budget and taste—just tell us about this one.'}</p>
     <Group title="Who’s going?">{TRAVELERS.map(option => <button key={option} type="button" aria-pressed={travelers === option} onClick={() => setTravelers(option)} className={chip(travelers === option)}>{option}</button>)}</Group>
     <Group title="How long?">{TRIP_LENGTHS.map(option => <button key={option} type="button" aria-pressed={length === option} onClick={() => setLength(option)} className={chip(length === option)}>{option}</button>)}</Group>
@@ -373,7 +373,7 @@ function PreferencesSummary({ preferences }: { preferences: TravelPreferences })
 }
 
 function SourceBadge({ rec }: { rec: Recommendation }) {
-  return <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${rec.source === 'claude' ? 'bg-mist text-link' : 'bg-mist text-link'}`}>{rec.source === 'claude' ? <><Sparkles size={11} />Postcard’s pick</> : rec.source === 'you' ? <><MapPin size={11} />Your past trip</> : <><Users size={11} />{rec.friendName}</>}</span>
+  return <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-label font-semibold ${rec.source === 'claude' ? 'bg-mist text-link' : 'bg-mist text-link'}`}>{rec.source === 'claude' ? <><Sparkles size={11} />Postcard’s pick</> : rec.source === 'you' ? <><MapPin size={11} />Your past trip</> : <><Users size={11} />{rec.friendName}</>}</span>
 }
 
 type PickInfo = { author: string | null; notes: string | null; rating: number | null; description: string | null; googleRating?: { value: number; count: number } | null; photos: { url: string; credit: string | null }[]; photosFromGoogle: boolean; address: string | null; website: string | null; placeId: string | null; trip: { title: string; href: string } | null }
@@ -441,9 +441,9 @@ function PickDetails({ rec, color, addButton, onClose }: { rec: Recommendation; 
           <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto rounded-lg">{info.photos.map(photo => <figure key={photo.url} className="relative h-56 w-[85%] shrink-0 snap-center overflow-hidden rounded-lg bg-chip sm:w-[70%]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photo.url} alt="" loading="lazy" className="h-full w-full object-cover" />
-            {photo.credit && <figcaption className="absolute bottom-1 right-2 rounded bg-black/50 px-1.5 text-[10px] text-white">{photo.credit}</figcaption>}
+            {photo.credit && <figcaption className="absolute bottom-1 right-2 rounded bg-black/50 px-1.5 text-label text-white">{photo.credit}</figcaption>}
           </figure>)}</div>
-          {info.photosFromGoogle && <p className="mt-1 text-[11px] text-muted">Photos from Google{rec.source !== 'claude' ? ` · ${rec.source === 'you' ? 'you' : rec.friendName} didn’t add any` : ''}</p>}
+          {info.photosFromGoogle && <p className="mt-1 text-label text-muted">Photos from Google{rec.source !== 'claude' ? ` · ${rec.source === 'you' ? 'you' : rec.friendName} didn’t add any` : ''}</p>}
         </section>}
 
       <section><h3 className={detailStyles.sectionTitle}>Why Postcard suggested it</h3><p className={detailStyles.text}>{rec.why}</p></section>

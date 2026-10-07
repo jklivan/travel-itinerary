@@ -14,7 +14,7 @@ import UserAvatar from './UserAvatar'
 import PostcardLogo from '@/components/PostcardLogo'
 
 
-const AUDIENCE_CHIP = 'w-fit rounded-md bg-cream/95 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-ink'
+const AUDIENCE_CHIP = 'w-fit rounded-md bg-cream/95 px-2.5 py-1 text-label font-medium uppercase tracking-[0.14em] text-ink'
 
 type DestItem = { type: string; name: string; dayIndex?: number | null }
 type Destination = { lat?: number | null; name: string; country: string | null; items: DestItem[] }
@@ -99,11 +99,11 @@ export default function ItineraryCard({
         {/* Place, title and length sit on the paper under the photo; the verdict is a postage stamp beside them. */}
         <div className="relative px-1 pt-3">
           <Link href={`/itinerary/${id}`} className={`block text-ink ${stamp ? 'pr-24' : ''}`}>
-            {location && <span className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.16em] text-link">
+            {location && <span className="mb-1 flex items-center gap-1 text-label font-medium uppercase tracking-[0.16em] text-link">
               <MapPin size={12} className="shrink-0 text-brown" />{location}
             </span>}
-            <h2 className="trip-title break-words font-[family-name:var(--font-playfair)] text-xl !uppercase leading-[1.1] tracking-[0.08em] sm:text-2xl">{title}</h2>
-            <span className="mt-1 block text-[10px] font-medium uppercase tracking-[0.16em] text-link">{days === null ? 'Guide' : `${days}-day trip`}</span>
+            <h2 className="trip-title break-words font-[family-name:var(--font-playfair)] text-title !uppercase leading-[1.1] tracking-[0.08em] sm:text-title">{title}</h2>
+            <span className="mt-1 block text-label font-medium uppercase tracking-[0.16em] text-link">{days === null ? 'Guide' : `${days}-day trip`}</span>
           </Link>
           {stamp && <Stamp aria-label={`Author verdict: ${stamp.label}`} label={stamp.label} color={STAMP_COLORS[stamp.value]} className="pointer-events-none absolute -top-5 right-0 z-20 -rotate-[12deg]" />}
         </div>
@@ -111,22 +111,22 @@ export default function ItineraryCard({
         <div className={`mt-2 flex min-h-11 items-center justify-between gap-2 border-t border-line-soft px-1 pt-2 ${fullWidth ? 'sm:px-1.5' : ''}`}>
           {authorId ? <Link href={`/user/${authorId}`} className="flex min-w-0 items-center gap-2 hover:opacity-80">
             <UserAvatar name={authorName} image={authorImage} size={32} />
-            <span className="truncate font-[family-name:var(--font-playfair)] text-[11px] uppercase tracking-[0.18em] text-link">{authorName}</span>
+            <span className="truncate font-[family-name:var(--font-playfair)] text-label uppercase tracking-[0.18em] text-link">{authorName}</span>
           </Link> : <div className="flex min-w-0 items-center gap-2">
             <UserAvatar name={authorName} image={authorImage} size={32} />
-            <span className="truncate font-[family-name:var(--font-playfair)] text-[11px] uppercase tracking-[0.18em] text-link">{authorName}</span>
+            <span className="truncate font-[family-name:var(--font-playfair)] text-label uppercase tracking-[0.18em] text-link">{authorName}</span>
           </div>}
           <div className="flex shrink-0 items-center gap-2.5 text-ink">
-            {season && <span className="hidden text-[8px] font-medium uppercase tracking-[0.12em] text-brown min-[390px]:inline">{season}</span>}
+            {season && <span className="hidden text-micro font-medium uppercase tracking-[0.12em] text-brown min-[390px]:inline">{season}</span>}
             {showBucket && <BucketButton itineraryId={id} initialBucketed={isBucketed} isLoggedIn={!!currentUserId} withFolders={!!currentUserId} />}
-            <span aria-label={`${saveCount} likes`} className="flex items-center gap-1 text-[11px]"><Heart size={15} />{saveCount}</span>
+            <span aria-label={`${saveCount} likes`} className="flex items-center gap-1 text-label"><Heart size={15} />{saveCount}</span>
             <CommentsSheetButton itineraryId={id} title={title} count={commentCount} variant="icon" />
-            {showBudget && budget && budget > 0 && <span className="text-[9px] font-medium tracking-tight" aria-label={`Budget level ${budget} out of 5`}>
-              {[1,2,3,4,5].map((n) => <span key={n} className={n <= budget ? 'text-green-600' : 'text-gray-300'}>$</span>)}
+            {showBudget && budget && budget > 0 && <span className="text-micro font-medium tracking-tight" aria-label={`Budget level ${budget} out of 5`}>
+              {[1,2,3,4,5].map((n) => <span key={n} className={n <= budget ? 'text-ink' : 'text-gold-faint'}>$</span>)}
             </span>}
           </div>
         </div>
-        {social && (saveCount > 0 || social.comment) && <div className="space-y-0.5 px-1 pt-2 text-[13px] leading-snug text-ink-soft">
+        {social && (saveCount > 0 || social.comment) && <div className="space-y-0.5 px-1 pt-2 text-sm leading-snug text-ink-soft">
           {/* Names go to that person's profile; "N others" / "N likes" open who liked it. */}
           {saveCount > 0 && <p>{social.likedBy
             ? <>Liked by <Link href={`/user/${social.likedBy.id}`} className="font-semibold text-ink hover:underline">{social.likedBy.name.split(' ')[0]}</Link>{saveCount > 1 && <> and <LikesSheetButton itineraryId={id} title={title}>{saveCount - 1} {saveCount - 1 === 1 ? 'other' : 'others'}</LikesSheetButton></>}</>

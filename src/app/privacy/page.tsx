@@ -37,12 +37,12 @@ const sections: { title: string; body: React.ReactNode }[] = [
 ]
 
 export default function PrivacyPage() {
-  return <article className="mx-auto max-w-2xl px-4 py-8 text-[#1f3354]">
-    <h1 className="font-[family-name:var(--font-playfair)] text-3xl">Privacy Policy</h1>
-    <p className="mt-1 text-sm text-[#6b7285]">Last updated {UPDATED}</p>
-    <p className="mt-5 text-[15px] leading-relaxed">Postcard is a place to plan trips and share the places worth going. This policy explains what we collect, why, and the choices you have.</p>
-    {sections.map(section => <section key={section.title} className="mt-7 text-[15px] leading-relaxed">
-      <h2 className="mb-2 font-[family-name:var(--font-playfair)] text-xl text-[#3f5a80]">{section.title}</h2>
+  return <article className="mx-auto max-w-2xl px-4 py-8 text-ink">
+    <h1 className="font-[family-name:var(--font-playfair)] text-display">Privacy Policy</h1>
+    <p className="mt-1 text-sm text-muted">Last updated {UPDATED}</p>
+    <p className="mt-5 text-base leading-relaxed">Postcard is a place to plan trips and share the places worth going. This policy explains what we collect, why, and the choices you have.</p>
+    {sections.map(section => <section key={section.title} className="mt-7 text-base leading-relaxed">
+      <h2 className="mb-2 font-[family-name:var(--font-playfair)] text-title text-link">{section.title}</h2>
       {section.body}
     </section>)}
   </article>

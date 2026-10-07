@@ -40,7 +40,7 @@ export default async function SavedPage({ searchParams }: { searchParams: Promis
 
   return <div className="mx-auto max-w-xl px-5 pb-10 pt-6 sm:px-8">
     <Link href="/saved" className="text-sm text-ink-soft hover:underline">← All folders</Link>
-    <h1 className="mt-3 font-[family-name:var(--font-playfair)] text-3xl uppercase tracking-[0.08em] text-ink [overflow-wrap:anywhere]">{openFolder.name}</h1>
+    <h1 className="mt-3 font-[family-name:var(--font-playfair)] text-display uppercase tracking-[0.08em] text-ink [overflow-wrap:anywhere]">{openFolder.name}</h1>
     <p className="mb-3 mt-1 text-xs uppercase tracking-[0.16em] text-muted">{visibleItems.length} {visibleItems.length === 1 ? 'trip' : 'trips'}</p>
     {selectedFolder && <SavedFolderActions key={selectedFolder} folder={openFolder} />}
     {visibleItems.length === 0 ? <div className="rounded-xl border border-sand bg-cream p-8 text-center text-sm text-brown">{selectedFolder ? 'No trips in this folder yet. Use Save to folder on a saved trip.' : 'Nothing saved yet. Tap the ❤️ on any trip to save it.'}</div>

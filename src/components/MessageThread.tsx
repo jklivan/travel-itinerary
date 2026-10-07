@@ -35,7 +35,7 @@ export default function MessageThread({ messages, newIds = [], userId, person, i
           </div>}
           <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink">{message.content}</p>
           <div className="mt-2 flex items-center justify-between gap-3">
-            <time className="text-[10px] text-brown" dateTime={message.createdAt.toISOString()}>{message.createdAt.toLocaleString('en-US', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' })} UTC</time>
+            <time className="text-label text-brown" dateTime={message.createdAt.toISOString()}>{message.createdAt.toLocaleString('en-US', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' })} UTC</time>
             <button type="button" className="shrink-0 rounded-full border border-mist-edge px-2.5 py-1 text-xs font-medium text-link hover:bg-white/60" onClick={() => setReplyTo({ id: message.id, content: message.content, author: isOwn ? 'yourself' : person.name, itineraryTitle: message.itineraryTitle, placeName: message.placeName })}>Reply</button>
           </div>
         </article>

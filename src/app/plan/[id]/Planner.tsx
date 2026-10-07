@@ -125,7 +125,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   }
   return <DayNames.Provider value={dayName}><div className="mx-auto max-w-2xl px-4 py-6 text-ink">
     <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
-    <h1 className="trip-title mt-2 break-words font-[family-name:var(--font-playfair)] text-3xl sm:text-4xl">{trip.title}</h1>
+    <h1 className="trip-title mt-2 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
     {<details id="trip-details" open={initialDetails || undefined} className="mt-3 scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-2 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit trip details</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
     {trip.visibility !== 'draft' && <div className="mt-4 flex flex-wrap items-center gap-3">
       {<Link href={`/itinerary/${trip.id}`} className="btn btn-outline">View shared trip</Link>}
@@ -146,11 +146,11 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       {mapOpened && <div hidden={tab !== 'map'}><PlanningMap places={places.filter(place => place.type !== 'transport' || place.placeId || (place.lat !== null && place.lng !== null)).map(place => ({ id: place.id, name: place.name, city: place.destination, type: place.type === 'hotel' ? 'hotel' : place.type === 'food_drink' ? 'food_drink' : place.type === 'transport' ? 'transport' : 'activity', day: place.day, placeId: place.placeId ?? undefined, lat: place.lat, lng: place.lng }))} /></div>}
       {tab === 'itinerary' && !places.length && (trip.durationDays ? <p className="mb-4 text-sm text-muted">Your {trip.durationDays}-day trip. Add places and choose a day for each.</p> : <TripDaysPrompt tripId={trip.id} />)}
       {/* A plan with several destinations shows their headings (each with Add a place) even before anything is added. */}
-      {tab === 'map' ? null : !places.length && !(multiDestination && tab === 'places') && !(tab === 'itinerary' && trip.durationDays) ? <div className="rounded-2xl border border-dashed border-line p-8 text-center"><MapPin className="mx-auto mb-3 text-link" /><h2 className="text-xl font-semibold">A place to start</h2><p className="mt-2 text-sm text-muted">A hotel you love, a restaurant someone mentioned, something you want to do. Add it now and decide when later.</p></div> : tab === 'places' ? <>
+      {tab === 'map' ? null : !places.length && !(multiDestination && tab === 'places') && !(tab === 'itinerary' && trip.durationDays) ? <div className="rounded-2xl border border-dashed border-line p-8 text-center"><MapPin className="mx-auto mb-3 text-link" /><h2 className="text-title font-semibold">A place to start</h2><p className="mt-2 text-sm text-muted">A hotel you love, a restaurant someone mentioned, something you want to do. Add it now and decide when later.</p></div> : tab === 'places' ? <>
         <p className="mb-5 text-sm text-muted">Everything you’re considering, all in one place. Days are optional.</p>
         {lookAlikes.map(group => <MergeLookAlikes key={group.keep.id} tripId={trip.id} keep={group.keep} others={group.others} />)}
         {multiDestination ? destinations.map(destination => { const items = places.filter(p => p.destinationId === destination.id); return <section key={destination.id} aria-label={destination.name} className="mb-10">
-          <div className="mb-3 flex items-baseline justify-between gap-3 border-b-2 border-ink pb-2"><h2 className="flex min-w-0 items-center gap-2 font-[family-name:var(--font-playfair)] text-2xl uppercase [overflow-wrap:anywhere]"><MapPin size={20} className="shrink-0 text-link" />{destination.name}</h2><span className="flex shrink-0 items-center gap-3"><span className="text-xs font-semibold uppercase tracking-wider text-muted">{items.length} {items.length === 1 ? 'place' : 'places'}</span><button type="button" aria-expanded={editingDestination === destination.id} onClick={() => setEditingDestination(current => current === destination.id ? null : destination.id)} className="inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-link"><Pencil size={14} />Edit</button></span></div>
+          <div className="mb-3 flex items-baseline justify-between gap-3 border-b-2 border-ink pb-2"><h2 className="flex min-w-0 items-center gap-2 font-[family-name:var(--font-playfair)] text-title uppercase [overflow-wrap:anywhere]"><MapPin size={20} className="shrink-0 text-link" />{destination.name}</h2><span className="flex shrink-0 items-center gap-3"><span className="text-xs font-semibold uppercase tracking-wider text-muted">{items.length} {items.length === 1 ? 'place' : 'places'}</span><button type="button" aria-expanded={editingDestination === destination.id} onClick={() => setEditingDestination(current => current === destination.id ? null : destination.id)} className="inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-link"><Pencil size={14} />Edit</button></span></div>
           {editingDestination === destination.id && <DestinationEditor key={destination.id} tripId={trip.id} destination={destination} places={items.length} others={destinations.filter(other => other.id !== destination.id)} onClose={() => setEditingDestination(null)} />}
           {/* Adds here search near this destination. */}
           <button type="button" onClick={() => { setImporting(false); setAdding({ at: `destination:${destination.id}`, destination: destination.name, destinationId: destination.id }) }} className="mb-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-link px-4 text-sm font-semibold text-link hover:bg-mist"><Plus size={17} />Add a place in {destination.name}</button>
@@ -177,7 +177,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       </>}
     </section>
     <div className="mt-8 border-t border-line pt-5"><div className="flex flex-wrap items-center justify-between gap-3">{/* Post on the left, delete on the right (also when there's nothing to post). */}{trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={() => setPublishFormat(trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary')} aria-label="Post trip" title="Post trip" className="pointer-events-auto relative inline-flex size-20 items-center justify-center transition-transform hover:-rotate-6 hover:scale-105 disabled:opacity-60"><PostStamp size={80} /><span className="sr-only">Post</span></button>}<div className="pointer-events-auto ml-auto"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div></div></div>
-    {trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="panel w-full max-w-md p-5 shadow-xl"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-ink">A few more details</h2><p className="mt-1 text-sm text-muted">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-2xl leading-none text-muted" aria-label="Close">×</button></div><div className="mt-5 space-y-5">{allPhotos.length > 0 && <fieldset><legend className="mb-1 text-sm font-semibold text-link">Choose cover photo</legend><p className="mb-1 text-xs text-muted">The photo people see first. Scroll sideways to see them all.</p><CoverPhotoPicker photos={allPhotos} value={publishCover} onChange={setPublishCover} /></fieldset>}<fieldset><legend className="mb-2 text-sm font-semibold text-link">Trip type</legend><div className="grid grid-cols-3 gap-2">{([['guide', 'Guide'], ['day-trip', 'Day trip'], ['itinerary', 'Multi-day']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setPublishFormat(value)} className={`rounded-xl border px-2 py-2 text-xs font-semibold ${publishFormat === value ? 'border-link bg-mist text-ink' : 'border-line text-muted'}`}>{label}</button>)}</div></fieldset><TripExtras budget={publishBudget} onBudget={setPublishBudget} rating={publishRating} onRating={setPublishRating} tags={publishTags} onTags={setPublishTags} legendClass="mb-2 text-sm font-semibold text-link" months={<MonthPicker value={publishMonths} onChange={setPublishMonths} legendClass="mb-1 text-sm font-semibold text-link" />} /><button type="button" disabled={publishing} onClick={() => void continueToPreview(publishFormat)} className="btn btn-primary w-full">{publishing ? 'Saving…' : 'Continue →'}</button></div></div></div>}
+    {trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="panel w-full max-w-md p-5 shadow-xl"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="font-[family-name:var(--font-playfair)] text-title text-ink">A few more details</h2><p className="mt-1 text-sm text-muted">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-title leading-none text-muted" aria-label="Close">×</button></div><div className="mt-5 space-y-5">{allPhotos.length > 0 && <fieldset><legend className="mb-1 text-sm font-semibold text-link">Choose cover photo</legend><p className="mb-1 text-xs text-muted">The photo people see first. Scroll sideways to see them all.</p><CoverPhotoPicker photos={allPhotos} value={publishCover} onChange={setPublishCover} /></fieldset>}<fieldset><legend className="mb-2 text-sm font-semibold text-link">Trip type</legend><div className="grid grid-cols-3 gap-2">{([['guide', 'Guide'], ['day-trip', 'Day trip'], ['itinerary', 'Multi-day']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setPublishFormat(value)} className={`rounded-xl border px-2 py-2 text-xs font-semibold ${publishFormat === value ? 'border-link bg-mist text-ink' : 'border-line text-muted'}`}>{label}</button>)}</div></fieldset><TripExtras budget={publishBudget} onBudget={setPublishBudget} rating={publishRating} onRating={setPublishRating} tags={publishTags} onTags={setPublishTags} legendClass="mb-2 text-sm font-semibold text-link" months={<MonthPicker value={publishMonths} onChange={setPublishMonths} legendClass="mb-1 text-sm font-semibold text-link" />} /><button type="button" disabled={publishing} onClick={() => void continueToPreview(publishFormat)} className="btn btn-primary w-full">{publishing ? 'Saving…' : 'Continue →'}</button></div></div></div>}
     {publishMessage && <p role="status" className="mt-2 text-right text-sm text-link">{publishMessage}</p>}
     {unratedPrompt && <UnratedPrompt places={places.filter(place => unratedPrompt.includes(place.id))} onClose={() => setUnratedPrompt(null)} onPreview={showPreview} />}
   </div></DayNames.Provider>
@@ -214,7 +214,7 @@ function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, init
   }
 
   const nightsSelect = <label className="block text-xs uppercase tracking-wide text-link">How many nights?<select value={nights} onChange={event => setNights(event.target.value)} className={inputClass}><option value="">Not sure yet</option>{Array.from({ length: 30 }, (_, index) => index + 1).map(value => <option key={value} value={value}>{value} {value === 1 ? 'night' : 'nights'}</option>)}</select></label>
-  return <section className="panel mb-4 space-y-3 p-4" aria-label="Add a place"><button type="button" onClick={onClose} className="text-sm text-link">← Back</button><h2 className="font-[family-name:var(--font-playfair)] text-2xl uppercase">Add a place</h2><p className="text-sm text-muted">Save places to your trip. Add notes now. If you’ve already been, add a rating too.</p><fieldset disabled={busy || uploading} className="space-y-3">
+  return <section className="panel mb-4 space-y-3 p-4" aria-label="Add a place"><button type="button" onClick={onClose} className="text-sm text-link">← Back</button><h2 className="font-[family-name:var(--font-playfair)] text-title uppercase">Add a place</h2><p className="text-sm text-muted">Save places to your trip. Add notes now. If you’ve already been, add a rating too.</p><fieldset disabled={busy || uploading} className="space-y-3">
     <DestinationPicker destinations={trip.destinations.map(d => ({ id: d.id, name: d.name }))} value={destination} selectedId={destinationId} onChange={changeDestination} labelClass="mb-1 text-sm" />
     <fieldset><legend className="mb-2 text-sm">Category</legend><div className="flex flex-wrap gap-2">
       {[
@@ -250,7 +250,7 @@ function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, init
       </details>}
       {trip.durationDays && category === 'hotel' ? nightsSelect : null}
     </PlaceEntryForm>
-    {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
+    {error && <p role="alert" className="mt-3 text-sm text-danger">{error}</p>}
   </section>
 }
 
@@ -273,13 +273,13 @@ function UnratedPrompt({ places, onClose, onPreview }: { places: (Place & { dest
   }
   return <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="unrated-heading">
     <div className="panel w-full max-w-md min-w-0 p-5 shadow-xl">
-      <div className="flex items-start justify-between gap-4"><div className="min-w-0"><h2 id="unrated-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-ink">Rate your places?</h2><p className="mt-1 text-sm text-muted">{remaining === 0 ? 'All rated. Thanks!' : remaining === 1 ? 'One place doesn’t have a rating yet.' : `${remaining} places don’t have a rating yet.`} Ratings help friends know what to prioritize.</p></div><button type="button" onClick={onClose} className="shrink-0 text-2xl leading-none text-muted" aria-label="Close">×</button></div>
+      <div className="flex items-start justify-between gap-4"><div className="min-w-0"><h2 id="unrated-heading" className="font-[family-name:var(--font-playfair)] text-title text-ink">Rate your places?</h2><p className="mt-1 text-sm text-muted">{remaining === 0 ? 'All rated. Thanks!' : remaining === 1 ? 'One place doesn’t have a rating yet.' : `${remaining} places don’t have a rating yet.`} Ratings help friends know what to prioritize.</p></div><button type="button" onClick={onClose} className="shrink-0 text-title leading-none text-muted" aria-label="Close">×</button></div>
       <ul className="mt-4 max-h-[50dvh] divide-y divide-line-soft overflow-y-auto">{places.map(place => <li key={place.id} className="min-w-0 py-3">
         <p className="text-sm font-semibold [overflow-wrap:anywhere]">{place.name}</p>
         <p className="text-xs text-muted">{categories.find(category => category.value === place.type)?.eyebrow ?? 'Place'}</p>
         <div className="mt-1 flex items-center"><StarPicker value={ratings[place.id] ?? 0} onChange={value => void rate(place.id, value)} name={place.name} disabled={!!saving} />{saving === place.id ? <span className="ml-2 text-xs text-muted">Saving…</span> : ratings[place.id] ? <span className="ml-2 flex items-center gap-1 text-xs text-link"><Check size={13} />Saved</span> : null}</div>
       </li>)}</ul>
-      {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
       <button type="button" onClick={onPreview} disabled={!!saving} className="btn btn-primary mt-4 w-full">{remaining === 0 ? 'Preview my trip →' : 'Skip, preview my trip →'}</button>
     </div>
   </div>
@@ -331,7 +331,7 @@ function PlaceRow({ tripId, place, maxDay, destinationChoices, dayChips, dayRang
       <div className={styles.cardBody}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className={styles.eyebrow}>{category.eyebrow}</p>
-          {getRecommendation(place.tags) === 'option' && <span className="rounded-full border border-mist-line bg-mist px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-link">Alternative</span>}
+          {getRecommendation(place.tags) === 'option' && <span className="rounded-full border border-mist-line bg-mist px-2.5 py-1 text-label font-semibold uppercase tracking-wider text-link">Alternative</span>}
         </div>
         <h3 className={styles.placeName}>{place.name}</h3>
         {/* The place's own town once Google has it; until then, the destination it's filed under. */}
@@ -359,15 +359,15 @@ function PlaceRow({ tripId, place, maxDay, destinationChoices, dayChips, dayRang
           {/* Hotels: how many nights, from the check-in day. The itinerary shows the stay on those days. */}
           {type === 'hotel' && <label className="block text-xs text-muted">Nights (optional)<select value={nights} onChange={event => setNights(event.target.value)} className={inputClass}><option value="">Not set</option>{Array.from({ length: 30 }, (_, index) => index + 1).map(value => <option key={value} value={value}>{value} {value === 1 ? 'night' : 'nights'}</option>)}</select></label>}
         </PlaceEditForm>
-        {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+        {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
       </div>}
     {saved && <p role="status" className="flex items-center gap-1 text-xs text-link"><Check size={14} />Saved</p>}
-    {editing && <div className="w-full">{!removing ? <button type="button" aria-label={`Delete ${place.name}`} className="min-h-11 text-xs text-red-700" onClick={() => setRemoving(true)}>Delete place</button> : <div className="text-sm"><p>Delete this place and its notes? The rest of your trip will stay.</p><button type="button" disabled={busy} className="min-h-11 pr-4 text-red-700" onClick={async () => {
+    {editing && <div className="w-full">{!removing ? <button type="button" aria-label={`Delete ${place.name}`} className="min-h-11 text-xs text-danger" onClick={() => setRemoving(true)}>Delete place</button> : <div className="text-sm"><p>Delete this place and its notes? The rest of your trip will stay.</p><button type="button" disabled={busy} className="min-h-11 pr-4 text-danger" onClick={async () => {
       if (saving.current) return
       saving.current = true; setBusy(true); setError('')
       try { const result = await removePlanPlace(place.id); if (result.error) setError(result.error); else router.refresh() }
       catch { setError('Could not remove. Please try again.') } finally { saving.current = false; setBusy(false) }
-    }}>{busy ? 'Deleting…' : 'Delete this place'}</button><button type="button" disabled={busy} className="min-h-11" onClick={() => setRemoving(false)}>Keep place</button></div>}{error && <p role="alert" className="text-sm text-red-700">{error}</p>}</div>}
+    }}>{busy ? 'Deleting…' : 'Delete this place'}</button><button type="button" disabled={busy} className="min-h-11" onClick={() => setRemoving(false)}>Keep place</button></div>}{error && <p role="alert" className="text-sm text-danger">{error}</p>}</div>}
     </div>
   </article>
   </SwipeToDelete>
@@ -379,7 +379,7 @@ const actionIcon = 'flex size-14 items-center justify-center rounded-full border
 // changeable afterwards in Edit trip details. Day trip isn't a tag here; it follows the trip type.
 function TripExtras({ budget, onBudget, rating, onRating, tags, onTags, legendClass, months }: { budget: number; onBudget: (value: number) => void; rating: number; onRating: (value: number) => void; tags: string[]; onTags: (value: string[]) => void; legendClass: string; months?: React.ReactNode }) {
   return <>
-    <fieldset><legend className={legendClass}>Budget</legend><div className="flex gap-2">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => onBudget(budget === value ? 0 : value)} className={`text-xl ${value <= budget ? 'text-gold' : 'text-gold-faint'}`} aria-label={`${value} dollar signs`}>$</button>)}</div></fieldset>
+    <fieldset><legend className={legendClass}>Budget</legend><div className="flex gap-2">{[1, 2, 3, 4, 5].map(value => <button key={value} type="button" onClick={() => onBudget(budget === value ? 0 : value)} className={`text-title ${value <= budget ? 'text-gold' : 'text-gold-faint'}`} aria-label={`${value} dollar signs`}>$</button>)}</div></fieldset>
     <fieldset><legend className={legendClass}>Overall trip rating</legend><div className="flex gap-1"><StarPicker value={rating} onChange={onRating} name="trip" size={26} /></div></fieldset>
     {months}
     <fieldset><legend className={legendClass}>Tags</legend><div className="flex flex-wrap gap-2">{TAGS.filter(tag => tag.id !== 'day-trip').map(tag => <TagChip key={tag.id} id={tag.id} selected={tags.includes(tag.id)} onToggle={() => onTags(tags.includes(tag.id) ? tags.filter(value => value !== tag.id) : [...tags, tag.id])} />)}</div></fieldset>
@@ -518,7 +518,7 @@ function TripDaysPrompt({ tripId, current, onDone }: { tripId: string; current?:
       <span className="mt-2 flex gap-2"><input type="number" inputMode="numeric" min={1} max={365} step={1} required value={days} onChange={event => setDays(event.target.value)} placeholder="e.g. 5" className={`${inputClass} !mt-0 max-w-32`} />
       <button disabled={busy} className={buttonClass}>{busy ? 'Saving…' : 'Set days'}</button></span>
     </label>
-    {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+    {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
   </form>
 }
 
@@ -551,7 +551,7 @@ function AddDay({ tripId, days }: { tripId: string; days: number }) {
       try { const result = await setPlanDays(tripId, days + 1); if (result.error) setError(result.error); else router.refresh() }
       catch { setError('Could not add a day. Please try again.') } finally { setBusy(false) }
     }} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-mist-edge text-sm font-semibold text-link hover:bg-mist disabled:opacity-50"><Plus size={18} />{busy ? 'Adding…' : 'Add a day'}</button>
-    {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+    {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
   </div>
 }
 
@@ -568,11 +568,11 @@ function DeleteDay({ tripId, day, places }: { tripId: string; day: number; place
     catch { setError('Could not delete this day. Please try again.') } finally { setBusy(false) }
   }
   return <div className="mt-2 text-right text-xs">
-    {!confirming ? <button type="button" onClick={() => places ? setConfirming(true) : void remove()} disabled={busy} className="min-h-9 text-red-700 hover:underline disabled:opacity-50">{busy ? 'Deleting…' : `Delete ${dayName(day)}`}</button>
+    {!confirming ? <button type="button" onClick={() => places ? setConfirming(true) : void remove()} disabled={busy} className="min-h-9 text-danger hover:underline disabled:opacity-50">{busy ? 'Deleting…' : `Delete ${dayName(day)}`}</button>
     : <span className="inline-flex flex-wrap items-center justify-end gap-3 text-ink">Delete {dayName(day)}? Its {places === 1 ? 'place moves' : `${places} places move`} to Unscheduled.
-      <button type="button" disabled={busy} onClick={() => void remove()} className="min-h-9 font-semibold text-red-700">{busy ? 'Deleting…' : 'Delete'}</button>
+      <button type="button" disabled={busy} onClick={() => void remove()} className="min-h-9 font-semibold text-danger">{busy ? 'Deleting…' : 'Delete'}</button>
       <button type="button" disabled={busy} onClick={() => setConfirming(false)} className="min-h-9">Keep</button></span>}
-    {error && <p role="alert" className="mt-1 text-red-700">{error}</p>}
+    {error && <p role="alert" className="mt-1 text-danger">{error}</p>}
   </div>
 }
 
@@ -589,12 +589,12 @@ function DayChips({ itemId, days, range, destination }: { itemId: string; days: 
     catch { setError('Could not move this place. Please try again.') } finally { setBusy(null) }
   }
   return <div className="border-t border-line-soft px-3 py-2.5">
-    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">Add to a day{range && destination && <span className="ml-1 normal-case tracking-normal text-link">· {destination}: day{range.start === range.end ? ` ${range.start}` : `s ${range.start}–${range.end}`}</span>}</p>
+    <p className="mb-1.5 text-label font-semibold uppercase tracking-[0.14em] text-muted">Add to a day{range && destination && <span className="ml-1 normal-case tracking-normal text-link">· {destination}: day{range.start === range.end ? ` ${range.start}` : `s ${range.start}–${range.end}`}</span>}</p>
     <div className="flex flex-wrap gap-1.5">
       {Array.from({ length: days }, (_, index) => index + 1).map(day => <button key={day} type="button" disabled={busy !== null} onClick={() => void move(day)} aria-label={`Move to day ${day}`} className={`chip min-w-12 justify-center font-semibold ${range && day >= range.start && day <= range.end ? "!border-link" : ""} disabled:opacity-50`}>{busy === day ? '…' : dayName(day)}</button>)}
       <button type="button" disabled={busy !== null || days >= 365} onClick={() => void move(days + 1)} aria-label={`Add day ${days + 1} for this place`} title="New day" className="flex min-h-9 min-w-9 items-center justify-center rounded-full border border-dashed border-mist-edge text-link hover:bg-mist disabled:opacity-50">{busy === days + 1 ? '…' : <Plus size={15} />}</button>
     </div>
-    {error && <p role="alert" className="mt-1 text-xs text-red-700">{error}</p>}
+    {error && <p role="alert" className="mt-1 text-xs text-danger">{error}</p>}
   </div>
 }
 
@@ -638,7 +638,7 @@ function OrganizeWithAI({ tripId, places }: { tripId: string; places: (Place & {
         <button type="button" disabled={state === 'applying'} onClick={() => { setPlan(null); setState('idle') }} className="btn btn-outline">Cancel</button>
       </div>
     </div>}
-    {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+    {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
   </div>
 }
 

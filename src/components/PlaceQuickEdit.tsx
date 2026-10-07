@@ -85,7 +85,7 @@ export default function PlaceQuickEdit({ itemId, name, type, tags, rating, photo
           <RecommendationPicker type={type} value={draftRecommendation} onChange={value => void saveRating(draftRating, value)} allowAlternative={false} />
         </div>}
       </fieldset>
-      {error && <p role="alert" className="px-2 py-1 text-red-700">{error}</p>}
+      {error && <p role="alert" className="px-2 py-1 text-danger">{error}</p>}
       {mode === 'rating' ? <div className="flex items-center justify-end gap-3 pt-2">
         <p role="status" className="text-xs text-link">{saving ? 'Saving…' : saved}</p>
         <button type="button" disabled={saving} onClick={() => { setMode(null); setError(''); setSaved('') }} className="min-h-11 rounded-lg bg-link px-4 text-white disabled:opacity-50">Done</button>

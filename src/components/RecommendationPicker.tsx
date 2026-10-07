@@ -13,7 +13,7 @@ export default function RecommendationPicker({ type, value, onChange, allowAlter
   const Icon = type === 'hotel' ? BedDouble : Star
   return (
     <fieldset className="space-y-1.5">
-      <legend className="text-xs font-medium text-gray-600">Place status</legend>
+      <legend className="text-xs font-medium text-muted">Place status</legend>
       <div className="flex flex-wrap gap-2">
         <button type="button" aria-pressed={value === 'must'} onClick={() => onChange(value === 'must' ? 'none' : 'must')}
           className="chip"><Icon size={15} />{label}</button>
@@ -22,7 +22,7 @@ export default function RecommendationPicker({ type, value, onChange, allowAlter
         {allowAlternative && <button type="button" aria-pressed={value === 'option'} onClick={() => onChange(value === 'option' ? 'none' : 'option')}
           className="chip"><Bookmark size={15} />Save as alternative</button>}
       </div>
-      {allowAlternative && <p className="text-[11px] text-gray-500">Save as alternative keeps a place you’re considering as an alternative. Select again to remove the label.</p>}
+      {allowAlternative && <p className="text-label text-muted">Save as alternative keeps a place you’re considering as an alternative. Select again to remove the label.</p>}
     </fieldset>
   )
 }

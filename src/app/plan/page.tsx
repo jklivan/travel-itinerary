@@ -14,7 +14,7 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
   return <div className="mx-auto max-w-2xl px-4 py-7 text-ink">
     <section aria-labelledby="start-planning-heading" className="bg-transparent">
       <header className="relative mb-5 px-1">
-        <h1 id="start-planning-heading" className="max-w-sm pr-20 sm:pr-8 font-[family-name:var(--font-playfair)] text-4xl uppercase leading-[0.98] tracking-[0.03em] text-ink">Your next trip starts here</h1>
+        <h1 id="start-planning-heading" className="max-w-sm pr-20 sm:pr-8 font-[family-name:var(--font-playfair)] text-display sm:text-display-lg uppercase leading-[0.98] tracking-[0.03em] text-ink">Your next trip starts here</h1>
         <PostcardLogo size={84} className="absolute -top-1 right-0 rotate-[8deg]" />
         <p className="mt-2 text-sm text-muted">{posting ? 'Add your places, then post it when you’re ready.' : 'Collect places now. Add details later.'}</p>
       </header>

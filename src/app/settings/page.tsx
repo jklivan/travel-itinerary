@@ -10,7 +10,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-6">Settings</h1>
+      <h1 className="font-[family-name:var(--font-playfair)] text-title text-ink mb-6">Settings</h1>
       <NotificationPreferences />
 
       <section className="bg-cream rounded-xl border border-sand p-5">

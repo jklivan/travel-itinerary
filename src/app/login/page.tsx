@@ -17,7 +17,7 @@ function LoginForm() {
     <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-ink">Welcome back</h1>
+          <h1 className="font-[family-name:var(--font-playfair)] text-display text-ink">Welcome back</h1>
           <p className="text-sm text-brown mt-1">{tripId ? 'Sign in to save this trip. We’ll bring you back so you can add it to your saved trips.' : 'Sign in to Postcard. Your places are waiting.'}</p>
         </div>
 
@@ -25,12 +25,12 @@ function LoginForm() {
           <form action={action} className="space-y-4">
             <input type="hidden" name="saveTrip" value={tripId} />
             {registered && (
-              <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+              <p className="text-sm text-link bg-mist border border-mist-line rounded-lg px-4 py-3">
                 Account created! Sign in to get started.
               </p>
             )}
             {state?.message && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+              <p className="text-sm text-danger bg-danger/10 border border-danger/30 rounded-lg px-4 py-3">
                 {state.message}
               </p>
             )}

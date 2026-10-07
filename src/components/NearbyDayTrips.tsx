@@ -77,7 +77,7 @@ export default function NearbyDayTrips({ entries }: { entries: Entry[] }) {
         : <button type="button" onClick={useLocation} disabled={loading} className="chip"><LocateFixed size={14} />{loading ? 'Finding you…' : 'Near me'}</button>}
     </div>
     {position && nearby.length > 0 && <p role="status" className="mb-3 text-sm font-medium text-link">Showing day trips within 50 miles of you</p>}
-    {error && !browseAll && <div role="alert" className="mb-4 rounded-2xl border border-[#e0c9a6] bg-cream p-4 text-sm text-[#6b4f2e]"><p>{error}</p><button type="button" onClick={() => setBrowseAll(true)} className="btn btn-outline mt-3">Show all day trips instead</button></div>}
+    {error && !browseAll && <div role="alert" className="mb-4 rounded-2xl border border-line bg-cream p-4 text-sm text-brown"><p>{error}</p><button type="button" onClick={() => setBrowseAll(true)} className="btn btn-outline mt-3">Show all day trips instead</button></div>}
     {position && nearby.length === 0 && <p role="status" className="rounded-xl border border-dashed border-sand p-6 text-center text-sm text-muted">No day trips within 50 miles yet. Try all trips to explore farther away.</p>}
     <div className="mx-auto flex w-full max-w-xl flex-col gap-3 sm:gap-5">
       {(!error || browseAll) && nearby.map(entry => <div key={entry.id}>

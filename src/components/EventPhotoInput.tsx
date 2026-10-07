@@ -64,6 +64,6 @@ export default function EventPhotoInput({ photos, name, onChange, onBusyChange, 
         void addPhotos(files)
       }} />
     </label>
-    {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
+    {error && <p role="alert" className="text-xs text-danger">{error}</p>}
   </div>
 }

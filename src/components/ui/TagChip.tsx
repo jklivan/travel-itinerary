@@ -8,7 +8,7 @@ const ICONS: Record<string, LucideIcon> = {
 }
 
 // Also used for the other pills beside tags on a trip (verdict, budget, who it's for, months), so the row matches.
-export const TAG_PILL = 'inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold uppercase tracking-[0.08em] transition-colors'
+export const TAG_PILL = 'inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-label font-semibold uppercase tracking-[0.08em] transition-colors'
 
 // A travel-style tag (Beach, Romantic, Skiing…): a line icon and the name in small capitals on a pale blue pill.
 // The same pill when picking tags (onToggle: a button, navy when selected) and when showing them on a trip.

@@ -33,9 +33,9 @@ export default function ExploreMapGoogle({ pins }: { pins: MapPin[] }) {
       })}
       {open && selected && <InfoWindow position={{ lat: Number(selected.split(',')[0]), lng: Number(selected.split(',')[1]) }} pixelOffset={[0, -12]} onCloseClick={() => setSelected(null)} headerDisabled>
         <div className="text-sm" style={{ maxWidth: 220 }}>
-          <p className="font-semibold text-gray-900">{open.destName}{open.country ? `, ${open.country}` : ''}</p>
-          <p className="mt-0.5 text-xs leading-snug text-gray-500">{open.itineraryTitle}</p>
-          <a href={`/itinerary/${open.itineraryId}`} className="mt-1 inline-block text-xs text-blue-600 hover:underline">View trip →</a>
+          <p className="font-semibold text-ink">{open.destName}{open.country ? `, ${open.country}` : ''}</p>
+          <p className="mt-0.5 text-xs leading-snug text-muted">{open.itineraryTitle}</p>
+          <a href={`/itinerary/${open.itineraryId}`} className="mt-1 inline-block text-xs text-link hover:underline">View trip →</a>
         </div>
       </InfoWindow>}
     </Map>

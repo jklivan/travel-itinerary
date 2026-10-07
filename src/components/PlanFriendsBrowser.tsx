@@ -72,7 +72,7 @@ export default function PlanFriendsBrowser({ plan, initialQuery, initialResults 
   }
 
   return <div className="mx-auto max-w-2xl px-4 py-6 pb-64 text-ink">
-    <h1 className="mt-5 font-[family-name:var(--font-playfair)] text-3xl">Browse friends’ places</h1>
+    <h1 className="mt-5 font-[family-name:var(--font-playfair)] text-display">Browse friends’ places</h1>
     <p className="mt-2 text-sm leading-relaxed text-muted">Pick places from several trips and add them to {plan.title} together. Keep browsing without leaving your plan.</p>
     <form className="mt-5" onSubmit={event => { event.preventDefault(); void search(query) }}>
       <label className="block text-sm font-semibold" htmlFor="friends-destination">City or destination</label>
@@ -84,7 +84,7 @@ export default function PlanFriendsBrowser({ plan, initialQuery, initialResults 
       {questions.map(question => <WhichDestination key={question.key} question={question} place={question.places === 1 ? '1 place' : `${question.places} places`} chosen={choices[question.key]} disabled={saving} onChoose={destination => setChoices(current => ({ ...current, [question.key]: destination }))} />)}
       <button type="button" disabled={saving || questions.some(question => !choices[question.key])} onClick={() => void addSelected()} className="btn btn-primary w-full">{saving ? 'Adding…' : `Add ${selected.size} ${selected.size === 1 ? 'place' : 'places'}`}</button>
     </div>}
-    {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+    {error && <p role="alert" className="mt-4 rounded-xl bg-danger/10 p-3 text-sm text-danger">{error}</p>}
     {success && <div role="status" className="mt-4 rounded-xl border border-mist-edge bg-mist p-4 text-sm"><p>{success}</p><Link href={`/plan/${plan.id}`} className="mt-2 inline-block font-semibold text-link underline">Open your plan →</Link><p className="mt-2 text-xs">New places are unscheduled, ready for your own notes and days.</p></div>}
     <div aria-busy={loading} className="mt-6 space-y-4">
       <h2 className="text-lg font-semibold">{searchedQuery ? `Friends’ trips for ${searchedQuery}` : 'Find ideas from your friends'}</h2>
@@ -93,7 +93,7 @@ export default function PlanFriendsBrowser({ plan, initialQuery, initialResults 
         const available = trip.places.filter(place => !place.alreadyAdded)
         const allSelected = available.length > 0 && available.every(place => selected.has(place.id))
         return <details key={trip.id} open={index === 0 ? true : undefined} className="panel">
-          <summary className="cursor-pointer p-4"><span className="font-semibold text-link">{trip.author}</span><span className="mt-1 block break-words font-[family-name:var(--font-playfair)] text-xl">{trip.title}</span><span className="mt-1 block text-xs text-muted">{trip.places.length} places{trip.places.some(place => selected.has(place.id)) ? ` · ${trip.places.filter(place => selected.has(place.id)).length} selected` : ''}</span></summary>
+          <summary className="cursor-pointer p-4"><span className="font-semibold text-link">{trip.author}</span><span className="mt-1 block break-words font-[family-name:var(--font-playfair)] text-title">{trip.title}</span><span className="mt-1 block text-xs text-muted">{trip.places.length} places{trip.places.some(place => selected.has(place.id)) ? ` · ${trip.places.filter(place => selected.has(place.id)).length} selected` : ''}</span></summary>
           <div className="border-t border-line p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><button type="button" disabled={saving || loading || !available.length} onClick={() => toggle(available, !allSelected)} className="min-h-11 text-sm font-semibold text-link disabled:opacity-50">{allSelected ? 'Deselect all in this trip' : 'Select all in this trip'}</button><Link href={`/itinerary/${trip.id}`} target="_blank" rel="noopener noreferrer" className="text-xs text-muted underline">Open original trip ↗</Link></div>
             <div className="divide-y divide-line-soft">{trip.places.map(place => <div key={place.id} className="py-3">

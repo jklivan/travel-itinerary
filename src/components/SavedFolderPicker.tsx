@@ -73,7 +73,7 @@ export default function SavedFolderPicker({ itineraryId, label = 'Save to folder
             <input autoFocus required maxLength={80} value={name} onChange={event => setName(event.target.value)} placeholder="Beach ideas" disabled={pending} className="mt-2 w-full rounded-lg border border-line-strong bg-white p-3" />
           </label>}
           <p className="mt-3 text-xs text-brown">Folders are only visible to you. Trips also appear in All saved.</p>
-          {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
+          {error && <p role="alert" className="mt-3 text-sm text-danger">{error}</p>}
           <button type="submit" disabled={pending || !loaded} className="btn btn-primary mt-5 w-full">{pending ? 'Please wait…' : 'Save'}</button>
         </form>
       </dialog>

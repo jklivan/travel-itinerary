@@ -46,12 +46,12 @@ export default function DeleteButton({ id, visibility, returnTo = '/', label = '
       </div>}
       {confirming === 'delete' && <p className="max-w-full break-words text-sm text-muted">Delete this entire post and all its places, notes, and photos? This cannot be undone.</p>}
       <div className="flex flex-wrap items-center gap-2">
-        {confirming === 'delete' && <button type="button" onClick={() => void handleDelete()} disabled={pending} className="min-h-11 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">{pending && !keeping ? 'Deleting…' : 'Permanently delete entire post'}</button>}
+        {confirming === 'delete' && <button type="button" onClick={() => void handleDelete()} disabled={pending} className="min-h-11 rounded-full bg-danger px-4 py-2 text-sm font-medium text-white hover:bg-danger/90 disabled:opacity-50">{pending && !keeping ? 'Deleting…' : 'Permanently delete entire post'}</button>}
         <button type="button" onClick={() => { setConfirming(null); setError('') }} disabled={pending} className="btn btn-outline text-muted">Cancel</button>
       </div>
     </div> : <div className="flex flex-wrap items-center gap-2">
       {visibility !== 'draft' && <button type="button" onClick={() => setConfirming('unpublish')} className="chip"><LockKeyhole size={14} />Unpublish</button>}
       <button type="button" onClick={() => setConfirming('delete')} aria-label={label} title={label} className="flex size-9 items-center justify-center rounded-full border border-line bg-card text-danger hover:bg-cream"><Trash2 size={16} /></button></div>}
-    {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+    {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
   </div>
 }

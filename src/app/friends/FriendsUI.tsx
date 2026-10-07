@@ -31,7 +31,7 @@ function FollowButton({
   if (status === 'following') {
     return (
       <button onClick={() => onUnfollow(userId)}
-        className="text-xs font-medium px-3 py-1.5 rounded-full border border-line-strong text-ink-soft hover:border-red-300 hover:text-red-500 transition-colors">
+        className="text-xs font-medium px-3 py-1.5 rounded-full border border-line-strong text-ink-soft hover:border-danger/40 hover:text-danger transition-colors">
         Following
       </button>
     )
@@ -39,7 +39,7 @@ function FollowButton({
   if (status === 'pending') {
     return (
       <button onClick={() => onCancel(userId)}
-        className="text-xs font-medium px-3 py-1.5 rounded-full border border-amber-300 text-amber-700 hover:border-red-300 hover:text-red-500 transition-colors">
+        className="text-xs font-medium px-3 py-1.5 rounded-full border border-gold-faint text-brown hover:border-danger/40 hover:text-danger transition-colors">
         Requested
       </button>
     )
@@ -127,11 +127,11 @@ export default function FriendsUI({
       {/* Incoming requests */}
       {requests.length > 0 && (
         <section className="bg-cream rounded-xl border border-sand overflow-hidden">
-          <div className="bg-amber-50 border-b border-amber-100 px-5 py-3 flex items-center gap-2">
-            <Users size={16} className="text-amber-600" />
+          <div className="bg-sand border-b border-sand px-5 py-3 flex items-center gap-2">
+            <Users size={16} className="text-brown" />
             <h2 className="font-semibold text-ink text-sm">
               Follow requests
-              <span className="ml-2 text-amber-700">({requests.length})</span>
+              <span className="ml-2 text-brown">({requests.length})</span>
             </h2>
           </div>
           <ul className="divide-y divide-sand">
@@ -147,7 +147,7 @@ export default function FriendsUI({
                     Accept
                   </button>
                   <button onClick={() => handleReject(user.id)}
-                    className="text-xs font-medium px-3 py-1.5 rounded-full border border-line-strong text-ink-soft hover:border-red-300 hover:text-red-500 transition-colors">
+                    className="text-xs font-medium px-3 py-1.5 rounded-full border border-line-strong text-ink-soft hover:border-danger/40 hover:text-danger transition-colors">
                     Decline
                   </button>
                 </div>
@@ -218,7 +218,7 @@ export default function FriendsUI({
                   <p className="text-sm font-medium text-ink">{user.name}</p>
                 </Link>
                 <button onClick={() => handleUnfollow(user.id)}
-                  className="text-xs font-medium px-3 py-1.5 rounded-full border border-line-strong text-ink-soft hover:border-red-300 hover:text-red-500 transition-colors">
+                  className="text-xs font-medium px-3 py-1.5 rounded-full border border-line-strong text-ink-soft hover:border-danger/40 hover:text-danger transition-colors">
                   Unfollow
                 </button>
               </li>

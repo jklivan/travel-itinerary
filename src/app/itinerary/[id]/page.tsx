@@ -496,14 +496,14 @@ export default async function ItineraryPage({
             Preview — only you can see this. It’s how your trip will look once you post it.
           </div>
         ) : it.visibility === 'draft' && (
-          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 font-medium">
+          <div className="mb-4 bg-sand border border-gold-faint rounded-lg px-3 py-2 text-xs text-brown font-medium">
             Draft — only visible to you. <Link href={editHref} className="underline">Edit &amp; publish</Link>
           </div>
         )}
 
         {/* ── Editorial Header ── */}
         <div className="mb-2">
-          <h1 className={`trip-title font-[family-name:var(--font-playfair)] ${isOwn ? 'text-3xl sm:text-4xl' : 'text-4xl md:text-5xl'} text-ink leading-tight mb-2 uppercase`}>
+          <h1 className={`trip-title font-[family-name:var(--font-playfair)] text-display sm:text-display-lg text-ink leading-tight mb-2 uppercase`}>
             {it.title}
           </h1>
 
@@ -536,7 +536,7 @@ export default async function ItineraryPage({
             </Link>
             {(isGuide || days !== null) && <>
               <span aria-hidden="true" className="h-5 w-px shrink-0 bg-line-strong" />
-              <span className="min-w-0 flex-1 text-[11px] leading-snug text-brown">
+              <span className="min-w-0 flex-1 text-label leading-snug text-brown">
                 {isGuide ? 'Guide' : <>{hasTripDates(it) && `${fmtShort(it.startDate)} – ${fmtShort(it.endDate)} · `}{days} {days === 1 ? 'day' : 'days'}</>}
               </span>
             </>}
@@ -593,7 +593,7 @@ export default async function ItineraryPage({
             {/* ── Day by Day (itineraries) ── */}
             {showDayByDay && !it.isPlan && mainDestinations.length > 0 && (
               <div className="mb-10">
-                <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-1">Day by Day</h2>
+                <h2 className="font-[family-name:var(--font-playfair)] text-title text-ink mb-1">Day by Day</h2>
                 <div className="h-px bg-line-strong mb-5" />
                 {/* Cards two across on wider screens, the same size as the Summary view's. */}
                 <div className="space-y-10">
@@ -663,7 +663,7 @@ export default async function ItineraryPage({
             {/* All places grouped by category, for both itineraries and guides. */}
             {!showDayByDay && mainDestinations.length > 0 && (
               <div className="mb-10">
-                <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-1">Places from the trip</h2>
+                <h2 className="font-[family-name:var(--font-playfair)] text-title text-ink mb-1">Places from the trip</h2>
                 <div className="h-px bg-line-strong mb-5" />
                 <div className="space-y-10">
                   {mainDestinations.map((dest) => {
@@ -723,7 +723,7 @@ export default async function ItineraryPage({
 
             {alternativeDestinations.length > 0 && (
               <section aria-labelledby="alternatives-heading" className="mb-10">
-                <h2 id="alternatives-heading" className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-1">Alternatives</h2>
+                <h2 id="alternatives-heading" className="font-[family-name:var(--font-playfair)] text-title text-ink mb-1">Alternatives</h2>
                 <p className="text-sm text-brown mb-5">Other places to consider.</p>
                 <div className="space-y-6">
                   {alternativeDestinations.map(dest => (
@@ -765,7 +765,7 @@ export default async function ItineraryPage({
           if (!gallery.length) return null
           return <section aria-labelledby="trip-photos-heading" className="mt-8 border-t border-line-strong pt-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 id="trip-photos-heading" className="font-[family-name:var(--font-playfair)] text-2xl uppercase text-ink">Trip photos</h2>
+              <h2 id="trip-photos-heading" className="font-[family-name:var(--font-playfair)] text-title uppercase text-ink">Trip photos</h2>
             </div>
             <PhotoStrip photos={gallery} title={it.title} gallery />
           </section>

@@ -94,7 +94,7 @@ export default function ExploreTripFilters({
 
           {groups.map(group => (
             <fieldset key={group.name} disabled={pending} className="mb-6">
-              <legend className="mb-3 font-[family-name:var(--font-playfair)] text-xl text-ink">
+              <legend className="mb-3 font-[family-name:var(--font-playfair)] text-title text-ink">
                 {group.title}
               </legend>
               <div className="grid grid-cols-4 gap-x-2 gap-y-3 sm:gap-x-3">
@@ -127,7 +127,7 @@ export default function ExploreTripFilters({
           ))}
 
           <div className="mb-6">
-            <p className="mb-3 font-[family-name:var(--font-playfair)] text-xl text-ink">Where?</p>
+            <p className="mb-3 font-[family-name:var(--font-playfair)] text-title text-ink">Where?</p>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-brown pointer-events-none" />
               <input

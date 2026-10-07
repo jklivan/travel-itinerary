@@ -66,19 +66,19 @@ export function CommentInput({
           if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit()
         }}
       />
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
       <div className="flex gap-2">
         <button
           onClick={handleSubmit}
           disabled={pending || !text.trim()}
-          className="text-xs font-medium px-3 py-1.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="text-xs font-medium px-3 py-1.5 bg-ink text-white rounded-full hover:bg-ink-soft disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {pending ? 'Posting…' : 'Post'}
         </button>
         {onCancel && (
           <button
             onClick={onCancel}
-            className="text-xs font-medium px-3 py-1.5 border border-gray-300 text-gray-600 rounded-full hover:bg-gray-50 transition-colors"
+            className="text-xs font-medium px-3 py-1.5 border border-line-strong text-muted rounded-full hover:bg-cream transition-colors"
           >
             Cancel
           </button>
@@ -119,25 +119,25 @@ export function CommentRow({
     <div className={`flex gap-2.5 ${isReply ? 'pl-9' : ''}`}>
       <Link href={`/user/${comment.user.id}`} aria-label={comment.user.name} className="shrink-0"><Avatar name={comment.user.name} image={comment.user.image} /></Link>
       <div className="flex-1 min-w-0">
-        <div className="bg-gray-50 rounded-xl px-3 py-2">
+        <div className="bg-cream rounded-xl px-3 py-2">
           <div className="flex items-center justify-between gap-2 mb-0.5">
-            <Link href={`/user/${comment.user.id}`} className="text-xs font-semibold text-gray-800 hover:underline">{comment.user.name}</Link>
+            <Link href={`/user/${comment.user.id}`} className="text-xs font-semibold text-ink hover:underline">{comment.user.name}</Link>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-gray-400">{fmtDate(comment.createdAt)}</span>
+              <span className="text-label text-muted">{fmtDate(comment.createdAt)}</span>
               {isOwn && (
-                <button onClick={handleDelete} title="Delete" className="text-gray-300 hover:text-red-400 transition-colors">
+                <button onClick={handleDelete} title="Delete" className="text-line-strong hover:text-danger transition-colors">
                   <Trash2 size={12} />
                 </button>
               )}
             </div>
           </div>
-          <p className="text-sm text-gray-700 whitespace-pre-line break-words">{comment.content}</p>
+          <p className="text-sm text-ink-soft whitespace-pre-line break-words">{comment.content}</p>
         </div>
 
         {!isReply && currentUserId && (
           <button
             onClick={() => setReplyOpen((o) => !o)}
-            className="mt-1 ml-1 text-xs text-gray-400 hover:text-blue-500 transition-colors"
+            className="mt-1 ml-1 text-xs text-muted hover:text-link transition-colors"
           >
             Reply
           </button>
@@ -188,9 +188,9 @@ export default function Comments({
   isLoggedIn: boolean
 }) {
   return (
-    <div id="comments" className="mt-6 pt-6 border-t border-gray-100 scroll-mt-24">
-      <h2 className="text-sm font-semibold text-gray-700 mb-4">
-        Comments {initialComments.length > 0 && <span className="text-gray-400 font-normal">({initialComments.length})</span>}
+    <div id="comments" className="mt-6 pt-6 border-t border-line-soft scroll-mt-24">
+      <h2 className="text-sm font-semibold text-ink-soft mb-4">
+        Comments {initialComments.length > 0 && <span className="text-muted font-normal">({initialComments.length})</span>}
       </h2>
 
       {initialComments.length > 0 && (
@@ -214,8 +214,8 @@ export default function Comments({
           }}
         />
       ) : (
-        <p className="text-sm text-gray-400 italic">
-          <a href="/login" className="text-blue-500 hover:underline">Log in</a> to leave a comment.
+        <p className="text-sm text-muted italic">
+          <a href="/login" className="text-link hover:underline">Log in</a> to leave a comment.
         </p>
       )}
     </div>

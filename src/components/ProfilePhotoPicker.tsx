@@ -20,8 +20,8 @@ export default function ProfilePhotoPicker({ name, image }: { name: string; imag
   }
   return <div className="flex shrink-0 flex-col items-center gap-1">
     <button type="button" disabled={busy} onClick={() => input.current?.click()} aria-label={image ? 'Change profile photo' : 'Add profile photo'} className="relative rounded-full disabled:opacity-60">
-      <UserAvatar name={name} image={image} size={64} className="text-xl" />
-      <span className="absolute -bottom-0.5 -right-0.5 flex size-6 items-center justify-center rounded-full border-2 border-[#edf1e9] bg-ink text-white"><Camera size={12} /></span>
+      <UserAvatar name={name} image={image} size={64} className="text-title" />
+      <span className="absolute -bottom-0.5 -right-0.5 flex size-6 items-center justify-center rounded-full border-2 border-paper bg-ink text-white"><Camera size={12} /></span>
     </button>
     <input ref={input} type="file" accept="image/*" hidden onChange={async event => {
       const picked = event.target.files?.[0]
@@ -35,7 +35,7 @@ export default function ProfilePhotoPicker({ name, image }: { name: string; imag
         await save(`/api/img?url=${encodeURIComponent(blob.url)}`)
       } catch { setError('Could not upload your photo. Please try again.') } finally { setBusy(false) }
     }} />
-    <span className="text-[10px] text-link">{busy ? 'Uploading…' : image ? <button type="button" onClick={() => { setBusy(true); void save(null).finally(() => setBusy(false)) }} className="underline">Remove</button> : 'Add photo'}</span>
-    {error && <p role="alert" className="max-w-40 text-center text-xs text-red-700">{error}</p>}
+    <span className="text-label text-link">{busy ? 'Uploading…' : image ? <button type="button" onClick={() => { setBusy(true); void save(null).finally(() => setBusy(false)) }} className="underline">Remove</button> : 'Add photo'}</span>
+    {error && <p role="alert" className="max-w-40 text-center text-xs text-danger">{error}</p>}
   </div>
 }

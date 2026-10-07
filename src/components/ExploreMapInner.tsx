@@ -87,13 +87,13 @@ export default function ExploreMapInner({ pins }: { pins: MapPin[] }) {
             ) : (
               <Popup maxWidth={220}>
                 <div className="text-sm">
-                  <p className="font-semibold text-gray-900">
+                  <p className="font-semibold text-ink">
                     {destName}{country ? `, ${country}` : ''}
                   </p>
-                  <p className="text-gray-500 text-xs mt-0.5 leading-snug">{group[0].itineraryTitle}</p>
+                  <p className="text-muted text-xs mt-0.5 leading-snug">{group[0].itineraryTitle}</p>
                   <a
                     href={`/itinerary/${group[0].itineraryId}`}
-                    className="text-blue-600 text-xs hover:underline mt-1 inline-block"
+                    className="text-link text-xs hover:underline mt-1 inline-block"
                   >
                     View trip →
                   </a>

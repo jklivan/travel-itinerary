@@ -90,19 +90,19 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
         <FeedTabs active={feed} search={searchQuery} />
       </section>
       {searchQuery && <div className="mb-5">
-        <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-ink">&quot;{searchQuery}&quot;</h1>
+        <h1 className="font-[family-name:var(--font-playfair)] text-title text-ink">&quot;{searchQuery}&quot;</h1>
         <Link href="/" className="text-sm text-ink-soft hover:underline">Clear search</Link>
       </div>}
 
       {justPosted && feed === 'all' && <p role="status" className="mb-3 rounded-xl bg-mist px-4 py-3 text-sm text-ink">Your postcard is posted.</p>}
       {feed !== 'all' ? (
         <div className="rounded-xl border border-dashed border-line bg-cream px-5 py-10 text-center">
-          <p className="font-[family-name:var(--font-playfair)] text-xl text-ink">{feed === 'friends' ? 'Friends’ trips are coming soon.' : 'Expert recommendations are coming soon.'}</p>
+          <p className="font-[family-name:var(--font-playfair)] text-title text-ink">{feed === 'friends' ? 'Friends’ trips are coming soon.' : 'Expert recommendations are coming soon.'}</p>
           <p className="mt-2 text-sm text-muted">For now, browse every trip in All.</p>
         </div>
       ) : itineraries.length === 0 ? (
         <div className="text-center py-20 bg-cream rounded-xl border border-sand">
-          <p className="text-4xl mb-4">🌍</p>
+          <p className="text-display-lg mb-4">🌍</p>
           <p className="text-base font-medium text-ink">
             {searchQuery ? 'No trips match your search.' : 'No itineraries yet.'}
           </p>

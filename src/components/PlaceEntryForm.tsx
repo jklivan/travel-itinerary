@@ -16,17 +16,7 @@ export const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', '
 export const MEAL_EMOJI: Record<string, string> = {
   breakfast: '🍳', lunch: '☀️', dinner: '🌙', drinks: '🍹', coffee: '☕', dessert: '🍰', bakery: '🥐',
 }
-export const MEAL_ACTIVE: Record<string, string> = {
-  breakfast: 'bg-yellow-500 text-white border-yellow-500',
-  lunch:     'bg-orange-500 text-white border-orange-500',
-  dinner:    'bg-purple-600 text-white border-purple-600',
-  drinks:    'bg-blue-500 text-white border-blue-500',
-  coffee:    'bg-amber-700 text-white border-amber-700',
-  dessert:   'bg-pink-500 text-white border-pink-500',
-  bakery:    'bg-orange-400 text-white border-orange-400',
-}
-
-export const inputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white'
+export const inputCls = 'w-full rounded-xl border border-line px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-link focus:border-transparent bg-white'
 
 const FOOD_TAGS  = ['Worth the Hype', 'Great Food', 'Hidden Gem', 'Local Favorite', "Can't-Miss", 'Good for Groups', 'Family Friendly', 'Great Cocktails', 'Great Ambiance', 'Lively', 'Romantic', 'Casual', 'Outdoor Dining', 'Great Views']
 const HOTEL_TAGS = ['Great Service', 'Worth the Splurge', 'Great Value', 'Hidden Gem', 'Boutique', 'Luxury', 'Romantic', 'Family-Friendly', 'Great Location', 'Great Views', 'Amazing Spa']
@@ -63,9 +53,9 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
   const [showMore, setShowMore] = useState(false)
 
   const cfg = {
-    hotel:     { color: 'bg-blue-50 border-blue-200',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
-    food_drink:{ color: 'bg-orange-50 border-orange-200', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const, notesPh: 'e.g. Order the truffle pasta, great for groups…'           },
-    activity:  { color: 'bg-green-50 border-green-200',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const,   notesPh: 'e.g. Book tickets online, go early to beat the crowds…'   },
+    hotel:     { color: 'bg-mist border-mist-line',     label: 'Hotel / Airbnb', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
+    food_drink:{ color: 'bg-cream border-line', label: 'Food & Drink',   placeholder: 'e.g. Ramen Ichiran, Rooftop bar…', placeType: 'restaurant' as const, notesPh: 'e.g. Order the truffle pasta, great for groups…'           },
+    activity:  { color: 'bg-mist border-mist-line',   label: 'Activity',       placeholder: 'e.g. Eiffel Tower, Temple tour…',  placeType: 'activity' as const,   notesPh: 'e.g. Book tickets online, go early to beat the crowds…'   },
     transport: { color: 'bg-mist border-mist-line', label: 'Transportation', placeholder: 'e.g. Ferry to Nantucket, car rental, Uber tips…', placeType: 'activity' as const, notesPh: 'Flight or ferry details, routes, times, booking tips, car rentals, or taxi / Uber availability…' },
   }[type]
 
@@ -87,8 +77,8 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
   return (
     <fieldset disabled={busy} className={`min-w-0 rounded-2xl border ${planning ? 'border-line bg-cream' : cfg.color} p-4 space-y-3`}>
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{cfg.label}</p>
-        <button type="button" aria-label="Close place form" disabled={photoUploading || busy} onClick={onClose} className="text-gray-400 hover:text-gray-600">
+        <p className="text-xs font-semibold text-muted uppercase tracking-wide">{cfg.label}</p>
+        <button type="button" aria-label="Close place form" disabled={photoUploading || busy} onClick={onClose} className="text-muted hover:text-muted">
           <X size={16} />
         </button>
       </div>
@@ -112,19 +102,19 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
       )}
       {!planning && <div className="flex items-center gap-3 flex-wrap">
         <div className="space-y-1">
-          <p className="text-xs text-gray-500">Rate it</p>
+          <p className="text-xs text-muted">Rate it</p>
           <StarRating value={rating} onChange={setRating} />
         </div>
       </div>}
       <div className="space-y-1">
-        <p className="text-xs text-gray-500">Notes</p>
+        <p className="text-xs text-muted">Notes</p>
         <textarea aria-label="Notes" maxLength={8000} rows={4} value={notes} onChange={e => setNotes(e.target.value)}
           placeholder={cfg.notesPh} className={planning ? `${inputCls} !border-line focus:!ring-link` : inputCls} />
       </div>
       {/* Planning: rating and Must do / Avoid are optional here too, for places you've already been. */}
       {planning && <>
         <div className="space-y-1">
-          <p className="text-xs text-gray-500">Rating (optional)</p>
+          <p className="text-xs text-muted">Rating (optional)</p>
           <StarRating value={rating} onChange={setRating} />
         </div>
         <RecommendationPicker type={type} value={recommendation} onChange={setRecommendation} />
@@ -134,16 +124,16 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
       {!planning && <>
       <RecommendationPicker type={type} value={recommendation} onChange={setRecommendation} />
       <button type="button" onClick={() => setShowMore(s => !s)}
-        className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
+        className="text-xs text-link hover:text-ink font-medium flex items-center gap-1 transition-colors">
         {showMore ? '▲ Hide details' : '▼ More details'}
         {tags.length > 0 && !showMore && (
-          <span className="ml-1 bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{tags.length}</span>
+          <span className="ml-1 bg-mist-strong text-ink-soft rounded-full px-1.5 py-0.5 text-label font-semibold">{tags.length}</span>
         )}
       </button>
 
       {showMore && (
         <div className="space-y-2 pt-1">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Tags</p>
+          <p className="text-xs text-muted font-medium uppercase tracking-wide">Tags</p>
           <div className="flex flex-wrap gap-1.5">
             {ITEM_TAGS[type].map(tag => (
               <button key={tag} type="button" aria-pressed={tags.includes(tag)} onClick={() => toggleTag(tag)}
@@ -158,11 +148,11 @@ export default function PlaceEntryForm({ type, onAdd, onClose, onPhotoBusyChange
       </>}
       {/* Photos, in both the planner and the trip forms. */}
       <div className="space-y-1">
-        {planning && <p className="text-xs text-gray-500">Photos (optional)</p>}
+        {planning && <p className="text-xs text-muted">Photos (optional)</p>}
         <EventPhotoInput photos={photos} name={name || 'new event'} onChange={setPhotos} onBusyChange={busy => { setPhotoUploading(busy); onPhotoBusyChange(busy) }} />
       </div>
       {children}
-      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
       <button type="button" onClick={() => void submit()} disabled={!name.trim() || photoUploading}
         className="btn btn-primary w-full">
         <Check size={14} /> {busy ? 'Saving…' : planning ? 'Save Place' : 'Add'}

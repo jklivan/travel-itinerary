@@ -95,7 +95,7 @@ function ItineraryList({
   if (itineraries.length === 0) {
     return (
       <div className="text-center py-20 bg-cream rounded-xl border border-sand">
-        <p className="text-4xl mb-4">🌍</p>
+        <p className="text-display-lg mb-4">🌍</p>
         <p className="text-base font-medium text-ink">No trips here yet.</p>
       </div>
     )
@@ -231,13 +231,13 @@ function buildRegionMap(rows: DestRow[]): Map<string, DestCard[]> {
 }
 
 const REGION_GRADIENT: Record<string, string> = {
-  'United States':        'from-[#7d9990] to-[#365f59]',
-  'Europe':               'from-[#9aaa8c] to-[#536c57]',
-  'Asia':                 'from-[#c0937d] to-[#825a49]',
-  'Latin America':        'from-line-strong to-[#876648]',
-  'Caribbean & Bahamas':  'from-[#94b7b0] to-link',
-  'Middle East & Africa': 'from-[#c6b38e] to-[#907450]',
-  'Pacific & Oceania':    'from-[#96aaa0] to-[#4e7368]',
+  'United States':        'from-muted to-ink-soft',
+  'Europe':               'from-gold-faint to-link',
+  'Asia':                 'from-gold-faint to-brown',
+  'Latin America':        'from-line-strong to-brown',
+  'Caribbean & Bahamas':  'from-mist-edge to-link',
+  'Middle East & Africa': 'from-line-strong to-brown',
+  'Pacific & Oceania':    'from-gold-faint to-slate',
   'Other':                'from-gold-faint to-brown',
 }
 
@@ -321,7 +321,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <div className="mb-5">
-          <h1 className="font-[family-name:var(--font-playfair)] text-2xl tracking-wide text-ink">
+          <h1 className="font-[family-name:var(--font-playfair)] text-title tracking-wide text-ink">
             {meta?.label ?? tag}
           </h1>
           <p className="text-sm text-brown">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
@@ -352,7 +352,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <div className="mb-5">
-          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink flex items-center gap-2">
+          <h2 className="font-[family-name:var(--font-playfair)] text-title text-ink flex items-center gap-2">
             <MapPin size={18} className="text-ink-soft" />
             {city}, {country}
           </h2>
@@ -443,7 +443,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
         <div className="mb-5">
-          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink">{country}</h2>
+          <h2 className="font-[family-name:var(--font-playfair)] text-title text-ink">{country}</h2>
           <p className="text-sm text-brown">{cities.length} destination{cities.length !== 1 ? 's' : ''}</p>
         </div>
         {cities.length === 0 ? (
@@ -460,7 +460,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-4">
-                <p className="font-[family-name:var(--font-playfair)] text-white text-2xl leading-tight">{cities[0].name}</p>
+                <p className="font-[family-name:var(--font-playfair)] text-white text-title leading-tight">{cities[0].name}</p>
                 <p className="text-white/70 text-sm mt-0.5">{cities[0].count} trip{cities[0].count !== 1 ? 's' : ''}</p>
               </div>
             </Link>
@@ -503,7 +503,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <div className="mb-5">
-          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink">{meta.emoji} {meta.label}</h2>
+          <h2 className="font-[family-name:var(--font-playfair)] text-title text-ink">{meta.emoji} {meta.label}</h2>
           <p className="text-sm text-brown">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
@@ -518,7 +518,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
     return (
       <div className="max-w-xl mx-auto px-4 py-6 sm:px-8">
-        <h1 className="font-[family-name:var(--font-playfair)] text-2xl sm:text-3xl tracking-wide text-ink mb-5">SEARCH BY TRIP TYPE</h1>
+        <h1 className="font-[family-name:var(--font-playfair)] text-title sm:text-display tracking-wide text-ink mb-5">SEARCH BY TRIP TYPE</h1>
         <ExploreTripFilters key={`${filters.types.join(',')}|${filters.tags.join(',')}|${filters.location}`} types={filters.types} tags={filters.tags} location={filters.location} />
         <div className="mt-7">
           <p role="status" className="text-sm text-brown mb-4">{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
@@ -533,8 +533,8 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <div className="text-center py-24">
-          <p className="text-5xl mb-4">🔥</p>
-          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-2">Hot Spots</h2>
+          <p className="text-display-lg mb-4">🔥</p>
+          <h2 className="font-[family-name:var(--font-playfair)] text-title text-ink mb-2">Hot Spots</h2>
           <p className="text-sm text-brown">Coming soon</p>
         </div>
       </div>
@@ -546,8 +546,8 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <div className="text-center py-24">
-          <p className="text-5xl mb-4">👥</p>
-          <h2 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-2">Friends&apos; Trips</h2>
+          <p className="text-display-lg mb-4">👥</p>
+          <h2 className="font-[family-name:var(--font-playfair)] text-title text-ink mb-2">Friends&apos; Trips</h2>
           <Link href="/friends" className="text-sm text-ink-soft hover:underline">See your friends</Link>
         </div>
       </div>
@@ -597,7 +597,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
-        <h1 className="font-[family-name:var(--font-playfair)] text-2xl text-ink mb-5">{region}</h1>
+        <h1 className="font-[family-name:var(--font-playfair)] text-title text-ink mb-5">{region}</h1>
         {cards.length === 0 ? (
           <p className="text-sm text-brown italic">No destinations yet.</p>
         ) : (
@@ -640,14 +640,14 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8 pb-10">
       <div className="mb-5">
-        <h1 className="font-[family-name:var(--font-playfair)] text-3xl text-ink">Destinations</h1>
+        <h1 className="font-[family-name:var(--font-playfair)] text-display text-ink">Destinations</h1>
       </div>
 
       <ExploreSearchBar />
 
       {destRegions.length === 0 ? (
         <div className="text-center py-20 text-brown mt-6">
-          <p className="text-4xl mb-3">🌍</p>
+          <p className="text-display-lg mb-3">🌍</p>
           <p className="text-sm">No destinations yet. <Link href="/plan" className="text-ink-soft hover:underline">Plan a trip!</Link></p>
         </div>
       ) : (
@@ -655,7 +655,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
           {destRegions.map(region => (
             <div key={region.label}>
               <div className="flex items-center justify-between mb-3">
-                <Link href={`/explore?region=${encodeURIComponent(region.label)}`} className="font-[family-name:var(--font-playfair)] text-2xl text-ink hover:text-ink-soft transition-colors">
+                <Link href={`/explore?region=${encodeURIComponent(region.label)}`} className="font-[family-name:var(--font-playfair)] text-title text-ink hover:text-ink-soft transition-colors">
                   {region.label}
                 </Link>
                 <Link href={`/explore?region=${encodeURIComponent(region.label)}`} className="text-sm text-ink-soft hover:underline">

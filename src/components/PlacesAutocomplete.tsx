@@ -114,25 +114,25 @@ export default function PlacesAutocomplete({
         className={className}
         autoComplete="off"
       />
-      {error && resultKey === currentKey && <p role="status" className="mt-1 text-xs text-amber-800">{error}</p>}
+      {error && resultKey === currentKey && <p role="status" className="mt-1 text-xs text-brown">{error}</p>}
       {open && resultKey === currentKey && suggestions.length > 0 && (
-        <ul className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
+        <ul className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-line shadow-lg overflow-hidden">
           <li
             onPointerDown={event => { event.preventDefault(); closeSuggestions() }}
-            className="px-3 py-2.5 cursor-pointer text-sm bg-gray-50 border-b border-gray-100 text-gray-500 hover:bg-gray-100 flex items-center gap-1.5"
+            className="px-3 py-2.5 cursor-pointer text-sm bg-cream border-b border-line-soft text-muted hover:bg-chip flex items-center gap-1.5"
           >
-            <span className="text-blue-500 shrink-0">↵</span>
+            <span className="text-link shrink-0">↵</span>
             <span className="truncate">Use &ldquo;{value}&rdquo;</span>
           </li>
           {suggestions.map((s, i) => (
             <li
               key={i}
               onPointerDown={event => { event.preventDefault(); pick(s) }}
-              className={`px-3 py-2.5 cursor-pointer text-sm transition-colors ${i === activeIdx ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+              className={`px-3 py-2.5 cursor-pointer text-sm transition-colors ${i === activeIdx ? 'bg-mist' : 'hover:bg-cream'}`}
             >
-              <span className="font-medium text-gray-900">{s.main}</span>
+              <span className="font-medium text-ink">{s.main}</span>
               {s.secondary && (
-                <span className="text-gray-400 text-xs ml-1.5">{s.secondary}</span>
+                <span className="text-muted text-xs ml-1.5">{s.secondary}</span>
               )}
             </li>
           ))}

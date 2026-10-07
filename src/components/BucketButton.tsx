@@ -116,10 +116,10 @@ export default function BucketButton({
               </select>
             </label>
             <p className="mt-3 text-xs text-brown">Liked trips appear in All saved. Choose a folder to organize this trip.</p>
-            {folderError && <p role="alert" className="mt-3 text-sm text-red-700">{folderError}</p>}
+            {folderError && <p role="alert" className="mt-3 text-sm text-danger">{folderError}</p>}
             <div className="mt-5 flex flex-wrap gap-2">
               <button type="submit" disabled={pending || !foldersLoaded} className="btn btn-primary flex-1">{pending ? 'Please wait…' : bucketed ? 'Update saved trip' : 'Like & save'}</button>
-              {bucketed && <button type="button" onClick={unlikeTrip} disabled={pending} className="min-h-11 rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-700 disabled:opacity-50">Unlike</button>}
+              {bucketed && <button type="button" onClick={unlikeTrip} disabled={pending} className="min-h-11 rounded-lg border border-danger/30 px-4 py-3 text-sm font-medium text-danger disabled:opacity-50">Unlike</button>}
             </div>
           </form>
         </dialog>, document.body) : null
@@ -134,11 +134,11 @@ export default function BucketButton({
           aria-label={withFolders ? 'Like trip and choose a folder' : label}
           className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
             bucketed
-              ? 'bg-red-50 border-red-300 text-red-600 hover:bg-red-100'
-              : 'border-gray-300 text-gray-600 hover:bg-red-50 hover:border-red-300 hover:text-red-500'
+              ? 'bg-danger/10 border-danger/40 text-danger hover:bg-danger/15'
+              : 'border-line-strong text-muted hover:bg-danger/10 hover:border-danger/40 hover:text-danger'
           }`}
         >
-          <Heart size={15} className={bucketed ? 'fill-red-500 text-red-500' : ''} />
+          <Heart size={15} className={bucketed ? 'fill-danger text-danger' : ''} />
           {bucketed ? 'Liked' : 'Like'}
         </button>
         {folderDialog}
@@ -155,8 +155,8 @@ export default function BucketButton({
       aria-label={withFolders ? `${label} and choose a folder` : label}
       className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-colors ${
         bucketed
-          ? 'bg-red-500 text-white'
-          : 'bg-white/90 text-gray-400 hover:bg-red-50 hover:text-red-400'
+          ? 'bg-danger text-white'
+          : 'bg-white/90 text-muted hover:bg-danger/10 hover:text-danger'
       }`}
     >
       <Heart size={14} className={bucketed ? 'fill-white' : ''} />

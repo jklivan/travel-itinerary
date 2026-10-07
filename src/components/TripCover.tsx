@@ -24,10 +24,10 @@ export default function TripCover({ saved, itemId, stock }: { saved: string | nu
     return () => controller.abort()
   }, [lookup, itemId, saved])
   const url = [saved, google, checked || !itemId ? stock : null].find(candidate => candidate && !failed.includes(candidate)) ?? null
-  if (!url) return <span className="grid h-full place-items-center text-[9px] uppercase tracking-wider text-link">Postcard</span>
+  if (!url) return <span className="grid h-full place-items-center text-micro uppercase tracking-wider text-link">Postcard</span>
   return <>
     {/* eslint-disable-next-line @next/next/no-img-element */}
     <img src={sizedPhoto(url, 256)} alt="" className="absolute inset-0 h-full w-full object-cover" onError={() => setFailed(current => [...current, url])} />
-    {url === google && <span className="absolute bottom-0.5 right-1 text-[7px] text-white drop-shadow">Google</span>}
+    {url === google && <span className="absolute bottom-0.5 right-1 text-micro text-white drop-shadow">Google</span>}
   </>
 }

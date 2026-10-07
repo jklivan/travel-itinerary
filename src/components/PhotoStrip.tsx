@@ -39,7 +39,7 @@ export default function PhotoStrip({ photos, title, contain = false, fillContain
 
   return (
     <>
-    <div role="region" aria-label={`${title} photos`} aria-roledescription="carousel" className={`relative ${gallery ? 'bg-transparent' : 'bg-gray-100'} ${heightClass}`}>
+    <div role="region" aria-label={`${title} photos`} aria-roledescription="carousel" className={`relative ${gallery ? 'bg-transparent' : 'bg-chip'} ${heightClass}`}>
       {/* Scrollable strip */}
       <div ref={ref} tabIndex={photos.length > 1 ? 0 : undefined} aria-label="Scroll through photos" onKeyDown={event => {
         if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
@@ -49,7 +49,7 @@ export default function PhotoStrip({ photos, title, contain = false, fillContain
       }} className={`flex overflow-x-auto snap-x snap-mandatory scrollbar-hide ${heightClass}`} style={{ overscrollBehaviorX: 'contain' }}>
         {photos.map((photo, index) => (
           <div key={photo.id} className={`relative flex-none w-full snap-center ${heightClass}`}>
-            {index > revealed ? null : failed.has(photo.id) ? <p className="flex h-full items-center justify-center p-4 text-sm text-gray-500">This photo could not be loaded.</p> :
+            {index > revealed ? null : failed.has(photo.id) ? <p className="flex h-full items-center justify-center p-4 text-sm text-muted">This photo could not be loaded.</p> :
               <Image src={photo.url} alt={photo.caption ?? title} fill sizes="(max-width: 768px) 100vw, 900px" className={contain || gallery ? 'object-contain' : 'object-cover'} loading={index === 0 ? 'eager' : 'lazy'} onError={() => setFailed(previous => new Set([...previous, photo.id]))} />}
             {href && <Link href={href} aria-label={`Open ${title}`} className="absolute inset-0 focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white" draggable={false}
               onPointerDown={event => { pointerStart.current = { x: event.clientX, y: event.clientY }; dragged.current = false }}

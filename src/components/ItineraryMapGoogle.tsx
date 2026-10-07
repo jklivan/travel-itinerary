@@ -54,7 +54,7 @@ function PinIcon({ pin }: { pin: ItemPin }) {
 // Google Maps version of ItineraryMapInner: same pins, colors, legend and popups.
 export default function ItineraryMapGoogle({ pins }: { pins: ItemPin[] }) {
   const [selected, setSelected] = useState<string | null>(null)
-  if (pins.length === 0) return <div className="flex h-full items-center justify-center text-sm text-gray-400">No location data available for this itinerary.</div>
+  if (pins.length === 0) return <div className="flex h-full items-center justify-center text-sm text-muted">No location data available for this itinerary.</div>
   const open = pins.find(pin => pin.id === selected)
   return <div className="flex h-full flex-col">
     <MapDayLegend pins={pins} />

@@ -59,7 +59,7 @@ export default function MessageComposer({ recipientId, itineraryId, attachment, 
       <button type="button" aria-label="Attach an itinerary" aria-expanded={showPicker} disabled={pending} onClick={() => setShowPicker(value => !value)} className="chip"><Plus size={14} />Add itinerary</button>
     </div>
     {showPicker && <ItineraryAttachmentPicker disabled={pending} onSelect={trip => { onClearReply?.(); setSelected({ id: trip.id, name: trip.title, kind: 'trip' }); setShowPicker(false); clientId.current = null }} />}
-    {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+    {error && <p role="alert" className="text-sm text-danger">{error}</p>}
     <p className="text-xs text-brown">Only you and this traveler can see this conversation.</p>
   </form>
 }
