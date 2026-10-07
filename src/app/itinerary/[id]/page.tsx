@@ -13,6 +13,7 @@ import { notFound, redirect } from 'next/navigation'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
 import { Plane, Hotel, Utensils, Camera, MapPin, Check, Ban, Star, Users } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
+import LikeButton from '@/components/LikeButton'
 import { eventPhotos, pickEventPhoto, tripPhotoGallery } from '@/lib/eventPhotos'
 import DeleteButton from '@/components/DeleteButton'
 import { TRIP_STAMPS, STAMP_COLORS } from '@/lib/tripStamps'
@@ -244,7 +245,7 @@ export default async function ItineraryPage({
   const editHref = `/plan/${it.id}`
 
 
-  const [followRecord, bucketItem] = await Promise.all([
+  const [followRecord, bucketItem, likeCount, viewerLike] = await Promise.all([
     session?.user?.id && !isOwn
       ? prisma.follow.findUnique({
           where: { followerId_followingId: { followerId: session.user.id, followingId: it.user.id } },
@@ -255,7 +256,8 @@ export default async function ItineraryPage({
           where: { userId_itineraryId: { userId: session.user.id, itineraryId: id } },
         })
       : Promise.resolve(null),
-
+    prisma.tripLike.count({ where: { itineraryId: id } }),
+    session?.user?.id ? prisma.tripLike.findUnique({ where: { userId_itineraryId: { userId: session.user.id, itineraryId: id } }, select: { id: true } }) : Promise.resolve(null),
   ])
   const followStatus = followRecord?.status ?? 'none'
   const isBucketed = !!bucketItem
@@ -510,6 +512,8 @@ export default async function ItineraryPage({
           {tripLocationLabel(it.destinations) && <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-brown">{tripLocationLabel(it.destinations)}</p>}
 
           <div aria-label="Trip tags" className="flex flex-wrap gap-2 items-center mb-4">
+            {/* Like (public heart, with its count) and Save (private, to your folders). */}
+            <LikeButton variant="pill" itineraryId={it.id} initialLiked={!!viewerLike} initialCount={likeCount} isLoggedIn={!!session?.user} />
             {!isOwn && <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />}
             {/* One chip style for everything here; the verdict uses its stamp colour, as on the trip cards. */}
             {stamp && <span className={`${TAG_PILL} text-white`} style={{ backgroundColor: STAMP_COLORS[stamp.value] }}><Star size={14} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />{stamp.label}</span>}

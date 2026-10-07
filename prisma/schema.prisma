@@ -19,6 +19,7 @@ model User {
   following      Follow[]         @relation("UserFollowing")
   followers      Follow[]         @relation("UserFollowers")
   bucketList     BucketListItem[]
+  tripLikes      TripLike[]
   savedFolders   SavedFolder[]
   comments       Comment[]
   notifications Notification[] @relation("NotificationRecipient")
@@ -83,6 +84,7 @@ model Itinerary {
   // The photo chosen as the trip's cover (one of its trip or place photos); empty = first photo.
   coverPhoto   String?
   bucketedBy   BucketListItem[]
+  likes        TripLike[]
   comments     Comment[]
   notifications Notification[]
   stories Story[]
@@ -103,6 +105,19 @@ model BucketListItem {
 
   @@unique([userId, itineraryId])
   @@index([folderId])
+}
+
+// A public "I liked this" on a trip (the heart). Saving to folders is separate (BucketListItem).
+model TripLike {
+  id          String    @id @default(cuid())
+  userId      String
+  itineraryId String
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itineraryId])
+  @@index([itineraryId])
 }
 
 model SavedFolder {

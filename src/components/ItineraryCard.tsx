@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Heart, MapPin } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import CommentsSheetButton from './CommentsSheet'
+import LikeButton from './LikeButton'
 import { tripLocationLabel } from '@/lib/tripLocation'
 import LikesSheetButton from './LikesSheet'
 import { hasTripDates, tripDuration } from '@/lib/dayTrips'
@@ -37,7 +38,8 @@ type Props = {
   currentUserId?: string | null
   isOwn?: boolean
   isBucketed?: boolean
-  saveCount: number
+  likeCount: number
+  isLiked?: boolean
   bestMonths?: string[]
   durationDays?: number | null
   tags?: string[]
@@ -62,7 +64,7 @@ function hashPick(str: string, arr: string[]) {
 
 export default function ItineraryCard({
   id, postType, title, startDate, endDate, audience, budget, tripRating, authorName, authorImage, authorId, destinations, coverPhoto, photos = [],
-  currentUserId, isOwn, isBucketed = false, saveCount, fullWidth = false, datesFlexible = false, bestMonths = [], tags = [], durationDays,
+  currentUserId, isOwn, isBucketed = false, likeCount, isLiked = false, fullWidth = false, datesFlexible = false, bestMonths = [], tags = [], durationDays,
   // Budget shows on the trip page, not on cards.
   commentCount = 0, showBudget = false, social,
 }: Props) {
@@ -118,19 +120,20 @@ export default function ItineraryCard({
           </div>}
           <div className="flex shrink-0 items-center gap-2.5 text-ink">
             {season && <span className="hidden text-micro font-medium uppercase tracking-widest text-brown min-[390px]:inline">{season}</span>}
+            {/* One heart (like, with its count), then the bookmark (save to your folders). */}
+            <LikeButton itineraryId={id} initialLiked={isLiked} initialCount={likeCount} isLoggedIn={!!currentUserId} />
             {showBucket && <BucketButton itineraryId={id} initialBucketed={isBucketed} isLoggedIn={!!currentUserId} withFolders={!!currentUserId} />}
-            <span aria-label={`${saveCount} likes`} className="flex items-center gap-1 text-label"><Heart size={15} />{saveCount}</span>
             <CommentsSheetButton itineraryId={id} title={title} count={commentCount} variant="icon" />
             {showBudget && budget && budget > 0 && <span className="text-micro font-medium tracking-tight" aria-label={`Budget level ${budget} out of 5`}>
               {[1,2,3,4,5].map((n) => <span key={n} className={n <= budget ? 'text-ink' : 'text-gold-faint'}>$</span>)}
             </span>}
           </div>
         </div>
-        {social && (saveCount > 0 || social.comment) && <div className="space-y-0.5 px-1 pt-2 text-sm leading-snug text-ink-soft">
+        {social && (likeCount > 0 || social.comment) && <div className="space-y-0.5 px-1 pt-2 text-sm leading-snug text-ink-soft">
           {/* Names go to that person's profile; "N others" / "N likes" open who liked it. */}
-          {saveCount > 0 && <p>{social.likedBy
-            ? <>Liked by <Link href={`/user/${social.likedBy.id}`} className="font-semibold text-ink hover:underline">{social.likedBy.name.split(' ')[0]}</Link>{saveCount > 1 && <> and <LikesSheetButton itineraryId={id} title={title}>{saveCount - 1} {saveCount - 1 === 1 ? 'other' : 'others'}</LikesSheetButton></>}</>
-            : <LikesSheetButton itineraryId={id} title={title}>{saveCount} {saveCount === 1 ? 'like' : 'likes'}</LikesSheetButton>}</p>}
+          {likeCount > 0 && <p>{social.likedBy
+            ? <>Liked by <Link href={`/user/${social.likedBy.id}`} className="font-semibold text-ink hover:underline">{social.likedBy.name.split(' ')[0]}</Link>{likeCount > 1 && <> and <LikesSheetButton itineraryId={id} title={title}>{likeCount - 1} {likeCount - 1 === 1 ? 'other' : 'others'}</LikesSheetButton></>}</>
+            : <LikesSheetButton itineraryId={id} title={title}>{likeCount} {likeCount === 1 ? 'like' : 'likes'}</LikesSheetButton>}</p>}
           {social.comment && <p className="line-clamp-1"><Link href={`/user/${social.comment.userId}`} className="font-semibold text-ink hover:underline">{social.comment.name.split(' ')[0]}</Link> {social.comment.text}</p>}
           {commentCount > 1 && <CommentsSheetButton itineraryId={id} title={title} count={commentCount} variant="link" />}
         </div>}

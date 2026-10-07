@@ -1,7 +1,7 @@
 import type { Prisma } from '@/generated/prisma/client'
 
 export async function createTripNotification(tx: Prisma.TransactionClient, input: {
-  recipientId: string; actorId: string; itineraryId: string; kind: 'comment' | 'save'; commentId?: string
+  recipientId: string; actorId: string; itineraryId: string; kind: 'comment' | 'save' | 'like'; commentId?: string
 }) {
   if (input.recipientId === input.actorId) return null
   const dedupeKey = input.kind === 'comment' ? `comment:${input.commentId}` : `save:${input.actorId}:${input.itineraryId}`

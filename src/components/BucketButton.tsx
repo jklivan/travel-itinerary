@@ -5,8 +5,9 @@ import { createPortal } from 'react-dom'
 import { addToBucketList, removeFromBucketList } from '@/actions/bucketList'
 import { getSavedFolders } from '@/actions/savedFolders'
 import { useRouter } from 'next/navigation'
-import { Heart, X } from 'lucide-react'
+import { Bookmark, X } from 'lucide-react'
 
+// The bookmark: save a trip (privately) to your Saved page, optionally into a folder. Liking is the heart.
 export default function BucketButton({
   itineraryId,
   initialBucketed,
@@ -72,7 +73,7 @@ export default function BucketButton({
     })
   }
 
-  const label = bucketed ? 'Unlike trip' : 'Like trip'
+  const label = bucketed ? 'Saved — change folder or remove' : 'Save trip'
 
   function saveWithFolder(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -98,14 +99,14 @@ export default function BucketButton({
         setFolderId('')
         dialog.current?.close()
       } catch {
-        setFolderError('Could not unlike this trip. Please try again.')
+        setFolderError('Could not remove this trip. Please try again.')
       }
     })
   }
 
   const folderDialog = choosing && typeof document !== 'undefined' ? createPortal(<dialog ref={dialog} onClose={() => setChoosing(false)} onClick={event => event.stopPropagation()} onCancel={event => { if (pending) event.preventDefault() }} aria-labelledby={titleId} className="m-auto w-[calc(100%_-_2rem)] max-w-sm rounded-2xl bg-cream p-5 text-ink shadow-xl backdrop:bg-black/40">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 id={titleId} className="type-title">Like this trip</h2>
+            <h2 id={titleId} className="type-title">Save this trip</h2>
             <button type="button" aria-label="Close" disabled={pending} onClick={() => dialog.current?.close()} className="p-2"><X size={18} /></button>
           </div>
           <form onSubmit={saveWithFolder}>
@@ -115,11 +116,11 @@ export default function BucketButton({
                 {folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
               </select>
             </label>
-            <p className="mt-3 text-xs text-brown">Liked trips appear in All saved. Choose a folder to organize this trip.</p>
+            <p className="mt-3 text-xs text-brown">Saved trips are private: they appear in your Saved page, in All saved or the folder you choose.</p>
             {folderError && <p role="alert" className="mt-3 text-sm text-danger">{folderError}</p>}
             <div className="mt-5 flex flex-wrap gap-2">
-              <button type="submit" disabled={pending || !foldersLoaded} className="btn btn-primary flex-1">{pending ? 'Please wait…' : bucketed ? 'Update saved trip' : 'Like & save'}</button>
-              {bucketed && <button type="button" onClick={unlikeTrip} disabled={pending} className="min-h-11 rounded-lg border border-danger/30 px-4 py-3 text-sm font-medium text-danger disabled:opacity-50">Unlike</button>}
+              <button type="submit" disabled={pending || !foldersLoaded} className="btn btn-primary flex-1">{pending ? 'Please wait…' : bucketed ? 'Update' : 'Save'}</button>
+              {bucketed && <button type="button" onClick={unlikeTrip} disabled={pending} className="min-h-11 rounded-lg border border-danger/30 px-4 py-3 text-sm font-medium text-danger disabled:opacity-50">Remove</button>}
             </div>
           </form>
         </dialog>, document.body) : null
@@ -130,16 +131,14 @@ export default function BucketButton({
         <button
           disabled={pending}
           onClick={handleClick}
-          title={withFolders ? 'Like trip and choose a folder' : label}
-          aria-label={withFolders ? 'Like trip and choose a folder' : label}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
-            bucketed
-              ? 'bg-danger/10 border-danger/40 text-danger hover:bg-danger/15'
-              : 'border-line-strong text-muted hover:bg-danger/10 hover:border-danger/40 hover:text-danger'
+          title={label}
+          aria-label={label}
+          className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
+            bucketed ? 'border-ink bg-ink text-white' : 'border-line-strong text-muted hover:border-ink hover:text-ink'
           }`}
         >
-          <Heart size={15} className={bucketed ? 'fill-danger text-danger' : ''} />
-          {bucketed ? 'Liked' : 'Like'}
+          <Bookmark size={15} className={bucketed ? 'fill-white' : ''} />
+          {bucketed ? 'Saved' : 'Save'}
         </button>
         {folderDialog}
       </>
@@ -151,15 +150,11 @@ export default function BucketButton({
     <button
       disabled={pending}
       onClick={handleClick}
-      title={withFolders ? 'Like trip and choose a folder' : label}
-      aria-label={withFolders ? `${label} and choose a folder` : label}
-      className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-colors ${
-        bucketed
-          ? 'bg-danger text-white'
-          : 'bg-white/90 text-muted hover:bg-danger/10 hover:text-danger'
-      }`}
+      title={label}
+      aria-label={label}
+      className={`flex min-h-8 items-center transition-colors ${bucketed ? 'text-ink' : 'text-ink hover:text-link'}`}
     >
-      <Heart size={14} className={bucketed ? 'fill-white' : ''} />
+      <Bookmark size={16} className={bucketed ? 'fill-ink' : ''} />
     </button>
     {folderDialog}
     </>

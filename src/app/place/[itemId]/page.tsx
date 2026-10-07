@@ -25,7 +25,7 @@ export default async function PlacePage({ params }: { params: Promise<{ itemId: 
         user: { select: { name: true, id: true, image: true } },
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
         photos: { orderBy: { isStock: 'asc' } },
-        _count: { select: { bucketedBy: true } },
+        likes: { where: { userId: userId ?? '' }, select: { id: true }, take: 1 }, _count: { select: { likes: true, bucketedBy: true } },
       },
     }),
     userId ? prisma.bucketListItem.findMany({ where: { userId }, select: { itineraryId: true } }) : Promise.resolve([]),
@@ -55,7 +55,7 @@ export default async function PlacePage({ params }: { params: Promise<{ itemId: 
             datesFlexible={trip.datesFlexible} startDate={trip.startDate} endDate={trip.endDate} audience={trip.audience} budget={trip.budget} tripRating={trip.tripRating}
             authorName={trip.user.name} authorImage={trip.user.image} authorId={trip.user.id} destinations={trip.destinations} coverPhoto={trip.coverPhoto ?? trip.photos[0]?.url ?? null}
             photos={tripPhotoGallery(trip.photos, trip.destinations.flatMap(destination => destination.items), trip.coverPhoto)} currentUserId={userId}
-            isOwn={trip.user.id === userId} isBucketed={bucketSet.has(trip.id)} saveCount={trip._count.bucketedBy} />
+            isOwn={trip.user.id === userId} isBucketed={bucketSet.has(trip.id)} likeCount={trip._count.likes} isLiked={trip.likes.length > 0} />
         </section>
       })}
     </div>

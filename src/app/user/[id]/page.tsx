@@ -56,7 +56,7 @@ export default async function UserProfilePage({
       include: {
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
         photos: { orderBy: { isStock: 'asc' } },
-        _count: { select: { bucketedBy: true } },
+        likes: { where: { userId: viewerId ?? '' }, select: { id: true }, take: 1 }, _count: { select: { likes: true, bucketedBy: true } },
       },
     }),
     isOwn
@@ -66,7 +66,7 @@ export default async function UserProfilePage({
           include: {
             destinations: { orderBy: { order: 'asc' }, include: { items: true } },
             photos: { orderBy: { isStock: 'asc' } },
-            _count: { select: { bucketedBy: true } },
+            likes: { where: { userId: viewerId ?? '' }, select: { id: true }, take: 1 }, _count: { select: { likes: true, bucketedBy: true } },
           },
         })
       : Promise.resolve([]),
@@ -80,7 +80,7 @@ export default async function UserProfilePage({
                 user: { select: { id: true, name: true, image: true } },
                 destinations: { orderBy: { order: 'asc' }, include: { items: true } },
                 photos: { orderBy: { isStock: 'asc' } },
-                _count: { select: { bucketedBy: true } },
+                likes: { where: { userId: viewerId ?? '' }, select: { id: true }, take: 1 }, _count: { select: { likes: true, bucketedBy: true } },
               },
             },
           },
@@ -220,7 +220,7 @@ export default async function UserProfilePage({
                   currentUserId={viewerId}
                   isOwn={isOwn}
                   isBucketed={viewerBucketSet.has(it.id)}
-                  saveCount={it._count.bucketedBy}
+                  likeCount={it._count.likes} isLiked={it.likes.length > 0}
                 />
               ))}
             </div>
@@ -266,7 +266,7 @@ export default async function UserProfilePage({
                     currentUserId={viewerId}
                     isOwn={item.itinerary.user.id === viewerId}
                     isBucketed={ownBucketSet.has(item.itinerary.id)}
-                    saveCount={item.itinerary._count.bucketedBy}
+                    likeCount={item.itinerary._count.likes} isLiked={item.itinerary.likes.length > 0}
                   />
                   <div className="mt-3"><SavedFolderPicker itineraryId={item.itinerary.id} label={folders.find(f => f.id === item.folderId)?.name ?? 'Save to folder'} /></div>
                 </div>

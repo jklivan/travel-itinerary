@@ -73,7 +73,7 @@ async function fetchItineraries(where: ItineraryWhereInput, userId: string | nul
         user: { select: { name: true, id: true, image: true } },
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
         photos: { orderBy: { isStock: 'asc' } },
-        _count: { select: { bucketedBy: true } },
+        likes: { where: { userId: userId ?? '' }, select: { id: true }, take: 1 }, _count: { select: { likes: true, bucketedBy: true } },
       },
     }),
     userId
@@ -125,7 +125,7 @@ function ItineraryList({
           currentUserId={userId}
           isOwn={it.user.id === userId}
           isBucketed={bucketSet.has(it.id)}
-          saveCount={it._count.bucketedBy}
+          likeCount={it._count.likes} isLiked={it.likes.length > 0}
         />
     return { id: it.id, locations: it.destinations.flatMap(destination => {
       if (destination.lat !== null && destination.lng !== null) return [{ lat: destination.lat, lng: destination.lng }]

@@ -53,7 +53,7 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
         user: { select: { name: true, id: true, image: true } },
         destinations: { orderBy: { order: 'asc' }, include: { items: true } },
         photos: { orderBy: { isStock: 'asc' } },
-        _count: { select: { bucketedBy: true, comments: true } },
+        likes: { where: { userId: userId ?? '' }, select: { id: true }, take: 1 }, _count: { select: { likes: true, bucketedBy: true, comments: true } },
       },
     }),
     userId
@@ -71,7 +71,7 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
   const tripIds = feedTrips.map(trip => trip.id)
   const friendIds = userId ? (await prisma.follow.findMany({ where: { followerId: userId, status: 'accepted' }, select: { followingId: true } })).map(row => row.followingId) : []
   const [friendLikes, topComments] = tripIds.length ? await Promise.all([
-    friendIds.length ? prisma.bucketListItem.findMany({ where: { itineraryId: { in: tripIds }, userId: { in: friendIds } }, orderBy: { createdAt: 'desc' }, select: { itineraryId: true, user: { select: { id: true, name: true } } } }) : Promise.resolve([]),
+    friendIds.length ? prisma.tripLike.findMany({ where: { itineraryId: { in: tripIds }, userId: { in: friendIds } }, orderBy: { createdAt: 'desc' }, select: { itineraryId: true, user: { select: { id: true, name: true } } } }) : Promise.resolve([]),
     prisma.comment.findMany({ where: { itineraryId: { in: tripIds }, parentId: null }, orderBy: { createdAt: 'desc' }, select: { itineraryId: true, content: true, userId: true, user: { select: { name: true } }, _count: { select: { replies: true } } } }),
   ]) : [[], []]
   const social = new Map(tripIds.map(id => {
@@ -137,7 +137,7 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
               currentUserId={userId}
               isOwn={it.user.id === userId}
               isBucketed={bucketSet.has(it.id)}
-              saveCount={it._count.bucketedBy}
+              likeCount={it._count.likes} isLiked={it.likes.length > 0}
               commentCount={it._count.comments}
               social={social.get(it.id)}
             />
