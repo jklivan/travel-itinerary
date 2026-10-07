@@ -12,7 +12,7 @@ export async function notificationStatus() {
   const session = await auth()
   if (!session?.user?.id) return { unread: 0, unreadMessages: 0, pushReady: false }
   const [unread, unreadMessages] = await Promise.all([
-    prisma.notification.count({ where: { recipientId: session.user.id, readAt: null, OR: [forumReplyNotificationWhere(session.user.id), forumNotificationWhere(session.user.id), { kind: 'message', messageId: { not: null } }, { itinerary: { visibility: { not: 'draft' } } }] } }),
+    prisma.notification.count({ where: { recipientId: session.user.id, readAt: null, OR: [forumReplyNotificationWhere(session.user.id), forumNotificationWhere(session.user.id), { kind: 'message', messageId: { not: null } }, { kind: 'follow' }, { itinerary: { visibility: { not: 'draft' } } }] } }),
     prisma.notification.count({ where: { recipientId: session.user.id, readAt: null, OR: [{ kind: 'message', messageId: { not: null } }, forumReplyNotificationWhere(session.user.id)] } }),
   ])
   return { unread, unreadMessages, pushReady: pushConfigured() }
@@ -54,7 +54,7 @@ export async function openNotification(form: FormData) {
   if (!session?.user?.id) redirect('/login')
   const id = form.get('id')
   if (typeof id !== 'string') return
-  const notification = await prisma.notification.findFirst({ where: { id, recipientId: session.user.id, OR: [forumReplyNotificationWhere(session.user.id), forumNotificationWhere(session.user.id), { kind: 'message', messageId: { not: null } }, { itinerary: { visibility: { not: 'draft' } } }] }, include: { message: { select: { itineraryId: true } } } })
+  const notification = await prisma.notification.findFirst({ where: { id, recipientId: session.user.id, OR: [forumReplyNotificationWhere(session.user.id), forumNotificationWhere(session.user.id), { kind: 'message', messageId: { not: null } }, { kind: 'follow' }, { itinerary: { visibility: { not: 'draft' } } }] }, include: { message: { select: { itineraryId: true } } } })
   if (!notification) return
   await prisma.notification.updateMany({ where: { id, recipientId: session.user.id }, data: { readAt: new Date() } })
   revalidatePath('/notifications')

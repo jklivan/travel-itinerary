@@ -4,6 +4,7 @@ export function notificationText(kind: string, actor: string, trip: string) {
   if (kind === 'forum_reply') return `${actor} replied to your forum question.`
   if (kind === 'forum') return `${actor} posted in Ask your friends.`
   if (kind === 'message') return `${actor} sent you a private message.`
+  if (kind === 'follow') return `${actor} started following you.`
   if (kind === 'published') return `${actor} posted a new trip: “${trip}”.`
   return `${actor} ${kind === 'comment' ? 'commented on' : kind === 'like' ? 'liked' : 'saved'} your trip “${trip}”.`
 }
@@ -11,6 +12,7 @@ export function notificationText(kind: string, actor: string, trip: string) {
 export function notificationPath(itineraryId: string | null, kind: string, actorId?: string, questionId?: string | null) {
   if (kind === 'forum' || kind === 'forum_reply') return questionId ? `/explore/questions/${encodeURIComponent(questionId)}` : '/explore/questions'
   if (kind === 'message') return actorId ? messageThreadHref(actorId, itineraryId) : '/messages'
+  if (kind === 'follow') return actorId ? `/user/${encodeURIComponent(actorId)}` : '/friends'
   if (!itineraryId) return '/notifications'
   return `/itinerary/${encodeURIComponent(itineraryId)}${kind === 'comment' ? '#comments' : ''}`
 }

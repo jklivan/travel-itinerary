@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { saveTripId } from '@/lib/saveTripReturn'
-import SuggestedPeople from '@/components/SuggestedPeople'
+import PeopleList from '@/components/PeopleList'
 
 // Right after signing up: a few people to follow so the feed isn't empty. For now, the five travelers with the most posted trips.
 export default async function WelcomePage({ searchParams }: { searchParams: Promise<{ saveTrip?: string }> }) {
@@ -28,6 +28,7 @@ export default async function WelcomePage({ searchParams }: { searchParams: Prom
     .map(person => ({ id: person.id, name: person.name, image: person.image, trips: person._count.itineraries, following: followingIds.has(person.id) }))
     .sort((a, b) => b.trips - a.trips)
     .slice(0, 5)
+    .map(({ trips, ...person }) => ({ ...person, meta: `${trips} ${trips === 1 ? 'trip' : 'trips'} posted` }))
 
   return <div className="page-wrap">
     <header className="page-header">
@@ -35,7 +36,7 @@ export default async function WelcomePage({ searchParams }: { searchParams: Prom
       <p className="page-subtitle">Follow a few travelers to fill your feed with their trips. You can find more people any time under Friends.</p>
     </header>
     {people.length > 0
-      ? <SuggestedPeople people={people} />
+      ? <PeopleList people={people} viewerId={userId} />
       : <p className="panel p-5 text-sm text-muted">No one has posted a trip yet. Yours could be the first.</p>}
     <Link href={next} className="btn btn-primary mt-6 w-full">Continue</Link>
   </div>

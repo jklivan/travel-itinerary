@@ -10,6 +10,13 @@ export async function createTripNotification(tx: Prisma.TransactionClient, input
   return rows[0]?.id ?? null
 }
 
+// Someone started following you. One per follower, so unfollowing and following again doesn't notify twice.
+export async function createFollowNotification(tx: Prisma.TransactionClient, followerId: string, followingId: string) {
+  if (followerId === followingId) return null
+  const rows = await tx.notification.createManyAndReturn({ data: [{ recipientId: followingId, actorId: followerId, kind: 'follow', dedupeKey: `follow:${followerId}:${followingId}` }], skipDuplicates: true, select: { id: true } })
+  return rows[0]?.id ?? null
+}
+
 // Called only on creation or a draft-to-public transition, never an ordinary edit.
 export async function createPublishedTripNotifications(tx: Prisma.TransactionClient, itineraryId: string) {
   const itinerary = await tx.itinerary.findUnique({ where: { id: itineraryId }, select: { userId: true, visibility: true } })

@@ -3,17 +3,26 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
+import { createFollowNotification } from '@/lib/notifications'
+import { deliverNotification } from '@/lib/push'
 
 export async function sendFollowRequest(userId: string) {
   const session = await auth()
   if (!session?.user?.id) return
   if (userId === session.user.id) return
-  await prisma.follow.upsert({
-    where: { followerId_followingId: { followerId: session.user.id, followingId: userId } },
-    update: { status: 'accepted' },
-    create: { followerId: session.user.id, followingId: userId, status: 'accepted' },
+  const followerId = session.user.id
+  const notificationId = await prisma.$transaction(async tx => {
+    await tx.follow.upsert({
+      where: { followerId_followingId: { followerId, followingId: userId } },
+      update: { status: 'accepted' },
+      create: { followerId, followingId: userId, status: 'accepted' },
+    })
+    return createFollowNotification(tx, followerId, userId)
   })
+  if (notificationId) after(async () => { try { await deliverNotification(notificationId) } catch { console.error('Follow push delivery failed') } })
   revalidatePath('/friends')
+  revalidatePath('/notifications')
   revalidatePath('/')
   revalidatePath(`/user/${userId}`)
 }

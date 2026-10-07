@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { Users, Search, UserPlus } from 'lucide-react'
+import { Users, Search } from 'lucide-react'
 import UserAvatar from '@/components/UserAvatar'
 import SearchField from '@/components/ui/SearchField'
 import {
@@ -31,7 +31,7 @@ function FollowButton({
 }) {
   if (status === 'following') {
     return (
-      <button onClick={() => onUnfollow(userId)}
+      <button onClick={() => onUnfollow(userId)} aria-pressed="true"
         className="chip">
         Following
       </button>
@@ -47,9 +47,8 @@ function FollowButton({
   }
   return (
     <button onClick={() => onFollow(userId)}
-      className="btn btn-primary btn-sm">
-      <UserPlus size={12} />
-      Follow
+      className="chip">
+      + Follow
     </button>
   )
 }
@@ -58,10 +57,12 @@ export default function FriendsUI({
   following,
   pendingOutgoing,
   incomingRequests,
+  followers,
 }: {
   following: User[]
   pendingOutgoing: User[]
   incomingRequests: User[]
+  followers: User[]
 }) {
   const [nameQuery, setNameQuery] = useState('')
   const [nameResults, setNameResults] = useState<User[]>([])
@@ -85,10 +86,13 @@ export default function FriendsUI({
     setNameSearched(true)
   }
 
+  // Follows go through straight away (profiles are public), so the person moves into People you follow.
   function handleFollow(userId: string) {
     startTransition(async () => {
       await sendFollowRequest(userId)
-      setPendingIds((prev) => new Set([...prev, userId]))
+      setFollowingIds((prev) => new Set([...prev, userId]))
+      const user = [...nameResults, ...followers].find((u) => u.id === userId)
+      if (user) setFollowingList((prev) => prev.some((u) => u.id === userId) ? prev : [user, ...prev])
     })
   }
 
@@ -222,6 +226,30 @@ export default function FriendsUI({
           </ul>
         )}
       </section>
+
+      {/* People who follow you, with Follow back for anyone you don't follow yet */}
+      {followers.length > 0 && <section className="panel overflow-hidden">
+        <div className="px-5 py-3 border-b border-sand flex items-center gap-2">
+          <Users size={16} className="text-brown" />
+          <h2 className="type-label text-ink">
+            Your followers
+            <span className="ml-2 text-brown font-normal">({followers.length})</span>
+          </h2>
+        </div>
+        <ul className="divide-y divide-sand">
+          {followers.map((user) => (
+            <li key={user.id} className="flex items-center justify-between px-5 py-3">
+              <Link href={`/user/${user.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                <Avatar name={user.name} image={user.image} />
+                <p className="text-sm font-medium text-ink">{user.name}</p>
+              </Link>
+              {followStatus(user.id) === 'following'
+                ? <button onClick={() => handleUnfollow(user.id)} aria-pressed="true" className="chip">Following</button>
+                : <button onClick={() => handleFollow(user.id)} className="chip">Follow back</button>}
+            </li>
+          ))}
+        </ul>
+      </section>}
     </div>
   )
 }

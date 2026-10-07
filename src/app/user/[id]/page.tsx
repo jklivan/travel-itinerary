@@ -135,7 +135,7 @@ export default async function UserProfilePage({
         <div className="flex-1 min-w-0">
           <h1 className="type-title">{user.name}</h1>
           {/* Same plain stats line as your own profile. */}
-          <p className="mt-1 text-xs text-link">{followerCount} follower{followerCount !== 1 ? 's' : ''} · {followingCount} following · {itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
+          <p className="mt-1 text-xs text-link"><Link href={`/user/${user.id}/people`} className="hover:underline">{followerCount} follower{followerCount !== 1 ? 's' : ''}</Link> · <Link href={`/user/${user.id}/people?tab=following`} className="hover:underline">{followingCount} following</Link> · {itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
         {isOwn && <Link href="/settings" aria-label="Settings" className="btn-icon"><Settings size={18} /></Link>}
         {session?.user && !isOwn && (

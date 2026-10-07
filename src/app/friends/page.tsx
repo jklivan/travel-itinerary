@@ -7,7 +7,7 @@ export default async function FriendsPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
-  const [acceptedFollows, pendingOutgoingFollows, incomingFollowRequests] = await Promise.all([
+  const [acceptedFollows, pendingOutgoingFollows, incomingFollowRequests, followerRows] = await Promise.all([
     // People I follow (accepted)
     prisma.follow.findMany({
       where: { followerId: session.user.id, status: 'accepted' },
@@ -26,6 +26,12 @@ export default async function FriendsPage() {
       include: { follower: { select: { id: true, name: true, image: true } } },
       orderBy: { createdAt: 'desc' },
     }),
+    // People who follow me
+    prisma.follow.findMany({
+      where: { followingId: session.user.id, status: 'accepted' },
+      include: { follower: { select: { id: true, name: true, image: true } } },
+      orderBy: { createdAt: 'desc' },
+    }),
   ])
 
   return (
@@ -40,6 +46,7 @@ export default async function FriendsPage() {
         following={acceptedFollows.map((f) => f.following)}
         pendingOutgoing={pendingOutgoingFollows.map((f) => f.following)}
         incomingRequests={incomingFollowRequests.map((f) => f.follower)}
+        followers={followerRows.map((f) => f.follower)}
       />
     </div>
   )

@@ -26,7 +26,7 @@ export default async function ProfilePage() {
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold uppercase tracking-label text-link">Profile</p>
           <h1 className="type-title mt-1 break-words">{user.name}</h1>
-          <p className="mt-1 text-xs text-link">{followers} followers · {following} following</p>
+          <p className="mt-1 text-xs text-link"><Link href={`/user/${user.id}/people`} className="hover:underline">{followers} {followers === 1 ? 'follower' : 'followers'}</Link> · <Link href={`/user/${user.id}/people?tab=following`} className="hover:underline">{following} following</Link></p>
         </div>
         <Link href="/settings" aria-label="Settings" className="btn-icon"><Settings size={19} /></Link>
       </div>
