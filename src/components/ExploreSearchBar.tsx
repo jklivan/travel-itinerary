@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useRef, useTransition } from 'react'
-import { Search } from 'lucide-react'
+import SearchField from '@/components/ui/SearchField'
 
 export default function ExploreSearchBar() {
   const router = useRouter()
@@ -21,26 +21,17 @@ export default function ExploreSearchBar() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="relative mb-6">
-      <Search
-        size={16}
-        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brown pointer-events-none"
-      />
-      <input
+    <form onSubmit={handleSubmit} className="mb-6">
+      <SearchField
         key={current}
         ref={inputRef}
-        type="text"
         defaultValue={current}
+        aria-label="Search trips"
         placeholder={'Try \u201cfamily trip in Europe\u201d or \u201ccheap beach vacation\u201d\u2026'}
-        className="w-full pl-10 pr-24 py-3 rounded-xl border border-line-strong text-xs sm:text-sm tracking-normal text-ink placeholder-brown focus:outline-none focus:ring-2 focus:ring-link focus:border-transparent bg-cream shadow-card"
+        style={{ '--placeholder-size': '0.75rem' } as React.CSSProperties}
+        buttonLabel={isPending ? 'Searching…' : 'Search'}
+        buttonDisabled={isPending}
       />
-      <button
-        type="submit"
-        disabled={isPending}
-        className="btn btn-primary btn-sm absolute right-2 top-1/2 -translate-y-1/2"
-      >
-        {isPending ? 'Searching…' : 'Search'}
-      </button>
     </form>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, useTransition } from 'react'
+import SearchField from '@/components/ui/SearchField'
 import { useRouter } from 'next/navigation'
 import { createFriendQuestion, replyToFriendQuestion, searchQuestionItineraries } from '@/actions/questions'
 import MessageAttachment from './MessageAttachment'
@@ -19,6 +20,15 @@ export default function QuestionComposer({ questionId }: { questionId?: string }
   const [searching, startSearch] = useTransition()
   const clientId = useRef<string | null>(null)
   const router = useRouter()
+
+  function searchTrips() {
+    if (pending || searching || query.trim().length < 2) return
+    setError('')
+    startSearch(async () => {
+      try { setResults(await searchQuestionItineraries(query)); setSearched(true) }
+      catch { setError('Could not search itineraries. Please try again.') }
+    })
+  }
 
   return <form className="space-y-3 rounded-2xl border border-line-strong bg-cream p-5" onSubmit={event => {
     event.preventDefault()
@@ -45,15 +55,9 @@ export default function QuestionComposer({ questionId }: { questionId?: string }
     </div> : <button type="button" disabled={pending} onClick={() => setShowPicker(!showPicker)} className="text-sm font-medium text-link underline">{showPicker ? 'Cancel itinerary search' : '+ Tag an itinerary'}</button>}
     {showPicker && !trip && <div className="space-y-2 rounded-xl border border-line bg-card p-3">
       <label className="block text-xs font-medium text-brown">Find an itinerary by title or paste its link
-        <input value={query} disabled={pending || searching} onChange={event => { setQuery(event.target.value); setSearched(false); setResults([]) }} onKeyDown={event => { if (event.key === 'Enter') event.preventDefault() }} maxLength={300} className="mt-1 w-full rounded-lg border border-mist-edge bg-white p-2 text-base text-ink" />
+        <SearchField className="mt-1" value={query} disabled={pending || searching} onChange={event => { setQuery(event.target.value); setSearched(false); setResults([]) }} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); searchTrips() } }} maxLength={300}
+          buttonLabel={searching ? 'Searching…' : 'Search'} buttonDisabled={pending || searching || query.trim().length < 2} onButtonClick={searchTrips} />
       </label>
-      <button type="button" disabled={pending || searching || query.trim().length < 2} className="chip" onClick={() => {
-        setError('')
-        startSearch(async () => {
-          try { setResults(await searchQuestionItineraries(query)); setSearched(true) }
-          catch { setError('Could not search itineraries. Please try again.') }
-        })
-      }}>{searching ? 'Searching…' : 'Search itineraries'}</button>
       {searched && results.length === 0 && <p role="status" className="text-sm text-brown">No itineraries found. Try another title or paste a trip link.</p>}
       <ul className="space-y-1">{results.map(result => <li key={result.id}><button type="button" disabled={pending} className="w-full rounded-lg p-2 text-left hover:bg-mist" onClick={() => { setTrip(result); setShowPicker(false); clientId.current = null }}><span className="block text-sm font-medium text-ink">{result.title}</span><span className="text-xs text-brown">By {result.user.name}</span></button></li>)}</ul>
     </div>}

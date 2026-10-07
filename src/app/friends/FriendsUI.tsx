@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Users, Search, UserPlus } from 'lucide-react'
 import UserAvatar from '@/components/UserAvatar'
+import SearchField from '@/components/ui/SearchField'
 import {
   searchUsers,
   sendFollowRequest,
@@ -164,15 +165,10 @@ export default function FriendsUI({
           <h2 className="type-label text-ink">Find travelers</h2>
         </div>
         <div className="p-4">
-          <form onSubmit={handleNameSearch} className="flex gap-2">
-            <input type="text" value={nameQuery}
+          <form onSubmit={handleNameSearch}>
+            <SearchField value={nameQuery} aria-label="Search travelers by name"
               onChange={(e) => { setNameQuery(e.target.value); setNameSearched(false) }}
-              placeholder="Search by name…"
-              className="flex-1 rounded-lg border border-line-strong px-3 py-2 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-brown" />
-            <button type="submit"
-              className="btn btn-primary">
-              Search
-            </button>
+              placeholder="Search by name…" buttonLabel="Search" />
           </form>
           {nameSearched && nameResults.length === 0 && (
             <p className="mt-4 text-sm text-brown italic">No users found.</p>
