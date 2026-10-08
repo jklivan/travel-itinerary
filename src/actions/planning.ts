@@ -229,6 +229,20 @@ export async function setPlaceDay(itemId: string, day: number | null): Promise<R
   } catch { return { error: 'Could not move this place. Please try again.' } }
 }
 
+// Day by day: drag places into a new order within a day. The ids are that day's places, top to bottom.
+export async function setDayOrder(tripId: string, itemIds: string[]): Promise<Result> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  if (!Array.isArray(itemIds) || !itemIds.length || itemIds.length > 200 || itemIds.some(id => typeof id !== 'string') || new Set(itemIds).size !== itemIds.length) return { error: 'Could not reorder.' }
+  try {
+    const owned = await prisma.destItem.count({ where: { id: { in: itemIds }, destination: { itinerary: { id: tripId, userId } } } })
+    if (owned !== itemIds.length) return { error: unavailable }
+    await prisma.$transaction(itemIds.map((id, order) => prisma.destItem.update({ where: { id }, data: { order } })))
+    refresh(tripId, userId)
+    return { success: true }
+  } catch { return { error: 'Could not reorder. Please try again.' } }
+}
+
 // "Organize with AI" → Apply: puts each listed place on its day. Only places still unscheduled move.
 export async function applyDayPlan(tripId: string, assignments: { id: string; day: number }[]): Promise<Result> {
   const userId = (await auth())?.user?.id
