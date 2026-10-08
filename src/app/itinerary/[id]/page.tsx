@@ -80,6 +80,8 @@ function RatingsDetails({ itemId, authorName, authorRating, friends, avg, total,
   )
 }
 
+const MONTH_ORDER = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
 type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number; dayIndex?: number | null; tags?: string[]; alternative?: string | null; photoUrl?: string | null; photoUrls?: string[]; lat?: number | null; lng?: number | null; placeId?: string | null }
 
 type DestinationGroup = {
@@ -535,10 +537,11 @@ export default async function ItineraryPage({
             {!!it.budget && it.budget > 0 && <span aria-label={`Budget ${it.budget} out of 5`} className={`${TAG_PILL} gap-1 bg-chip`}>{[1, 2, 3, 4, 5].map(n => <span key={n} className={n <= it.budget! ? 'text-ink' : 'text-gold-faint'}>$</span>)}</span>}
             {audienceLabel && <span className={`${TAG_PILL} bg-chip text-ink`}><Users size={16} strokeWidth={1.5} aria-hidden="true" />{audienceLabel}</span>}
             {displayTags.map(tag => <TagChip key={tag} id={tag} />)}
-            {it.bestMonths && it.bestMonths.length > 0 && it.bestMonths.map(m => (
-              <span key={m} className={`${TAG_PILL} bg-mist text-ink`}>{m}</span>
-            ))}
           </div>
+          {/* When to go: on its own line, in calendar order, in the same beige as Family. */}
+          {it.bestMonths && it.bestMonths.length > 0 && <div aria-label="When to go" className="-mt-2 mb-4 flex flex-wrap items-center gap-2">
+            {[...it.bestMonths].sort((a, b) => MONTH_ORDER.indexOf(a) - MONTH_ORDER.indexOf(b)).map(m => <span key={m} className={`${TAG_PILL} bg-chip text-ink`}>{m}</span>)}
+          </div>}
 
           {/* Italic description */}
           {it.description && (
