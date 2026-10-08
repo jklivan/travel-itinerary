@@ -80,7 +80,7 @@ export default function PhotoSorter({ places, prompt }: { places: SortPlace[]; p
         {on && <span className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-link text-white ring-2 ring-white"><Check size={14} /></span>}
       </button> })}</div>
       {/* The places, by destination and category: tapping one adds the selected photos to it. */}
-      <div className="sticky bottom-[calc(var(--app-bottom-clearance)-1rem)] z-10 max-h-[45dvh] space-y-3 overflow-y-auto panel p-3 shadow-pop">
+      <div className="panel-inset space-y-3 p-3">
         <p className="type-label">{selected.length ? `Add ${selected.length} photo${selected.length === 1 ? '' : 's'} to…` : 'Select photos, then tap a place'}</p>
         {destinations.map(destination => <div key={destination} className="space-y-2">
           {destinations.length > 1 && <p className="type-meta">{destination}</p>}
