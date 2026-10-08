@@ -26,6 +26,8 @@ import SwipeToDelete from '@/components/SwipeToDelete'
 import SortableDay from '@/components/SortableDay'
 import PlacePhoto from '@/components/PlacePhoto'
 import { placeTown } from '@/lib/placeTown'
+import { TripDates } from '@/lib/tripPhotos'
+import PhotoSorter from '@/components/PhotoSorter'
 import { DateFields, inputClass, buttonClass } from '../NewPlanForm'
 import { TAGS, tagMeta } from '@/lib/tags'
 import TagChip from '@/components/ui/TagChip'
@@ -36,7 +38,7 @@ import { PostStamp } from '@/components/PostcardLogo'
 type PlaceSource = { kind: string; person: string | null; trip: { id: string; title: string } | null }
 type Place = { source?: PlaceSource | null; order: number; nights?: number | null; tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[]; mealType: string | null; alternative: string | null; description: string | null; link: string | null; address: string | null }
 type Trip = { coverPhoto?: string | null; tripPhotos?: string[]; notes?: string | null; bestMonths?: string[]; budget?: number | null; tripRating?: number | null; tags?: string[]; postType: string; durationDays?: number | null; id: string; title: string; audience: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; days?: number | null; items: Place[] }[] }
-const categories = [{ value: 'hotel', label: 'Hotels', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
+const categories = [{ value: 'hotel', label: 'Accommodation', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
 
 // Day names in the planner: "Day 3", or the date when the plan has a start date and dates are chosen ("Thu, Jul 3").
 // Days are still stored as numbers, so a posted trip always shows Day 1, Day 2…
@@ -126,7 +128,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     } catch { setPublishMessage('Could not save these details. Please try again.') }
     finally { setPublishing(false) }
   }
-  return <DayNames.Provider value={dayName}><div className="mx-auto max-w-2xl px-4 py-6 text-ink">
+  return <DayNames.Provider value={dayName}><TripDates.Provider value={trip.start && trip.end ? { start: trip.start, end: trip.end } : null}><div className="mx-auto max-w-2xl px-4 py-6 text-ink">
     <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
     <h1 className="trip-title mt-2 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
     {<details id="trip-details" open={initialDetails || undefined} className="mt-3 scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-2 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
@@ -147,6 +149,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       {/* A plan with several destinations shows their headings (each with Add a place) even before anything is added. */}
       {tab === 'map' ? null : !places.length && !(multiDestination && tab === 'places') && !(tab === 'itinerary' && trip.durationDays) ? <div className="panel-dashed p-8 text-center"><MapPin size={28} className="mx-auto mb-3 text-link" /><h2 className="type-title">A place to start</h2><p className="mt-2 text-sm text-muted">A hotel you love, a restaurant someone mentioned, something you want to do. Add it now and decide when later.</p></div> : tab === 'places' ? <>
         <p className="mb-5 text-sm text-muted">Everything you’re considering, all in one place. Days are optional.</p>
+        {places.length > 0 && <PhotoSorter places={places} prompt={trip.start ? 'Choose all its photos at once, then tap them into places.' : 'No dates on this trip? Choose all its photos at once, then tap them into places.'} />}
         {lookAlikes.map(group => <MergeLookAlikes key={group.keep.id} tripId={trip.id} keep={group.keep} others={group.others} />)}
         {multiDestination ? destinations.map(destination => { const items = places.filter(p => p.destinationId === destination.id); return <section key={destination.id} aria-label={destination.name} className="mb-10">
           <div className="mb-3 flex items-baseline justify-between gap-3 border-b-2 border-ink pb-2"><h2 className="type-title flex min-w-0 items-center gap-2 [overflow-wrap:anywhere]"><MapPin size={18} className="shrink-0 text-link" />{destination.name}</h2><span className="flex shrink-0 items-center gap-3"><span className="text-xs font-semibold uppercase tracking-wider text-muted">{items.length} {items.length === 1 ? 'place' : 'places'}</span><button type="button" aria-expanded={editingDestination === destination.id} onClick={() => setEditingDestination(current => current === destination.id ? null : destination.id)} className="inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-link"><Pencil size={14} />Edit</button></span></div>
@@ -178,7 +181,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     {trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="panel w-full max-w-md p-5 shadow-pop"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="type-title">A few more details</h2><p className="mt-1 text-sm text-muted">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-title leading-none text-muted" aria-label="Close">×</button></div><div className="mt-5 space-y-5">{allPhotos.length > 0 && <fieldset><legend className="mb-1 text-sm font-semibold text-link">Choose cover photo</legend><p className="mb-1 text-xs text-muted">The photo people see first. Scroll sideways to see them all.</p><CoverPhotoPicker photos={allPhotos} value={publishCover} onChange={setPublishCover} /></fieldset>}<fieldset><legend className="mb-2 text-sm font-semibold text-link">Trip type</legend><div className="grid grid-cols-3 gap-2">{([['guide', 'Guide'], ['day-trip', 'Day trip'], ['itinerary', 'Multi-day']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={publishFormat === value} onClick={() => setPublishFormat(value)} className="chip justify-center">{label}</button>)}</div></fieldset><TripExtras budget={publishBudget} onBudget={setPublishBudget} rating={publishRating} onRating={setPublishRating} tags={publishTags} onTags={setPublishTags} legendClass="mb-2 text-sm font-semibold text-link" months={<MonthPicker value={publishMonths} onChange={setPublishMonths} legendClass="mb-1 text-sm font-semibold text-link" />} /><button type="button" disabled={publishing} onClick={() => void continueToPreview(publishFormat)} className="btn btn-primary w-full">{publishing ? 'Saving…' : 'Continue →'}</button></div></div></div>}
     {publishMessage && <p role="status" className="mt-2 text-right text-sm text-link">{publishMessage}</p>}
     {unratedPrompt && <UnratedPrompt places={places.filter(place => unratedPrompt.includes(place.id))} onClose={() => setUnratedPrompt(null)} onPreview={showPreview} />}
-  </div></DayNames.Provider>
+  </div></TripDates.Provider></DayNames.Provider>
 }
 
 function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, initialDay, onClose }: { trip: Trip; maxDay: number; initialDestination?: string; initialDestinationId?: string; initialDay?: number; onClose: () => void }) {
@@ -216,7 +219,7 @@ function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, init
     <DestinationPicker destinations={trip.destinations.map(d => ({ id: d.id, name: d.name }))} value={destination} selectedId={destinationId} onChange={changeDestination} labelClass="mb-1 text-sm" />
     <fieldset><legend className="mb-2 text-sm">Category</legend><div className="flex flex-wrap gap-2">
       {[
-        { value: 'hotel', label: 'Hotel / Airbnb', Icon: Hotel },
+        { value: 'hotel', label: 'Accommodation', Icon: Hotel },
         { value: 'food_drink', label: 'Food / Drink', Icon: Utensils },
         { value: 'activity', label: 'Activity', Icon: Camera },
         { value: 'transport', label: 'Transport', Icon: Plane },

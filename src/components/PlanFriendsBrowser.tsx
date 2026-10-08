@@ -13,7 +13,7 @@ import { samePlanPlace } from '@/lib/planPlaceIdentity'
 type Results = Awaited<ReturnType<typeof findFriendsPlanPlaces>>
 type Trip = NonNullable<Results['trips']>[number]
 type Place = Trip['places'][number]
-const categories: Record<string, string> = { hotel: 'Hotel', food_drink: 'Food & drink', activity: 'Things to do', transport: 'Transport' }
+const categories: Record<string, string> = { hotel: 'Accommodation', food_drink: 'Food & drink', activity: 'Things to do', transport: 'Transport' }
 
 export default function PlanFriendsBrowser({ plan, initialQuery, initialResults }: {
   plan: { id: string; title: string; destinations: { name: string }[] }; initialQuery: string; initialResults: Results

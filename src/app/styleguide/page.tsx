@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'Style guide — Postcard', robots: {
 // The approved styles, in one place. Every screen should use only these (see AGENTS.md).
 const TYPE = [
   { name: 'type-display', use: 'Page titles', sample: 'My trips', size: 'Serif · 32px (40px on desktop) · capitals' },
-  { name: 'type-title', use: 'Section headings: “Places from the trip”, “Day 1”, “Hotels”', sample: 'Places from the trip', size: 'Serif · 22px · capitals' },
+  { name: 'type-title', use: 'Section headings: “Places from the trip”, “Day 1”, “Accommodation”', sample: 'Places from the trip', size: 'Serif · 22px · capitals' },
   { name: 'type-card', use: 'Trip and place names on cards', sample: 'Boat day with CT Watersports', size: 'Serif · 18px · capitals' },
   { name: 'type-body', use: 'Normal text, notes, descriptions', sample: 'Connecticut Watersports can book a boat for up to 10 people for waterskiing, tubing and wake boarding.', size: 'Sans · 14px' },
   { name: 'type-meta', use: 'Dates, counts, helper lines, “Saved by…”', sample: 'Sep 1, 2026 · 1 day · 3 places', size: 'Sans · 12px · muted' },
