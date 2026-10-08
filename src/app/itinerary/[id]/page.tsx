@@ -439,6 +439,18 @@ export default async function ItineraryPage({
     }] as const)
   }) : [])
 
+  // How long each hotel stay was: its nights when set, otherwise the days its part of the itinerary covers.
+  const hotelStays = new Map<string, string>(it.destinations.flatMap(destination => {
+    const offset = destination.items.some(item => item.type !== 'hotel' && item.dayIndex === 0) ? 1 : 0
+    return destination.items.filter(item => item.type === 'hotel').flatMap((hotel): [string, string][] => {
+      if (hotel.nights) return [[hotel.id, `${hotel.nights} ${hotel.nights === 1 ? 'night' : 'nights'}`]]
+      const days = destination.items.filter(item => item.groupIndex === hotel.groupIndex && item.dayIndex !== null && (item.type !== 'hotel' || item.id === hotel.id)).map(item => Math.max(1, item.dayIndex! + offset))
+      if (!days.length || isGuide) return []
+      const first = Math.min(...days), last = Math.max(...days)
+      return first === last ? [] : [[hotel.id, `Days ${first}–${last}`]]
+    })
+  }))
+
   const placeDestinations = new Map(groupedDestinations.flatMap(destination =>
     destination.items.map(item => [item.id, [destination.name, destination.country].filter(Boolean).join(', ')] as const)
   ))
@@ -484,6 +496,7 @@ export default async function ItineraryPage({
         <div className={styles.cardBody}>
           <p className={styles.eyebrow}>{label}</p>
           <h4 className={styles.placeName}>{item.name}</h4>
+          {type === 'hotel' && hotelStays.get(item.id) && <p className="mt-0.5 text-xs font-semibold uppercase tracking-caps text-link">{hotelStays.get(item.id)}</p>}
           {(!!item.rating || (!compact && price !== null && price > 0)) && (
             <div className={styles.meta}>
               {!!item.rating && <span className={styles.rating}><RatingStars value={item.rating} label={`${authorFirst} rated it ${item.rating} out of 5 stars`} /> <span className={styles.ratingLabel}>{authorFirst}</span></span>}
