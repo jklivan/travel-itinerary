@@ -1,10 +1,10 @@
 'use client'
 
 import { useCallback, useContext, useRef, useState } from 'react'
-import { upload } from '@vercel/blob/client'
 import { ImageIcon, X } from 'lucide-react'
 import { eventPhotos } from '@/lib/eventPhotos'
-import { compressPhoto, sizedPhoto } from '@/lib/photoSizing'
+import { sizedPhoto } from '@/lib/photoSizing'
+import { uploadPhotos } from '@/lib/uploadPhotos'
 import { canPickTripPhotos, TripDates } from '@/lib/tripPhotos'
 import TripPhotoPicker from './TripPhotoPicker'
 
@@ -30,24 +30,8 @@ export default function EventPhotoInput({ photos, name, onChange, onBusyChange, 
     setBusy(true)
     setError('')
     onBusyChange(true)
-    const added: (string | null)[] = files.map(() => null)
-    let failed = 0
     try {
-      // Shrink each photo first, then upload up to three at a time, keeping the order they were picked in.
-      let next = 0
-      async function worker() {
-        while (next < files.length) {
-          const index = next++
-          try {
-            const file = await compressPhoto(files[index])
-            if (file.size > 10 * 1024 * 1024) { failed++; continue }
-            const blob = await upload(`event-${crypto.randomUUID()}-${file.name}`, file, { access: 'private', handleUploadUrl: '/api/upload' })
-            added[index] = `/api/img?url=${encodeURIComponent(blob.url)}`
-          } catch { failed++ }
-        }
-      }
-      await Promise.all([worker(), worker(), worker()])
-      const uploaded = added.filter((url): url is string => !!url)
+      const { urls: uploaded, failed } = await uploadPhotos(files)
       if (uploaded.length) onChange(eventPhotos([...photos, ...uploaded]))
       if (failed) setError(`${failed} photo${failed === 1 ? '' : 's'} could not be added. Use files under 10 MB and try again.`)
     } finally {
