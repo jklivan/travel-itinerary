@@ -189,6 +189,10 @@ input, textarea, select {
   color: #111111;
 }
 
+/* Browsers let a <fieldset> grow to fit its widest content, so a sideways-scrolling row inside one (cover photos)
+   pushed whole forms and pop-ups off the screen. Fieldsets fit their column like any other box. */
+fieldset { min-width: 0; }
+
 /* iPhone Safari sizes date boxes by their own content and ignores width: 100%, so they spill past the form.
    Without the native styling they fit their column like the other fields (and keep their height when empty). */
 input[type="date"], input[type="time"], input[type="datetime-local"] {
