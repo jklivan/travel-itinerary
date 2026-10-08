@@ -128,11 +128,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   return <DayNames.Provider value={dayName}><div className="mx-auto max-w-2xl px-4 py-6 text-ink">
     <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
     <h1 className="trip-title mt-2 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
-    {<details id="trip-details" open={initialDetails || undefined} className="mt-3 scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-2 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit trip details</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
-    {trip.visibility !== 'draft' && <div className="mt-4 flex flex-wrap items-center gap-3">
-      {<Link href={`/itinerary/${trip.id}`} className="btn btn-outline">View shared trip</Link>}
-      <span className="text-xs text-muted">Saved changes appear on your shared trip.</span>
-    </div>}
+    {<details id="trip-details" open={initialDetails || undefined} className="mt-3 scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-2 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
     {/* One row of compact actions, so the places start higher up the screen. */}
     <div className="sticky top-[var(--app-header-height,0px)] z-20 -mx-1 mt-3 grid grid-cols-4 items-start gap-2 bg-paper px-1 py-3">
       <button type="button" onClick={() => { setImporting(false); setAdding({ at: 'top' }) }} className={action}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={22} /></span>Add a place</button>

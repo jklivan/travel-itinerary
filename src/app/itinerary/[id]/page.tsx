@@ -33,6 +33,7 @@ import FriendRatingsButton from '@/components/FriendRatingsButton'
 import DestinationSocial, { type DestinationFriend } from '@/components/DestinationSocial'
 import { getRecommendation, partitionPlaces } from '@/lib/placeRecommendation'
 import { mergeRepeatVisits } from '@/lib/repeatVisits'
+import type { EditablePlace } from '@/components/PlaceInlineEdit'
 import { mapDayNumber } from '@/lib/mapDays'
 import { distanceMiles } from '@/lib/distance'
 
@@ -424,6 +425,18 @@ export default async function ItineraryPage({
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
 
+  // Your own places can be edited in their popup. A place shown once for several visits edits its first visit.
+  // Days are counted from 1, as in the planner (older trips counted from 0).
+  const editablePlaces = new Map<string, EditablePlace>(isOwn ? it.destinations.flatMap(destination => {
+    const zeroBased = destination.items.some(item => item.type !== 'hotel' && item.dayIndex === 0)
+    return destination.items.map(item => [item.id, {
+      id: item.id, type: item.type as EditablePlace['type'], name: item.name, city: [destination.name, destination.country].filter(Boolean).join(', '),
+      status: item.planningStatus, day: item.dayIndex === null ? null : item.dayIndex + (zeroBased ? 1 : 0), placeId: item.placeId,
+      notes: item.notes ?? '', tags: item.tags, mealType: item.mealType ?? '', alternative: item.alternative ?? '', description: item.description ?? '',
+      link: item.link ?? '', address: item.address ?? '', photos: eventPhotos(item.photoUrls, item.photoUrl),
+    }] as const)
+  }) : [])
+
   const placeDestinations = new Map(groupedDestinations.flatMap(destination =>
     destination.items.map(item => [item.id, [destination.name, destination.country].filter(Boolean).join(', ')] as const)
   ))
@@ -446,7 +459,7 @@ export default async function ItineraryPage({
 
     return (
       <div key={item.id} id={`place-${item.id}`} className="scroll-mt-24">
-      <PlaceDetailsCard messageHref={!isOwn ? `/messages/${it.user.id}?place=${encodeURIComponent(item.id)}` : undefined} editHref={isOwn ? editHref : undefined} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} ratings={<RatingsDetails itemId={item.id} authorName={isOwn ? 'You' : it.user.name} authorRating={item.rating} friends={friends} avg={avg} total={total} trips={trips} />} className={`${styles.card} ${styles[type]} ${isOwn ? styles.ownerPolaroid : ''} ${recommendation !== 'none' && recommendation !== 'must' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
+      <PlaceDetailsCard messageHref={!isOwn ? `/messages/${it.user.id}?place=${encodeURIComponent(item.id)}` : undefined} editable={isOwn ? editablePlaces.get(item.id) : undefined} place={item} destination={placeDestinations.get(item.id) ?? ''} category={PLACE_CATEGORIES[type].label} recommendation={recommendation} isHotel={type === 'hotel'} ratings={<RatingsDetails itemId={item.id} authorName={isOwn ? 'You' : it.user.name} authorRating={item.rating} friends={friends} avg={avg} total={total} trips={trips} />} className={`${styles.card} ${styles[type]} ${isOwn ? styles.ownerPolaroid : ''} ${recommendation !== 'none' && recommendation !== 'must' ? styles.stamped : ''} ${recommendation === 'option' ? styles.alternativeCard : ''}`}>
         {recommendation === 'must' && <Stamp small label={type === 'hotel' ? 'Must stay!' : 'Must do!'} color={STAMP_COLORS[5]} className={`${styles.mustDoStamp} ${styles.verdictStamp}`} />}
         {recommendation === 'avoid' && <span className={`${styles.mustDoStamp} ${styles.textStamp} ${styles.avoidStamp}`}><Ban size={22} aria-hidden="true" /><span>Avoid</span></span>}
         {recommendation === 'option' && <span className={`${styles.mustDoStamp} ${styles.textStamp}`}><span>Alternative</span></span>}
@@ -782,7 +795,7 @@ export default async function ItineraryPage({
         </div>}
         {isOwn && <section aria-label="Manage trip" className="mt-8 border-t border-line-strong pt-5">
           <div className="flex flex-wrap items-center gap-2">
-            <Link href={editHref} className="chip">Edit</Link>
+            <Link href={`${editHref}?details=1`} className="chip">Edit</Link>
             <Link href={`/plan/${it.id}`} className="chip">Add a place</Link>
             <DeleteButton id={it.id} visibility={it.visibility} />
           </div>
