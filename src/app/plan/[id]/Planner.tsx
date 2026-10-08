@@ -26,6 +26,7 @@ import SwipeToDelete from '@/components/SwipeToDelete'
 import SortableDay from '@/components/SortableDay'
 import PlacePhoto from '@/components/PlacePhoto'
 import { placeTown } from '@/lib/placeTown'
+import { TripDates } from '@/lib/tripPhotos'
 import { DateFields, inputClass, buttonClass } from '../NewPlanForm'
 import { TAGS, tagMeta } from '@/lib/tags'
 import TagChip from '@/components/ui/TagChip'
@@ -125,7 +126,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     } catch { setPublishMessage('Could not save these details. Please try again.') }
     finally { setPublishing(false) }
   }
-  return <DayNames.Provider value={dayName}><div className="mx-auto max-w-2xl px-4 py-6 text-ink">
+  return <DayNames.Provider value={dayName}><TripDates.Provider value={trip.start && trip.end ? { start: trip.start, end: trip.end } : null}><div className="mx-auto max-w-2xl px-4 py-6 text-ink">
     <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
     <h1 className="trip-title mt-2 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
     {<details id="trip-details" open={initialDetails || undefined} className="mt-3 scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-2 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
@@ -177,7 +178,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     {trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="panel w-full max-w-md p-5 shadow-pop"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="type-title">A few more details</h2><p className="mt-1 text-sm text-muted">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-title leading-none text-muted" aria-label="Close">×</button></div><div className="mt-5 space-y-5">{allPhotos.length > 0 && <fieldset><legend className="mb-1 text-sm font-semibold text-link">Choose cover photo</legend><p className="mb-1 text-xs text-muted">The photo people see first. Scroll sideways to see them all.</p><CoverPhotoPicker photos={allPhotos} value={publishCover} onChange={setPublishCover} /></fieldset>}<fieldset><legend className="mb-2 text-sm font-semibold text-link">Trip type</legend><div className="grid grid-cols-3 gap-2">{([['guide', 'Guide'], ['day-trip', 'Day trip'], ['itinerary', 'Multi-day']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={publishFormat === value} onClick={() => setPublishFormat(value)} className="chip justify-center">{label}</button>)}</div></fieldset><TripExtras budget={publishBudget} onBudget={setPublishBudget} rating={publishRating} onRating={setPublishRating} tags={publishTags} onTags={setPublishTags} legendClass="mb-2 text-sm font-semibold text-link" months={<MonthPicker value={publishMonths} onChange={setPublishMonths} legendClass="mb-1 text-sm font-semibold text-link" />} /><button type="button" disabled={publishing} onClick={() => void continueToPreview(publishFormat)} className="btn btn-primary w-full">{publishing ? 'Saving…' : 'Continue →'}</button></div></div></div>}
     {publishMessage && <p role="status" className="mt-2 text-right text-sm text-link">{publishMessage}</p>}
     {unratedPrompt && <UnratedPrompt places={places.filter(place => unratedPrompt.includes(place.id))} onClose={() => setUnratedPrompt(null)} onPreview={showPreview} />}
-  </div></DayNames.Provider>
+  </div></TripDates.Provider></DayNames.Provider>
 }
 
 function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, initialDay, onClose }: { trip: Trip; maxDay: number; initialDestination?: string; initialDestinationId?: string; initialDay?: number; onClose: () => void }) {

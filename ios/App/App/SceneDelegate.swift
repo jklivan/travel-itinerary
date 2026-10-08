@@ -26,7 +26,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 // Keep the web viewport inside the device's usable screen, including on rotation.
 // The web content must not draw underneath the status bar or home indicator.
 class AppViewController: UIViewController {
-    private let bridgeController = CAPBridgeViewController()
+    // Registers Postcard's own plugins (trip photos); see PostcardPhotos.swift.
+    private let bridgeController = PostcardBridgeViewController()
 
     override var preferredStatusBarStyle: UIStatusBarStyle { .darkContent }
 

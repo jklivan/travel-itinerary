@@ -29,6 +29,7 @@ import PlaceDetailsCard from '@/components/PlaceDetailsCard'
 import PublishPreviewBar from '@/components/PublishPreviewBar'
 import GooglePlaceThumb from '@/components/GooglePlaceThumb'
 import UserAvatar from '@/components/UserAvatar'
+import TripDatesProvider from '@/components/TripDatesProvider'
 import FriendRatingsButton from '@/components/FriendRatingsButton'
 import DestinationSocial, { type DestinationFriend } from '@/components/DestinationSocial'
 import { getRecommendation, partitionPlaces } from '@/lib/placeRecommendation'
@@ -504,7 +505,8 @@ export default async function ItineraryPage({
   const renderFoodCard = (item: DestItemRow, compact = false) => renderPlaceCard(item, 'food_drink', compact)
   const renderActivityCard = (item: DestItemRow, compact = false) => renderPlaceCard(item, item.type === 'transport' ? 'transport' : 'activity', compact)
 
-  return (
+  // Your own dated trip: adding photos in the iPhone app starts at the photos taken on it.
+  const page = (
     <div className="min-h-screen bg-paper">
       {previewing && <PublishPreviewBar id={it.id} postType={it.postType} budget={it.budget} tripRating={it.tripRating} tags={it.tags} />}
       <div className={`max-w-4xl mx-auto px-4 ${isOwn ? 'pt-2 pb-6' : 'py-6'}`}>
@@ -808,4 +810,5 @@ export default async function ItineraryPage({
       </div>
     </div>
   )
+  return isOwn && hasTripDates(it) ? <TripDatesProvider start={it.startDate.toISOString().slice(0, 10)} end={it.endDate.toISOString().slice(0, 10)}>{page}</TripDatesProvider> : page
 }
