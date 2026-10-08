@@ -15,7 +15,7 @@ export default function TripPhotoPicker({ start, end, name, onPick, onFallback, 
   const dialog = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   const [photos, setPhotos] = useState<LibraryPhoto[] | null>(null)
-  const [access, setAccess] = useState<'all' | 'limited' | 'denied' | 'unavailable'>('all')
+  const [access, setAccess] = useState<'all' | 'limited' | 'denied' | 'unavailable' | 'failed'>('all')
   const [thumbs, setThumbs] = useState<Record<string, string>>({})
   const [selected, setSelected] = useState<string[]>([])
   const [adding, setAdding] = useState('')
@@ -23,7 +23,8 @@ export default function TripPhotoPicker({ start, end, name, onPick, onFallback, 
   useEffect(() => {
     dialog.current?.showModal()
     let cancelled = false
-    const day = (date: string, shift: number) => { const value = new Date(`${date}T00:00:00`); value.setDate(value.getDate() + shift); return value.toISOString() }
+    const day = (date: string, shift: number) => { const value = new Date(`${date}T00:00:00`); value.setDate(value.getDate() + shift); return value.toISOString().replace(/\.\d{3}Z$/, 'Z') }
+    // (The app reads dates without fractions of a second: 2026-03-31T04:00:00Z.)
     void (async () => {
       try {
         const result = await PostcardPhotos.photosBetween({ start: day(start, -1), end: day(end, 2) })
@@ -34,10 +35,10 @@ export default function TripPhotoPicker({ start, end, name, onPick, onFallback, 
           const batch = await PostcardPhotos.thumbnails({ ids: result.photos.slice(index, index + 60).map(photo => photo.id), size: 240 })
           if (!cancelled) setThumbs(current => ({ ...current, ...batch.thumbnails }))
         }
-      } catch {
-        // An app build from before trip photos (or the library can't be read). The usual picker has to be opened
-        // from a tap, so offer it rather than opening it here.
-        if (!cancelled) { setAccess('unavailable'); setPhotos([]) }
+      } catch (error) {
+        // An app build from before trip photos answers "not implemented"; anything else is a problem reading the
+        // library. Either way the usual picker has to be opened from a tap, so offer it rather than opening it here.
+        if (!cancelled) { setAccess((error as { code?: string })?.code === 'UNIMPLEMENTED' ? 'unavailable' : 'failed'); setPhotos([]) }
       }
     })()
     return () => { cancelled = true }
@@ -68,6 +69,7 @@ export default function TripPhotoPicker({ start, end, name, onPick, onFallback, 
     </header>
     <div className="flex-1 overflow-y-auto p-4">
       {photos === null ? <p className="type-body text-muted">Finding your trip’s photos…</p>
+        : access === 'failed' ? <p className="type-body">Couldn’t read your trip’s photos. Try again, or <button type="button" className="text-link underline" onClick={() => { dialog.current?.close(); onFallback() }}>choose from your library</button>.</p>
         : access === 'unavailable' ? <p className="type-body">Update the Postcard app to see your trip’s photos here. For now, <button type="button" className="text-link underline" onClick={() => { dialog.current?.close(); onFallback() }}>choose from your library</button>.</p>
         : access === 'denied' ? <p className="type-body">Postcard can’t see your photos. To show your trip’s photos here, allow it in Settings → Postcard → Photos. Or <button type="button" className="text-link underline" onClick={() => { dialog.current?.close(); onFallback() }}>choose from your library</button>.</p>
         : !photos.length ? <p className="type-body">No photos from these dates{access === 'limited' ? ' among the ones you’ve shared with Postcard' : ''}. <button type="button" className="text-link underline" onClick={() => { dialog.current?.close(); onFallback() }}>Choose from your library</button></p>
