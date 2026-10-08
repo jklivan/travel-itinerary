@@ -56,7 +56,15 @@ test('multi-file upload appends successes, reports failures, and balances busy s
   const code = ts.transpileModule(readFileSync(new URL('../src/components/EventPhotoInput.tsx', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText
   const jsx = (type, props) => ({ type, props })
   const context = { exports: {}, crypto: { randomUUID: () => 'test' }, require: name => {
-    if (name === 'react') return { useRef: value => ({ current: value }), useState: value => [value, next => states.push(next)] }
+    if (name === 'react') return { useRef: value => ({ current: value }), useState: value => [value, next => states.push(next)], useCallback: fn => fn, useContext: () => null }
+    if (name === '@/lib/tripPhotos') return { canPickTripPhotos: () => false, TripDates: {} }
+    if (name === './TripPhotoPicker') return { default: () => null }
+    // The real upload helper (src/lib/uploadPhotos.ts), with the same stubs.
+    if (name === '@/lib/uploadPhotos') {
+      const helper = { exports: {} }
+      vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/lib/uploadPhotos.ts', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, { ...context, exports: helper.exports })
+      return helper.exports
+    }
     if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx }
     if (name === 'lucide-react') return {}
     if (name === '@/lib/eventPhotos') return { eventPhotos }

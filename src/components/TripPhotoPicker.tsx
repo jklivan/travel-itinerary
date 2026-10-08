@@ -61,10 +61,10 @@ export default function TripPhotoPicker({ start, end, name, onPick, onFallback, 
     const label = photo.date ? new Date(photo.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Undated'
     days.set(label, [...(days.get(label) ?? []), photo])
   }
-  return <dialog ref={dialog} aria-labelledby={titleId} onClose={onClose} className="panel m-auto flex h-[88dvh] w-[min(96vw,560px)] flex-col p-0 text-ink shadow-xl backdrop:bg-ink/50">
+  return <dialog ref={dialog} aria-labelledby={titleId} onClose={onClose} className="panel m-auto flex h-[88dvh] w-[min(96vw,560px)] flex-col p-0 text-ink shadow-pop backdrop:bg-ink/50">
     <header className="flex items-start justify-between gap-3 border-b border-line-soft p-4">
       <div><h2 id={titleId} className="type-title normal-case">Photos from this trip</h2><p className="type-meta mt-1">Taken {new Date(`${start}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(`${end}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · for {name}</p></div>
-      <button type="button" aria-label="Close" onClick={() => dialog.current?.close()} className="flex size-10 shrink-0 items-center justify-center rounded-full"><X size={20} /></button>
+      <button type="button" aria-label="Close" onClick={() => dialog.current?.close()} className="flex size-10 shrink-0 items-center justify-center rounded-full"><X size={18} /></button>
     </header>
     <div className="flex-1 overflow-y-auto p-4">
       {photos === null ? <p className="type-body text-muted">Finding your trip’s photos…</p>

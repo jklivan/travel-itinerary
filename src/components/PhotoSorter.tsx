@@ -49,20 +49,20 @@ export default function PhotoSorter({ places, prompt }: { places: SortPlace[]; p
   }
 
   if (!open) return <button type="button" onClick={() => setOpen(true)} className="mb-5 flex w-full items-center gap-3 rounded-xl border border-dashed border-link p-3 text-left text-sm text-link hover:bg-mist">
-    <ImagePlus size={20} className="shrink-0" /><span><span className="font-semibold">Add your trip photos</span><span className="block text-xs text-muted">{prompt}</span></span>
+    <ImagePlus size={18} className="shrink-0" /><span><span className="font-semibold">Add your trip photos</span><span className="block text-xs text-muted">{prompt}</span></span>
   </button>
 
   return <section aria-label="Sort trip photos into places" className="panel mb-6 space-y-4 p-4">
     <div className="flex items-start justify-between gap-3">
       <div><h2 className="type-title">Add your trip photos</h2><p className="type-meta mt-1">Choose all the photos from this trip at once, then select some and tap the place they belong to.</p></div>
-      <button type="button" aria-label="Close" disabled={!!progress} onClick={() => setOpen(false)} className="flex size-10 shrink-0 items-center justify-center rounded-full"><X size={20} /></button>
+      <button type="button" aria-label="Close" disabled={!!progress} onClick={() => setOpen(false)} className="flex size-10 shrink-0 items-center justify-center rounded-full"><X size={18} /></button>
     </div>
     <label className={`btn btn-outline btn-sm ${progress ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}>
       <ImagePlus size={16} />{pile.length ? 'Add more photos' : 'Choose photos'}
       <input type="file" multiple accept="image/*" className="sr-only" disabled={!!progress} onChange={event => { const files = Array.from(event.target.files ?? []); event.target.value = ''; void choose(files) }} />
     </label>
     {progress && <p role="status" className="type-body text-link">{progress}</p>}
-    {message && <p role="status" className="flex items-center gap-1.5 text-sm text-link"><Check size={15} />{message}</p>}
+    {message && <p role="status" className="flex items-center gap-1.5 text-sm text-link"><Check size={16} />{message}</p>}
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}
     {pile.length > 0 && <>
       <div className="flex items-center justify-between gap-2"><p className="type-label">{pile.length} to sort{selected.length ? ` · ${selected.length} selected` : ''}</p>
@@ -73,7 +73,7 @@ export default function PhotoSorter({ places, prompt }: { places: SortPlace[]; p
         {on && <span className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-link text-white ring-2 ring-white"><Check size={14} /></span>}
       </button> })}</div>
       {/* The places, by destination and category: tapping one adds the selected photos to it. */}
-      <div className="sticky bottom-[calc(var(--app-bottom-clearance)-1rem)] z-10 max-h-[45dvh] space-y-3 overflow-y-auto rounded-xl border border-line bg-card p-3 shadow-md">
+      <div className="sticky bottom-[calc(var(--app-bottom-clearance)-1rem)] z-10 max-h-[45dvh] space-y-3 overflow-y-auto panel p-3 shadow-pop">
         <p className="type-label">{selected.length ? `Add ${selected.length} photo${selected.length === 1 ? '' : 's'} to…` : 'Select photos, then tap a place'}</p>
         {destinations.map(destination => <div key={destination} className="space-y-2">
           {destinations.length > 1 && <p className="type-meta">{destination}</p>}
