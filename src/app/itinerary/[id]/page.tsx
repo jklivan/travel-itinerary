@@ -11,7 +11,7 @@ import PhotoStrip from '@/components/PhotoStrip'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
-import { Plane, Hotel, Utensils, Camera, MapPin, Check, Ban, Star, Users } from 'lucide-react'
+import { Plane, Hotel, Utensils, Camera, MapPin, Check, Ban, Star, Users, Pencil } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import LikeButton from '@/components/LikeButton'
 import { eventPhotos, pickEventPhoto, tripPhotoGallery } from '@/lib/eventPhotos'
@@ -527,7 +527,8 @@ export default async function ItineraryPage({
 
           <div aria-label="Trip tags" className="flex flex-wrap gap-2 items-center mb-4">
             {/* Like (public heart, with its count) and Save (private, to your folders). */}
-            <LikeButton variant="pill" itineraryId={it.id} initialLiked={!!viewerLike} initialCount={likeCount} isLoggedIn={!!session?.user} />
+            {/* Not on your own trip: you can't like it (its likes show in Liked by below). */}
+            {!isOwn && <LikeButton variant="pill" itineraryId={it.id} initialLiked={!!viewerLike} initialCount={likeCount} isLoggedIn={!!session?.user} />}
             {!isOwn && <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />}
             {/* One chip style for everything here; the verdict uses its stamp colour, as on the trip cards. */}
             {stamp && <span className={`${TAG_PILL} text-white`} style={{ backgroundColor: STAMP_COLORS[stamp.value] }}><Star size={14} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />{stamp.label}</span>}
@@ -559,6 +560,7 @@ export default async function ItineraryPage({
                 {isGuide ? 'Guide' : <>{isOwn && hasTripDates(it) && `${fmtShort(it.startDate)} – ${fmtShort(it.endDate)} · `}{days} {days === 1 ? 'day' : 'days'}</>}
               </span>
             </>}
+            {isOwn && <Link href={`${editHref}?details=1`} className="chip ml-auto shrink-0"><Pencil size={14} />Edit</Link>}
             {session?.user && !isOwn && (
               <form className="ml-auto shrink-0" action={async () => {
                 'use server'
@@ -795,7 +797,6 @@ export default async function ItineraryPage({
         </div>}
         {isOwn && <section aria-label="Manage trip" className="mt-8 border-t border-line-strong pt-5">
           <div className="flex flex-wrap items-center gap-2">
-            <Link href={`${editHref}?details=1`} className="chip">Edit</Link>
             <Link href={`/plan/${it.id}`} className="chip">Add a place</Link>
             <DeleteButton id={it.id} visibility={it.visibility} />
           </div>

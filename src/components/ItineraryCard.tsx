@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { MapPin } from 'lucide-react'
+import { Heart, MapPin } from 'lucide-react'
 import CommentsSheetButton from './CommentsSheet'
 import LikeButton from './LikeButton'
 import { tripLocationLabel } from '@/lib/tripLocation'
@@ -132,7 +132,9 @@ export default function ItineraryCard({
           <div className="flex shrink-0 items-center gap-2.5 text-ink">
             {season && <span className="hidden text-micro font-medium uppercase tracking-widest text-brown min-[390px]:inline">{season}</span>}
             {/* One heart (like, with its count), then the bookmark (save to your folders). */}
-            <LikeButton itineraryId={id} initialLiked={isLiked} initialCount={likeCount} isLoggedIn={!!currentUserId} />
+            {/* Your own trip: just how many likes it has (you can't like your own trip). */}
+            {isOwn ? likeCount ? <span className="flex min-h-8 items-center gap-1 text-label" aria-label={`${likeCount} ${likeCount === 1 ? 'like' : 'likes'}`}><Heart size={16} />{likeCount}</span> : null
+              : <LikeButton itineraryId={id} initialLiked={isLiked} initialCount={likeCount} isLoggedIn={!!currentUserId} />}
             {showBucket && <BucketButton itineraryId={id} initialBucketed={isBucketed} isLoggedIn={!!currentUserId} withFolders={!!currentUserId} />}
             <CommentsSheetButton itineraryId={id} title={title} count={commentCount} variant="icon" />
             {showBudget && budget && budget > 0 && <span className="text-micro font-medium tracking-tight" aria-label={`Budget level ${budget} out of 5`}>
