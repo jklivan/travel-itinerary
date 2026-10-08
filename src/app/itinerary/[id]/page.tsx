@@ -563,7 +563,6 @@ export default async function ItineraryPage({
                 {isGuide ? 'Guide' : <>{isOwn && hasTripDates(it) && `${fmtShort(it.startDate)} – ${fmtShort(it.endDate)} · `}{days} {days === 1 ? 'day' : 'days'}</>}
               </span>
             </>}
-            {isOwn && <Link href={`${editHref}?details=1`} className="chip ml-auto shrink-0"><Pencil size={14} />Edit</Link>}
             {session?.user && !isOwn && (
               <form className="ml-auto shrink-0" action={async () => {
                 'use server'
@@ -591,6 +590,8 @@ export default async function ItineraryPage({
               </span>
             )}
           </div>
+          {/* Your own trip: Edit, under the "saved this" line. */}
+          {isOwn && <div className="mt-3"><Link href={`${editHref}?details=1`} className="chip"><Pencil size={14} />Edit</Link></div>}
         </div>
 
         {/* Same underlined tabs as the planner. */}
