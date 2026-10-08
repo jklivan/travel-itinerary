@@ -1,18 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useContext, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, ImagePlus, X } from 'lucide-react'
 import { updatePlace } from '@/actions/placeQuickEdit'
 import { eventPhotos } from '@/lib/eventPhotos'
 import { sizedPhoto } from '@/lib/photoSizing'
 import { uploadPhotos } from '@/lib/uploadPhotos'
+import { canPickTripPhotos, TripDates } from '@/lib/tripPhotos'
+import TripPhotoPicker from './TripPhotoPicker'
 
 type SortPlace = { id: string; name: string; type: string; photos: string[]; destinationName: string }
 const CATEGORY: Record<string, string> = { hotel: 'Accommodation', food_drink: 'Restaurants', activity: 'Activities', transport: 'Transportation' }
 
 // Add a whole trip's photos at once (one trip to the album), then tap them into places: select photos, tap the place,
-// and they leave the pile. For trips without dates, where the iPhone app can't show the trip's photos for each place.
+// and they leave the pile. In the iPhone app, a dated trip's photos come straight from the trip's dates.
 export default function PhotoSorter({ places, prompt }: { places: SortPlace[]; prompt: string }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -24,6 +26,10 @@ export default function PhotoSorter({ places, prompt }: { places: SortPlace[]; p
   // Each place's photos as saved so far, so several additions to one place build on each other.
   const [saved, setSaved] = useState<Record<string, string[]>>({})
   const destinations = [...new Set(places.map(place => place.destinationName))]
+  // In the iPhone app on a dated trip, Choose photos opens the photos taken on the trip; Other photos… is the usual picker.
+  const tripDates = useContext(TripDates)
+  const [pickingTrip, setPickingTrip] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
 
   async function choose(files: File[]) {
     if (!files.length) return
@@ -57,10 +63,11 @@ export default function PhotoSorter({ places, prompt }: { places: SortPlace[]; p
       <div><h2 className="type-title">Add your trip photos</h2><p className="type-meta mt-1">Choose all the photos from this trip at once, then select some and tap the place they belong to.</p></div>
       <button type="button" aria-label="Close" disabled={!!progress} onClick={() => setOpen(false)} className="flex size-10 shrink-0 items-center justify-center rounded-full"><X size={18} /></button>
     </div>
-    <label className={`btn btn-outline btn-sm ${progress ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}>
+    <label onClick={event => { if (event.target !== fileInput.current && tripDates && canPickTripPhotos() && !progress) { event.preventDefault(); setPickingTrip(true) } }} className={`btn btn-outline btn-sm ${progress ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}>
       <ImagePlus size={16} />{pile.length ? 'Add more photos' : 'Choose photos'}
-      <input type="file" multiple accept="image/*" className="sr-only" disabled={!!progress} onChange={event => { const files = Array.from(event.target.files ?? []); event.target.value = ''; void choose(files) }} />
+      <input ref={fileInput} type="file" multiple accept="image/*" className="sr-only" disabled={!!progress} onChange={event => { const files = Array.from(event.target.files ?? []); event.target.value = ''; void choose(files) }} />
     </label>
+    {pickingTrip && tripDates && <TripPhotoPicker start={tripDates.start} end={tripDates.end} name="this trip" onPick={files => void choose(files)} onFallback={() => fileInput.current?.click()} onClose={() => setPickingTrip(false)} />}
     {progress && <p role="status" className="type-body text-link">{progress}</p>}
     {message && <p role="status" className="flex items-center gap-1.5 text-sm text-link"><Check size={16} />{message}</p>}
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}
