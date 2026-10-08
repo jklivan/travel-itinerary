@@ -214,7 +214,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
         if (chatId.current) await linkPlanChat(chatId.current, result.id)
       }
       const form = new FormData()
-      for (const [key, value] of Object.entries({ name: rec.name, type: rec.type, destination, notes: `${rec.why}${rec.friendName ? ` — via ${rec.friendName}` : ''}`, clientId: crypto.randomUUID(), day: '' })) form.set(key, value)
+      for (const [key, value] of Object.entries({ name: rec.name, type: rec.type, destination, notes: `${rec.why}${rec.friendName ? ` — via ${rec.friendName}` : ''}`, clientId: crypto.randomUUID(), day: '', source: 'ai' })) form.set(key, value)
       // Save the place's Google ID (from the same lookup the pick's pop-out uses), so the planner can show
       // its photo and map pin. Without it, names like "Hotel Romazzino" vs Google's "Romazzino, A Belmond
       // Hotel" are too different to match later.

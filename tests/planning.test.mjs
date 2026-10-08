@@ -22,7 +22,7 @@ function harness({ user = 'owner', fail = false, zeroBased = false, empty = fals
   const trips = [{ id: 'trip', userId: 'owner', isPlan: true, visibility: 'draft', title: 'Italy' }]
   const destinations = [{ id: 'dest', itineraryId: 'trip', name: 'Rome' }]
   const items = empty ? [] : [{ id: 'place', destinationId: 'dest', name: 'Cafe', type: 'food_drink', notes: 'old note', photoUrls: ['/photo.jpg'], rating: 4, dayIndex: zeroBased ? 0 : null }]
-  const source = { id: 'source', name: 'Museum', type: 'activity', notes: 'Personal notes', rating: 5, photoUrls: ['/theirs.jpg'], dayIndex: 5, destination: { name: 'Rome', country: 'Italy' } }
+  const source = { id: 'source', name: 'Museum', type: 'activity', notes: 'Personal notes', rating: 5, photoUrls: ['/theirs.jpg'], dayIndex: 5, destination: { name: 'Rome', country: 'Italy', itineraryId: 'friend-trip', itinerary: { userId: 'friend' } } }
   const writes = [], paths = [], notifications = []
   const tripMatch = where => trips.find(t => (!where.id || t.id === where.id) && (!where.userId || t.userId === where.userId) && (!where.isPlan || t.isPlan) && (!where.visibility || t.visibility === where.visibility) && (!where.destinations || items.length))
   const itemMatch = where => items.find(i => i.id === where.id && (!where.destination || trips.find(t => t.id === destinations.find(d => d.id === i.destinationId)?.itineraryId)?.userId === where.destination.itinerary.userId))
@@ -130,6 +130,8 @@ test('copying places excludes personal notes/photos/ratings and rejects private 
   const h = harness(); assert.ok((await h.actions.copyPlaceToPlan('source', 'trip', clientId)).success)
   const copy = h.items[1]; assert.equal(copy.name, 'Museum')
   for (const key of ['notes', 'rating', 'photoUrls', 'dayIndex']) assert.equal(copy[key], undefined)
+  // Remembers whose trip the idea came from.
+  assert.equal(copy.sourceKind, 'trip'); assert.equal(copy.sourceItineraryId, 'friend-trip'); assert.equal(copy.sourceUserId, 'friend')
   await h.actions.copyPlaceToPlan('source', 'trip', clientId); assert.equal(h.items.length, 2)
   const privateSource = harness({ sourceVisibility: 'draft' }); assert.ok((await privateSource.actions.copyPlaceToPlan('source', 'trip', clientId)).error); assert.equal(privateSource.writes.length, 0)
 })

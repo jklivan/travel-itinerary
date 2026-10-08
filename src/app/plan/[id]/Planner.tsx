@@ -33,7 +33,8 @@ import { samePlanDestination } from '@/lib/planPlaceIdentity'
 import { getRecommendation } from '@/lib/placeRecommendation'
 import { PostStamp } from '@/components/PostcardLogo'
 
-type Place = { order: number; nights?: number | null; tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[]; mealType: string | null; alternative: string | null; description: string | null; link: string | null; address: string | null }
+type PlaceSource = { kind: string; person: string | null; trip: { id: string; title: string } | null }
+type Place = { source?: PlaceSource | null; order: number; nights?: number | null; tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[]; mealType: string | null; alternative: string | null; description: string | null; link: string | null; address: string | null }
 type Trip = { coverPhoto?: string | null; tripPhotos?: string[]; notes?: string | null; bestMonths?: string[]; budget?: number | null; tripRating?: number | null; tags?: string[]; postType: string; durationDays?: number | null; id: string; title: string; audience: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; days?: number | null; items: Place[] }[] }
 const categories = [{ value: 'hotel', label: 'Hotels', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
 
@@ -282,6 +283,15 @@ function UnratedPrompt({ places, onClose, onPreview }: { places: (Place & { dest
   </div>
 }
 
+// "Idea from …": where a place in your plan came from. The trip links to it.
+function IdeaFrom({ source }: { source: PlaceSource }) {
+  const first = source.person?.split(' ')[0]
+  const label = source.kind === 'ai' ? 'Plan with AI' : source.kind === 'snapshot' ? (first ? `${first}’s snapshot` : 'a snapshot') : first ? `${first}’s trip` : 'a friend’s trip'
+  return <p className="relative z-[2] mt-1.5 text-xs text-muted">Idea from {source.kind === 'trip' && source.trip
+    ? <Link href={`/itinerary/${source.trip.id}`} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} className="font-semibold text-link hover:underline">{label} · {source.trip.title}</Link>
+    : <span className="font-semibold text-ink-soft">{label}</span>}</p>
+}
+
 function PlaceRow({ tripId, place, maxDay, destinationChoices, dayChips, dayRange }: { tripId: string; place: Place & { destination: string; destinationName: string; destinationId: string }; maxDay: number; destinationChoices: { id: string; name: string }[]; dayChips?: number; dayRange?: DayRange }) {
   const dayName = useContext(DayNames)
   const router = useRouter()
@@ -335,6 +345,7 @@ function PlaceRow({ tripId, place, maxDay, destinationChoices, dayChips, dayRang
         <p className={planningStyles.location}>{place.address || foundAddress ? placeTown(place.address || foundAddress!) : place.destination}</p>
         {!!place.rating && <p className="mt-1"><RatingStars value={place.rating} label={`Your rating: ${place.rating} out of 5`} /></p>}
         {place.notes && <p className={styles.note}>{place.notes}</p>}
+        {place.source && <IdeaFrom source={place.source} />}
         {/* Opens this trip's AI chat with a question about this place ready to finish. */}
         <Link href={`/testplan?trip=${tripId}&ask=${place.id}&from=planner&new=1`} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} className="relative z-[2] mt-2 inline-flex items-center gap-1 text-xs font-semibold text-link underline-offset-2 hover:underline"><Sparkles size={12} />Ask AI about this place</Link>
       </div>

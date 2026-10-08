@@ -318,7 +318,7 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
       const last = await tx.destItem.aggregate({ where: { destinationId: dest.id }, _max: { order: true, groupIndex: true } })
       const zeroBased = await tx.destItem.count({ where: { destinationId: dest.id, dayIndex: 0, type: { not: 'hotel' } } })
       if (zeroBased) await tx.destItem.updateMany({ where: { destinationId: dest.id, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
-      await tx.destItem.create({ data: { id: clientId, destinationId: dest.id, name, type, placeId: placeId ?? null, notes: notes || null,
+      await tx.destItem.create({ data: { id: clientId, destinationId: dest.id, name, type, placeId: placeId ?? null, ...(form.get('source') === 'ai' ? { sourceKind: 'ai' } : {}), notes: notes || null,
         rating: rating || null, planningStatus: status, mealType: type === 'food_drink' ? mealType || null : null, tags, photoUrls, photoUrl: photoUrls[0] ?? null,
         dayIndex: day ? Number(day) : null, nights: type === 'hotel' ? nightsFrom(form) : null,
         order: (last._max.order ?? -1) + 1, groupIndex: type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0,
@@ -555,7 +555,7 @@ export async function copyPlaceToPlan(sourceId: string, planId: string, clientId
     const question = await prisma.$transaction(async tx => {
       const plan = await tx.itinerary.findFirst({ where: { id: planId, userId, isPlan: true }, select: { id: true } })
       if (!plan) throw new InputError(unavailable)
-      const source = await tx.destItem.findFirst({ where: { id: sourceId, destination: { itinerary: { visibility: 'public' } } }, include: { destination: true } })
+      const source = await tx.destItem.findFirst({ where: { id: sourceId, destination: { itinerary: { visibility: 'public' } } }, include: { destination: { include: { itinerary: { select: { userId: true } } } } } })
       if (!source) throw new InputError('This place is no longer available.')
       const existing = await tx.destItem.findUnique({ where: { id: clientId }, select: { destination: { select: { itineraryId: true } } } })
       if (existing) {
@@ -568,6 +568,7 @@ export async function copyPlaceToPlan(sourceId: string, planId: string, clientId
       await tx.destItem.create({ data: { id: clientId, destinationId: filed.id, name: source.name, type: source.type,
         address: source.address, link: source.link, placeId: source.placeId, lat: source.lat, lng: source.lng,
         order: (last._max.order ?? -1) + 1, groupIndex: source.type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0,
+        sourceKind: 'trip', sourceItineraryId: source.destination.itineraryId, sourceUserId: source.destination.itinerary.userId,
         // Personal notes, photos, ratings and day assignments stay with their author.
       } })
     })

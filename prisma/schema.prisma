@@ -32,6 +32,7 @@ model User {
   questions FriendQuestion[]
   questionReplies FriendQuestionReply[]
   planChats PlanChat[]
+  placesSharedFrom DestItem[] @relation("PlaceSource")
   createdAt      DateTime         @default(now())
 }
 
@@ -89,6 +90,7 @@ model Itinerary {
   notifications Notification[]
   stories Story[]
   planChats PlanChat[]
+  placesCopiedFrom DestItem[] @relation("PlaceSource")
   createdAt    DateTime         @default(now())
   publishedAt  DateTime?
 }
@@ -177,6 +179,13 @@ model DestItem {
   destinationId String
   destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
   stories Story[]
+  // Where the idea came from, for places copied into a plan: "trip" (someone's trip), "snapshot" or "ai" (Plan with AI).
+  // The trip and person are cleared if they're deleted; the kind stays.
+  sourceKind        String?
+  sourceItineraryId String?
+  sourceItinerary   Itinerary? @relation("PlaceSource", fields: [sourceItineraryId], references: [id], onDelete: SetNull)
+  sourceUserId      String?
+  sourceUser        User?      @relation("PlaceSource", fields: [sourceUserId], references: [id], onDelete: SetNull)
 }
 
 model Photo {

@@ -72,7 +72,7 @@ export async function copyPlacesToPlan(sourceIds: string[], planId: string, choi
       if (!plan) return { error: unavailable }
       // Serialize bulk additions to this plan so concurrent batches cannot duplicate places.
       await tx.$queryRaw`SELECT id FROM "Itinerary" WHERE id = ${planId} FOR UPDATE`
-      const sources = await tx.destItem.findMany({ where: { id: { in: ids }, destination: { itinerary: { visibility: 'public' } } }, include: { destination: true } })
+      const sources = await tx.destItem.findMany({ where: { id: { in: ids }, destination: { itinerary: { visibility: 'public' } } }, include: { destination: { include: { itinerary: { select: { userId: true } } } } } })
       if (sources.length !== ids.length) return { error: 'One or more selected places are no longer available. Nothing was added. Update your selection and try again.' }
       const existing = await tx.destItem.findMany({ where: { destination: { itineraryId: planId } }, include: { destination: true } })
       const data: Prisma.DestItemCreateManyInput[] = []
@@ -101,6 +101,7 @@ export async function copyPlacesToPlan(sourceIds: string[], planId: string, choi
           groupIndex: source.type === 'hotel' ? Math.max(-1, ...siblings.map(item => item.groupIndex ?? 0)) + 1 : 0,
           // Friends' personal notes, ratings, photos and schedules stay with their trips.
           dayIndex: null, planningStatus: 'considering',
+          sourceKind: 'trip', sourceItineraryId: source.destination.itineraryId, sourceUserId: source.destination.itinerary.userId,
         })
         known.push(source)
       }

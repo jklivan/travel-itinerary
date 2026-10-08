@@ -63,7 +63,7 @@ function harness(userId = 'me') {
     if (where.OR) return where.OR.some(filter => filter.title ? contains(t.title, filter.title.contains) : destinations.some(d => d.itineraryId === t.id && filter.destinations.some.OR.some(f => f.name ? contains(d.name, f.name.contains) : contains(d.country, f.country.contains))))
     return true
   }
-  const enrich = item => ({ ...item, destination: destinations.find(d => d.id === item.destinationId) })
+  const enrich = item => { const destination = destinations.find(d => d.id === item.destinationId); return { ...item, destination: destination && { ...destination, itinerary: trips.find(t => t.id === destination.itineraryId) } } }
   const prisma = {
     itinerary: {
       count: async ({ where }) => trips.filter(t => tripMatches(t, where)).length,

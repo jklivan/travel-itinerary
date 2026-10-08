@@ -213,6 +213,7 @@ export async function copyStoryToPlan(storyId: string, planId: string, clientId:
       await tx.destItem.create({ data: { id: clientId, destinationId: filed.id, name: story.placeName, type: story.type,
         placeId: story.placeId, lat: story.lat, lng: story.lng, order: (last._max.order ?? -1) + 1,
         groupIndex: story.type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0,
+        sourceKind: 'snapshot', sourceUserId: story.userId, sourceItineraryId: story.sourceItineraryId,
       } })
       return { success: true }
     })
