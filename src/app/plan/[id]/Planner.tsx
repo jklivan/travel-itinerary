@@ -35,7 +35,7 @@ import { PostStamp } from '@/components/PostcardLogo'
 
 type Place = { order: number; nights?: number | null; tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[]; mealType: string | null; alternative: string | null; description: string | null; link: string | null; address: string | null }
 type Trip = { coverPhoto?: string | null; tripPhotos?: string[]; notes?: string | null; bestMonths?: string[]; budget?: number | null; tripRating?: number | null; tags?: string[]; postType: string; durationDays?: number | null; id: string; title: string; audience: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; days?: number | null; items: Place[] }[] }
-const categories = [{ value: 'hotel', label: 'Hotels', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
+const categories = [{ value: 'hotel', label: 'Accommodation', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
 
 // Day names in the planner: "Day 3", or the date when the plan has a start date and dates are chosen ("Thu, Jul 3").
 // Days are still stored as numbers, so a posted trip always shows Day 1, Day 2…
@@ -215,7 +215,7 @@ function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, init
     <DestinationPicker destinations={trip.destinations.map(d => ({ id: d.id, name: d.name }))} value={destination} selectedId={destinationId} onChange={changeDestination} labelClass="mb-1 text-sm" />
     <fieldset><legend className="mb-2 text-sm">Category</legend><div className="flex flex-wrap gap-2">
       {[
-        { value: 'hotel', label: 'Hotel / Airbnb', Icon: Hotel },
+        { value: 'hotel', label: 'Accommodation', Icon: Hotel },
         { value: 'food_drink', label: 'Food / Drink', Icon: Utensils },
         { value: 'activity', label: 'Activity', Icon: Camera },
         { value: 'transport', label: 'Transport', Icon: Plane },

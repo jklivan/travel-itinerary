@@ -158,7 +158,7 @@ function groupItems(items: DestItemRow[]) {
 }
 
 const PLACE_CATEGORIES = {
-  hotel: { label: 'Hotels', eyebrow: 'Stay', Icon: Hotel },
+  hotel: { label: 'Accommodation', eyebrow: 'Stay', Icon: Hotel },
   food_drink: { label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils },
   activity: { label: 'Activities', eyebrow: 'Explore', Icon: Camera },
   transport: { label: 'Transportation', eyebrow: 'Getting around', Icon: Plane },

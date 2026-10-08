@@ -5,7 +5,7 @@ import ItineraryCard from '@/components/ItineraryCard'
 import RatingStars from '@/components/RatingStars'
 import { tripPhotoGallery } from '@/lib/eventPhotos'
 
-const CATEGORY: Record<string, string> = { hotel: 'Hotel', food_drink: 'Food & drink', activity: 'Activity', transport: 'Transportation' }
+const CATEGORY: Record<string, string> = { hotel: 'Accommodation', food_drink: 'Food & drink', activity: 'Activity', transport: 'Transportation' }
 
 // Every shared trip that includes a place (same category, and the same Google place or the same name),
 // with each poster's rating. Reached from "Community rating" in a place's details.

@@ -24,7 +24,7 @@ type Recommendation = { key: string; name: string; type: 'hotel' | 'food_drink' 
 export type Turn = { role: 'user'; text: string } | { role: 'assistant'; text: string; recommendations: Recommendation[]; title?: string; summary?: string } | { role: 'preferences'; preferences: TravelPreferences }
 type MapPlace = TripMapPlace & { lat: number | null; lng: number | null; color?: string; label?: string }
 
-const categories = [{ value: 'hotel', label: 'Hotels', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
+const categories = [{ value: 'hotel', label: 'Accommodation', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
 // One color per trip idea Claude suggests, chosen to stay distinct from the day colors used for the trip itself.
 const optionColors = ['#c2410c', '#1d4ed8', '#7e22ce', '#0f766e', '#be185d', '#a16207', '#4d7c0f', '#b91c1c']
 // Older saved chats have no tripOption, so fall back to grouping by country.

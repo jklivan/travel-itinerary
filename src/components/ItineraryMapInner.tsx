@@ -77,14 +77,14 @@ export function MapDayLegend({ pins }: { pins: ItemPin[] }) {
   if (!dayPins.length) return null
   return <div aria-label="Map day legend" className="flex max-h-28 shrink-0 flex-wrap gap-x-4 gap-y-2 overflow-y-auto border-b border-line bg-cream px-4 py-3 text-xs text-ink">
     {days.map(day => <span key={day} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ background: mapDayColor(day) }} />Day {day}</span>)}
-    {hasHotels && <span className="inline-flex items-center gap-1.5"><span aria-hidden="true">🏨</span>Hotels</span>}
+    {hasHotels && <span className="inline-flex items-center gap-1.5"><span aria-hidden="true">🏨</span>Accommodation</span>}
     {hasUndatedPlaces && <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ background: mapDayColor(null) }} />No day assigned</span>}
   </div>
 }
 
 // What a pin's popup and tooltip say under its name.
 export function pinLabel(pin: ItemPin) {
-  return pin.label ?? (pin.day === null ? pin.type === 'hotel' ? 'Hotel' : 'No day assigned' : `Day ${pin.day}`)
+  return pin.label ?? (pin.day === null ? pin.type === 'hotel' ? 'Accommodation' : 'No day assigned' : `Day ${pin.day}`)
 }
 export const PIN_EMOJI: Record<string, string> = { hotel: '🏨', food_drink: '🍴', activity: '📍', transport: '✈️' }
 
@@ -119,8 +119,8 @@ export default function ItineraryMapInner({ pins }: { pins: ItemPin[] }) {
       <FitBounds positions={positions} />
       {pins.map(pin => (
         <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={itemIcon(pin.type, pin.day, pin.color)}
-          title={`${pin.name} · ${pin.label ?? (pin.day === null ? pin.type === 'hotel' ? 'Hotel' : 'No day assigned' : `Day ${pin.day}`)}`}
-          alt={`${pin.name} · ${pin.label ?? (pin.day === null ? pin.type === 'hotel' ? 'Hotel' : 'No day assigned' : `Day ${pin.day}`)}`}>
+          title={`${pin.name} · ${pin.label ?? (pin.day === null ? pin.type === 'hotel' ? 'Accommodation' : 'No day assigned' : `Day ${pin.day}`)}`}
+          alt={`${pin.name} · ${pin.label ?? (pin.day === null ? pin.type === 'hotel' ? 'Accommodation' : 'No day assigned' : `Day ${pin.day}`)}`}>
           <Popup maxWidth={200} minWidth={140}>
             <div style={{ fontFamily: 'inherit' }}>
               <p style={{ fontWeight: 700, fontSize: 13, color: '#111', margin: 0 }}>
@@ -130,7 +130,7 @@ export default function ItineraryMapInner({ pins }: { pins: ItemPin[] }) {
                 {pin.recommendation === 'option' ? 'Alternative' : pin.recommendation === 'avoid' ? 'Avoid' : pin.type === 'hotel' ? 'Must stay' : 'Must do'} · {pin.recommendation === 'option' ? 'Saved as an alternative' : 'Poster’s recommendation'}
               </p>}
               <p style={{ margin: '6px 0 0', color: pin.color ?? mapDayColor(pin.day), fontWeight: 600 }}>
-                {pin.label ?? (pin.day === null ? pin.type === 'hotel' ? 'Hotel' : 'No day assigned' : `Day ${pin.day}`)}
+                {pin.label ?? (pin.day === null ? pin.type === 'hotel' ? 'Accommodation' : 'No day assigned' : `Day ${pin.day}`)}
               </p>
             </div>
           </Popup>
