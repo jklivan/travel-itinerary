@@ -8,7 +8,7 @@ export const maxDuration = 300
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
 
-type ExtractedItem = { type: string; name: string; notes: string; mealType?: string; rating?: number; link?: string; dayIndex?: number }
+type ExtractedItem = { type: string; name: string; notes: string; mealType?: string; rating?: number; link?: string; dayIndex?: number; date?: string; time?: string; endDate?: string; endTime?: string }
 type ExtractedDest = { name: string; country: string; items: ExtractedItem[] }
 type ExtractedItinerary = {
   title: string
@@ -55,6 +55,10 @@ const EXTRACT_FUNCTION: OpenAI.Chat.ChatCompletionTool = {
                     notes: { type: 'string' },
                     mealType: { type: 'string', enum: ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery'] },
                     dayIndex: { type: 'integer', minimum: 1, description: 'Trip day number for dated restaurants or activities. Omit when no day is clear.' },
+                    date: { type: 'string', description: 'Calendar date of the booking or visit, YYYY-MM-DD, exactly as the document gives it (a hotel: check-in date; a flight: departure date). Omit if the document gives no calendar date.' },
+                    time: { type: 'string', description: 'Local start time, 24-hour HH:MM (a reservation time, tour start, hotel check-in time, flight departure). Omit if none is given.' },
+                    endDate: { type: 'string', description: 'YYYY-MM-DD: a hotel\'s check-out date, a flight\'s arrival date, or the last day of a multi-day activity. Omit if none.' },
+                    endTime: { type: 'string', description: 'Local end time, 24-hour HH:MM (check-out time, flight arrival, activity end). Omit if none.' },
                     rating: { type: 'integer', minimum: 1, maximum: 5, description: 'Scale any expressed sentiment to 1-5. Omit if none.' },
                   },
                   required: ['type', 'name', 'notes'],
@@ -79,13 +83,14 @@ const EXTRACT_PROMPT = `Extract only confirmed or scheduled items from this trav
 - Do not extract guide names, tour-leader names, meeting points, guide meeting instructions, or guide contact details as itinerary items. If a named guide company is the booked tour provider, you may include the company as the activity; do not include an individual guide's name.
 - For food_drink, infer mealType from the time if given: before 11am = breakfast, 11am–3pm = lunch, 3pm–6pm = drinks or coffee, after 6pm = dinner. Otherwise pick the best fit.
 - For restaurants and activities with a clear date or day in the document, include dayIndex counting from Day 1 of the entire trip — not Day 1 of that destination. For example, if Rome is Days 1–2 and Puglia is Days 3–5, a Puglia dinner on Day 3 gets dayIndex 3, not dayIndex 1. Do not guess a day when the document does not establish one. Hotels are location-level stays: omit dayIndex for them.
+- DATES AND TIMES: For every item, copy the real calendar date (date, YYYY-MM-DD) and local time (time, 24-hour HH:MM) exactly as the document states them: a dinner reservation's date and time, a tour's date and start time, a hotel's check-in date (date) and check-out date (endDate) with their times if given, a flight's departure (date, time) and arrival (endDate, endTime). Work out the year from the document when it is only implied. Never invent or estimate a date or time; omit them when the document doesn't give them.
 - Rate 1–5 stars if any sentiment is expressed. Omit rating if none.
 - Write notes for someone deciding whether they would want to stay there, do the activity, or visit the restaurant. Keep only concise, generally useful context such as what the experience includes, a notable feature, atmosphere, location context, or a broadly relevant dress code. If there is nothing genuinely useful to say about the place itself, leave notes as an empty string — do not fill it with booking status, confirmation phrases ("confirmed dinner", "reserved", "booked"), or any logistics. Omit: confirmation numbers and dates, cancellation or payment terms, rates, contact details, check-in instructions, transport coordination, seating or dietary requests, and similar personal logistics.
 - Populate startDate/endDate only from actual trip dates in the document (YYYY-MM-DD). Do not use document creation dates or invent dates. Set durationDays from an explicit duration or the final day of a day-by-day itinerary even when calendar dates are absent. If neither is provided, omit durationDays and dates; this is an undated guide, not a one-day trip.
 - Include transportation as "transport": flights, ferries, trains, buses, transfers, car rentals, taxis and rideshare. Also preserve explicitly supplied advice about getting around, such as Uber availability, as transport entries. For transport, retain useful routes, departure times, flight numbers, and booking advice in notes; omit personal confirmation codes and payment details.`
 
 const PDF_JSON_INSTRUCTION = `Return only valid JSON in exactly this shape:
-{"title":"","description":"","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD","notes":"","destinations":[{"name":"","country":"","items":[{"type":"hotel|activity|food_drink|transport","name":"","notes":"","dayIndex":1,"mealType":"breakfast|lunch|dinner|drinks|coffee|dessert|bakery","rating":1}]}]}.
+{"title":"","description":"","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD","notes":"","destinations":[{"name":"","country":"","items":[{"type":"hotel|activity|food_drink|transport","name":"","notes":"","dayIndex":1,"date":"YYYY-MM-DD","time":"HH:MM","endDate":"YYYY-MM-DD","endTime":"HH:MM","mealType":"breakfast|lunch|dinner|drinks|coffee|dessert|bakery","rating":1}]}]}.
 Use an empty array for destinations only when the document contains no travel places.`
 
 // Every place needs a location. Imports into a planned trip also say where the trip is going, so places listed

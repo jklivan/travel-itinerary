@@ -18,6 +18,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
     postType: trip.postType, durationDays: trip.durationDays, budget: trip.budget, tripRating: trip.tripRating, tags: trip.tags, notes: trip.notes, bestMonths: trip.bestMonths, coverPhoto: trip.coverPhoto, tripPhotos: trip.photos.map(photo => photo.url),
     start: trip.datesFlexible ? '' : trip.startDate.toISOString().slice(0, 10), end: trip.datesFlexible ? '' : trip.endDate.toISOString().slice(0, 10),
     destinations: trip.destinations.map(d => ({ id: d.id, name: d.name, country: d.country, days: d.days, items: d.items.map(item => ({ id: item.id, order: item.order,
+      date: item.date?.toISOString().slice(0, 10) ?? null, time: item.time, endDate: item.endDate?.toISOString().slice(0, 10) ?? null, endTime: item.endTime,
       // Where the idea came from (a trip, a snapshot or Plan with AI). Your own trips and snapshots don't need saying.
       source: item.sourceKind && item.sourceUser?.id !== userId ? { kind: item.sourceKind, person: item.sourceUser?.name ?? null,
         trip: item.sourceItinerary && item.sourceItinerary.visibility !== 'draft' ? { id: item.sourceItinerary.id, title: item.sourceItinerary.title } : null } : null, nights: item.nights, name: item.name, placeId: item.placeId, lat: item.lat, lng: item.lng, type: item.type, notes: item.notes, tags: item.tags, status: item.planningStatus,

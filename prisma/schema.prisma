@@ -168,6 +168,13 @@ model DestItem {
   dayIndex      Int?
   // Hotels: nights booked, starting on the hotel's day (its check-in).
   nights        Int?
+  // The booking's real date and time, as written locally where it happens (no time zone): a dinner on
+  // 2026-04-05 at "19:30", a hotel from date (check-in) to endDate (check-out), a flight leaving at time and
+  // landing at endDate/endTime. Times are 24-hour "HH:MM".
+  date          DateTime?   @db.Date
+  time          String?
+  endDate       DateTime?   @db.Date
+  endTime       String?
   order         Int         @default(0)
   tags          String[]    @default([])
   alternative   String?

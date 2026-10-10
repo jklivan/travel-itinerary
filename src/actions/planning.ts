@@ -4,6 +4,7 @@ import { TAGS } from '@/lib/tags'
 
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { isDate, isTime } from '@/lib/placeDates'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
 import { pickPlanDestination } from '@/lib/planPlaceIdentity'
@@ -341,7 +342,7 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     if (rating !== undefined && (!Number.isInteger(rating) || rating < 0 || rating > 5)) throw new InputError('Choose a rating from 1 to 5, or leave it blank.')
     const day = text(form, 'day', 4)
     // The rest match the trip editor's fields; each is only changed when the form sends it.
-    const extra: { nights?: number | null; type?: string; groupIndex?: number; mealType?: string | null; tags?: string[]; alternative?: string | null; description?: string | null; link?: string | null; address?: string | null; photoUrls?: string[]; photoUrl?: string | null } = {}
+    const extra: { date?: Date | null; endDate?: Date | null; time?: string | null; endTime?: string | null; nights?: number | null; type?: string; groupIndex?: number; mealType?: string | null; tags?: string[]; alternative?: string | null; description?: string | null; link?: string | null; address?: string | null; photoUrls?: string[]; photoUrl?: string | null } = {}
     // Hotels: nights booked from the hotel's day. Only changed when the form sends it.
     if (form.has('nights')) { const nights = Number(form.get('nights')); extra.nights = Number.isInteger(nights) && nights >= 1 && nights <= 60 ? nights : null }
     // Category can be corrected (e.g. a restaurant posted as an activity from a snapshot).
@@ -362,6 +363,17 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
       const link = text(form, 'link', 2048)
       if (link && !/^https?:\/\//i.test(link)) throw new InputError('Enter a website link starting with http:// or https://.')
       extra.link = link || null
+    }
+    // The booking's date and time ("" clears them). Only changed when the form sends them.
+    for (const key of ['date', 'endDate'] as const) if (form.has(key)) {
+      const value = text(form, key, 10)
+      if (value && !isDate(value)) throw new InputError('Choose a valid date.')
+      extra[key] = value ? new Date(`${value}T00:00:00Z`) : null
+    }
+    for (const key of ['time', 'endTime'] as const) if (form.has(key)) {
+      const value = text(form, key, 5)
+      if (value && !isTime(value)) throw new InputError('Choose a valid time.')
+      extra[key] = value || null
     }
     if (form.has('photos')) {
       const photoUrls = stringList(form, 'photos', 20, 4096)

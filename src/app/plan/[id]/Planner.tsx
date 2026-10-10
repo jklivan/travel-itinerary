@@ -8,7 +8,8 @@ import styles from '../../itinerary/[id]/places.module.css'
 import planningStyles from './Planner.module.css'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarDays, Plus, MapPin, Trash2, LockKeyhole, Check, Hotel, Utensils, Camera, Plane, Upload, Pencil, Sparkles, Users } from 'lucide-react'
+import { CalendarDays, Clock, Plus, MapPin, Trash2, LockKeyhole, Check, Hotel, Utensils, Camera, Plane, Upload, Pencil, Sparkles, Users } from 'lucide-react'
+import { daysBetween, isDate, tripDay, whenLabel } from '@/lib/placeDates'
 import { addPlanPlace, setPlanStartDate, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, removePlanDestination, renamePlanDestination, mergePlanDestination, setPlanDays, deletePlanDay, setPlaceDay, applyDayPlan, setTripCover } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
 import PlaceEntryForm from '@/components/PlaceEntryForm'
@@ -36,7 +37,7 @@ import { getRecommendation } from '@/lib/placeRecommendation'
 import { PostStamp } from '@/components/PostcardLogo'
 
 type PlaceSource = { kind: string; person: string | null; trip: { id: string; title: string } | null }
-type Place = { source?: PlaceSource | null; order: number; nights?: number | null; tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[]; mealType: string | null; alternative: string | null; description: string | null; link: string | null; address: string | null }
+type Place = { date?: string | null; time?: string | null; endDate?: string | null; endTime?: string | null; source?: PlaceSource | null; order: number; nights?: number | null; tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[]; mealType: string | null; alternative: string | null; description: string | null; link: string | null; address: string | null }
 type Trip = { coverPhoto?: string | null; tripPhotos?: string[]; notes?: string | null; bestMonths?: string[]; budget?: number | null; tripRating?: number | null; tags?: string[]; postType: string; durationDays?: number | null; id: string; title: string; audience: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; days?: number | null; items: Place[] }[] }
 const categories = [{ value: 'hotel', label: 'Accommodation', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
 
@@ -104,7 +105,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const ranges = destinationRanges(trip.destinations)
   const maxDay = Math.max(trip.durationDays ?? 0, ...scheduled, totalDays(trip.destinations), 1)
   const unrated = places.filter(place => place.type !== 'transport' && !place.rating && getRecommendation(place.tags) !== 'option')
-  function renderPlace(place: Place & { destination: string; destinationName: string; destinationId: string }) { return <PlaceRow key={place.id} tripId={trip.id} place={place} maxDay={maxDay} destinationChoices={destinations.map(d => ({ id: d.id, name: d.name }))} /> }
+  function renderPlace(place: Place & { destination: string; destinationName: string; destinationId: string }) { return <PlaceRow key={place.id} tripId={trip.id} tripStart={trip.start} place={place} maxDay={maxDay} destinationChoices={destinations.map(d => ({ id: d.id, name: d.name }))} /> }
   function addForm(at: string) { return adding?.at === at && !importing ? <AddPlace key={at} trip={trip} maxDay={maxDay} initialDestination={adding.destination} initialDestinationId={adding.destinationId} initialDay={adding.day} onClose={() => setAdding(null)} /> : null }
   function categorySections(items: typeof places) {
     return categories.map(category => { const inCategory = items.filter(p => p.type === category.value); return inCategory.length > 0 && <section key={category.value} className="mb-7"><div className={`${styles.categoryHeading} ${styles[category.value]}`}><h3><span className={styles.categoryIcon}><category.Icon size={17} /></span>{category.label}</h3><span className={styles.count}>{inCategory.length} {inCategory.length === 1 ? 'place' : 'places'}</span></div><div className="space-y-3">{inCategory.map(renderPlace)}</div></section> })
@@ -141,7 +142,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       <Link href={`/testplan?trip=${trip.id}&from=planner`} className={action}><span className={`${actionIcon} border-mist-line bg-mist text-ink`}><Sparkles size={22} strokeWidth={1.75} /></span>Plan with AI</Link>
     </div>
     {addForm('top')}
-    {importing && <div id="plan-import-panel"><PlanImport tripId={trip.id} destinations={destinations.filter(d => d.name !== 'Destination to decide').map(d => ({ name: d.name, country: d.country }))} onClose={() => setImporting(false)} /></div>}
+    {importing && <div id="plan-import-panel"><PlanImport tripId={trip.id} trip={trip.start && trip.end ? { start: trip.start, end: trip.end } : null} destinations={destinations.filter(d => d.name !== 'Destination to decide').map(d => ({ name: d.name, country: d.country }))} onClose={() => setImporting(false)} /></div>}
     <div role="tablist" aria-label="Trip view" className="tabs mb-5 mt-3">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className="tab">{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
     <section role="tabpanel" id="trip-panel" aria-labelledby={`${tab}-tab`}>
       {mapOpened && <div hidden={tab !== 'map'}><PlanningMap places={places.filter(place => place.type !== 'transport' || place.placeId || (place.lat !== null && place.lng !== null)).map(place => ({ id: place.id, name: place.name, city: place.destination, type: place.type === 'hotel' ? 'hotel' : place.type === 'food_drink' ? 'food_drink' : place.type === 'transport' ? 'transport' : 'activity', day: place.day, placeId: place.placeId ?? undefined, lat: place.lat, lng: place.lng }))} /></div>}
@@ -174,7 +175,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
           {!!trip.durationDays && trip.durationDays > 1 && <DeleteDay tripId={trip.id} day={day} places={dayPlaces.length} />}</section> })}
         {!!trip.durationDays && <AddDay tripId={trip.id} days={trip.durationDays} />}
         <section><h2 className={styles.dayHeading}>Unscheduled</h2>
-          {!!trip.durationDays && places.some(p => p.day === null) && <OrganizeWithAI tripId={trip.id} places={places} />}<div className="space-y-3">{places.filter(p => p.day === null).map(place => trip.durationDays ? <PlaceRow key={place.id} tripId={trip.id} place={place} maxDay={maxDay} destinationChoices={destinations.map(d => ({ id: d.id, name: d.name }))} dayChips={trip.durationDays} dayRange={ranges.get(place.destinationId)} /> : renderPlace(place))}</div>{places.length > 0 && places.every(p => p.day !== null) && <p className="text-sm text-muted">All your places have a day.</p>}{!places.length && <p className="text-sm text-muted">Places you haven’t put on a day yet show here.</p>}</section>
+          {!!trip.durationDays && places.some(p => p.day === null) && <OrganizeWithAI tripId={trip.id} places={places} />}<div className="space-y-3">{places.filter(p => p.day === null).map(place => trip.durationDays ? <PlaceRow key={place.id} tripId={trip.id} tripStart={trip.start} place={place} maxDay={maxDay} destinationChoices={destinations.map(d => ({ id: d.id, name: d.name }))} dayChips={trip.durationDays} dayRange={ranges.get(place.destinationId)} /> : renderPlace(place))}</div>{places.length > 0 && places.every(p => p.day !== null) && <p className="text-sm text-muted">All your places have a day.</p>}{!places.length && <p className="text-sm text-muted">Places you haven’t put on a day yet show here.</p>}</section>
       </>}
     </section>
     <div className="mt-8 border-t border-line pt-5"><div className="flex flex-wrap items-center justify-between gap-3">{/* Post on the left, delete on the right (also when there's nothing to post). */}{trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={() => setPublishFormat(trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary')} aria-label="Post trip" title="Post trip" className="pointer-events-auto relative inline-flex size-20 items-center justify-center transition-transform hover:-rotate-6 hover:scale-105 disabled:opacity-60"><PostStamp size={80} /><span className="sr-only">Post</span></button>}<div className="pointer-events-auto ml-auto"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div></div></div>
@@ -295,7 +296,7 @@ function IdeaFrom({ source }: { source: PlaceSource }) {
     : <span className="font-semibold text-ink-soft">{label}</span>}</p>
 }
 
-function PlaceRow({ tripId, place, maxDay, destinationChoices, dayChips, dayRange }: { tripId: string; place: Place & { destination: string; destinationName: string; destinationId: string }; maxDay: number; destinationChoices: { id: string; name: string }[]; dayChips?: number; dayRange?: DayRange }) {
+function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChips, dayRange }: { tripStart?: string; tripId: string; place: Place & { destination: string; destinationName: string; destinationId: string }; maxDay: number; destinationChoices: { id: string; name: string }[]; dayChips?: number; dayRange?: DayRange }) {
   const dayName = useContext(DayNames)
   const router = useRouter()
   const [editing, setEditing] = useState(false)
@@ -308,19 +309,28 @@ function PlaceRow({ tripId, place, maxDay, destinationChoices, dayChips, dayRang
   const [photos, setPhotos] = useState(place.photos)
   const [day, setDay] = useState(place.day === null ? '' : String(place.day))
   const [nights, setNights] = useState(place.nights ? String(place.nights) : '')
+  // The booking's real date and time. Setting a date on a dated trip also puts the place on that day.
+  const [when, setWhen] = useState({ date: place.date ?? '', time: place.time ?? '', endDate: place.endDate ?? '', endTime: place.endTime ?? '' })
+  function changeWhen(next: Partial<typeof when>) {
+    const merged = { ...when, ...next }
+    setWhen(merged)
+    if (next.date && isDate(next.date) && tripStart) { const day = tripDay(next.date, tripStart); if (day >= 1 && day <= 365) setDay(String(day)) }
+    // A hotel's nights follow its check-in and check-out dates.
+    if (type === 'hotel' && isDate(merged.date) && isDate(merged.endDate)) { const count = daysBetween(merged.date, merged.endDate); if (count >= 1 && count <= 30) setNights(String(count)) }
+  }
   const [type, setType] = useState(place.type)
   const [destination, setDestination] = useState(place.destinationName)
   const [destinationId, setDestinationId] = useState<string | null>(place.destinationId)
   const [uploading, setUploading] = useState(false)
   const [foundAddress, setFoundAddress] = useState<string | null>(null)
   const category = categories.find(category => category.value === place.type) ?? categories[2]
-  function openEditor() { setType(place.type); setDestination(place.destinationName); setDestinationId(place.destinationId); setPlaceId(place.placeId ?? ''); setPhotos(place.photos); setDay(place.day === null ? '' : String(place.day)); setNights(place.nights ? String(place.nights) : ''); setEditing(true); setError(''); setSaved(false) }
+  function openEditor() { setWhen({ date: place.date ?? '', time: place.time ?? '', endDate: place.endDate ?? '', endTime: place.endTime ?? '' }); setType(place.type); setDestination(place.destinationName); setDestinationId(place.destinationId); setPlaceId(place.placeId ?? ''); setPhotos(place.photos); setDay(place.day === null ? '' : String(place.day)); setNights(place.nights ? String(place.nights) : ''); setEditing(true); setError(''); setSaved(false) }
   async function save(values: PlaceEditValues) {
     if (saving.current || uploading) return
     saving.current = true; setBusy(true); setError('')
     const data = new FormData()
     for (const [key, value] of Object.entries({ name: values.name, category: type, destination, destinationId: destinationId ?? '', placeId, status: place.status, notes: values.notes, day, ...(type === 'hotel' ? { nights } : {}), mealType: values.mealType,
-      tags: JSON.stringify(values.tags), alternative: values.alternative, description: values.description, link: values.link, address: values.address, photos: JSON.stringify(photos) })) data.set(key, value)
+      tags: JSON.stringify(values.tags), alternative: values.alternative, description: values.description, link: values.link, address: values.address, photos: JSON.stringify(photos), ...when })) data.set(key, value)
     try { const result = await editPlanPlace(place.id, data); if (result.error) setError(result.error); else { setEditing(false); setSaved(true); router.refresh() } }
     catch { setError('Could not save. Your changes are still here; try again.') }
     finally { saving.current = false; setBusy(false) }
@@ -344,6 +354,7 @@ function PlaceRow({ tripId, place, maxDay, destinationChoices, dayChips, dayRang
           {getRecommendation(place.tags) === 'option' && <span className="rounded-full border border-mist-line bg-mist px-2.5 py-1 text-label font-semibold uppercase tracking-wider text-link">Alternative</span>}
         </div>
         <h3 className={styles.placeName}>{place.name}</h3>
+        {whenLabel(place) && <p className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-link"><Clock size={12} />{whenLabel(place)}</p>}
         {/* The place's own town once Google has it; until then, the destination it's filed under. */}
         <p className={planningStyles.location}>{place.address || foundAddress ? placeTown(place.address || foundAddress!) : place.destination}</p>
         {!!place.rating && <p className="mt-1"><RatingStars value={place.rating} label={`Your rating: ${place.rating} out of 5`} /></p>}
@@ -367,6 +378,15 @@ function PlaceRow({ tripId, place, maxDay, destinationChoices, dayChips, dayRang
           <DestinationPicker destinations={destinationChoices} value={destination} selectedId={destinationId} onChange={(name, id) => { setDestination(name); setDestinationId(id) }} labelClass="mb-1 text-xs text-muted" />
           <fieldset><legend className="mb-1 text-xs text-muted">Category</legend><div className="flex flex-wrap gap-1.5">{categories.map(option => <button key={option.value} type="button" aria-pressed={type === option.value} onClick={() => setType(option.value)} className="chip"><option.Icon size={14} />{option.label}</button>)}</div></fieldset>
           <label className="block text-xs text-muted">{type === 'hotel' ? 'Check-in day (optional)' : 'Day (optional)'}<select value={day} onChange={event => setDay(event.target.value)} className={inputClass}><option value="">Unscheduled</option>{Array.from({ length: maxDay }, (_, index) => index + 1).map(value => <option key={value} value={value}>{dayName(value)}</option>)}</select></label>
+          {/* The booking's date and time (from a confirmation, say). Hotels: check-in and check-out; transport: departure and arrival. */}
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block text-xs text-muted">{type === 'hotel' ? 'Check-in date' : type === 'transport' ? 'Departs' : 'Date'}<input type="date" value={when.date} onChange={event => changeWhen({ date: event.target.value })} className={inputClass} /></label>
+            <label className="block text-xs text-muted">Time<input type="time" value={when.time} onChange={event => changeWhen({ time: event.target.value })} className={inputClass} /></label>
+            {(type === 'hotel' || type === 'transport') && <>
+              <label className="block text-xs text-muted">{type === 'hotel' ? 'Check-out date' : 'Arrives'}<input type="date" value={when.endDate} min={when.date || undefined} onChange={event => changeWhen({ endDate: event.target.value })} className={inputClass} /></label>
+              <label className="block text-xs text-muted">Time<input type="time" value={when.endTime} onChange={event => changeWhen({ endTime: event.target.value })} className={inputClass} /></label>
+            </>}
+          </div>
           {/* Hotels: how many nights, from the check-in day. The itinerary shows the stay on those days. */}
           {type === 'hotel' && <label className="block text-xs text-muted">Nights (optional)<select value={nights} onChange={event => setNights(event.target.value)} className={inputClass}><option value="">Not set</option>{Array.from({ length: 30 }, (_, index) => index + 1).map(value => <option key={value} value={value}>{value} {value === 1 ? 'night' : 'nights'}</option>)}</select></label>}
         </PlaceEditForm>

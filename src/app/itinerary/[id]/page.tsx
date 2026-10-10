@@ -11,7 +11,7 @@ import PhotoStrip from '@/components/PhotoStrip'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
-import { Plane, Hotel, Utensils, Camera, MapPin, Check, Ban, Star, Users, Pencil } from 'lucide-react'
+import { Plane, Hotel, Utensils, Camera, MapPin, Check, Ban, Star, Users, Pencil, Clock } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import LikeButton from '@/components/LikeButton'
 import { eventPhotos, pickEventPhoto, tripPhotoGallery } from '@/lib/eventPhotos'
@@ -34,6 +34,7 @@ import FriendRatingsButton from '@/components/FriendRatingsButton'
 import DestinationSocial, { type DestinationFriend } from '@/components/DestinationSocial'
 import { getRecommendation, partitionPlaces } from '@/lib/placeRecommendation'
 import { mergeRepeatVisits } from '@/lib/repeatVisits'
+import { whenLabel } from '@/lib/placeDates'
 import type { EditablePlace } from '@/components/PlaceInlineEdit'
 import { mapDayNumber } from '@/lib/mapDays'
 import { distanceMiles } from '@/lib/distance'
@@ -452,6 +453,11 @@ export default async function ItineraryPage({
     })
   }))
 
+  const placeWhen = (item: DestItemRow) => {
+    const row = item as DestItemRow & { date?: Date | null; time?: string | null; endDate?: Date | null; endTime?: string | null }
+    return whenLabel({ date: row.date?.toISOString().slice(0, 10), time: row.time, endDate: row.endDate?.toISOString().slice(0, 10), endTime: row.endTime }, isOwn)
+  }
+
   const placeDestinations = new Map(groupedDestinations.flatMap(destination =>
     destination.items.map(item => [item.id, [destination.name, destination.country].filter(Boolean).join(', ')] as const)
   ))
@@ -497,6 +503,8 @@ export default async function ItineraryPage({
         <div className={styles.cardBody}>
           <p className={styles.eyebrow}>{label}</p>
           <h4 className={styles.placeName}>{item.name}</h4>
+          {/* The booking's time for everyone; its date only on your own trip (like the trip's dates). */}
+          {placeWhen(item) && <p className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-link"><Clock size={12} />{placeWhen(item)}</p>}
           {type === 'hotel' && hotelStays.get(item.id) && <p className="mt-0.5 text-xs font-semibold uppercase tracking-caps text-link">{hotelStays.get(item.id)}</p>}
           {(!!item.rating || (!compact && price !== null && price > 0)) && (
             <div className={styles.meta}>
