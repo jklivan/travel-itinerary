@@ -10,7 +10,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CalendarDays, Clock, Plus, MapPin, Trash2, LockKeyhole, Check, Hotel, Utensils, Camera, Plane, Upload, Pencil, Sparkles, Users } from 'lucide-react'
 import { daysBetween, isDate, tripDay, whenLabel } from '@/lib/placeDates'
-import { addPlanPlace, setPlanStartDate, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, removePlanDestination, renamePlanDestination, mergePlanDestination, setPlanDays, deletePlanDay, setPlaceDay, applyDayPlan, setTripCover } from '@/actions/planning'
+import { addPlanPlace, setPlanStartDate, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, removePlanDestination, renamePlanDestination, mergePlanDestination, setPlanDays, deletePlanDay, setPlaceDay, setPlaceTime, applyDayPlan, setTripCover } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
 import PlaceEntryForm from '@/components/PlaceEntryForm'
 import PlaceEditForm, { type PlaceEditValues, type PlaceType } from '@/components/PlaceEditForm'
@@ -106,6 +106,8 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const maxDay = Math.max(trip.durationDays ?? 0, ...scheduled, totalDays(trip.destinations), 1)
   const unrated = places.filter(place => place.type !== 'transport' && !place.rating && getRecommendation(place.tags) !== 'option')
   function renderPlace(place: Place & { destination: string; destinationName: string; destinationId: string }) { return <PlaceRow key={place.id} tripId={trip.id} tripStart={trip.start} place={place} maxDay={maxDay} destinationChoices={destinations.map(d => ({ id: d.id, name: d.name }))} /> }
+  // Day by day: the same card with a quick Time setting under it.
+  function renderDayPlace(place: Place & { destination: string; destinationName: string; destinationId: string }) { return <PlaceRow key={place.id} tripId={trip.id} tripStart={trip.start} place={place} maxDay={maxDay} destinationChoices={destinations.map(d => ({ id: d.id, name: d.name }))} dayTime /> }
   function addForm(at: string) { return adding?.at === at && !importing ? <AddPlace key={at} trip={trip} maxDay={maxDay} initialDestination={adding.destination} initialDestinationId={adding.destinationId} initialDay={adding.day} onClose={() => setAdding(null)} /> : null }
   function categorySections(items: typeof places) {
     return categories.map(category => { const inCategory = items.filter(p => p.type === category.value); return inCategory.length > 0 && <section key={category.value} className="mb-7"><div className={`${styles.categoryHeading} ${styles[category.value]}`}><h3><span className={styles.categoryIcon}><category.Icon size={17} /></span>{category.label}</h3><span className={styles.count}>{inCategory.length} {inCategory.length === 1 ? 'place' : 'places'}</span></div><div className="space-y-3">{inCategory.map(renderPlace)}</div></section> })
@@ -170,7 +172,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
         </div>}
         {/* Right here, so you don't have to scroll up to the trip details. */}
         {askingStart && <StartDateForm tripId={trip.id} initial={trip.start} onDone={() => { setAskingStart(false); chooseDayNames(true) }} />}
-        {Array.from({ length: maxDay }, (_, index) => index + 1).filter(day => trip.durationDays || scheduled.includes(day)).map(day => { const dayPlaces = places.filter(p => p.day === day).sort((a, b) => a.order - b.order); const stay = stayOn(day, trip.destinations, ranges); const dayLocation = stay.destination ?? [...new Set(dayPlaces.map(p => p.destinationName))].filter(name => name !== 'Destination to decide').join(' · '); return <section key={day} className="mb-6"><h2 className={styles.dayHeading}>{dayName(day)}{showDates && <span className="font-sans text-sm text-muted">Day {day}</span>}{dayLocation && <span className="font-sans text-sm text-muted">{dayLocation}</span>}</h2>{stay.hotel && <p className="mb-3 flex items-center gap-1.5 text-sm text-link"><Hotel size={16} />Staying at {stay.hotel}</p>}{/* Add a place stays at the bottom of each day, also once the day has places. */}{dayPlaces.length > 0 && <div className="mb-3"><SortableDay tripId={trip.id} places={dayPlaces} render={renderPlace} /></div>}{adding?.at !== `day:${day}` && <button type="button" onClick={() => { setImporting(false); setAdding({ at: `day:${day}`, day, destination: dayDestination(day) }) }} className="flex w-full items-center gap-1.5 rounded-xl border border-dashed border-line px-4 py-3 text-sm font-semibold text-link hover:bg-mist"><Plus size={16} />Add a place</button>}
+        {Array.from({ length: maxDay }, (_, index) => index + 1).filter(day => trip.durationDays || scheduled.includes(day)).map(day => { const dayPlaces = places.filter(p => p.day === day).sort((a, b) => a.order - b.order); const stay = stayOn(day, trip.destinations, ranges); const dayLocation = stay.destination ?? [...new Set(dayPlaces.map(p => p.destinationName))].filter(name => name !== 'Destination to decide').join(' · '); return <section key={day} className="mb-6"><h2 className={styles.dayHeading}>{dayName(day)}{showDates && <span className="font-sans text-sm text-muted">Day {day}</span>}{dayLocation && <span className="font-sans text-sm text-muted">{dayLocation}</span>}</h2>{stay.hotel && <p className="mb-3 flex items-center gap-1.5 text-sm text-link"><Hotel size={16} />Staying at {stay.hotel}</p>}{/* Add a place stays at the bottom of each day, also once the day has places. */}{dayPlaces.length > 0 && <div className="mb-3"><SortableDay tripId={trip.id} places={dayPlaces} render={renderDayPlace} /></div>}{adding?.at !== `day:${day}` && <button type="button" onClick={() => { setImporting(false); setAdding({ at: `day:${day}`, day, destination: dayDestination(day) }) }} className="flex w-full items-center gap-1.5 rounded-xl border border-dashed border-line px-4 py-3 text-sm font-semibold text-link hover:bg-mist"><Plus size={16} />Add a place</button>}
           {addForm(`day:${day}`)}
           {!!trip.durationDays && trip.durationDays > 1 && <DeleteDay tripId={trip.id} day={day} places={dayPlaces.length} />}</section> })}
         {!!trip.durationDays && <AddDay tripId={trip.id} days={trip.durationDays} />}
@@ -296,7 +298,7 @@ function IdeaFrom({ source }: { source: PlaceSource }) {
     : <span className="font-semibold text-ink-soft">{label}</span>}</p>
 }
 
-function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChips, dayRange }: { tripStart?: string; tripId: string; place: Place & { destination: string; destinationName: string; destinationId: string }; maxDay: number; destinationChoices: { id: string; name: string }[]; dayChips?: number; dayRange?: DayRange }) {
+function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChips, dayRange, dayTime = false }: { dayTime?: boolean; tripStart?: string; tripId: string; place: Place & { destination: string; destinationName: string; destinationId: string }; maxDay: number; destinationChoices: { id: string; name: string }[]; dayChips?: number; dayRange?: DayRange }) {
   const dayName = useContext(DayNames)
   const router = useRouter()
   const [editing, setEditing] = useState(false)
@@ -365,6 +367,7 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
       </div>
     </div>
     {!!dayChips && <DayChips itemId={place.id} days={dayChips} range={dayRange} destination={place.destinationName} />}
+    {dayTime && !editing && <DayTime itemId={place.id} name={place.name} time={place.time ?? ''} />}
     {place.type !== 'transport' && <PlacePeople key={`${place.placeId}:${place.name}:${place.destination}`} compact placeId={place.placeId ?? ''} name={place.name} location={place.destination} itemId={place.id} />}
     <div className={planningStyles.controls}>
     {!editing ? <PlaceQuickEdit compact row itemId={place.id} name={place.name} type={category.value as PlaceType} tags={place.tags} rating={place.rating} photos={place.photos}
@@ -609,6 +612,28 @@ function DeleteDay({ tripId, day, places }: { tripId: string; day: number; place
 
 // On an unscheduled place in a day-by-day trip: one tap puts it on a day. "+" adds a new day for it.
 // range: the days set aside for this place's destination; those chips are outlined and named above the row.
+// Day by day: set a place's time right under it. Saves when a full time is picked; the day then sorts by time.
+function DayTime({ itemId, name, time }: { itemId: string; name: string; time: string }) {
+  const router = useRouter()
+  const [value, setValue] = useState(time)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  async function save(next: string) {
+    if (next === time) return
+    setBusy(true); setError('')
+    try { const result = await setPlaceTime(itemId, next || null); if (result.error) { setError(result.error); setValue(time) } else router.refresh() }
+    catch { setError('Could not save the time. Please try again.'); setValue(time) } finally { setBusy(false) }
+  }
+  return <div className="flex flex-wrap items-center gap-2 border-t border-line-soft px-3 py-2.5">
+    <label className="flex items-center gap-2 text-label font-semibold uppercase tracking-label text-muted"><Clock size={14} />Time
+      <input type="time" value={value} disabled={busy} aria-label={`Time for ${name}`} onChange={event => setValue(event.target.value)} onBlur={() => void save(value)}
+        className="field w-32 !min-h-9 !py-1 normal-case tracking-normal" /></label>
+    {value && <button type="button" disabled={busy} onClick={() => { setValue(''); void save('') }} className="text-xs text-link underline">Clear</button>}
+    {busy && <span role="status" className="text-xs text-muted">Saving…</span>}
+    {error && <p role="alert" className="w-full text-xs text-danger">{error}</p>}
+  </div>
+}
+
 function DayChips({ itemId, days, range, destination }: { itemId: string; days: number; range?: DayRange; destination?: string }) {
   const dayName = useContext(DayNames)
   const router = useRouter()

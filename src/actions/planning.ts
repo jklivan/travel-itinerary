@@ -230,6 +230,30 @@ export async function setPlaceDay(itemId: string, day: number | null): Promise<R
   } catch { return { error: 'Could not move this place. Please try again.' } }
 }
 
+// Day by day: a place's time ("19:30", or null to clear). The day's timed places then sit in time order, in the
+// slots timed places already had, so untimed places keep their spots.
+export async function setPlaceTime(itemId: string, time: string | null): Promise<Result> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  if (time !== null && !isTime(time)) return { error: 'Choose a valid time.' }
+  try {
+    const item = await prisma.destItem.findFirst({ where: { id: itemId, destination: { itinerary: { userId } } }, select: { dayIndex: true, destination: { select: { itineraryId: true } } } })
+    if (!item) return { error: unavailable }
+    const tripId = item.destination.itineraryId
+    await prisma.$transaction(async tx => {
+      await tx.destItem.update({ where: { id: itemId }, data: { time } })
+      if (item.dayIndex === null) return
+      const day = await tx.destItem.findMany({ where: { destination: { itineraryId: tripId }, dayIndex: item.dayIndex }, orderBy: { order: 'asc' }, select: { id: true, time: true, order: true } })
+      const timed = day.filter(place => place.time).sort((a, b) => a.time!.localeCompare(b.time!))
+      let next = 0
+      const ordered = day.map(place => place.time ? timed[next++] : place)
+      await Promise.all(ordered.map((place, order) => tx.destItem.update({ where: { id: place.id }, data: { order } })))
+    })
+    refresh(tripId, userId)
+    return { success: true }
+  } catch { return { error: 'Could not save the time. Please try again.' } }
+}
+
 // Day by day: drag places into a new order within a day. The ids are that day's places, top to bottom.
 export async function setDayOrder(tripId: string, itemIds: string[]): Promise<Result> {
   const userId = (await auth())?.user?.id
