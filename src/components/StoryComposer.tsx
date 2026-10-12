@@ -99,6 +99,15 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
     setError('')
   }
 
+  function savedToTripNote() {
+    const yourPhotos = selectedPhotos.length === 1 ? 'your photo' : selectedPhotos.length > 1 ? `your ${selectedPhotos.length} photos` : ''
+    const placeName = (mode === 'trip' && place ? place.name : newName.trim()) || 'this place'
+    if (mode === 'new') return `Also starts a private trip in My Trips${newPlanTitle.trim() ? `, “${newPlanTitle.trim()}”,` : ''} with ${placeName}${yourPhotos ? ` and ${yourPhotos}` : ''}.`
+    const tripName = trip ? `“${trip.title}”` : 'your trip'
+    if (place) return yourPhotos ? `${yourPhotos[0].toUpperCase()}${yourPhotos.slice(1)} will also be added to ${place.name} in ${tripName}.` : `Saved to ${place.name} in ${tripName}.`
+    return `${placeName[0].toUpperCase()}${placeName.slice(1)}${yourPhotos ? ` and ${yourPhotos}` : ''} will also be added to ${tripName}.`
+  }
+
   function selectPlace(id: string) {
     const selected = trip?.places.find(item => item.id === id)
     setItemId(id); setRating(selected?.rating ?? 0); setRecommendation(selected?.recommendation ?? 'none'); setError('')
@@ -112,7 +121,7 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
       if (saving.current || uploading || !selectedPhotos.length) return
       if (mode === 'trip' && !place && !addingNewPlace) { setError('Choose a place from your trip first.'); return }
       if (mode === 'new' || addingNewPlace) {
-        const missing = [!newPlanTitle.trim() && mode === 'new' ? 'an itinerary title' : '', !newType ? 'a category' : '', !newDestination.trim() ? 'a destination' : '', !newName.trim() ? 'an activity name' : ''].filter(Boolean)
+        const missing = [!newPlanTitle.trim() && mode === 'new' ? 'a trip name' : '', !newType ? 'a category' : '', !newDestination.trim() ? 'a destination' : '', !newName.trim() ? 'an activity name' : ''].filter(Boolean)
         if (missing.length) { setError(`Add ${missing.join(' and ')} before posting.`); return }
       }
       saving.current = true; setBusy(true); setError('')
@@ -154,7 +163,7 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
           </div></div>}
           <button type="button" onClick={() => setStep('photos')} className="text-sm font-semibold text-link underline">Change photos</button>
         {/* One choice decides the rest of the form: a new itinerary, or a place in one of your trips. */}
-        <label>Itinerary<select value={mode === 'trip' ? tripId : 'new'} onChange={event => chooseItinerary(event.target.value)}><option value="new">New itinerary</option>{sources.trips.map(trip => <option key={trip.id} value={trip.id}>{trip.title}</option>)}</select></label>
+        <label>Save to trip<select value={mode === 'trip' ? tripId : 'new'} onChange={event => chooseItinerary(event.target.value)}><option value="new">New trip</option>{sources.trips.map(trip => <option key={trip.id} value={trip.id}>{trip.title}</option>)}</select></label>
         {mode === 'trip' ? <>
           <label>Destination<select value={destChoice} onChange={event => chooseDestination(event.target.value)}>{trip && trip.destinations.length > 1 && <option value="">All destinations</option>}{trip?.destinations.map((destination, index) => <option key={index} value={String(index)}>{destLabel(destination)}</option>)}<option value="__other__">Somewhere else…</option></select></label>
           {(destChoice === '__other__' || (addingNewPlace && !chosenDestination)) && <label>New destination<PlacesAutocomplete value={newDestination} onChange={value => { setNewDestination(value); setNewCountry(''); setNewPlaceId('') }} onSelect={(main, secondary) => { setNewDestination(main); setNewCountry(secondary); setNewPlaceId('') }} type="destination" required maxLength={240} placeholder="City or area" className="field mt-1" /></label>}
@@ -164,7 +173,7 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
             <label>Place name<PlacesAutocomplete value={newName} onChange={value => { setNewName(value); setNewPlaceId('') }} onSelect={(_main, _secondary, id) => setNewPlaceId(id ?? '')} type={newType === 'food_drink' ? 'restaurant' : newType === 'hotel' ? 'hotel' : 'activity'} city={[newDestination, newCountry].filter(Boolean).join(', ')} required maxLength={240} placeholder="Search or enter a name" className="field mt-1" /></label>
           </>}
         </> : <>
-          <label>Itinerary title<input required value={newPlanTitle} onChange={event => setNewPlanTitle(event.target.value)} maxLength={160} placeholder="e.g. Weekend in Lucerne" className="field mt-1" /></label>
+          <label>Trip name<input required value={newPlanTitle} onChange={event => setNewPlanTitle(event.target.value)} maxLength={160} placeholder="e.g. Weekend in Lucerne" className="field mt-1" /></label>
           <div><p className={styles.fieldLabel}>Category</p><div className="mt-2 flex flex-wrap gap-2">{([['activity', 'Activity'], ['hotel', 'Accommodation'], ['food_drink', 'Food & drink'], ['transport', 'Transport']] as const).map(([type, label]) => <button key={type} type="button" aria-pressed={newType === type} onClick={() => { setNewType(type); setNewPlaceId('') }} className="chip">{label}</button>)}</div></div>
           <label>Destination<PlacesAutocomplete value={newDestination} onChange={value => { setNewDestination(value); setNewCountry(''); setNewPlaceId('') }} onSelect={(main, secondary) => { setNewDestination(main); setNewCountry(secondary); setNewPlaceId('') }} type="destination" required maxLength={240} placeholder="City or area" className="field mt-1" /></label>
           <label>Activity or place name<PlacesAutocomplete value={newName} onChange={value => { setNewName(value); setNewPlaceId('') }} onSelect={(_main, _secondary, id) => setNewPlaceId(id ?? '')} type={newType === 'food_drink' ? 'restaurant' : newType === 'hotel' ? 'hotel' : 'activity'} city={[newDestination, newCountry].filter(Boolean).join(', ')} required maxLength={240} placeholder="Search or enter a name" className="field mt-1" /></label>
@@ -173,7 +182,8 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
           <div><p className={styles.fieldLabel}>Your rating <span>(optional)</span></p><div className="mt-2"><StarRating value={rating} onChange={setRating} /></div></div>
           <RecommendationPicker type={(mode === 'trip' && place ? place.type : newType || 'activity') as NewStoryType} value={recommendation} onChange={setRecommendation} allowAlternative={false} />
           <label>Caption <span>(optional)</span><textarea value={caption} onChange={event => setCaption(event.target.value)} maxLength={500} rows={3} placeholder="A snapshot worth sharing…" /></label>
-          <p className={styles.privacy}>{mode === 'trip' && place ? `${selectedPhotos.length} photo${selectedPhotos.length === 1 ? '' : 's'} will also be saved to ${place.name} in your trip.` : `This activity and ${selectedPhotos.length} photo${selectedPhotos.length === 1 ? '' : 's'} will be added to ${mode === 'new' ? newPlanTitle || 'your new private itinerary' : 'your itinerary'}.`}{caption.trim() && ' Your caption is saved as its notes.'}</p>
+          {/* Posting a snapshot also saves the place and photos into one of your trips; say which, in plain words. */}
+          <p className={styles.privacy}>{savedToTripNote()}{caption.trim() && ' Your caption is saved as the place’s notes.'}</p>
           <p className={styles.privacy}>{sources.isPrivate ? 'Visible to your accepted followers' : 'Visible to everyone'} for 24 hours.</p>
           <button type="submit" className={styles.post} disabled={!selectedPhotos.length || selectedPhotos.length > 10 || !canCompose || busy || uploading}>{busy ? 'Posting…' : `Post ${selectedPhotos.length > 1 ? `${selectedPhotos.length} photos` : 'for 24 hours'}`}</button>
         </>}
