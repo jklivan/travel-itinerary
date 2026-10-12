@@ -125,7 +125,7 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
               </div>
               <span className={styles.placeType}>{typeLabel(story.type)}</span>
               <h3 className={styles.storyTitle}>{story.placeName}</h3>
-              <p className={styles.storyPlace}><MapPin size={16} aria-hidden="true" />{story.destination}</p>
+              <p className={styles.storyPlace}><MapPin size={16} aria-hidden="true" /><span className={styles.storyPlaceText}>{story.destination}</span></p>
               {/* Always there (empty when no caption) so the buttons sit in the same spot on every snapshot. */}
               <p className={styles.storyCaption}>{story.caption}</p>
             </article>
