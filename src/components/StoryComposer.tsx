@@ -40,6 +40,8 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
   const [uploading, setUploading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // Photos first (that's the point of a snapshot), then where it is and what to say.
+  const [step, setStep] = useState<'photos' | 'details'>('photos')
   const trip = sources?.trips.find(trip => trip.id === tripId)
   const place = trip?.places.find(place => place.id === itemId)
   const addingNewPlace = mode === 'trip' && itemId === '__new__'
@@ -87,19 +89,19 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
       const destinations = sources?.trips.find(trip => trip.id === value)?.destinations ?? []
       chooseDestination(destinations.length ? '0' : '__other__', destinations)
     }
-    setSelectedPhotos([]); setUploaded([]); setError(''); setRating(0); setRecommendation('none'); clientIds.current = null
+    setError(''); setRating(0); setRecommendation('none')
   }
 
   function chooseDestination(value: string, destinations = trip?.destinations ?? []) {
     const destination = value && value !== '__other__' ? destinations[Number(value)] : undefined
     setDestChoice(value); setItemId(value === '__other__' ? '__new__' : '')
     setNewDestination(destination?.name ?? ''); setNewCountry(destination?.country ?? ''); setNewName(''); setNewPlaceId(''); setRating(0); setRecommendation('none')
-    setSelectedPhotos([]); setUploaded([]); setError(''); clientIds.current = null
+    setError('')
   }
 
   function selectPlace(id: string) {
     const selected = trip?.places.find(item => item.id === id)
-    setItemId(id); setUploaded([]); setRating(selected?.rating ?? 0); setRecommendation(selected?.recommendation ?? 'none'); setSelectedPhotos(id === '__new__' ? [] : [selected?.photos[0] ?? trip?.photos[0] ?? ''].filter(Boolean)); setError(''); clientIds.current = null
+    setItemId(id); setRating(selected?.rating ?? 0); setRecommendation(selected?.recommendation ?? 'none'); setError('')
     if (id === '__new__') { setNewName(''); setNewPlaceId('') }
   }
 
@@ -129,6 +131,28 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
     }}>
       {!sources && !error && <p role="status" className={styles.empty}>Loading…</p>}
       {sources && <fieldset disabled={busy || uploading} className={styles.fields}>
+        {step === 'photos' ? <>
+          {/* Step 1: the photos. */}
+          <div><p className={styles.fieldLabel}>{photos.length ? 'Choose photos' : 'Add your photos'} <span>(up to 10)</span></p>{photos.length > 0 && <div className={styles.photoChoices}>{photos.map((url, index) => <button key={url} type="button" aria-label={`${selectedPhotos.includes(url) ? 'Remove' : 'Choose'} photo ${index + 1}`} aria-pressed={selectedPhotos.includes(url)} onClick={() => {
+            if (!selectedPhotos.includes(url) && selectedPhotos.length >= 10) { setError('You can post up to 10 photos at a time.'); return }
+            setSelectedPhotos(current => current.includes(url) ? current.filter(value => value !== url) : [...current, url])
+            setError('')
+            clientIds.current = null
+          }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt="" />{selectedPhotos.includes(url) && <span><Check size={14} /></span>}
+          </button>)}</div>}
+          </div>
+          <EventPhotoInput large showThumbnails={false} photos={uploaded} name="your story" onBusyChange={setUploading} onChange={values => { setUploaded(values); setSelectedPhotos(values.slice(0, 10)); clientIds.current = null; setError(values.length > 10 ? 'You can post up to 10 photos at a time.' : '') }} />
+          <p className={styles.privacy}>{selectedPhotos.length ? `${selectedPhotos.length} photo${selectedPhotos.length === 1 ? '' : 's'} chosen.` : 'Pick one or more photos to share.'}</p>
+          <button type="button" className={styles.post} disabled={!selectedPhotos.length || selectedPhotos.length > 10 || uploading} onClick={() => { setError(''); setStep('details') }}>Next: add details</button>
+        </> : <>
+          {/* Step 2: where it is and what to say, under a preview of the polaroid. */}
+          {selectedPhotos[0] && <div className={styles.preview}><div className={styles.paper}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={selectedPhotos[0]} alt={`Story preview for ${mode === 'trip' && place ? place.name : newName}`} /><h3>{mode === 'trip' && place ? place.name : newName}</h3><p>{mode === 'trip' && place ? place.destination : [newDestination, newCountry].filter(Boolean).join(', ')}</p>{caption && <p className={styles.caption}>{caption}</p>}{selectedPhotos.length > 1 && <p className={styles.caption}>+ {selectedPhotos.length - 1} more story photos</p>}
+          </div></div>}
+          <button type="button" onClick={() => setStep('photos')} className="text-sm font-semibold text-link underline">Change photos</button>
         {/* One choice decides the rest of the form: a new itinerary, or a place in one of your trips. */}
         <label>Itinerary<select value={mode === 'trip' ? tripId : 'new'} onChange={event => chooseItinerary(event.target.value)}><option value="new">New itinerary</option>{sources.trips.map(trip => <option key={trip.id} value={trip.id}>{trip.title}</option>)}</select></label>
         {mode === 'trip' ? <>
@@ -146,27 +170,13 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
           <label>Activity or place name<PlacesAutocomplete value={newName} onChange={value => { setNewName(value); setNewPlaceId('') }} onSelect={(_main, _secondary, id) => setNewPlaceId(id ?? '')} type={newType === 'food_drink' ? 'restaurant' : newType === 'hotel' ? 'hotel' : 'activity'} city={[newDestination, newCountry].filter(Boolean).join(', ')} required maxLength={240} placeholder="Search or enter a name" className="field mt-1" /></label>
         </>}
         {canCompose && <>
-          <div><p className={styles.fieldLabel}>Choose photos <span>(up to 10)</span></p>{photos.length > 0 && <div className={styles.photoChoices}>{photos.map((url, index) => <button key={url} type="button" aria-label={`${selectedPhotos.includes(url) ? 'Remove' : 'Choose'} photo ${index + 1}`} aria-pressed={selectedPhotos.includes(url)} onClick={() => {
-            if (!selectedPhotos.includes(url) && selectedPhotos.length >= 10) { setError('You can post up to 10 photos at a time.'); return }
-            setSelectedPhotos(current => current.includes(url) ? current.filter(value => value !== url) : [...current, url])
-            setError('')
-            clientIds.current = null
-          }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" />{selectedPhotos.includes(url) && <span><Check size={14} /></span>}
-          </button>)}</div>}
-          </div>
-          <EventPhotoInput showThumbnails={false} photos={uploaded} name="your story" onBusyChange={setUploading} onChange={values => { setUploaded(values); setSelectedPhotos(values.slice(0, 10)); clientIds.current = null; setError(values.length > 10 ? 'You can post up to 10 photos at a time.' : '') }} />
           <div><p className={styles.fieldLabel}>Your rating <span>(optional)</span></p><div className="mt-2"><StarRating value={rating} onChange={setRating} /></div></div>
           <RecommendationPicker type={(mode === 'trip' && place ? place.type : newType || 'activity') as NewStoryType} value={recommendation} onChange={setRecommendation} allowAlternative={false} />
           <label>Caption <span>(optional)</span><textarea value={caption} onChange={event => setCaption(event.target.value)} maxLength={500} rows={3} placeholder="A snapshot worth sharing…" /></label>
-          {selectedPhotos[0] && <div className={styles.preview}><div className={styles.paper}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={selectedPhotos[0]} alt={`Story preview for ${mode === 'trip' && place ? place.name : newName}`} /><h3>{mode === 'trip' && place ? place.name : newName}</h3><p>{mode === 'trip' && place ? place.destination : [newDestination, newCountry].filter(Boolean).join(', ')}</p>{caption && <p className={styles.caption}>{caption}</p>}{selectedPhotos.length > 1 && <p className={styles.caption}>+ {selectedPhotos.length - 1} more story photos</p>}
-          </div></div>}
           <p className={styles.privacy}>{mode === 'trip' && place ? `${selectedPhotos.length} photo${selectedPhotos.length === 1 ? '' : 's'} will also be saved to ${place.name} in your trip.` : `This activity and ${selectedPhotos.length} photo${selectedPhotos.length === 1 ? '' : 's'} will be added to ${mode === 'new' ? newPlanTitle || 'your new private itinerary' : 'your itinerary'}.`}{caption.trim() && ' Your caption is saved as its notes.'}</p>
           <p className={styles.privacy}>{sources.isPrivate ? 'Visible to your accepted followers' : 'Visible to everyone'} for 24 hours.</p>
           <button type="submit" className={styles.post} disabled={!selectedPhotos.length || selectedPhotos.length > 10 || !canCompose || busy || uploading}>{busy ? 'Posting…' : `Post ${selectedPhotos.length > 1 ? `${selectedPhotos.length} photos` : 'for 24 hours'}`}</button>
+        </>}
         </>}
       </fieldset>}
       {error && <p role="alert" className={styles.error}>{error}</p>}
