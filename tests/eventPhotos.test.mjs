@@ -85,7 +85,7 @@ test('multi-file upload appends successes, reports failures, and balances busy s
   }
   const input = find(tree)
   assert.equal(input.props.multiple, true)
-  input.props.onChange({ target: { files: [{ name: 'one.jpg', size: 100 }, { name: 'failed.jpg', size: 100 }, { name: 'two.jpg', size: 100 }], value: 'files' } })
+  input.props.onChange({ target: { files: [{ name: 'one.jpg', type: 'image/jpeg', size: 100 }, { name: 'failed.jpg', type: 'image/jpeg', size: 100 }, { name: 'two.jpg', type: 'image/jpeg', size: 100 }], value: 'files' } })
   await completed
   assert.deepEqual(Array.from(changed), ['/existing.jpg', '/api/img?url=https%3A%2F%2Fexample.com%2Fone.jpg', '/api/img?url=https%3A%2F%2Fexample.com%2Ftwo.jpg'])
   assert.deepEqual(busy, [true, false])
