@@ -87,7 +87,7 @@ export default function ItineraryCard({
       <div className="rounded-lg border border-line-soft bg-card p-2.5 shadow-card sm:p-3">
         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg" style={{ backgroundColor: coverColor }}>
           {fullWidth && photos.length > 0 ? <PhotoStrip href={`/itinerary/${id}`} photos={photos.map(photo => ({ ...photo, caption: null }))} title={title} fillContainer counterPosition="left" /> : <Link href={`/itinerary/${id}`} aria-label={`Open ${title}`} className="absolute inset-0">
-            {!cover && placeIds.length > 0 && <CardPlacePhoto itemIds={placeIds} />}
+            {!cover && <CardPlacePhoto tripId={id} itemIds={placeIds} />}
             {/* Photos from other sites (e.g. a place photo saved from Google) can't go through image resizing. */}
             {cover && (sizedPhoto(cover, 640) !== cover
               ? <Image src={cover} alt="" fill sizes={fullWidth ? '(max-width: 575px) calc(100vw - 44px), 516px' : '(max-width: 727px) 44vw, 320px'} className="object-cover" />

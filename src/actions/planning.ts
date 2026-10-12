@@ -5,6 +5,7 @@ import { TAGS } from '@/lib/tags'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { isDate, isTime } from '@/lib/placeDates'
+import { fetchStockPhoto } from '@/lib/stockPhoto'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
 import { pickPlanDestination } from '@/lib/planPlaceIdentity'
@@ -477,7 +478,19 @@ export async function sharePlan(id: string, format: PublishFormat = 'itinerary',
     const trip = await prisma.itinerary.findFirst({ where: { id, userId, destinations: { some: { items: { some: {} } } } }, select: { id: true, durationDays: true } })
     if (!trip) return { error: 'Add at least one place before sharing your trip.' }
     const result = await prisma.itinerary.updateMany({ where: { id, userId, visibility: 'draft' }, data: { visibility: 'public', publishedAt: new Date(), ...publishFields(format, details, trip.durationDays) } })
-    if (result.count) scheduleTripPublishedNotifications(id)
+    if (result.count) {
+      scheduleTripPublishedNotifications(id)
+      // No photos at all: a stock photo of the destination, so the trip's card isn't a blank colour.
+      after(async () => {
+        try {
+          const posted = await prisma.itinerary.findUnique({ where: { id }, select: { photos: { take: 1, select: { id: true } }, destinations: { orderBy: { order: 'asc' }, select: { name: true, country: true } } } })
+          const destination = posted?.destinations.find(d => d.name !== 'Destination to decide')
+          if (!posted || posted.photos.length || !destination) return
+          const url = await fetchStockPhoto(`${destination.name}${destination.country ? ` ${destination.country}` : ''} travel`)
+          if (url) await prisma.photo.create({ data: { url, isStock: true, itineraryId: id } })
+        } catch { /* the card's own fallback covers it */ }
+      })
+    }
     refresh(id, userId)
     return { success: true }
   } catch { return { error: 'Could not share your trip. Please try again.' } }
