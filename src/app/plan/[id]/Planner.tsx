@@ -409,7 +409,7 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
 // Planner action row: a round icon button with its label underneath.
 const action = 'group flex flex-col items-center gap-1.5 text-center text-xs leading-tight text-ink'
 const actionIcon = 'flex size-14 items-center justify-center rounded-full border shadow-card transition-transform group-active:scale-95'
-// Budget, overall rating (it sets the Must go! / Loved it stamp) and travel-style tags: chosen when posting, and
+// Budget, overall rating (5 stars sets the Must go! stamp, 1 star Avoid) and travel-style tags: chosen when posting, and
 // changeable afterwards in Edit trip details. Day trip isn't a tag here; it follows the trip type.
 function TripExtras({ budget, onBudget, rating, onRating, tags, onTags, legendClass, months, cover }: { cover?: React.ReactNode; budget: number; onBudget: (value: number) => void; rating: number; onRating: (value: number) => void; tags: string[]; onTags: (value: string[]) => void; legendClass: string; months?: React.ReactNode }) {
   return <>
