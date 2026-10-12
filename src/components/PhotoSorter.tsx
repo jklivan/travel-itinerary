@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Check, ImagePlus, X } from 'lucide-react'
 import { updatePlace } from '@/actions/placeQuickEdit'
 import { eventPhotos } from '@/lib/eventPhotos'
-import { MAX_PHOTO_MB, sizedPhoto } from '@/lib/photoSizing'
-import { uploadPhotos } from '@/lib/uploadPhotos'
+import { sizedPhoto } from '@/lib/photoSizing'
+import { uploadFailureMessage, uploadPhotos } from '@/lib/uploadPhotos'
 import { canPickTripPhotos, TripDates } from '@/lib/tripPhotos'
 import TripPhotoPicker from './TripPhotoPicker'
 
@@ -34,9 +34,9 @@ export default function PhotoSorter({ places, prompt }: { places: SortPlace[]; p
   async function choose(files: File[]) {
     if (!files.length) return
     setError(''); setMessage(''); setProgress(`Uploading 0 of ${files.length}…`)
-    const { urls, failed } = await uploadPhotos(files, done => setProgress(`Uploading ${done} of ${files.length}…`))
+    const { urls, failed, reason } = await uploadPhotos(files, done => setProgress(`Uploading ${done} of ${files.length}…`))
     setPile(current => [...current, ...urls]); setProgress('')
-    if (failed) setError(`${failed} photo${failed === 1 ? '' : 's'} couldn’t be uploaded (files must be under ${MAX_PHOTO_MB} MB).`)
+    if (failed) setError(uploadFailureMessage(failed, reason))
   }
   async function addTo(place: SortPlace) {
     if (!selected.length || progress) return

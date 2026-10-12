@@ -68,7 +68,8 @@ test('multi-file upload appends successes, reports failures, and balances busy s
     if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx }
     if (name === 'lucide-react') return {}
     if (name === '@/lib/eventPhotos') return { eventPhotos }
-    if (name === '@/lib/photoSizing') return { compressPhoto: async file => file, sizedPhoto: url => url }
+    if (name === '@/lib/photoSizing') return { compressPhoto: async file => file, sizedPhoto: url => url, MAX_PHOTO_BYTES: 25 * 1024 * 1024, MAX_PHOTO_MB: 25 }
+    if (name === '@/lib/clientErrors') return { reportClientError() {} }
     if (name === '@vercel/blob/client') return { upload: async (_path, file) => {
       if (file.name === 'failed.jpg') throw new Error('Upload failed')
       return { url: `https://example.com/${file.name}` }
@@ -88,5 +89,5 @@ test('multi-file upload appends successes, reports failures, and balances busy s
   await completed
   assert.deepEqual(Array.from(changed), ['/existing.jpg', '/api/img?url=https%3A%2F%2Fexample.com%2Fone.jpg', '/api/img?url=https%3A%2F%2Fexample.com%2Ftwo.jpg'])
   assert.deepEqual(busy, [true, false])
-  assert.ok(states.some(value => typeof value === 'string' && value.startsWith('1 photo could not be added')))
+  assert.ok(states.some(value => typeof value === 'string' && value.startsWith('1 photo couldn’t be uploaded')))
 })
