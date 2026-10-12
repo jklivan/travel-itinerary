@@ -3,7 +3,7 @@
 import { useCallback, useContext, useRef, useState } from 'react'
 import { ImageIcon, X } from 'lucide-react'
 import { eventPhotos } from '@/lib/eventPhotos'
-import { sizedPhoto } from '@/lib/photoSizing'
+import { MAX_PHOTO_MB, sizedPhoto } from '@/lib/photoSizing'
 import { uploadPhotos } from '@/lib/uploadPhotos'
 import { canPickTripPhotos, TripDates } from '@/lib/tripPhotos'
 import TripPhotoPicker from './TripPhotoPicker'
@@ -33,7 +33,7 @@ export default function EventPhotoInput({ photos, name, onChange, onBusyChange, 
     try {
       const { urls: uploaded, failed } = await uploadPhotos(files)
       if (uploaded.length) onChange(eventPhotos([...photos, ...uploaded]))
-      if (failed) setError(`${failed} photo${failed === 1 ? '' : 's'} could not be added. Use files under 10 MB and try again.`)
+      if (failed) setError(`${failed} photo${failed === 1 ? '' : 's'} could not be added. Use files under ${MAX_PHOTO_MB} MB and try again.`)
     } finally {
       uploading.current = false
       setBusy(false)

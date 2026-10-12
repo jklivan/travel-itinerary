@@ -1,3 +1,8 @@
+// The largest photo that can be uploaded, after shrinking (shrinking usually brings a phone photo well under 1 MB;
+// larger files are ones the browser can't shrink, like some HEIC, ProRAW or very large PNGs).
+export const MAX_PHOTO_MB = 25
+export const MAX_PHOTO_BYTES = MAX_PHOTO_MB * 1024 * 1024
+
 // Photos are uploaded and shown far smaller than a phone camera's originals (often 3–8 MB).
 
 const MAX_EDGE = 2048

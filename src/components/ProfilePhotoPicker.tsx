@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { upload } from '@vercel/blob/client'
 import { Camera } from 'lucide-react'
-import { compressPhoto } from '@/lib/photoSizing'
+import { compressPhoto, MAX_PHOTO_BYTES, MAX_PHOTO_MB } from '@/lib/photoSizing'
 import { setProfilePhoto } from '@/actions/profilePhoto'
 import UserAvatar from './UserAvatar'
 
@@ -30,7 +30,7 @@ export default function ProfilePhotoPicker({ name, image }: { name: string; imag
       setBusy(true); setError('')
       try {
         const file = await compressPhoto(picked)
-        if (file.size > 10 * 1024 * 1024) { setError('Choose a photo under 10 MB.'); return }
+        if (file.size > MAX_PHOTO_BYTES) { setError(`Choose a photo under ${MAX_PHOTO_MB} MB.`); return }
         const blob = await upload(`profile-${crypto.randomUUID()}-${file.name}`, file, { access: 'private', handleUploadUrl: '/api/upload' })
         await save(`/api/img?url=${encodeURIComponent(blob.url)}`)
       } catch { setError('Could not upload your photo. Please try again.') } finally { setBusy(false) }

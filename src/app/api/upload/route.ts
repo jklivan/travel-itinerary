@@ -1,4 +1,5 @@
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
+import { MAX_PHOTO_BYTES } from '@/lib/photoSizing'
 import { auth } from '@/auth'
 import { NextRequest } from 'next/server'
 
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       request: req,
       onBeforeGenerateToken: async () => ({
         allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'],
-        maximumSizeInBytes: 10 * 1024 * 1024,
+        maximumSizeInBytes: MAX_PHOTO_BYTES,
       }),
     })
     return Response.json(jsonResponse)
