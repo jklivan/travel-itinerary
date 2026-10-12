@@ -99,15 +99,6 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
     setError('')
   }
 
-  function savedToTripNote() {
-    const yourPhotos = selectedPhotos.length === 1 ? 'your photo' : selectedPhotos.length > 1 ? `your ${selectedPhotos.length} photos` : ''
-    const placeName = (mode === 'trip' && place ? place.name : newName.trim()) || 'this place'
-    if (mode === 'new') return `Also starts a private trip in My Trips${newPlanTitle.trim() ? `, “${newPlanTitle.trim()}”,` : ''} with ${placeName}${yourPhotos ? ` and ${yourPhotos}` : ''}.`
-    const tripName = trip ? `“${trip.title}”` : 'your trip'
-    if (place) return yourPhotos ? `${yourPhotos[0].toUpperCase()}${yourPhotos.slice(1)} will also be added to ${place.name} in ${tripName}.` : `Saved to ${place.name} in ${tripName}.`
-    return `${placeName[0].toUpperCase()}${placeName.slice(1)}${yourPhotos ? ` and ${yourPhotos}` : ''} will also be added to ${tripName}.`
-  }
-
   function selectPlace(id: string) {
     const selected = trip?.places.find(item => item.id === id)
     setItemId(id); setRating(selected?.rating ?? 0); setRecommendation(selected?.recommendation ?? 'none'); setError('')
@@ -182,9 +173,6 @@ export default function StoryComposer({ onClose, onPosted, initialItemId }: { on
           <div><p className={styles.fieldLabel}>Your rating <span>(optional)</span></p><div className="mt-2"><StarRating value={rating} onChange={setRating} /></div></div>
           <RecommendationPicker type={(mode === 'trip' && place ? place.type : newType || 'activity') as NewStoryType} value={recommendation} onChange={setRecommendation} allowAlternative={false} />
           <label>Caption <span>(optional)</span><textarea value={caption} onChange={event => setCaption(event.target.value)} maxLength={500} rows={3} placeholder="A snapshot worth sharing…" /></label>
-          {/* Posting a snapshot also saves the place and photos into one of your trips; say which, in plain words. */}
-          <p className={styles.privacy}>{savedToTripNote()}{caption.trim() && ' Your caption is saved as the place’s notes.'}</p>
-          <p className={styles.privacy}>{sources.isPrivate ? 'Visible to your accepted followers' : 'Visible to everyone'} for 24 hours.</p>
           <button type="submit" className={styles.post} disabled={!selectedPhotos.length || selectedPhotos.length > 10 || !canCompose || busy || uploading}>{busy ? 'Posting…' : `Post ${selectedPhotos.length > 1 ? `${selectedPhotos.length} photos` : 'for 24 hours'}`}</button>
         </>}
         </>}
