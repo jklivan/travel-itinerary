@@ -5,7 +5,6 @@ import StoryFeed from '@/components/StoryFeed'
 import ItineraryCard from '@/components/ItineraryCard'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import FeedTabs from '@/components/FeedTabs'
 import WelcomeScreen from '@/components/WelcomeScreen'
 
 export default async function FeedPage({
@@ -85,10 +84,8 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
   return (
     <div className="max-w-xl mx-auto px-4 py-3 sm:px-8 sm:py-5">
       <Suspense fallback={null}><StoryFeed userId={userId} following={false} /></Suspense>
-      <section className="mb-3 mt-3 flex items-center justify-between gap-2 px-1" aria-label="Trip recommendations">
-        <h1 className="type-title shrink-0 tracking-widest">FOR YOU</h1>
-        <FeedTabs active={feed} search={searchQuery} />
-      </section>
+      {/* The feed itself; no heading or All / Friends / Expert recs tabs (/?feed= still works). */}
+      <h1 className="sr-only">Trips for you</h1>
       {searchQuery && <div className="mb-5">
         <h1 className="type-display">&quot;{searchQuery}&quot;</h1>
         <Link href="/" className="text-sm text-ink-soft hover:underline">Clear search</Link>

@@ -1,4 +1,4 @@
-.bar { margin: 0 0 12px; padding-bottom: 14px; border-bottom: 1px solid var(--color-line-soft); color: var(--color-ink); }
+.bar { margin: 12px 0 12px; padding-bottom: 14px; border-bottom: 1px solid var(--color-line-soft); color: var(--color-ink); }
 .barHeading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
 .barHeading h2 { font-family: var(--font-playfair), serif; font-size: 14px; font-weight: 400; letter-spacing: .24em; color: var(--color-link); }
 .barHeading > span { font-size: 9px; color: var(--color-muted); letter-spacing: .14em; text-transform: uppercase; }

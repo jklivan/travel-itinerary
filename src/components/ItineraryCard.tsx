@@ -12,12 +12,10 @@ import Stamp from '@/components/ui/Stamp'
 import PhotoStrip from './PhotoStrip'
 import BucketButton from './BucketButton'
 import UserAvatar from './UserAvatar'
-import PostcardLogo from '@/components/PostcardLogo'
 import CardPlacePhoto from './CardPlacePhoto'
 import { sizedPhoto } from '@/lib/photoSizing'
 
 
-const AUDIENCE_CHIP = 'w-fit rounded-lg bg-cream/95 px-2.5 py-1 text-label font-medium uppercase tracking-label text-ink'
 
 type DestItem = { id?: string; type: string; name: string; dayIndex?: number | null }
 type Destination = { lat?: number | null; name: string; country: string | null; items: DestItem[] }
@@ -65,7 +63,7 @@ function hashPick(str: string, arr: string[]) {
 
 
 export default function ItineraryCard({
-  id, postType, title, startDate, endDate, audience, budget, tripRating, authorName, authorImage, authorId, destinations, coverPhoto, photos = [],
+  id, postType, title, startDate, endDate, budget, tripRating, authorName, authorImage, authorId, destinations, coverPhoto, photos = [],
   currentUserId, isOwn, isBucketed = false, likeCount, isLiked = false, fullWidth = false, datesFlexible = false, bestMonths = [], tags = [], durationDays,
   // Budget shows on the trip page, not on cards.
   commentCount = 0, showBudget = false, social,
@@ -97,16 +95,6 @@ export default function ItineraryCard({
               : <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />)}
           </Link>}
 
-          <div className="pointer-events-none absolute left-3 top-3 z-10 flex max-w-[55%] flex-col gap-1">
-            {audience === 'family' && <span className={AUDIENCE_CHIP}>Family</span>}
-            {audience === 'friends' && <span className={AUDIENCE_CHIP}>Friends</span>}
-            {audience === 'romantic' && <span className={AUDIENCE_CHIP}>Couples</span>}
-          </div>
-
-          {/* The Postcard stamp, on a white square (its own shape) so it reads on dark photos. */}
-          <div aria-hidden="true" className="pointer-events-none absolute right-2.5 top-2.5 z-20 size-[64px] rotate-[8deg] rounded-lg bg-white/95 p-1 shadow-card">
-            <PostcardLogo size={60} className="size-full" />
-          </div>
         </div>
 
         {/* Place, title and length sit on the paper under the photo; the verdict is a postage stamp beside them. */}
