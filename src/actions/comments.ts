@@ -1,6 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
+import { notBlocked } from '@/lib/blocks'
 import { auth } from '@/auth'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
@@ -16,10 +17,10 @@ export async function loadComments(itineraryId: string) {
   const itinerary = await prisma.itinerary.findUnique({ where: { id: itineraryId }, select: { visibility: true, userId: true } })
   if (!itinerary || (itinerary.visibility === 'draft' && itinerary.userId !== userId)) return { error: 'Not found.', comments: [], userId }
   const comments = await prisma.comment.findMany({
-    where: { itineraryId, parentId: null }, orderBy: { createdAt: 'desc' },
+    where: { itineraryId, parentId: null, user: notBlocked(userId) }, orderBy: { createdAt: 'desc' },
     include: {
       user: { select: { id: true, name: true, image: true } },
-      replies: { orderBy: { createdAt: 'asc' }, include: { user: { select: { id: true, name: true, image: true } } } },
+      replies: { where: { user: notBlocked(userId) }, orderBy: { createdAt: 'asc' }, include: { user: { select: { id: true, name: true, image: true } } } },
     },
   })
   return { comments, userId }

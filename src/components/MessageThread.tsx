@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { getConversation } from '@/actions/messages'
+import ReportButton from './ReportButton'
 import MessageComposer, { type ComposerAttachment, type MessageReplyTarget } from './MessageComposer'
 
 type Messages = NonNullable<Awaited<ReturnType<typeof getConversation>>['messages']>
@@ -36,7 +37,10 @@ export default function MessageThread({ messages, newIds = [], userId, person, i
           <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink">{message.content}</p>
           <div className="mt-2 flex items-center justify-between gap-3">
             <time className="text-label text-brown" dateTime={message.createdAt.toISOString()}>{message.createdAt.toLocaleString('en-US', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' })} UTC</time>
-            <button type="button" className="chip shrink-0" onClick={() => setReplyTo({ id: message.id, content: message.content, author: isOwn ? 'yourself' : person.name, itineraryTitle: message.itineraryTitle, placeName: message.placeName })}>Reply</button>
+            <span className="flex shrink-0 items-center gap-3">
+              {!isOwn && <ReportButton kind="message" targetId={message.id} personName={person.name.split(' ')[0]} />}
+              <button type="button" className="chip shrink-0" onClick={() => setReplyTo({ id: message.id, content: message.content, author: isOwn ? 'yourself' : person.name, itineraryTitle: message.itineraryTitle, placeName: message.placeName })}>Reply</button>
+            </span>
           </div>
         </article>
         </div>

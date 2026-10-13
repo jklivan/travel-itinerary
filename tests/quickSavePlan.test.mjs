@@ -4,10 +4,12 @@ import { readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import vm from 'node:vm'
 import ts from 'typescript'
+// Blocking helpers (src/lib/blocks): nobody is blocked in these tests.
+const SAFETY = { '@/lib/blocks': { hiddenUserIds: async () => [], isBlockedBetween: async () => false, notBlocked: () => ({}) }, './blockFilter': { notBlocked: () => ({}) }, '@/lib/blockFilter': { notBlocked: () => ({}) } }
 const compile = path => ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
 const code = compile('../src/actions/quickSavePlan.ts')
 const storyExports = {}
-vm.runInNewContext(compile('../src/lib/stories.ts'), { exports: storyExports })
+vm.runInNewContext(compile('../src/lib/stories.ts'), { exports: storyExports, require: name => SAFETY[name] })
 function harness({ userId = 'me', visibility = 'public', expired = false, fail = false, race = false } = {}) {
   const copies = [], queries = [], paths = []
   const place = { name: 'Science Museum', type: 'activity', destination: { name: 'London', country: 'UK' }, placeId: 'google-id', lat: 51.5, lng: -0.1, address: 'Exhibition Road', link: 'https://example.com', notes: 'Their notes', rating: 5, photoUrls: ['/photo.jpg'] }
@@ -24,7 +26,7 @@ function harness({ userId = 'me', visibility = 'public', expired = false, fail =
     story: { findFirst: async ({ where }) => { queries.push(where); return where.id === 'story' && !expired ? snapshot : null } },
   }
   const exports = {}
-  vm.runInNewContext(code, { exports, require: name => ({ 'node:crypto': { createHash }, '@/auth': { auth: async () => userId ? { user: { id: userId } } : null }, '@/lib/prisma': { prisma }, '@/lib/stories': storyExports, 'next/cache': { revalidatePath: p => paths.push(p) } })[name] })
+  vm.runInNewContext(code, { exports, require: name => ({ 'node:crypto': { createHash }, '@/auth': { auth: async () => userId ? { user: { id: userId } } : null }, '@/lib/prisma': { prisma }, '@/lib/stories': storyExports, 'next/cache': { revalidatePath: p => paths.push(p) }, ...SAFETY })[name] })
   return { ...exports, copies, queries, paths, input: { itemId: 'place', clientId: '12345678-1234-1234-1234-123456789012' } }
 }
 test('New trip atomically creates a private flexible plan with temporary destination title and selected place', async () => {

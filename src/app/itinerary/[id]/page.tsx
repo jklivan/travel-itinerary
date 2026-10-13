@@ -1,6 +1,8 @@
 import Comments from '@/components/Comments'
+import { notBlocked } from '@/lib/blocks'
 import { hasTripDates, tripDuration } from '@/lib/dayTrips'
 import CopyTripButton from '@/components/CopyTripButton'
+import ReportButton from '@/components/ReportButton'
 import RatingStars from '@/components/RatingStars'
 import { prisma } from '@/lib/prisma'
 import { after } from 'next/server'
@@ -217,11 +219,11 @@ export default async function ItineraryPage({
       },
       photos: { orderBy: { isStock: 'asc' } },
       comments: {
-        where: { parentId: null },
+        where: { parentId: null, user: notBlocked(session?.user?.id) },
         orderBy: { createdAt: 'desc' },
         include: {
           user: { select: { id: true, name: true, image: true } },
-          replies: { orderBy: { createdAt: 'asc' }, include: { user: { select: { id: true, name: true, image: true } } } },
+          replies: { where: { user: notBlocked(session?.user?.id) }, orderBy: { createdAt: 'asc' }, include: { user: { select: { id: true, name: true, image: true } } } },
         },
       },
     },
@@ -819,8 +821,9 @@ export default async function ItineraryPage({
             <PhotoStrip photos={gallery} title={it.title} gallery />
           </section>
         })()}
-        {!isOwn && session?.user && <div className="mt-8 border-t border-line-strong pt-5">
+        {!isOwn && session?.user && <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line-strong pt-5">
           <CopyTripButton itineraryId={it.id} title={it.title} isOwn={isOwn} />
+          <ReportButton kind="trip" targetId={it.id} personName={it.user.name.split(' ')[0]} />
         </div>}
         {isOwn && <section aria-label="Manage trip" className="mt-8 border-t border-line-strong pt-5">
           <div className="flex flex-wrap items-center gap-2">

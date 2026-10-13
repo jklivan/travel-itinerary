@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { revalidatePath } from 'next/cache'
+import { isBlockedBetween } from '@/lib/blocks'
 import { after } from 'next/server'
 import { createFollowNotification } from '@/lib/notifications'
 import { deliverNotification } from '@/lib/push'
@@ -11,6 +12,7 @@ export async function sendFollowRequest(userId: string) {
   const session = await auth()
   if (!session?.user?.id) return
   if (userId === session.user.id) return
+  if (await isBlockedBetween(session.user.id, userId)) return
   const followerId = session.user.id
   const notificationId = await prisma.$transaction(async tx => {
     await tx.follow.upsert({

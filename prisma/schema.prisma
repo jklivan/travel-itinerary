@@ -33,6 +33,10 @@ model User {
   questionReplies FriendQuestionReply[]
   planChats PlanChat[]
   placesSharedFrom DestItem[] @relation("PlaceSource")
+  reportsMade      Report[]         @relation("ReportReporter")
+  reportsAbout     Report[]         @relation("ReportSubject")
+  blocking         Block[]          @relation("BlockBlocker")
+  blockedBy        Block[]          @relation("BlockBlocked")
   createdAt      DateTime         @default(now())
 }
 
@@ -352,4 +356,38 @@ model PlanChat {
   trip Itinerary? @relation(fields: [tripId], references: [id], onDelete: SetNull)
 
   @@index([userId, tripId, updatedAt])
+}
+
+// Someone flagging content or a person as objectionable (App Store guideline 1.2). Reviewed on the admin page.
+// kind: "trip" | "comment" | "message" | "snapshot" | "question" | "user"; targetId is that thing's id.
+// subjectId is whose content it is. status: "open" until handled.
+model Report {
+  id         String   @id @default(cuid())
+  reporterId String
+  subjectId  String?
+  kind       String
+  targetId   String
+  reason     String
+  details    String?  @db.VarChar(1000)
+  status     String   @default("open")
+  createdAt  DateTime @default(now())
+  handledAt  DateTime?
+  reporter   User     @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  subject    User?    @relation("ReportSubject", fields: [subjectId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+}
+
+// A person you've blocked: their trips, comments, snapshots and messages are hidden from you, follows between
+// you are removed, and they can't message you.
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+  blocker   User     @relation("BlockBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("BlockBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
 }

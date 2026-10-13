@@ -3,6 +3,8 @@ import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
+// Blocking helpers (src/lib/blocks): nobody is blocked in these tests.
+const SAFETY = { '@/lib/blocks': { hiddenUserIds: async () => [], isBlockedBetween: async () => false, notBlocked: () => ({}) }, './blockFilter': { notBlocked: () => ({}) }, '@/lib/blockFilter': { notBlocked: () => ({}) } }
 
 function harness(userId = 'alice') {
   const rows = []
@@ -13,7 +15,7 @@ function harness(userId = 'alice') {
   const people = new Map(['alice', 'bob', 'eve'].map(id => [id, { id, name: id }]))
   const queries = []
   const place = { id: 'cafe', name: 'Cafe', notes: 'Try the breakfast', destination: { itinerary: { id: 'trip', title: 'Paris' } } }
-  const match = (row, where) => (!where.id || row.id === where.id) && (!('itineraryId' in where) || (row.itineraryId ?? null) === where.itineraryId) && where.OR.some(pair => Object.entries(pair).every(([k, v]) => row[k] === v))
+  const match = (row, where) => (!where.id || row.id === where.id) && (!('itineraryId' in where) || (row.itineraryId ?? null) === where.itineraryId) && where.OR.some(pair => Object.entries(pair).every(([k, v]) => v && typeof v === 'object' && 'notIn' in v ? !v.notIn.includes(row[k]) : row[k] === v))
   const prisma = {
     notification: {
       // Unread alerts for the inbox's "new" highlight; none in these tests.
@@ -72,7 +74,7 @@ function harness(userId = 'alice') {
   const dependencies = { '@/auth': { auth: async () => userId ? { user: { id: userId } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} }, 'next/server': { after: fn => scheduled.push(fn) }, '@/lib/push': { deliverNotification() {} } }
   const exports = {}
   const compiled = ts.transpileModule(readFileSync(new URL('../src/actions/messages.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
-  vm.runInNewContext(compiled, { exports, require: name => dependencies[name] })
+  vm.runInNewContext(compiled, { exports, require: name => dependencies[name] ?? SAFETY[name] })
   const input = { recipientId: 'bob', content: 'Hello', clientId: '12345678-1234-1234-1234-123456789012' }
   return { ...exports, rows, queries, input, notifications, scheduled, readQueries, failNotification: () => { failNotification = true } }
 }

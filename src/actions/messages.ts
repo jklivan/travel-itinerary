@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
 import { deliverNotification } from '@/lib/push'
+import { hiddenUserIds, isBlockedBetween } from '@/lib/blocks'
 
 export async function getConversation(recipientId: string, before?: string, itineraryId?: string | null) {
   const session = await auth()
@@ -29,8 +30,10 @@ export async function getMessageInbox() {
   const session = await auth()
   if (!session?.user?.id) return { error: 'Sign in to read messages.' }
   const userId = session.user.id
+  // Conversations with people you've blocked (or who blocked you) are hidden.
+  const hidden = await hiddenUserIds(userId)
   const latest = await prisma.directMessage.findMany({
-    where: { OR: [{ senderId: userId }, { recipientId: userId }] },
+    where: { OR: [{ senderId: userId, recipientId: { notIn: hidden } }, { recipientId: userId, senderId: { notIn: hidden } }] },
     distinct: ['senderId', 'recipientId', 'itineraryId'],
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     include: { sender: { select: { id: true, name: true, image: true } }, recipient: { select: { id: true, name: true, image: true } } },
@@ -73,6 +76,7 @@ export async function sendDirectMessage(input: { recipientId: string; content: s
   if (typeof input.clientId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(input.clientId)) return { error: 'Please try sending again.' }
   if (typeof input.recipientId !== 'string' || input.recipientId === session.user.id) return { error: 'Choose another traveler to message.' }
   if (!await prisma.user.findUnique({ where: { id: input.recipientId }, select: { id: true } })) return { error: 'Traveler not found.' }
+  if (await isBlockedBetween(senderId, input.recipientId)) return { error: 'You can’t message this traveler.' }
   let attachment: { itineraryId?: string | null; itineraryTitle?: string | null; placeId?: string | null; placeName?: string | null; placeNotes?: string | null } = {}
   let replyTripId: string | null | undefined
   if (input.replyToId) {

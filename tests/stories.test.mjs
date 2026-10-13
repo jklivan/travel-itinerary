@@ -5,6 +5,8 @@ import vm from 'node:vm'
 import ts from 'typescript'
 import * as placeIdentity from '../src/lib/planPlaceIdentity.ts'
 import * as placeRecommendation from '../src/lib/placeRecommendation.ts'
+// Blocking helpers (src/lib/blocks): nobody is blocked in these tests.
+const SAFETY = { '@/lib/blocks': { hiddenUserIds: async () => [], isBlockedBetween: async () => false, notBlocked: () => ({}) }, './blockFilter': { notBlocked: () => ({}) }, '@/lib/blockFilter': { notBlocked: () => ({}) } }
 
 // The destination-filing helpers, loaded the same way as the code under test.
 const fileUnder = (() => {
@@ -15,7 +17,7 @@ const fileUnder = (() => {
 const filingStubs = { '@/lib/fileUnderDestination': fileUnder, '@/lib/locateDestinations': { locateDestinations: async () => {} }, 'next/server': { after: () => {} } }
 function module(path, deps = {}) {
   const exports = {}
-  vm.runInNewContext(ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, { exports, Date, require: name => deps[name] })
+  vm.runInNewContext(ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, { exports, Date, require: name => deps[name] ?? SAFETY[name] })
   return exports
 }
 const photos = module('../src/lib/eventPhotos.ts')

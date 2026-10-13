@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import ReportButton from '@/components/ReportButton'
+import BlockButton from '@/components/BlockButton'
 import Image from 'next/image'
 import ItineraryCard from '@/components/ItineraryCard'
 import UserAvatar from '@/components/UserAvatar'
@@ -46,6 +48,12 @@ export default async function UserProfilePage({
 
   const isOwn = session?.user?.id === user.id
   const viewerId = session?.user?.id ?? null
+  // Blocks work both ways: if either of you blocked the other, their trips are hidden and you can't message.
+  const [iBlocked, blockedMe] = viewerId && !isOwn ? await Promise.all([
+    prisma.block.findUnique({ where: { blockerId_blockedId: { blockerId: viewerId, blockedId: id } }, select: { id: true } }),
+    prisma.block.findUnique({ where: { blockerId_blockedId: { blockerId: id, blockedId: viewerId } }, select: { id: true } }),
+  ]) : [null, null]
+  const blocked = !!iBlocked || !!blockedMe
   const showBucket = isOwn && tab === 'bucket'
   const showDrafts = (tab === 'in-progress' || tab === 'drafts') && isOwn
 
@@ -138,7 +146,7 @@ export default async function UserProfilePage({
           <p className="mt-1 text-xs text-link"><Link href={`/user/${user.id}/people`} className="hover:underline">{followerCount} follower{followerCount !== 1 ? 's' : ''}</Link> · <Link href={`/user/${user.id}/people?tab=following`} className="hover:underline">{followingCount} following</Link> · {itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</p>
         </div>
         {isOwn && <Link href="/settings" aria-label="Settings" className="btn-icon"><Settings size={18} /></Link>}
-        {session?.user && !isOwn && (
+        {session?.user && !isOwn && !blocked && (
           <form action={async () => {
             'use server'
             if (followStatus === 'accepted') await unfollowUser(id)
@@ -152,7 +160,12 @@ export default async function UserProfilePage({
         )}
       </div>}
 
-      {!isOwn && <Link href={`/messages/${id}`} className="btn btn-primary btn-sm mb-5">Send message</Link>}
+      {!isOwn && !blocked && <Link href={`/messages/${id}`} className="btn btn-primary btn-sm mb-5">Send message</Link>}
+      {/* Report this account, or block them. */}
+      {session?.user && !isOwn && <div className="mb-5 flex flex-wrap items-center gap-4">
+        <ReportButton kind="user" targetId={id} personName={user.name.split(' ')[0]} />
+        <BlockButton userId={id} name={user.name.split(' ')[0]} initialBlocked={!!iBlocked} />
+      </div>}
 
       {isOwn && !showBucket ? (
         <>
@@ -189,7 +202,9 @@ export default async function UserProfilePage({
           <h2 className="type-label text-ink mb-3">
             {isOwn ? 'Your itineraries' : 'Itineraries'}
           </h2>
-          {itineraries.length === 0 ? (
+          {blocked ? (
+            <div className="panel p-8 text-center"><p className="text-sm text-muted">{iBlocked ? `You’ve blocked ${user.name.split(' ')[0]}. Unblock to see their trips.` : 'This account’s trips aren’t available.'}</p></div>
+          ) : itineraries.length === 0 ? (
             <div className="panel p-8 text-center">
               <p className="text-brown italic text-sm">No public itineraries yet.</p>
             </div>

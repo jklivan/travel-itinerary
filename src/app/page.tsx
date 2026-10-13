@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { notBlocked } from '@/lib/blocks'
 import { auth } from '@/auth'
 import { tripPhotoGallery } from '@/lib/eventPhotos'
 import StoryFeed from '@/components/StoryFeed'
@@ -30,6 +31,8 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
     prisma.itinerary.findMany({
       where: {
         visibility: { not: 'draft' },
+        // Not from anyone you've blocked (or who blocked you).
+        AND: [{ user: notBlocked(userId) }],
         destinations: { some: { items: { some: {} } } },
         ...(searchQuery ? {
           destinations: {
@@ -71,7 +74,7 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
   const friendIds = userId ? (await prisma.follow.findMany({ where: { followerId: userId, status: 'accepted' }, select: { followingId: true } })).map(row => row.followingId) : []
   const [friendLikes, topComments] = tripIds.length ? await Promise.all([
     friendIds.length ? prisma.tripLike.findMany({ where: { itineraryId: { in: tripIds }, userId: { in: friendIds } }, orderBy: { createdAt: 'desc' }, select: { itineraryId: true, user: { select: { id: true, name: true } } } }) : Promise.resolve([]),
-    prisma.comment.findMany({ where: { itineraryId: { in: tripIds }, parentId: null }, orderBy: { createdAt: 'desc' }, select: { itineraryId: true, content: true, userId: true, user: { select: { name: true } }, _count: { select: { replies: true } } } }),
+    prisma.comment.findMany({ where: { itineraryId: { in: tripIds }, parentId: null, user: notBlocked(userId) }, orderBy: { createdAt: 'desc' }, select: { itineraryId: true, content: true, userId: true, user: { select: { name: true } }, _count: { select: { replies: true } } } }),
   ]) : [[], []]
   const social = new Map(tripIds.map(id => {
     const liker = friendLikes.find(like => like.itineraryId === id)?.user ?? null

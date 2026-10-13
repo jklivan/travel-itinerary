@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import UserAvatar from './UserAvatar'
+import ReportButton from './ReportButton'
 import { useState, useTransition } from 'react'
 import { addComment, deleteComment } from '@/actions/comments'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Flag } from 'lucide-react'
 
 export type Comment = {
   id: string
@@ -129,6 +130,7 @@ export function CommentRow({
                   <Trash2 size={12} />
                 </button>
               )}
+              {!isOwn && currentUserId && <ReportButton kind="comment" targetId={comment.id} personName={comment.user.name.split(' ')[0]} className="text-line-strong hover:text-danger transition-colors"><Flag size={12} /></ReportButton>}
             </div>
           </div>
           <p className="text-sm text-ink-soft whitespace-pre-line break-words">{comment.content}</p>

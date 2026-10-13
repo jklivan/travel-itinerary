@@ -3,8 +3,9 @@
 import Link from 'next/link'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Check, ChevronLeft, ChevronRight, MapPin, MessageCircle, Plus, Trash2, X, Pause, Play } from 'lucide-react'
+import { ArrowRight, Check, ChevronLeft, ChevronRight, MapPin, MessageCircle, Plus, Trash2, X, Pause, Play, Flag } from 'lucide-react'
 import { activeStories, deleteStory } from '@/actions/stories'
+import ReportButton from './ReportButton'
 import { groupStories, type StoryCard } from '@/lib/stories'
 import StoryComposer from './StoryComposer'
 import { sizedPhoto } from '@/lib/photoSizing'
@@ -136,6 +137,7 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
             <span className={styles.actionIcons}>
               {userId && story.authorId !== userId && <Link href={`/messages/${story.authorId}`} aria-label={`Message ${story.authorName}`} onClick={() => dialog.current?.close()}><MessageCircle size={18} /></Link>}
               {story.authorId === userId && <button type="button" aria-label="Delete story" onClick={() => setConfirmDelete(true)}><Trash2 size={18} /></button>}
+              {userId && story.authorId !== userId && <ReportButton kind="snapshot" targetId={story.id} personName={story.authorName.split(' ')[0]} className=""><Flag size={18} /></ReportButton>}
             </span>
           </div>
           {confirmDelete && <div className={styles.deletePrompt}><p>{story.removesTripPhoto ? `Remove this story now? Its photo will also come off ${story.placeName} in your trip.` : 'Remove this story now?'}</p><button type="button" disabled={deleting} onClick={async () => {

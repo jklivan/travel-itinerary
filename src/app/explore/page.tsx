@@ -1,5 +1,6 @@
 
 import ExploreLanding from '@/components/ExploreLanding'
+import { notBlocked } from '@/lib/blocks'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
 import type { ItineraryWhereInput } from '@/generated/prisma/models/Itinerary'
@@ -67,7 +68,7 @@ async function fetchItineraries(where: ItineraryWhereInput, userId: string | nul
   const queryWhere = includeDayTrips ? { ...where, tags: undefined } : where
   const [rows, bucketIds] = await Promise.all([
     prisma.itinerary.findMany({
-      where: { visibility: { not: 'draft' }, destinations: { some: { items: { some: {} } } }, ...queryWhere },
+      where: { visibility: { not: 'draft' }, destinations: { some: { items: { some: {} } } }, ...queryWhere, AND: [{ user: notBlocked(userId) }] },
       orderBy: { createdAt: 'desc' },
       include: {
         user: { select: { name: true, id: true, image: true } },

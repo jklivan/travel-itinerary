@@ -5,6 +5,8 @@ import vm from 'node:vm'
 import ts from 'typescript'
 import * as crypto from 'node:crypto'
 import { EventEmitter } from 'node:events'
+// Blocking helpers (src/lib/blocks): nobody is blocked in these tests.
+const SAFETY = { '@/lib/blocks': { hiddenUserIds: async () => [], isBlockedBetween: async () => false, notBlocked: () => ({}) }, './blockFilter': { notBlocked: () => ({}) }, '@/lib/blockFilter': { notBlocked: () => ({}) } }
 
 function load(path, dependencies = {}, globals = {}) {
   const code = ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), {
@@ -12,6 +14,7 @@ function load(path, dependencies = {}, globals = {}) {
   }).outputText
   const exports = {}
   vm.runInNewContext(code, { exports, require: name => {
+    if (name in SAFETY && !(name in dependencies)) return SAFETY[name]
     assert.ok(name in dependencies, `Unexpected import: ${name}`)
     return dependencies[name]
   }, console, Date, process, ...globals })

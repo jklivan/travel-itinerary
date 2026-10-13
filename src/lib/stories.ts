@@ -1,4 +1,5 @@
 import type { Prisma } from '@/generated/prisma/client'
+import { notBlocked } from './blockFilter'
 
 export const STORY_LIFETIME_MS = 24 * 60 * 60 * 1000
 export type StoryCard = {
@@ -11,6 +12,8 @@ export function visibleStoriesWhere(userId: string | null, following = false, no
   const followed = userId ? { user: { followers: { some: { followerId: userId, status: 'accepted' } } } } : null
   return {
     expiresAt: { gt: now },
+    // Not from anyone you've blocked (or who blocked you).
+    ...(userId ? { AND: [{ user: notBlocked(userId) }] } : {}),
     OR: [
       ...(!following ? [{ user: { isPrivate: false } }] : []),
       ...(userId ? [{ userId }] : []),

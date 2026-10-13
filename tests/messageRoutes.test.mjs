@@ -4,11 +4,13 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import vm from 'node:vm'
 import ts from 'typescript'
+// Blocking helpers (src/lib/blocks): nobody is blocked in these tests.
+const SAFETY = { '@/lib/blocks': { hiddenUserIds: async () => [], isBlockedBetween: async () => false, notBlocked: () => ({}) }, './blockFilter': { notBlocked: () => ({}) }, '@/lib/blockFilter': { notBlocked: () => ({}) } }
 const require = createRequire(import.meta.url)
 function load(file, deps = {}) {
   const exports = {}
   const code = ts.transpileModule(readFileSync(new URL(file, import.meta.url), 'utf8'), { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
-  vm.runInNewContext(code, { exports, URLSearchParams, require: name => name === 'react/jsx-runtime' ? require(name) : deps[name] })
+  vm.runInNewContext(code, { exports, URLSearchParams, require: name => name === 'react/jsx-runtime' ? require(name) : deps[name] ?? SAFETY[name] })
   return exports
 }
 const hrefs = load('../src/lib/messageThread.ts')
