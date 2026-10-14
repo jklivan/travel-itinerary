@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import Link from 'next/link'
-import { Compass, CalendarDays, ChevronDown, Plus, X } from 'lucide-react'
+import { Compass, CalendarDays, ChevronDown, Plus, Upload, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { copyStoryToPlan } from '@/actions/stories'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
@@ -58,16 +58,20 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
     try {
       let places: ReturnType<typeof importedPlaces> = []
       if (importing) {
+        // Where you're going is optional: without it, places go under the town or city the document gives for each.
         const where = destination.trim()
-        if (!where) { setError('Add where you’re going first, so your places land in the right spot.'); return }
-        if (!file && !notes.trim()) { setError('Paste some notes or choose a file to import.'); return }
+        if (!file && !notes.trim()) { setError('Choose a file or paste some notes to import.'); return }
         setStage('Reading your notes…')
         const payload = file ? await readFileForUpload(file) : { text: notes }
         if ('text' in payload) await saveImportNotes(payload.text).catch(() => null)
         // Everything goes under this destination; each place is still found on Google near its own town.
-        places = importedPlaces(await fetchExtraction({ ...payload, planning: true, tripDestinations: [where] }, file?.name ?? 'your notes'))
-          .map(place => ({ ...place, destination: where, country: '', near: { name: place.destination, country: place.country } }))
-        if (!places.length) { setError('No places found in your notes. Check the place names and try again.'); return }
+        const found = importedPlaces(await fetchExtraction({ ...payload, planning: true, tripDestinations: where ? [where] : [] }, file?.name ?? 'your notes'))
+        if (!found.length) { setError('No places found in your notes. Check the place names and try again.'); return }
+        // The plan starts at your destination, or the first place's town when you didn't give one.
+        const start = where || found[0].destination
+        if (!where) data.set('destination', start)
+        places = where ? found.map(place => ({ ...place, destination: where, country: '', near: { name: place.destination, country: place.country } }))
+          : found.map(place => place.destination === start ? { ...place, country: '' } : place)
         if (places.length > 200) { setError('Please split this into smaller imports of up to 200 places.'); return }
         setStage('Adding your places…')
       }
@@ -122,11 +126,16 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
       <button type="submit" value="plan" className={`${buttonClass} w-full`}>{saving && !stage ? 'Saving your plan…' : 'Start planning →'}</button>
       <button type="button" aria-expanded={importOpen} aria-controls="new-plan-import" onClick={() => setImportOpen(open => !open)} className="btn btn-outline w-full">Import notes or a file</button>
       {importOpen && <div id="new-plan-import" className="space-y-4 rounded-xl border border-line p-4">
-        <p className="text-sm text-muted">{destination.trim() ? <>Places from your notes go under <strong className="text-ink">{destination}</strong>. Each one shows its own town once it’s found on Google.</> : 'Add where you’re going above, then paste your notes or choose a file.'}</p>
-        <label className="block text-sm">Paste notes<textarea value={notes} onChange={event => { setNotes(event.target.value); setFile(null) }} maxLength={200000} rows={5} placeholder="Hotels, restaurants, activities…" className="field mt-2" /></label>
-        <label className="block text-sm">Or choose a file<input key={file?.name ?? 'empty'} type="file" accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.html,.htm,image/jpeg,image/png,image/gif,image/webp" onChange={event => setFile(event.target.files?.[0] ?? null)} className="mt-2 block w-full min-w-0 text-sm" /></label>
-        {file && <p className="break-words text-xs text-muted">Selected: {file.name}</p>}
-        <button type="submit" value="import" disabled={!destination.trim() || (!file && !notes.trim())} className={`${buttonClass} w-full`}>{stage || (destination.trim() ? 'Import and start planning →' : 'Add a destination first')}</button>
+        <p className="text-sm text-muted">{destination.trim() ? <>Places go under <strong className="text-ink">{destination}</strong>. Each one shows its own town once it’s found on Google.</> : 'Each place goes under the town or city your file gives for it. Add where you’re going above to put them all in one place.'}</p>
+        {/* Choosing a file is the main way in, so it's a big tile first; pasting notes is the alternative. */}
+        <label className={`panel-dashed flex min-h-28 cursor-pointer flex-col items-center justify-center gap-1.5 p-4 text-center hover:bg-cream ${file ? 'border-link' : ''}`}>
+          <Upload size={22} className="text-link" />
+          <span className="text-base font-semibold text-link">{file ? file.name : 'Choose a file'}</span>
+          <span className="text-xs text-muted">{file ? 'Tap to choose a different file' : 'PDF, Word, Excel, screenshot or email'}</span>
+          <input key={file?.name ?? 'empty'} type="file" accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.html,.htm,image/jpeg,image/png,image/gif,image/webp" onChange={event => setFile(event.target.files?.[0] ?? null)} className="sr-only" />
+        </label>
+        <label className="block text-sm">Or paste notes<textarea value={notes} onChange={event => { setNotes(event.target.value); setFile(null) }} maxLength={200000} rows={5} placeholder="Hotels, restaurants, activities…" className="field mt-2" /></label>
+        <button type="submit" value="import" disabled={!file && !notes.trim()} className={`${buttonClass} w-full`}>{stage || 'Import and start planning →'}</button>
       </div>}
     </fieldset>
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}

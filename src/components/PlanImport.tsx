@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { Upload } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { readFileForUpload, fetchExtraction } from '@/lib/importFiles'
 import { importedPlaces, type ImportedPlace } from '@/lib/planImport'
@@ -37,9 +38,10 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
     if (busy.current) return
     busy.current = true; setError(''); setStage('Reading your file…')
     const abort = new AbortController(); controller.current = abort
-    const chosen = destination ?? { name: typedDestination.trim(), country: null }
-    const extract = async (payload: Parameters<typeof fetchExtraction>[0], label: string) => importedPlaces(await fetchExtraction({ ...payload, planning: true, tripDestinations: [chosen.country ? `${chosen.name} (${chosen.country})` : chosen.name] }, label, abort.signal))
-      .map(place => ({ ...place, destination: chosen.name, country: chosen.country ?? '', near: { name: place.destination, country: place.country } }))
+    // Where to put the places: the destination you picked, or (left empty) each place's own town from the documents.
+    const chosen = destination ?? (typedDestination.trim() ? { name: typedDestination.trim(), country: null } : null)
+    const extract = async (payload: Parameters<typeof fetchExtraction>[0], label: string) => importedPlaces(await fetchExtraction({ ...payload, planning: true, tripDestinations: chosen ? [chosen.country ? `${chosen.name} (${chosen.country})` : chosen.name] : [] }, label, abort.signal))
+      .map(place => chosen ? { ...place, destination: chosen.name, country: chosen.country ?? '', near: { name: place.destination, country: place.country } } : place)
     try {
       const result: ImportedPlace[] = []
       const failed: string[] = []
@@ -92,13 +94,18 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
     <div className="flex items-start justify-between gap-3"><div><h2 className="type-title">Add places from notes or files</h2><p className="mt-1 text-sm text-muted">Review the places, then add them to this trip. You can assign days whenever you’re ready.</p></div><button type="button" disabled={!!stage} onClick={onClose} className="min-h-11 px-2 text-sm text-link">Close</button></div>
     {!places.length ? <>
       <fieldset disabled={!!stage} className="space-y-4">
-        <div className="space-y-2"><label className="block text-sm">Destination<PlacesAutocomplete required maxLength={160} value={typedDestination} onChange={value => { setTypedDestination(value); setDestination(destinations.find(d => d.name === value) ?? null) }} onSelect={(main, secondary) => { setTypedDestination([main, secondary].filter(Boolean).join(', ')); setDestination(null) }} type="destination" placeholder="City or area" className="field mt-2" /></label>
+        <div className="space-y-2"><label className="block text-sm">Destination <span className="text-muted">(optional)</span><PlacesAutocomplete maxLength={160} value={typedDestination} onChange={value => { setTypedDestination(value); setDestination(destinations.find(d => d.name === value) ?? null) }} onSelect={(main, secondary) => { setTypedDestination([main, secondary].filter(Boolean).join(', ')); setDestination(null) }} type="destination" placeholder="City or area" className="field mt-2" /></label>
           {destinations.length > 1 && <div className="flex flex-wrap gap-2">{destinations.map(d => <button key={d.name} type="button" aria-pressed={destination?.name === d.name} onClick={() => { setDestination(d); setTypedDestination(d.name) }} className="chip">{d.name}</button>)}</div>}
-          <p className="text-xs text-muted">Places from your notes are added here. Each one shows its own town once it’s found on Google.</p></div>
-        <label className="block text-sm">Paste notes<textarea value={text} onChange={event => { setText(event.target.value); setFiles([]) }} maxLength={200000} rows={5} placeholder="Hotels, restaurants, activities…" className="field mt-2" /></label>
-        <label className="block text-sm">Or choose files <span className="text-muted">(one or several: confirmations, reservation emails, PDFs…)</span><input key={files.map(f => f.name).join('|') || 'empty'} type="file" multiple accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.html,.htm,image/jpeg,image/png,image/gif,image/webp" onChange={event => setFiles(Array.from(event.target.files ?? []).slice(0, 20))} className="mt-2 block w-full min-w-0 text-sm" /></label>
-        {files.length > 0 && <p className="break-words text-xs text-muted">Selected: {files.map(f => f.name).join(', ')}</p>}
-        <button type="button" disabled={(!file && !text.trim()) || !typedDestination.trim()} onClick={() => void read()} className="btn btn-primary w-full">{typedDestination.trim() ? 'Find places' : 'Add a destination first'}</button>
+          <p className="text-xs text-muted">{typedDestination.trim() ? 'Places are added here. Each one shows its own town once it’s found on Google.' : 'Leave empty and each place goes under the town or city your files give for it.'}</p></div>
+        {/* Choosing files is the main way in, so it's a big tile first; pasting notes is the alternative. */}
+        <label className={`panel-dashed flex min-h-28 cursor-pointer flex-col items-center justify-center gap-1.5 p-4 text-center hover:bg-cream ${files.length ? 'border-link' : ''}`}>
+          <Upload size={22} className="text-link" />
+          <span className="break-words text-base font-semibold text-link">{files.length ? files.map(f => f.name).join(', ') : 'Choose files'}</span>
+          <span className="text-xs text-muted">{files.length ? 'Tap to choose different files' : 'One or several: confirmations, reservation emails, PDFs, screenshots'}</span>
+          <input key={files.map(f => f.name).join('|') || 'empty'} type="file" multiple accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.html,.htm,image/jpeg,image/png,image/gif,image/webp" onChange={event => setFiles(Array.from(event.target.files ?? []).slice(0, 20))} className="sr-only" />
+        </label>
+        <label className="block text-sm">Or paste notes<textarea value={text} onChange={event => { setText(event.target.value); setFiles([]) }} maxLength={200000} rows={5} placeholder="Hotels, restaurants, activities…" className="field mt-2" /></label>
+        <button type="button" disabled={!file && !text.trim()} onClick={() => void read()} className="btn btn-primary w-full">Find places</button>
       </fieldset>
       <SavedImportNotes refreshKey={savedVersion} disabled={!!stage} onRestore={value => { setText(value); setFiles([]) }} />
     </> : <>
