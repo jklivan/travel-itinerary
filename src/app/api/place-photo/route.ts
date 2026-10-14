@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { findPlaceAddress, findPlacePhoto } from '@/lib/placePhoto'
 import { eventPhotos } from '@/lib/eventPhotos'
+import { fetchStockPhoto } from '@/lib/stockPhoto'
 
 export async function GET(request: NextRequest) {
   const reply = (data: unknown) => Response.json(data, { headers: { 'Cache-Control': 'private, no-store' } })
@@ -31,5 +32,8 @@ export async function GET(request: NextRequest) {
   const photo = await findPlacePhoto({ name: item.name, placeId: item.placeId, city: item.destination.name, country: item.destination.country, loose }, apiKey)
   if (photo && loose) await prisma.destItem.updateMany({ where: { id: item.id, placeId: null }, data: { placeId: photo.placeId } }).catch(() => {})
   await saveAddress(photo?.address)
-  return reply(photo)
+  if (photo || item.type === 'transport' || item.destination.name === 'Destination to decide') return reply(photo)
+  // Google has no photo of it: show a stock photo of its town instead of a blank card.
+  const stock = await fetchStockPhoto(`${item.destination.name}${item.destination.country ? ` ${item.destination.country}` : ''} travel`)
+  return reply(stock ? { url: stock, authors: [], mapsUrl: '', placeId: '' } : null)
 }

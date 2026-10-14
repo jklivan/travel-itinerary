@@ -11,7 +11,8 @@ export async function fetchStockPhoto(query: string): Promise<string | null> {
   try {
     const res = await fetch(
       `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=3&orientation=landscape`,
-      { headers: { Authorization: PEXELS_KEY }, signal: controller.signal }
+      // Cached for a day per search, so busy pages don't use up the Pexels quota.
+      { headers: { Authorization: PEXELS_KEY }, signal: controller.signal, next: { revalidate: 86400 } }
     )
     if (!res.ok) {
       console.error('[stockPhoto] Pexels API error', res.status, await res.text())

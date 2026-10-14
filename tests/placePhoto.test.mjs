@@ -59,6 +59,7 @@ test('photo endpoint skips uploads and denies another user’s unpublished trip'
       if (name === '@/auth') return { auth: async () => null }
       if (name === '@/lib/eventPhotos') return { eventPhotos: (photos) => photos }
       if (name === '@/lib/placePhoto') return { findPlacePhoto: async () => { lookups++; return null } }
+      if (name === '@/lib/stockPhoto') return { fetchStockPhoto: async () => null }
       return {}
     } }
     vm.runInNewContext(code, context)
