@@ -97,10 +97,11 @@ export default function ItineraryCard({
 
         </div>
 
-        {/* Place, title and length sit on the paper under the photo; the verdict is a postage stamp beside them. */}
+        {/* Place, title and length sit on the paper under the photo; the verdict is a postage stamp on the photo's edge. */}
         <div className="relative px-1 pt-3">
-          <Link href={`/itinerary/${id}`} className={`block text-ink ${stamp ? 'pr-24' : ''}`}>
-            {location && <span className="mb-1 flex items-center gap-1 text-label font-medium uppercase tracking-label text-link">
+          <Link href={`/itinerary/${id}`} className="block text-ink">
+            {/* Only the location line sits beside the stamp; the title below uses the card's full width. */}
+            {location && <span className={`mb-1 flex items-center gap-1 text-label font-medium uppercase tracking-label text-link ${stamp ? 'pr-24' : ''}`}>
               <MapPin size={12} className="shrink-0 text-brown" />{location}
             </span>}
             <h2 className="trip-title break-words font-[family-name:var(--font-playfair)] text-title !uppercase leading-[1.1] tracking-caps sm:text-title">{title}</h2>
