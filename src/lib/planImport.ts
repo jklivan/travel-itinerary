@@ -1,4 +1,5 @@
 // near: where the reader thought the place is, when it's filed under another destination (helps find it on Google).
+// rating: always empty; only the traveller rates places (a guide's "3 Michelin keys" isn't their rating).
 // date/time/endDate/endTime: the booking's real date and time from the document (see lib/placeDates). nights: a stay's
 // length when both its dates are known. file: which document it came from, when several are imported at once.
 export type ImportedPlace = { name: string; destination: string; country: string; type: string; notes: string; day: number | null; rating: number | null; mealType: string; near?: { name: string; country: string }
@@ -11,7 +12,7 @@ export function importedPlaces(data: unknown): ImportedPlace[] {
     if (!destination || typeof destination.name !== 'string' || !Array.isArray(destination.items)) return []
     return destination.items.flatMap((item: Record<string, unknown>) => {
       if (!item || typeof item.name !== 'string' || !item.name.trim() || !['hotel', 'food_drink', 'activity', 'transport'].includes(String(item.type))) return []
-      return [{ name: item.name.trim(), destination: destination.name.trim(), country: typeof destination.country === 'string' ? destination.country : '', type: String(item.type), notes: typeof item.notes === 'string' ? item.notes : '', day: item.type !== 'hotel' && Number.isInteger(item.dayIndex) && Number(item.dayIndex) > 0 && Number(item.dayIndex) <= 365 ? Number(item.dayIndex) : null, rating: Number.isInteger(item.rating) && Number(item.rating) >= 1 && Number(item.rating) <= 5 ? Number(item.rating) : null, mealType: typeof item.mealType === 'string' ? item.mealType : '', ...when(item) }]
+      return [{ name: item.name.trim(), destination: destination.name.trim(), country: typeof destination.country === 'string' ? destination.country : '', type: String(item.type), notes: typeof item.notes === 'string' ? item.notes : '', day: Number.isInteger(item.dayIndex) && Number(item.dayIndex) > 0 && Number(item.dayIndex) <= 365 ? Number(item.dayIndex) : null, rating: null, mealType: typeof item.mealType === 'string' ? item.mealType : '', ...when(item) }]
     })
   })
 }
@@ -21,5 +22,7 @@ function when(item: Record<string, unknown>) {
   const date = isDate(item.date) ? item.date : null
   const endDate = date && isDate(item.endDate) && item.endDate >= date ? item.endDate : null
   const nights = item.type === 'hotel' && date && endDate ? daysBetween(date, endDate) : 0
-  return { date, time: isTime(item.time) ? item.time : null, endDate, endTime: isTime(item.endTime) ? item.endTime : null, nights: nights >= 1 && nights <= 60 ? nights : null }
+  // Hotels in a day-by-day plan without dates: the nights the document gives.
+  const stated = item.type === 'hotel' && Number.isInteger(item.nights) && Number(item.nights) >= 1 && Number(item.nights) <= 60 ? Number(item.nights) : null
+  return { date, time: isTime(item.time) ? item.time : null, endDate, endTime: isTime(item.endTime) ? item.endTime : null, nights: nights >= 1 && nights <= 60 ? nights : stated }
 }

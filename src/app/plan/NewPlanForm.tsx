@@ -47,6 +47,8 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
   const [file, setFile] = useState<File | null>(null)
   const [stage, setStage] = useState('')
   const importId = useRef('')
+  // The destination you typed, when the document's own stops were used instead (removed if nothing ends up in it).
+  const splitFrom = useRef('')
   return <form onSubmit={async event => {
     event.preventDefault()
     if (busy.current) return
@@ -70,8 +72,10 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
         // The plan starts at your destination, or the first place's town when you didn't give one.
         const start = where || found[0].destination
         if (!where) data.set('destination', start)
-        places = where ? found.map(place => ({ ...place, destination: where, country: '', near: { name: place.destination, country: place.country } }))
-          : found.map(place => place.destination === start ? { ...place, country: '' } : place)
+        // A document split into named stops (Loire Valley, Bordeaux, Paris) keeps them, even when you gave one destination.
+        splitFrom.current = !!where && new Set(found.map(place => place.destination.trim().toLowerCase())).size >= 2 ? where : ''
+        places = where && !splitFrom.current ? found.map(place => ({ ...place, destination: where, country: '', near: { name: place.destination, country: place.country } }))
+          : found.map(place => !where && place.destination === start ? { ...place, country: '' } : place)
         if (places.length > 200) { setError('Please split this into smaller imports of up to 200 places.'); return }
         setStage('Adding your places…')
       }
@@ -86,7 +90,7 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
         }
         if (places.length) {
           if (!importId.current) importId.current = crypto.randomUUID()
-          const added = await importIntoPlan(result.id, importId.current, places)
+          const added = await importIntoPlan(result.id, importId.current, places, null, splitFrom.current || undefined)
           if (added.error) { setError(`Your plan was saved, but the places couldn’t be added. ${added.error}`); return }
         }
         router.push(`/plan/${result.id}`)

@@ -33,6 +33,8 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
   const controller = useRef<AbortController | null>(null)
   const busy = useRef(false)
   const requestId = useRef('')
+  // The picked destination was split into the document's own stops (so it can go if nothing is left in it).
+  const splitStops = useRef(false)
   useEffect(() => () => controller.current?.abort(), [])
   async function read() {
     if (busy.current) return
@@ -41,7 +43,6 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
     // Where to put the places: the destination you picked, or (left empty) each place's own town from the documents.
     const chosen = destination ?? (typedDestination.trim() ? { name: typedDestination.trim(), country: null } : null)
     const extract = async (payload: Parameters<typeof fetchExtraction>[0], label: string) => importedPlaces(await fetchExtraction({ ...payload, planning: true, tripDestinations: chosen ? [chosen.country ? `${chosen.name} (${chosen.country})` : chosen.name] : [] }, label, abort.signal))
-      .map(place => chosen ? { ...place, destination: chosen.name, country: chosen.country ?? '', near: { name: place.destination, country: place.country } } : place)
     try {
       const result: ImportedPlace[] = []
       const failed: string[] = []
@@ -68,7 +69,13 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
       if (!result.length) throw Error(failed.length ? `Couldn’t read ${failed.join(', ')}. Please try again.` : 'No places found. Add a destination and place names to your notes, then try again.')
       if (result.length > 200) throw Error('Please split this into smaller imports of up to 200 places.')
       // Booked places in date and time order.
-      result.sort((a, b) => (a.date ?? '9999').localeCompare(b.date ?? '9999') || (a.time ?? '99').localeCompare(b.time ?? '99'))
+      // A document split into named stops (Loire Valley, Bordeaux, Paris) keeps them; otherwise everything goes under
+      // the destination you picked, each place still found on Google near its own town.
+      const stops = new Set(result.map(place => place.destination.trim().toLowerCase()))
+      splitStops.current = !!chosen && stops.size >= 2
+      if (chosen && !splitStops.current) result.forEach((place, index) => { result[index] = { ...place, destination: chosen.name, country: chosen.country ?? '', near: { name: place.destination, country: place.country } } })
+      // In trip order: by date, then day, then time.
+      result.sort((a, b) => (a.date ?? '9999').localeCompare(b.date ?? '9999') || (a.day ?? 999) - (b.day ?? 999) || (a.time ?? '99').localeCompare(b.time ?? '99'))
       setPlaces(result); setSelected(new Set(result.map((_, index) => index))); requestId.current = crypto.randomUUID(); setAttemptedSave(false)
       if (failed.length) setError(`Couldn’t read ${failed.join(', ')}. The places from the other ${files.length - failed.length === 1 ? 'document are' : 'documents are'} below.`)
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not read this import. Please try again.') }
@@ -84,7 +91,7 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
     if (busy.current || !selected.size) return
     busy.current = true; setStage('Adding places…'); setError(''); setAttemptedSave(true)
     try {
-      const result = await importIntoPlan(tripId, requestId.current, places.filter((_, index) => selected.has(index)), !trip && useDates ? suggested : null)
+      const result = await importIntoPlan(tripId, requestId.current, places.filter((_, index) => selected.has(index)), !trip && useDates ? suggested : null, splitStops.current && destination ? destination.name : undefined)
       if (result.error) setError(result.error)
       else { router.refresh(); onClose() }
     } catch { setError('Could not save. Your review is still here; please try again.') }

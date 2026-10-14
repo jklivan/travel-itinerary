@@ -10,7 +10,9 @@ import type { ImportedPlace } from '@/lib/planImport'
 import { isDate, isTime, tripDay, daysBetween } from '@/lib/placeDates'
 
 // tripDates: the trip's dates, when the trip had none and the import suggested them (earliest to latest date in the documents).
-export async function importIntoPlan(planId: string, requestId: string, places: ImportedPlace[], tripDates?: { start: string; end: string } | null) {
+// splitFrom: the destination picked for the import when the document's own stops were used instead (France → Loire Valley,
+// Bordeaux, Paris); it's removed if nothing is left in it.
+export async function importIntoPlan(planId: string, requestId: string, places: ImportedPlace[], tripDates?: { start: string; end: string } | null, splitFrom?: string) {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
   if (typeof requestId !== 'string' || !/^[a-f0-9-]{36}$/.test(requestId) || !Array.isArray(places) || !places.length || places.length > 200) return { error: 'Choose between 1 and 200 places to import.' }
@@ -51,6 +53,7 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
           date: place.date ? new Date(`${place.date}T00:00:00Z`) : null, time: place.time || null, endDate: place.endDate ? new Date(`${place.endDate}T00:00:00Z`) : null, endTime: place.endTime || null,
           nights: place.type === 'hotel' && place.nights && place.nights >= 1 && place.nights <= 60 ? place.nights : null, order: (last._max.order ?? -1) + 1, groupIndex: place.type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0 } })
       }
+      if (typeof splitFrom === 'string' && splitFrom.trim()) await tx.destination.deleteMany({ where: { itineraryId: planId, name: { equals: splitFrom.trim(), mode: 'insensitive' }, notes: null, items: { none: {} } } })
     }, { timeout: 60000 })
     after(() => enrichPlaceIds(places.map((_, index) => `${requestId}:${index}`), new Map(places.flatMap((place, index) => place.near?.name.trim() ? [[`${requestId}:${index}`, place.near] as const] : []))).catch(() => undefined))
     after(() => locateTripPlaces(planId).catch(() => {}))

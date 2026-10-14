@@ -29,8 +29,8 @@ function harness(user = 'owner', fail = false, trip = { datesFlexible: true }) {
   const action = load('../src/actions/planImport.ts', { 'next/server': { after() {} }, '@/lib/enrichPlaceIds': { enrichPlaceIds: async () => {} }, '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} } }).importIntoPlan
   return { action, items: () => items, updates }
 }
-test('import keeps explicit days and leaves undated places unscheduled', () => {
-  assert.equal(places[0].day, null)
+test('import keeps explicit days (hotels too, on their check-in day) and leaves undated places unscheduled', () => {
+  assert.equal(places[0].day, 2)
   assert.equal(places[1].day, 3)
   assert.equal(places[2].day, null)
   assert.equal(places[0].notes, 'Keep this note')
@@ -40,7 +40,7 @@ test('import appends to the same trip without replacing its places; retry is saf
   assert.ok((await h.action('plan', id, places)).success)
   assert.equal(h.items().length, 4)
   assert.equal(h.items()[0].name, 'Original place')
-  assert.equal(h.items()[2].rating, 4)
+  assert.equal(h.items()[2].rating, null) // only the traveller rates places; the document's sentiment isn't used
   assert.equal(h.items()[2].dayIndex, 3)
   assert.ok(h.items().every(item => item.destinationId === 'rome'))
   assert.ok((await h.action('plan', id, places)).success)
@@ -79,3 +79,13 @@ test('booking dates go on their day of a dated trip; a trip without dates can ta
   assert.equal(undated.updates[0].datesFlexible, false); assert.equal(undated.updates[0].durationDays, 4)
   assert.equal(undated.items()[1].dayIndex, 1); assert.equal(undated.items()[2].dayIndex, 3)
 })
+
+test('a hotel keeps the nights the itinerary gives; guide awards never become a rating', () => {
+  const [hotel, restaurant] = importedPlaces({ destinations: [{ name: 'Loire Valley', country: 'France', items: [
+    { type: 'hotel', name: 'Château X', notes: '', dayIndex: 1, nights: 2 },
+    { type: 'food_drink', name: 'Le Restaurant', notes: 'Michelin 3 keys', dayIndex: 2, rating: 5 },
+  ] }, { name: 'Bordeaux', country: 'France', items: [{ type: 'hotel', name: 'Hotel Y', notes: '', dayIndex: 3, nights: 2 }] }] })
+  assert.equal(hotel.day, 1); assert.equal(hotel.nights, 2); assert.equal(hotel.destination, 'Loire Valley')
+  assert.equal(restaurant.rating, null)
+})
+
