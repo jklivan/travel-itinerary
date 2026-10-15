@@ -16,7 +16,7 @@ import PlacePhoto from '@/components/PlacePhoto'
 import { addPlanPlace, startPlan } from '@/actions/planning'
 import { linkPlanChat } from '@/actions/planChat'
 import { tripMapLookupKey, validMapLocation, type TripMapPlace } from '@/lib/tripMapPlaces'
-import { ACTIVITIES, BUDGETS, DESTINATION_TYPES, SETUP_MESSAGE, TRAVELERS, TRIP_LENGTHS, type TravelPreferences } from '@/lib/travelPreferences'
+import { BUDGETS, type TravelPreferences } from '@/lib/travelPreferences'
 
 type Place = { id: string; name: string; type: string; notes: string | null; placeId: string | null; lat: number | null; lng: number | null; day: number | null; photos: string[]; destination: string }
 type Trip = { id: string; title: string; places: Place[] }
@@ -47,7 +47,7 @@ type PastChat = { id: string; topic: string; summary?: string; updatedAt: string
 
 const starters = ['Surprise me with a long weekend', 'Where should we go this spring?', 'Somewhere new my friends haven’t been']
 
-export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPreferences, initialDraft = '', fromPlanner = false }: { fromPlanner?: boolean; initialDraft?: string; trip: Trip | null; chat: { id: string; turns: Turn[] } | null; history: PastChat[]; hasOwnTrips: boolean; lastPreferences: TravelPreferences | null }) {
+export default function TestPlanner({ trip, chat, history, initialDraft = '', fromPlanner = false }: { fromPlanner?: boolean; initialDraft?: string; trip: Trip | null; chat: { id: string; turns: Turn[] } | null; history: PastChat[] }) {
   const router = useRouter()
   const [turns, setTurns] = useState<Turn[]>(chat?.turns ?? [])
   const chatId = useRef(chat?.id ?? '')
@@ -67,7 +67,6 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
     return () => query.removeEventListener('change', update)
   }, [])
   // Arriving with a question about a place skips the setup questions.
-  const [skippedSetup, setSkippedSetup] = useState(!!initialDraft)
   // Phones: past chats stay behind the "Past chats" button, so a new chat is the first thing you see.
   const [showHistory, setShowHistory] = useState(false)
   const tripId = useRef(trip?.id ?? '')
@@ -262,8 +261,7 @@ export default function TestPlanner({ trip, chat, history, hasOwnTrips, lastPref
 
       <section aria-label="Chat with Postcard" className="panel flex min-h-0 flex-col lg:h-auto lg:flex-[1.2]">
         <div ref={scroller} className="min-h-0 flex-1 space-y-4 p-4 lg:overflow-y-auto" aria-live="polite">
-          {!turns.length && !skippedSetup && <TripSetup hasOwnTrips={hasOwnTrips} initial={lastPreferences} disabled={thinking} onSubmit={preferences => void send(SETUP_MESSAGE, preferences)} onSkip={() => setSkippedSetup(true)} />}
-          {!turns.length && skippedSetup && <div className="text-sm text-muted"><p>Postcard uses your trips and your friends’ trips—their ratings and notes—plus its own picks. Try:</p><div className="mt-3 flex flex-wrap gap-2">{starters.map(starter => <button key={starter} type="button" onClick={() => void send(starter)} className="chip text-left">{starter}</button>)}</div></div>}
+          {!turns.length && <div className="text-sm text-muted"><p>Postcard uses your trips and your friends’ trips—their ratings and notes—plus its own picks. Try:</p><div className="mt-3 flex flex-wrap gap-2">{starters.map(starter => <button key={starter} type="button" onClick={() => void send(starter)} className="chip text-left">{starter}</button>)}</div></div>}
           {turns.map((turn, index) => turn.role === 'preferences'
             ? <PreferencesSummary key={index} preferences={turn.preferences} />
             : turn.role === 'user'
@@ -331,39 +329,6 @@ function RecommendationCard({ rec, color, grouped = false, added, busy, disabled
     </div>
     {open && <PickDetails rec={rec} color={color} addButton={addButton} onClose={() => setOpen(false)} />}
   </article>
-}
-
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
-  return <fieldset className="mt-4"><legend className="mb-2 text-sm font-semibold text-ink">{title}</legend><div className="flex flex-wrap gap-2">{children}</div></fieldset>
-}
-
-// Asked before the first recommendation. What the trip is now is always asked; budget, destination
-// types and activities only when there are no past trips to learn them from.
-function TripSetup({ hasOwnTrips, initial, disabled, onSubmit, onSkip }: { hasOwnTrips: boolean; initial: TravelPreferences | null; disabled: boolean; onSubmit: (preferences: TravelPreferences) => void; onSkip: () => void }) {
-  const [travelers, setTravelers] = useState(initial?.travelers ?? '')
-  const [length, setLength] = useState(initial?.length ?? '')
-  const [budget, setBudget] = useState<number | null>(initial?.budget ?? null)
-  const [destinationTypes, setDestinationTypes] = useState<string[]>(initial?.destinationTypes ?? [])
-  const [activities, setActivities] = useState<string[]>(initial?.activities ?? [])
-  const askTaste = !hasOwnTrips
-  const ready = !!travelers && !!length && (!askTaste || (!!budget && destinationTypes.length > 0 && activities.length > 0))
-  const toggle = (list: string[], value: string) => list.includes(value) ? list.filter(item => item !== value) : [...list, value]
-  const chip = (selected: boolean) => `min-h-10 rounded-full border px-3 text-sm ${selected ? 'border-link bg-mist font-semibold text-ink' : 'border-line text-link hover:bg-paper'}`
-  return <section aria-label="Tell us about this trip" className="rounded-xl bg-cream p-4">
-    <h2 className="type-title">Tell us about this trip</h2>
-    <p className="mt-1 text-sm text-muted">{askTaste ? 'A few quick picks so the ideas actually fit you.' : 'We’ll use your past trips for your budget and taste—just tell us about this one.'}</p>
-    <Group title="Who’s going?">{TRAVELERS.map(option => <button key={option} type="button" aria-pressed={travelers === option} onClick={() => setTravelers(option)} className={chip(travelers === option)}>{option}</button>)}</Group>
-    <Group title="How long?">{TRIP_LENGTHS.map(option => <button key={option} type="button" aria-pressed={length === option} onClick={() => setLength(option)} className={chip(length === option)}>{option}</button>)}</Group>
-    {askTaste && <>
-      <Group title="Budget">{BUDGETS.map(option => <button key={option.value} type="button" aria-pressed={budget === option.value} onClick={() => setBudget(option.value)} className={chip(budget === option.value)}>{option.label} <span className="font-normal text-muted">{option.hint}</span></button>)}</Group>
-      <Group title="Types of destination (pick any)">{DESTINATION_TYPES.map(option => <button key={option} type="button" aria-pressed={destinationTypes.includes(option)} onClick={() => setDestinationTypes(list => toggle(list, option))} className={chip(destinationTypes.includes(option))}>{option}</button>)}</Group>
-      <Group title="Things you like to do (pick any)">{ACTIVITIES.map(option => <button key={option} type="button" aria-pressed={activities.includes(option)} onClick={() => setActivities(list => toggle(list, option))} className={chip(activities.includes(option))}>{option}</button>)}</Group>
-    </>}
-    <div className="mt-5 flex flex-wrap items-center gap-3">
-      <button type="button" disabled={!ready || disabled} onClick={() => onSubmit({ travelers, length, budget: askTaste ? budget : null, destinationTypes: askTaste ? destinationTypes : [], activities: askTaste ? activities : [] })} className="btn btn-primary">Show me ideas →</button>
-      <button type="button" onClick={onSkip} className="min-h-11 text-sm text-link underline">Skip, I’ll just ask</button>
-    </div>
-  </section>
 }
 
 function PreferencesSummary({ preferences }: { preferences: TravelPreferences }) {
