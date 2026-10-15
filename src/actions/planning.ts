@@ -79,8 +79,8 @@ export async function startPlan(form: FormData): Promise<Result> {
     const id = text(form, 'clientId', 50)
     if (!/^[a-f0-9-]{36}$/.test(id)) return { error: 'Please reload and try again.' }
     if (!title && !destination) return { error: 'Enter a trip name or destination to get started.' }
-    const format = form.get('format') ?? 'itinerary'
-    if (!['guide', 'day-trip', 'itinerary'].includes(String(format))) throw new InputError('Choose a trip format.')
+    const requested = String(form.get('format') ?? 'itinerary')
+    if (!['guide', 'day-trip', 'itinerary', 'auto'].includes(requested)) throw new InputError('Choose a trip format.')
     const dateFields = dates(form)
     // More stops on the trip, besides the first destination.
     let extra: string[] = []
@@ -90,14 +90,17 @@ export async function startPlan(form: FormData): Promise<Result> {
     let stopDays: (number | null)[] = []
     try { const parsed = JSON.parse(String(form.get('destinationDays') ?? '[]')); if (Array.isArray(parsed)) stopDays = parsed.slice(0, 10).map(value => { const days = Number(value); return Number.isInteger(days) && days >= 1 && days <= 365 ? days : null }) } catch { stopDays = [] }
     const stopTotal = stopDays.reduce<number>((sum, days) => sum + (days ?? 0), 0)
+    // "auto" (the new-plan form): a number of days or dates make it day by day (one day: a day trip); neither, a list of ideas.
+    const length = Math.max(duration(form) ?? 0, stopTotal, dateFields.datesFlexible ? 0 : Math.round((dateFields.endDate.getTime() - dateFields.startDate.getTime()) / 864e5) + 1)
+    const format = requested !== 'auto' ? requested : !length ? 'guide' : length === 1 ? 'day-trip' : 'itinerary'
     // Reusing this ID makes a retry safe even if the first response was lost.
     const existing = await prisma.itinerary.findUnique({ where: { id }, select: { userId: true } })
     if (existing) return existing.userId === userId ? { id } : { error: unavailable }
     await prisma.itinerary.create({ data: {
       id, userId, title: title || `Trip to ${destination}`, audience, visibility: 'draft', isPlan: true, ...dateFields,
       postType: String(format),
-      durationDays: format === 'guide' ? null : format === 'day-trip' ? 1 : Math.max(duration(form) ?? 0, stopTotal) || null,
-      tags: form.get('format') === 'day-trip' ? ['day-trip'] : [],
+      durationDays: format === 'guide' ? null : format === 'day-trip' ? 1 : length || null,
+      tags: format === 'day-trip' ? ['day-trip'] : [],
       destinations: { create: [destination || 'Destination to decide', ...extra].map((name, order) => ({ name, order, days: format === 'itinerary' ? stopDays[order] ?? null : null })) },
     } })
     // Map positions for the destinations, so places added later go under the nearest one.
