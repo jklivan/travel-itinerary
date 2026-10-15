@@ -24,7 +24,8 @@ const SAVED = {
 }
 
 // Plan with Postcard's start page (the bottom bar's Plan button): ask where to go, optionally narrowed with
-// Somewhere nearby, Dates, With friends and Vibe (each opens a small panel; its choices go with the question),
+// Somewhere nearby, Dates, With friends and Vibe (each opens a small panel; Apply & continue starts the chat with
+// those choices and anything typed),
 // or start from saved places or a plan in progress.
 export default function PlanLanding({ landing, history, busy, onSend }: { landing: Landing; history: { id: string; topic: string }[]; busy: boolean; onSend: (text: string, preferences?: TravelPreferences) => void }) {
   const [text, setText] = useState('')
@@ -102,7 +103,7 @@ export default function PlanLanding({ landing, history, busy, onSend }: { landin
         <div className="grid grid-cols-2 gap-2">{VIBES.map(vibe => <button key={vibe} type="button" aria-pressed={vibes.includes(vibe)} onClick={() => setVibes(list => toggle(list, vibe))} className="chip justify-start">
           {VIBE_ICONS[vibe]}{vibe}{vibes.includes(vibe) && <Check size={14} className="ml-auto" />}</button>)}</div>
       </>}
-      <button type="button" onClick={() => setOpen(null)} className="btn btn-primary w-full">Apply &amp; continue<ArrowRight size={18} /></button>
+      <button type="button" disabled={busy || !preferences()} onClick={() => { setOpen(null); submit() }} className="btn btn-primary w-full">Apply &amp; continue<ArrowRight size={18} /></button>
     </section>}
 
     {saved.length > 0 && <section className="mt-8" aria-labelledby="saved-heading">
