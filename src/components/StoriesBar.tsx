@@ -34,7 +34,7 @@ export default function StoriesBar({ stories, userId, following, serverTime }: {
 
   return <section aria-label="24-hour stories" className={styles.bar}>
     <div className={styles.tray}>
-      {userId ? <button type="button" className={styles.addStory} onClick={() => { setMessage(''); setComposing(true) }}><span><Plus size={28} /></span>Your story</button> : <Link href="/login" className={styles.addStory}><span><Plus size={28} /></span>Your story</Link>}
+      {userId ? <button type="button" className={styles.addStory} onClick={() => { setMessage(''); setComposing(true) }}><span><Plus size={28} /><Postmark /></span>Your story</button> : <Link href="/login" className={styles.addStory}><span><Plus size={28} /><Postmark /></span>Your story</Link>}
       {groups.map(group => { const latest = group.items[0]; return <button key={group.authorId} type="button" className={styles.storyThumb} disabled={!!loading} aria-label={`View ${group.authorId === userId ? 'your' : latest.authorName + '’s'} stories, ${group.items.length} ${group.items.length === 1 ? 'story' : 'stories'}`} onClick={async () => {
         setLoading(group.authorId); setMessage('')
         try {
@@ -47,7 +47,9 @@ export default function StoriesBar({ stories, userId, following, serverTime }: {
         finally { setLoading('') }
       }}><span className={styles.miniPaper}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={sizedPhoto(latest.photoUrl, 256)} alt="" /><i>{loading === group.authorId ? '…' : group.items.length > 1 ? group.items.length : ''}</i>
+        <img src={sizedPhoto(latest.photoUrl, 256)} alt="" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/postcard-stamp-clear.png" alt="" className={styles.stamp} /><i>{loading === group.authorId ? '…' : group.items.length > 1 ? group.items.length : ''}</i>
       </span><span className={styles.author}>{group.authorId === userId ? 'You' : latest.authorName}</span></button> })}
       {!groups.length && <p className={styles.trayHint}>A hotel you loved.<br />A meal to remember.<br />Send a postcard.</p>}
     </div>
@@ -55,6 +57,13 @@ export default function StoriesBar({ stories, userId, following, serverTime }: {
     {composing && <StoryComposer onClose={() => setComposing(false)} onPosted={() => { setComposing(false); setMessage('Your story is posted for 24 hours.'); router.refresh() }} />}
     {viewer && <StoryViewer stories={viewer.stories} initialId={viewer.id} userId={userId} now={now} onClose={() => { setViewer(null); router.refresh() }} />}
   </section>
+}
+
+// Wavy postmark lines beside the + on the "Your story" card.
+function Postmark() {
+  return <svg viewBox="0 0 34 26" className={styles.postmark} fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
+    {[3, 9, 15, 21].map(y => <path key={y} d={`M1 ${y} q4 -3 8 0 t8 0 t8 0 t8 0`} />)}
+  </svg>
 }
 
 function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: StoryCard[]; initialId: string; userId: string | null; now: number; onClose: () => void }) {
@@ -151,7 +160,7 @@ function StoryViewer({ stories, initialId, userId, now, onClose }: { stories: St
           {error && <p role="alert" className={styles.viewerError}>{error}</p>}
           {/* Tap the left or right of the snapshot (or swipe) to move; hold to pause. These stay for keyboards and screen readers. */}
           <nav className={`${styles.storyNav} sr-only`} aria-label="Story navigation"><button type="button" disabled={index <= 0 || deleting || saveOpen || confirmDelete} aria-label="Previous story" onClick={() => move(-1)}><ChevronLeft size={22} /></button><button type="button" className={styles.playback} aria-label={paused ? 'Resume stories' : 'Pause stories'} onClick={() => setPaused(value => !value)}>{paused ? <Play size={18} /> : <Pause size={18} />}</button><button type="button" disabled={deleting || saveOpen || confirmDelete} aria-label="Next story" onClick={() => move(1)}><ChevronRight size={22} /></button></nav>
-        </> : <div className={styles.expired}><p>This polaroid is no longer available.</p><button type="button" onClick={() => dialog.current?.close()}>Back to feed</button></div>}
+        </> : <div className={styles.expired}><p>This postcard is no longer available.</p><button type="button" onClick={() => dialog.current?.close()}>Back to feed</button></div>}
       </div>
     </dialog>
     {story && <SavePlaceToPlan key={story.id} storyId={story.id} placeName={story.placeName} open={saveOpen} onClose={() => setSaveOpen(false)} onSaved={() => setSaved(previous => [...previous, story.id])} />}

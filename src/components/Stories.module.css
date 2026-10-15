@@ -2,16 +2,27 @@
 .barHeading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
 .barHeading h2 { font-family: var(--font-playfair), serif; font-size: 14px; font-weight: 400; letter-spacing: .24em; color: var(--color-link); }
 .barHeading > span { font-size: 9px; color: var(--color-muted); letter-spacing: .14em; text-transform: uppercase; }
-.tray { display: flex; gap: 14px; overflow-x: auto; padding: 6px 4px 4px; scrollbar-width: none; }
+/* Snapshots as overlapping postcards: landscape photos in a white border, tilted a little each way, each with the
+   Postcard stamp in white at the corner. "Your story" is a blank card with a dashed edge and a postmark. */
+.tray { display: flex; align-items: flex-start; overflow-x: auto; padding: 10px 8px 6px; scrollbar-width: none; }
 .tray::-webkit-scrollbar { display: none; }
-.addStory, .storyThumb { flex: 0 0 72px; display: flex; align-items: center; flex-direction: column; gap: 6px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; background: transparent; border: 0; cursor: pointer; text-decoration: none; color: inherit; }
-.addStory > span { width: 64px; height: 76px; display: grid; place-items: center; border: 1px dashed var(--color-brown); background: var(--color-chip); color: var(--color-brown); }
-.miniPaper { position: relative; display: block; width: 68px; height: 78px; padding: 4px 4px 13px; background: var(--color-card); box-shadow: 0 3px 8px #2c18101f; border: 1px solid var(--color-line-soft); transform: rotate(-3deg); }
-.storyThumb:nth-child(odd) .miniPaper { transform: rotate(3deg); }
+.addStory, .storyThumb { position: relative; flex: 0 0 auto; display: flex; align-items: center; flex-direction: column; gap: 8px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; background: transparent; border: 0; padding: 0; cursor: pointer; text-decoration: none; color: var(--color-link); }
+.storyThumb { margin-left: -14px; }
+.storyThumb:nth-child(2n) { z-index: 2; }
+.storyThumb:nth-child(2n+1) { z-index: 1; }
+.storyThumb:hover, .storyThumb:focus-visible { z-index: 3; }
+.addStory > span, .miniPaper { position: relative; display: block; width: 112px; height: 84px; background: var(--color-card); box-shadow: var(--shadow-card); }
+.addStory > span { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px; transform: rotate(-2deg); color: var(--color-brown); }
+.addStory > span::before { content: ''; position: absolute; inset: 5px; border: 1px dashed var(--color-brown); }
+.postmark { width: 34px; height: 26px; }
+.miniPaper { padding: 5px; transform: rotate(2deg); }
+.storyThumb:nth-child(3n) .miniPaper { transform: rotate(-3deg); }
+.storyThumb:nth-child(3n+1) .miniPaper { transform: rotate(1deg); }
 .miniPaper img { width: 100%; height: 100%; object-fit: cover; }
-.miniPaper i:not(:empty) { position: absolute; right: -5px; top: -5px; min-width: 20px; height: 20px; border-radius: 50%; background: var(--color-ink); color: white; font-style: normal; font-size: 11px; display: grid; place-items: center; }
-.author { max-width: 72px; color: var(--color-link); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: uppercase; }
-.trayHint { align-self: center; font-size: 14px; line-height: 1.6; color: var(--color-muted); }
+.miniPaper .stamp { position: absolute; top: 9px; right: 9px; width: 24px; height: 24px; filter: brightness(0) invert(1); opacity: .9; }
+.miniPaper i:not(:empty) { position: absolute; left: -5px; top: -5px; min-width: 20px; height: 20px; border-radius: 50%; background: var(--color-ink); color: var(--color-card); font-style: normal; font-size: 11px; letter-spacing: 0; display: grid; place-items: center; }
+.author { max-width: 104px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trayHint { align-self: center; margin-left: 16px; font-size: 14px; line-height: 1.6; color: var(--color-muted); }
 .message { font-size: 14px; margin-top: 8px; color: var(--color-link); }
 .composer { position: fixed; inset: 0; display: flex; flex-direction: column; margin: auto; width: min(560px, calc(100% - 24px)); max-height: 90dvh; overflow: hidden; border: 1px solid var(--color-line); border-radius: 20px; padding: 22px; background: var(--color-card); color: var(--color-ink); }
 .composer::backdrop, .viewer::backdrop { background: #21130ecc; }
