@@ -7,8 +7,6 @@ import { readFileForUpload, fetchExtraction } from '@/lib/importFiles'
 import { importedPlaces, type ImportedPlace } from '@/lib/planImport'
 import { importIntoPlan } from '@/actions/planImport'
 import PlacesAutocomplete from './PlacesAutocomplete'
-import { saveImportNotes } from '@/actions/importNotes'
-import SavedImportNotes from './SavedImportNotes'
 import { dateProblems, formatDate, tripDay, whenLabel } from '@/lib/placeDates'
 
 // trip: the trip's dates, when it has them, for putting each booking on its day and spotting dates outside the trip.
@@ -28,7 +26,6 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [stage, setStage] = useState('')
   const [error, setError] = useState('')
-  const [savedVersion, setSavedVersion] = useState(0)
   const [attemptedSave, setAttemptedSave] = useState(false)
   const controller = useRef<AbortController | null>(null)
   const busy = useRef(false)
@@ -53,15 +50,10 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
           setStage(files.length > 1 ? `Reading ${index + 1} of ${files.length}: ${current.name}…` : 'Reading your file…')
           try {
             const payload = await readFileForUpload(current, abort.signal)
-            if ('text' in payload) { const saved = await saveImportNotes(payload.text); if (!saved.error) setSavedVersion(value => value + 1) }
             result.push(...(await extract(payload, current.name)).map(place => ({ ...place, file: current.name })))
           } catch (err) { if (abort.signal.aborted) throw err; failed.push(current.name) }
         }
       } else {
-        setStage('Saving your notes…')
-        const saved = await saveImportNotes(text)
-        if (saved.error) throw Error(saved.error)
-        setSavedVersion(value => value + 1)
         setStage('Finding your places…')
         result.push(...await extract({ text }, 'your notes'))
       }
@@ -114,7 +106,6 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
         <label className="block text-sm">Or paste notes<textarea value={text} onChange={event => { setText(event.target.value); setFiles([]) }} maxLength={200000} rows={5} placeholder="Hotels, restaurants, activities…" className="field mt-2" /></label>
         <button type="button" disabled={!file && !text.trim()} onClick={() => void read()} className="btn btn-primary w-full">Find places</button>
       </fieldset>
-      <SavedImportNotes refreshKey={savedVersion} disabled={!!stage} onRestore={value => { setText(value); setFiles([]) }} />
     </> : <>
       {suggested && <label className="panel-hint flex items-start gap-3 p-3 text-sm"><input type="checkbox" checked={useDates} onChange={event => setUseDates(event.target.checked)} className="mt-0.5 h-5 w-5 shrink-0" />
         <span>Set the trip’s dates to <strong>{formatDate(suggested.start)} – {formatDate(suggested.end)}</strong> ({tripDay(suggested.end, suggested.start)} days), from these bookings, so each one goes on its day.</span></label>}
