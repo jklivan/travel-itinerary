@@ -30,6 +30,14 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
         const length = daysBetween(start, plan.endDate.toISOString().slice(0, 10)) + 1
         if (length >= 1 && length <= 365) await tx.itinerary.update({ where: { id: planId }, data: { durationDays: length } })
       }
+      // A dated trip stretched to take in bookings just outside it: places already on a day keep their date.
+      const end = plan.endDate.toISOString().slice(0, 10)
+      if (start && tripDates && isDate(tripDates.start) && isDate(tripDates.end) && tripDates.start <= start && tripDates.end >= end && (tripDates.start < start || tripDates.end > end) && daysBetween(tripDates.start, tripDates.end) < 365) {
+        const shift = daysBetween(tripDates.start, start)
+        if (shift) await tx.destItem.updateMany({ where: { destination: { itineraryId: planId }, dayIndex: { not: null } }, data: { dayIndex: { increment: shift } } })
+        await tx.itinerary.update({ where: { id: planId }, data: { startDate: new Date(`${tripDates.start}T00:00:00Z`), endDate: new Date(`${tripDates.end}T00:00:00Z`), durationDays: Math.max((plan.durationDays ?? 0) + shift, daysBetween(tripDates.start, tripDates.end) + 1) } })
+        start = tripDates.start
+      }
       if (!start && tripDates && isDate(tripDates.start) && isDate(tripDates.end) && tripDates.end >= tripDates.start && daysBetween(tripDates.start, tripDates.end) < 365) {
         start = tripDates.start
         const length = daysBetween(tripDates.start, tripDates.end) + 1

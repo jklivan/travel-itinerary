@@ -46,3 +46,16 @@ export function dateProblems(places: Checked[], trip: { start: string; end: stri
     return null
   })
 }
+
+// Trip dates that give every booking a day: a trip without dates gets the earliest to the latest booking, and a
+// dated trip stretches to take in bookings up to a week outside it (an overnight flight the evening before).
+// Null when nothing would change. Bookings further out stay flagged by dateProblems instead.
+export function datesCovering(places: Checked[], trip: { start: string; end: string } | null, slack = 7) {
+  const ranges = places.flatMap(place => place.date ? [[place.date, place.endDate && place.endDate > place.date ? place.endDate : place.date]] : [])
+    .filter(([from, to]) => !trip || (from >= addDays(trip.start, -slack) && to <= addDays(trip.end, slack)))
+  if (!ranges.length) return null
+  const start = [...ranges.map(range => range[0]), ...(trip ? [trip.start] : [])].sort()[0]
+  const end = [...ranges.map(range => range[1]), ...(trip ? [trip.end] : [])].sort().at(-1)!
+  if ((trip && start === trip.start && end === trip.end) || daysBetween(start, end) >= 365) return null
+  return { start, end }
+}

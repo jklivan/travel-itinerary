@@ -9,7 +9,7 @@ import { importIntoPlan } from '@/actions/planImport'
 import PlacesAutocomplete from './PlacesAutocomplete'
 import { saveImportNotes } from '@/actions/importNotes'
 import SavedImportNotes from './SavedImportNotes'
-import { dateProblems, formatDate, tripDay, whenLabel } from '@/lib/placeDates'
+import { dateProblems, datesCovering, formatDate, tripDay, whenLabel } from '@/lib/placeDates'
 
 // trip: the trip's dates, when it has them, for putting each booking on its day and spotting dates outside the trip.
 export default function PlanImport({ tripId, destinations = [], trip = null, onClose }: { tripId: string; destinations?: { name: string; country: string | null }[]; trip?: { start: string; end: string } | null; onClose: () => void }) {
@@ -82,16 +82,16 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
     finally { busy.current = false; setStage(''); controller.current = null }
   }
   // Dates found in the documents. A trip without dates is offered the earliest to the latest of them.
-  const dated = places.filter(place => place.date)
-  const suggested = !trip && dated.length ? { start: dated.map(place => place.date!).sort()[0], end: dated.map(place => place.endDate ?? place.date!).sort().at(-1)! } : null
-  const daysFrom = trip ?? (useDates ? suggested : null)
+  // A dated trip is offered a stretch to take in bookings just outside it (an overnight flight the day before).
+  const suggested = datesCovering(places, trip)
+  const daysFrom = useDates && suggested ? suggested : trip
   const dayOf = (place: ImportedPlace) => daysFrom && place.date ? tripDay(place.date, daysFrom.start) : place.day
-  const problems = dateProblems(places, trip)
+  const problems = dateProblems(places, daysFrom)
   async function save() {
     if (busy.current || !selected.size) return
     busy.current = true; setStage('Adding places…'); setError(''); setAttemptedSave(true)
     try {
-      const result = await importIntoPlan(tripId, requestId.current, places.filter((_, index) => selected.has(index)), !trip && useDates ? suggested : null, splitStops.current && destination ? destination.name : undefined)
+      const result = await importIntoPlan(tripId, requestId.current, places.filter((_, index) => selected.has(index)), useDates ? suggested : null, splitStops.current && destination ? destination.name : undefined)
       if (result.error) setError(result.error)
       else { router.refresh(); onClose() }
     } catch { setError('Could not save. Your review is still here; please try again.') }
@@ -117,7 +117,7 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
       <SavedImportNotes refreshKey={savedVersion} disabled={!!stage} onRestore={value => { setText(value); setFiles([]) }} />
     </> : <>
       {suggested && <label className="panel-hint flex items-start gap-3 p-3 text-sm"><input type="checkbox" checked={useDates} onChange={event => setUseDates(event.target.checked)} className="mt-0.5 h-5 w-5 shrink-0" />
-        <span>Set the trip’s dates to <strong>{formatDate(suggested.start)} – {formatDate(suggested.end)}</strong> ({tripDay(suggested.end, suggested.start)} days), from these bookings, so each one goes on its day.</span></label>}
+        <span>{trip ? 'Stretch the trip to ' : 'Set the trip’s dates to '}<strong>{formatDate(suggested.start)} – {formatDate(suggested.end)}</strong> ({tripDay(suggested.end, suggested.start)} days), {trip ? 'so the bookings just outside it get a day too. Places already on a day keep their date.' : 'from these bookings, so each one goes on its day.'}</span></label>}
       {problems.some(Boolean) && <p role="status" className="text-sm text-danger">{problems.filter(Boolean).length === 1 ? 'One place has' : `${problems.filter(Boolean).length} places have`} a date to check. Untick anything that doesn’t belong, or fix it after adding.</p>}
       <p className="text-sm font-medium">{selected.size} places selected</p>
       <fieldset disabled={!!stage || attemptedSave} className="max-h-[50dvh] space-y-3 overflow-y-auto">

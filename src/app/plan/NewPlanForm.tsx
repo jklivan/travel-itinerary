@@ -9,6 +9,7 @@ import PlacesAutocomplete from '@/components/PlacesAutocomplete'
 import PolaroidTile from '@/components/ui/PolaroidTile'
 import { startPlan, copyPlaceToPlan } from '@/actions/planning'
 import { importIntoPlan } from '@/actions/planImport'
+import { datesCovering, isDate } from '@/lib/placeDates'
 import { saveImportNotes } from '@/actions/importNotes'
 import { readFileForUpload, fetchExtraction } from '@/lib/importFiles'
 import { importedPlaces } from '@/lib/planImport'
@@ -90,7 +91,10 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
         }
         if (places.length) {
           if (!importId.current) importId.current = crypto.randomUUID()
-          const added = await importIntoPlan(result.id, importId.current, places, null, splitFrom.current || undefined)
+          // The trip's dates cover the bookings: taken from them when you gave none, stretched for an overnight flight the day before.
+          const typedStart = String(data.get('startDate') ?? ''), typedEnd = String(data.get('endDate') ?? '')
+          const dates = datesCovering(places, isDate(typedStart) && isDate(typedEnd) && typedEnd >= typedStart ? { start: typedStart, end: typedEnd } : null)
+          const added = await importIntoPlan(result.id, importId.current, places, dates, splitFrom.current || undefined)
           if (added.error) { setError(`Your plan was saved, but the places couldn’t be added. ${added.error}`); return }
         }
         router.push(`/plan/${result.id}`)

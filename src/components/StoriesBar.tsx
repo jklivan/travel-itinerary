@@ -49,7 +49,7 @@ export default function StoriesBar({ stories, userId, following, serverTime }: {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={sizedPhoto(latest.photoUrl, 256)} alt="" /><i>{loading === group.authorId ? '…' : group.items.length > 1 ? group.items.length : ''}</i>
       </span><span className={styles.author}>{group.authorId === userId ? 'You' : latest.authorName}</span></button> })}
-      {!groups.length && <p className={styles.trayHint}>A hotel you loved.<br />A meal to remember.<br />Share a snapshot.</p>}
+      {!groups.length && <p className={styles.trayHint}>A hotel you loved.<br />A meal to remember.<br />Send a postcard.</p>}
     </div>
     {message && <p role="status" className={styles.message}>{message}</p>}
     {composing && <StoryComposer onClose={() => setComposing(false)} onPosted={() => { setComposing(false); setMessage('Your story is posted for 24 hours.'); router.refresh() }} />}
