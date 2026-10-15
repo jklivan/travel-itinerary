@@ -141,24 +141,20 @@ function mergeNearbyDestinations<T extends DestinationGroup>(destinations: T[]):
   return groups
 }
 
-function groupItems(items: DestItemRow[]) {
-  const stays = new Map<number, { hotel: DestItemRow | null; days: Map<number, DestItemRow[]> }>()
-  for (const item of items) {
-    const gi = item.groupIndex ?? 0
-    if (!stays.has(gi)) stays.set(gi, { hotel: null, days: new Map() })
-    const stay = stays.get(gi)!
-    if (item.type === 'hotel') {
-      stay.hotel = item
-    } else {
-      const di = item.dayIndex ?? 0
-      if (!stay.days.has(di)) stay.days.set(di, [])
-      stay.days.get(di)!.push(item)
-    }
+// A destination's days, in order: each day's hotel check-ins, then its places. Places are grouped by day alone, not
+// by hotel stay: older trips number places by the stay they belonged to, and grouping by stay then day showed a day
+// twice (e.g. one Day 3 under the first stay and another further down). A hotel goes on its check-in day, or else
+// the first day of its stay's places.
+function dayPlan(items: DestItemRow[]) {
+  const days = new Map<number, { hotels: DestItemRow[]; items: DestItemRow[] }>()
+  const day = (index: number) => { if (!days.has(index)) days.set(index, { hotels: [], items: [] }); return days.get(index)! }
+  const places = items.filter(item => item.type !== 'hotel')
+  for (const item of places) day(item.dayIndex ?? 0).items.push(item)
+  for (const hotel of items.filter(item => item.type === 'hotel')) {
+    const stayDays = places.filter(item => (item.groupIndex ?? 0) === (hotel.groupIndex ?? 0)).map(item => item.dayIndex ?? 0)
+    day(hotel.dayIndex ?? (stayDays.length ? Math.min(...stayDays) : Math.min(0, ...days.keys()))).hotels.push(hotel)
   }
-  return [...stays.entries()].sort(([a], [b]) => a - b).map(([, stay]) => ({
-    hotel: stay.hotel,
-    days: [...stay.days.entries()].sort(([a], [b]) => a - b).map(([dayIndex, items]) => ({ dayIndex, items })),
-  }))
+  return [...days.entries()].sort(([a], [b]) => a - b).map(([dayIndex, entry]) => ({ dayIndex, ...entry }))
 }
 
 const PLACE_CATEGORIES = {
@@ -648,8 +644,7 @@ export default async function ItineraryPage({
                 {/* Cards two across on wider screens, the same size as the Summary view's. */}
                 <div className="space-y-10">
                   {mainDestinations.map((dest) => {
-                    const groups = groupItems(dest.items as DestItemRow[])
-                    const multiStay = groups.length > 1
+                    const days = dayPlan(dest.items as DestItemRow[])
                     const dayOffset = dest.items.some(item => item.type !== 'hotel' && item.dayIndex === 0) ? 1 : 0
                     const dayNumber = (day: number) => Math.max(1, day + dayOffset)
                     return (
@@ -662,46 +657,19 @@ export default async function ItineraryPage({
                         {destinationSocial(dest)}
                         {dest.notes && <p className="text-xs text-brown italic mb-3 border-l-2 border-line-strong pl-2">{dest.notes}</p>}
                         <div className="space-y-5">
-                          {groups.map((group, gi) => {
-                            if (multiStay) {
-                              return (
-                                <div key={gi} className="space-y-4">
-                                  {group.days.map((day, di) => {
-                                    const dn = dayNumber(day.dayIndex)
-                                    return (
-                                      <div key={di}>
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <span className="text-xs font-bold text-cream bg-ink px-2.5 py-1 rounded-full">Day {dn}</span>
-                                        </div>
-                                        {di === 0 && group.hotel && <div className={styles.cardColumns}>{renderHotelCard(group.hotel)}</div>}
-                                        <div className={`${styles.cardColumns} mt-2`}>
-                                          {day.items.map(item => item.type === 'food_drink' ? renderFoodCard(item) : renderActivityCard(item))}
-                                        </div>
-                                      </div>
-                                    )
-                                  })}
+                          {days.map(({ dayIndex, hotels, items }) => (
+                            <div key={dayIndex}>
+                              {(days.length > 1 || dayNumber(dayIndex) > 1) && (
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs font-bold text-cream bg-ink px-2.5 py-1 rounded-full">Day {dayNumber(dayIndex)}</span>
                                 </div>
-                              )
-                            } else {
-                              return (
-                                <div key={gi} className="space-y-3">
-                                  {group.hotel && <div className={styles.cardColumns}>{renderHotelCard(group.hotel)}</div>}
-                                  {group.days.map((day, di) => (
-                                    <div key={di}>
-                                      {(group.days.length > 1 || dayNumber(day.dayIndex) > 1) && (
-                                        <div className="flex items-center gap-2 mb-2 mt-2">
-                                          <span className="text-xs font-bold text-cream bg-ink px-2.5 py-1 rounded-full">Day {dayNumber(day.dayIndex)}</span>
-                                        </div>
-                                      )}
-                                      <div className={styles.cardColumns}>
-                                        {day.items.map(item => item.type === 'food_drink' ? renderFoodCard(item) : renderActivityCard(item))}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )
-                            }
-                          })}
+                              )}
+                              {hotels.length > 0 && <div className={styles.cardColumns}>{hotels.map(hotel => renderHotelCard(hotel))}</div>}
+                              {items.length > 0 && <div className={`${styles.cardColumns} ${hotels.length ? 'mt-2' : ''}`}>
+                                {items.map(item => item.type === 'food_drink' ? renderFoodCard(item) : renderActivityCard(item))}
+                              </div>}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )
