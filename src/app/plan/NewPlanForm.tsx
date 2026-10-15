@@ -10,7 +10,6 @@ import PolaroidTile from '@/components/ui/PolaroidTile'
 import { startPlan, copyPlaceToPlan } from '@/actions/planning'
 import { importIntoPlan } from '@/actions/planImport'
 import { datesCovering, isDate } from '@/lib/placeDates'
-import { saveImportNotes } from '@/actions/importNotes'
 import { readFileForUpload, fetchExtraction } from '@/lib/importFiles'
 import { importedPlaces } from '@/lib/planImport'
 
@@ -66,7 +65,6 @@ export default function NewPlanForm({ savePlace, saveStory }: { savePlace?: stri
         if (!file && !notes.trim()) { setError('Choose a file or paste some notes to import.'); return }
         setStage('Reading your notes…')
         const payload = file ? await readFileForUpload(file) : { text: notes }
-        if ('text' in payload) await saveImportNotes(payload.text).catch(() => null)
         // Everything goes under this destination; each place is still found on Google near its own town.
         const found = importedPlaces(await fetchExtraction({ ...payload, planning: true, tripDestinations: where ? [where] : [] }, file?.name ?? 'your notes'))
         if (!found.length) { setError('No places found in your notes. Check the place names and try again.'); return }
