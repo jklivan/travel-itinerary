@@ -67,6 +67,8 @@ export default function TestPlanner({ trip, chat, history, initialDraft = '', fr
     return () => query.removeEventListener('change', update)
   }, [])
   // Arriving with a question about a place skips the setup questions.
+  // Opened from a trip's planner: the chat is about that trip (it's sent with every message).
+  const tripChat = fromPlanner && !!trip
   // Phones: past chats stay behind the "Past chats" button, so a new chat is the first thing you see.
   const [showHistory, setShowHistory] = useState(false)
   const tripId = useRef(trip?.id ?? '')
@@ -252,16 +254,17 @@ export default function TestPlanner({ trip, chat, history, initialDraft = '', fr
           </div></article>)}</div></section> })}
       </section>
 
-      {/* Between the trip card and the chat: start over, or (on phones) open a past conversation. */}
-      <div className="flex gap-2">
+      {/* Between the trip card and the chat: start over, or (on phones) open a past conversation. Not when you came
+          from a trip's planner: that chat is about the trip, which it already knows. */}
+      {!tripChat && <div className="flex gap-2">
         <button type="button" disabled={thinking} onClick={startNewChat} className="btn btn-outline flex-1"><SquarePen size={16} />Start a new chat</button>
         {history.length > 0 && <button type="button" onClick={() => setShowHistory(value => !value)} aria-expanded={showHistory} aria-controls="past-chats-phone" className="btn btn-outline lg:hidden"><History size={16} />Past chats</button>}
-      </div>
-      {showHistory && history.length > 0 && <div id="past-chats-phone" className="panel p-2 lg:hidden"><p className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-link">Past chats</p><PastChats history={history} currentId={chat?.id} limit={5} /></div>}
+      </div>}
+      {!tripChat && showHistory && history.length > 0 && <div id="past-chats-phone" className="panel p-2 lg:hidden"><p className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-link">Past chats</p><PastChats history={history} currentId={chat?.id} limit={5} /></div>}
 
       <section aria-label="Chat with Postcard" className="panel flex min-h-0 flex-col lg:h-auto lg:flex-[1.2]">
         <div ref={scroller} className="min-h-0 flex-1 space-y-4 p-4 lg:overflow-y-auto" aria-live="polite">
-          {!turns.length && <div className="text-sm text-muted"><p>Postcard uses your trips and your friends’ trips—their ratings and notes—plus its own picks. Try:</p><div className="mt-3 flex flex-wrap gap-2">{starters.map(starter => <button key={starter} type="button" onClick={() => void send(starter)} className="chip text-left">{starter}</button>)}</div></div>}
+          {!turns.length && !tripChat && <div className="text-sm text-muted"><p>Postcard uses your trips and your friends’ trips—their ratings and notes—plus its own picks. Try:</p><div className="mt-3 flex flex-wrap gap-2">{starters.map(starter => <button key={starter} type="button" onClick={() => void send(starter)} className="chip text-left">{starter}</button>)}</div></div>}
           {turns.map((turn, index) => turn.role === 'preferences'
             ? <PreferencesSummary key={index} preferences={turn.preferences} />
             : turn.role === 'user'
@@ -289,7 +292,7 @@ export default function TestPlanner({ trip, chat, history, initialDraft = '', fr
         <div ref={endOfChat} aria-hidden="true" style={{ scrollMarginBottom: 'calc(var(--app-bottom-clearance) + 4.5rem)' }} />
         {/* On phones the composer sticks just above the bottom navigation so it is always reachable. */}
         <form ref={form} style={pinnedTop === null ? undefined : { position: 'fixed', top: pinnedTop, left: 12, right: 12, bottom: 'auto', zIndex: 60 }} className={`sticky bottom-[calc(var(--app-bottom-clearance)-0.75rem)] z-10 flex items-end gap-2 border-t border-line-soft bg-card p-3 lg:static ${pinnedTop === null ? 'rounded-b-2xl' : 'rounded-2xl border shadow-pop'}`} onSubmit={event => { event.preventDefault(); void send(draft) }}>
-          <textarea ref={composer} autoFocus={!!initialDraft} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(draft) } }} rows={1} maxLength={4000} placeholder="Ask about a place or a trip…" aria-label="Message Postcard" className="field max-h-40 flex-1 resize-none overflow-y-auto" />
+          <textarea ref={composer} autoFocus={!!initialDraft} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(draft) } }} rows={1} maxLength={4000} placeholder={tripChat ? 'Ask about this trip…' : 'Ask about a place or a trip…'} aria-label="Message Postcard" className="field max-h-40 flex-1 resize-none overflow-y-auto" />
           <button type="submit" disabled={thinking || !draft.trim()} aria-label="Send" className="btn btn-primary w-11 shrink-0 !px-0"><ArrowUp size={18} /></button>
         </form>
       </section>
