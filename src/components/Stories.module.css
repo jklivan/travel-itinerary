@@ -21,7 +21,7 @@
 .miniPaper img { width: 100%; height: 100%; object-fit: cover; }
 .miniPaper .stamp { position: absolute; top: 9px; right: 9px; width: 24px; height: 24px; filter: brightness(0) invert(1); opacity: .9; }
 .miniPaper i:not(:empty) { position: absolute; left: -5px; top: -5px; min-width: 20px; height: 20px; border-radius: 50%; background: var(--color-ink); color: var(--color-card); font-style: normal; font-size: 11px; letter-spacing: 0; display: grid; place-items: center; }
-.author { max-width: 104px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.author { max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .trayHint { align-self: center; margin-left: 16px; font-size: 14px; line-height: 1.6; color: var(--color-muted); }
 .message { font-size: 14px; margin-top: 8px; color: var(--color-link); }
 .composer { position: fixed; inset: 0; display: flex; flex-direction: column; margin: auto; width: min(560px, calc(100% - 24px)); max-height: 90dvh; overflow: hidden; border: 1px solid var(--color-line); border-radius: 20px; padding: 22px; background: var(--color-card); color: var(--color-ink); }
