@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
+import useKeyboardInset from '../useKeyboardInset'
 
 // A sheet that slides up from the bottom over the page (feed comments and likes), like Instagram's.
 // Closes with ✕, a tap above it, or Escape; the page underneath doesn't scroll while it's open.
 export default function BottomSheet({ title, label, onClose, footer, children }: { title: string; label: string; onClose: () => void; footer?: ReactNode; children: ReactNode }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const body = useRef<HTMLDivElement>(null)
+  // Typing in it on a phone (a comment, a report note): the sheet sits above the keyboard.
+  useKeyboardInset(dialog)
   useEffect(() => {
     dialog.current?.showModal()
     // Focus starts on the list (not the close button), so no focus ring shows on open.
@@ -18,7 +21,7 @@ export default function BottomSheet({ title, label, onClose, footer, children }:
   }, [])
   return <dialog ref={dialog} aria-label={label} onClose={onClose}
     onClick={event => { if (event.target === dialog.current) dialog.current?.close() }}
-    className="bottom-sheet m-0 mt-auto h-[78dvh] max-h-none w-full max-w-none rounded-t-3xl bg-card p-0 text-ink shadow-pop backdrop:bg-ink/40 sm:mx-auto sm:max-w-xl">
+    className="bottom-sheet m-0 mb-[var(--keyboard,0px)] mt-auto h-[min(78dvh,calc(100dvh-var(--keyboard,0px)-1rem))] max-h-none w-full max-w-none rounded-t-3xl bg-card p-0 text-ink shadow-pop backdrop:bg-ink/40 sm:mx-auto sm:max-w-xl">
     <div className="flex h-full flex-col">
       <header className="relative border-b border-line-soft px-5 pb-3 pt-2 text-center">
         <span aria-hidden="true" className="mx-auto mb-2 block h-1 w-10 rounded-full bg-line" />

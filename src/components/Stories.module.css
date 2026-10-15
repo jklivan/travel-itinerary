@@ -81,7 +81,7 @@
 .viewerError { color: var(--color-danger); font-size: 14px; margin-top: 10px; }
 .expired { text-align: center; padding: 60px 0; }
 /* Phones: the composer fills the screen from just under the status bar, so the whole form shows instead of a short sheet that looks cut off. */
-@media (max-width: 600px) { .composer { inset: calc(env(safe-area-inset-top, 0px) + 12px) 0 0; margin: 0; width: 100%; max-width: none; height: auto; max-height: none; border-radius: 20px 20px 0 0; padding: 20px 18px max(24px, env(safe-area-inset-bottom)); } }
+@media (max-width: 600px) { .composer { inset: calc(env(safe-area-inset-top, 0px) + 12px) 0 var(--keyboard, 0px); margin: 0; width: 100%; max-width: none; height: auto; max-height: none; border-radius: 20px 20px 0 0; padding: 20px 18px max(24px, env(safe-area-inset-bottom)); } }
 
 /* Snapshot viewer: cream paper, tilted polaroid, serif place name, handwritten caption. */
 .viewerAuthor { display: flex; align-items: center; gap: 10px; min-width: 0; }

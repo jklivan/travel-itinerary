@@ -1,5 +1,6 @@
 'use client'
 
+import useKeyboardInset from './useKeyboardInset'
 import { useEffect, useId, useRef, useState } from 'react'
 import { X, Check } from 'lucide-react'
 import { postStories, storySources } from '@/actions/stories'
@@ -14,6 +15,7 @@ type Sources = Awaited<ReturnType<typeof storySources>>
 type NewStoryType = 'activity' | 'hotel' | 'food_drink' | 'transport'
 export default function StoryComposer({ onClose, onPosted, initialItemId }: { onClose: () => void; onPosted: () => void; initialItemId?: string }) {
   const dialog = useRef<HTMLDialogElement>(null)
+  useKeyboardInset(dialog)
   const titleId = useId()
   const clientIds = useRef<{ selection: string; ids: string[] } | null>(null)
   const saving = useRef(false)
