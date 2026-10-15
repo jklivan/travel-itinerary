@@ -47,9 +47,9 @@ export async function resetPassword(state: ResetState, formData: FormData): Prom
   const secret = process.env.AUTH_SECRET
   const read = readResetToken(token)
   const user = read && secret ? await prisma.user.findUnique({ where: { id: read.userId }, select: { id: true, password: true } }) : null
-  if (!user || !secret || !resetTokenValid(token, user.password, secret)) return { message: 'This link has expired or was already used. Ask for a new one.' }
+  if (!user || !secret || !resetTokenValid(token, user.password, secret)) return { message: 'This link has expired or was already used.' }
   // Only saves if the password hasn't changed since the link was checked, so a link can't be used twice at once.
   const saved = await prisma.user.updateMany({ where: { id: user.id, password: user.password }, data: { password: await bcrypt.hash(password, 10) } })
-  if (!saved.count) return { message: 'This link has expired or was already used. Ask for a new one.' }
+  if (!saved.count) return { message: 'This link has expired or was already used.' }
   redirect('/login?reset=1')
 }
