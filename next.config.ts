@@ -2,7 +2,7 @@ import type { NextConfig } from 'next'
 import path from 'path'
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['mammoth'],
+  serverExternalPackages: ['mammoth', 'pdfjs-dist'],
   images: {
     localPatterns: [
       {

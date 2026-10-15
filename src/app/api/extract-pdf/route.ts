@@ -1,6 +1,7 @@
 import OpenAI, { toFile } from 'openai'
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
+import { pdfText } from '@/lib/pdfText'
 import mammoth from 'mammoth'
 import { get } from '@vercel/blob'
 
@@ -148,8 +149,15 @@ async function extractFromPrivatePdf(url: string, filename: string, prompt: stri
   if (!result || result.statusCode !== 200 || !result.stream) {
     throw new Error('Could not read the uploaded PDF.')
   }
+  const buffer = Buffer.from(await new Response(result.stream).arrayBuffer())
+  // The AI takes PDFs up to 50 MB. Bigger ones (usually full of photos) send just their text.
+  if (buffer.length > 45 * 1024 * 1024) {
+    const text = await pdfText(new Uint8Array(buffer))
+    if (text.replace(/Page \d+:|\s/g, '').length < 200) throw new Error('This PDF is too big to read and has no text in it (it may be scanned pages). Try a smaller copy, or paste the itinerary as notes.')
+    return extractFromText(text, prompt)
+  }
   const file = await client.files.create({
-    file: await toFile(Buffer.from(await new Response(result.stream).arrayBuffer()), filename, { type: 'application/pdf' }),
+    file: await toFile(buffer, filename, { type: 'application/pdf' }),
     purpose: 'user_data',
   })
   try {
