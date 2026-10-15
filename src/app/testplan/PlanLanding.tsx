@@ -6,7 +6,7 @@ import { ArrowRight, ArrowUp, Bookmark, CalendarDays, Check, ChevronRight, Gem, 
 import PostcardLogo from '@/components/PostcardLogo'
 import TripCover from '@/components/TripCover'
 import UserAvatar from '@/components/UserAvatar'
-import { DISTANCES, SETUP_MESSAGE, TRAVELER_LABELS, TRAVELERS, VIBES, WHEN, type TravelPreferences } from '@/lib/travelPreferences'
+import { DISTANCES, picksQuestion, TRAVELER_LABELS, TRAVELERS, VIBES, WHEN, type TravelPreferences } from '@/lib/travelPreferences'
 import { formatDate } from '@/lib/placeDates'
 
 export type Landing = {
@@ -43,7 +43,8 @@ export default function PlanLanding({ landing, history, busy, onSend }: { landin
   } : undefined
   function submit(question = text) {
     const prefs = preferences()
-    const message = question.trim() || (prefs ? SETUP_MESSAGE : '')
+    // Only choices made: the question says them in words ("Show me trip ideas within 2 hours for this weekend…").
+    const message = question.trim() || (prefs ? picksQuestion(prefs, formatDate) : '')
     if (message && !busy) onSend(message, prefs)
   }
   const toggle = (list: string[], value: string) => list.includes(value) ? list.filter(item => item !== value) : [...list, value]

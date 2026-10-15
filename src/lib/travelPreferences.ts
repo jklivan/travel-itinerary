@@ -75,3 +75,18 @@ export function describePreferences(preferences: TravelPreferences) {
     preferences.friends?.length && `Lean on places these friends loved: ${preferences.friends.join(', ')}`,
   ].filter(Boolean).join('\n')
 }
+
+// The question the start page asks when only choices were made, in words: "Show me trip ideas within 2 hours of
+// Greenwich for this weekend, for a couple, with a relaxing, beach vibe, using places Jen loved."
+export const PICKS_PREFIX = 'Show me trip ideas'
+export function picksQuestion(preferences: TravelPreferences, formatDate: (date: string) => string) {
+  const distance = { 'Up to 1 hour': 'within an hour', 'Up to 2 hours': 'within 2 hours', 'Up to 4 hours': 'within 4 hours', 'A short flight': 'a short flight away' }[preferences.distance ?? ''] ?? ''
+  const from = preferences.from ? (preferences.distance === 'A short flight' ? ` from ${preferences.from}` : ` of ${preferences.from}`) : ''
+  const when = preferences.when === 'Specific dates' && preferences.startDate ? `for ${formatDate(preferences.startDate)}${preferences.endDate ? ` – ${formatDate(preferences.endDate)}` : ''}`
+    : { 'This weekend': 'for this weekend', 'Next weekend': 'for next weekend', 'I’m flexible': 'with flexible dates' }[preferences.when ?? ''] ?? ''
+  const who = { Solo: 'for just me', Couple: 'for a couple', Friends: 'for a friends trip', 'Family with kids': 'for a family with kids' }[preferences.travelers] ?? ''
+  const vibe = preferences.vibes?.length ? `with a ${preferences.vibes.join(', ').toLowerCase()} vibe` : ''
+  const friends = preferences.friends?.length ? `using places ${preferences.friends.map(name => name.split(' ')[0]).join(' and ')} loved` : ''
+  const first = [PICKS_PREFIX, distance && `${distance}${from}`, when].filter(Boolean).join(' ')
+  return `${[first, who, vibe, friends].filter(Boolean).join(', ')}.`
+}

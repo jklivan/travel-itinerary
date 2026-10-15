@@ -16,7 +16,7 @@ import PlacePhoto from '@/components/PlacePhoto'
 import { addPlanPlace, startPlan } from '@/actions/planning'
 import { linkPlanChat } from '@/actions/planChat'
 import { tripMapLookupKey, validMapLocation, type TripMapPlace } from '@/lib/tripMapPlaces'
-import { BUDGETS, TRAVELER_LABELS, type TravelPreferences } from '@/lib/travelPreferences'
+import { BUDGETS, PICKS_PREFIX, SETUP_MESSAGE, TRAVELER_LABELS, type TravelPreferences } from '@/lib/travelPreferences'
 import PlanLanding, { type Landing } from './PlanLanding'
 import { formatDate } from '@/lib/placeDates'
 
@@ -276,7 +276,8 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
         <div ref={scroller} className="min-h-0 flex-1 space-y-4 p-4 lg:overflow-y-auto" aria-live="polite">
           {!turns.length && !tripChat && <div className="text-sm text-muted"><p>Postcard uses your trips and your friends’ trips—their ratings and notes—plus its own picks. Try:</p><div className="mt-3 flex flex-wrap gap-2">{starters.map(starter => <button key={starter} type="button" onClick={() => void send(starter)} className="chip text-left">{starter}</button>)}</div></div>}
           {turns.map((turn, index) => turn.role === 'preferences'
-            ? <PreferencesSummary key={index} preferences={turn.preferences} />
+            // The question already says the choices in words: no separate summary.
+            ? (next => next?.role === 'user' && next.text.startsWith(PICKS_PREFIX) && next.text !== SETUP_MESSAGE ? null : <PreferencesSummary key={index} preferences={turn.preferences} />)(turns[index + 1])
             : turn.role === 'user'
             ? <p key={index} ref={index === lastQuestionIndex ? lastQuestion : undefined} className="ml-auto w-fit max-w-[85%] scroll-mt-28 whitespace-pre-wrap rounded-2xl rounded-br-sm bg-ink px-4 py-2 text-sm text-white">{turn.text}</p>
             : <div key={index} className="space-y-3"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed"><BoldText text={turn.text} /></p>
