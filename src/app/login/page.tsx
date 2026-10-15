@@ -30,6 +30,11 @@ function LoginForm() {
                 Account created! Sign in to get started.
               </p>
             )}
+            {searchParams.get('reset') && (
+              <p role="status" className="panel-hint text-sm text-link px-4 py-3">
+                Password changed. Sign in with your new password.
+              </p>
+            )}
             {state?.message && (
               <p className="text-sm text-danger bg-danger/10 border border-danger/30 rounded-lg px-4 py-3">
                 {state.message}
@@ -52,9 +57,12 @@ function LoginForm() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-ink-soft mb-1">
-                Password
-              </label>
+              <div className="mb-1 flex items-baseline justify-between gap-3">
+                <label htmlFor="password" className="block text-sm font-medium text-ink-soft">
+                  Password
+                </label>
+                <Link href="/forgot-password" className="text-sm text-link hover:underline">Forgot password?</Link>
+              </div>
               <input
                 id="password"
                 name="password"
