@@ -11,7 +11,8 @@ export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get('item')
   // ?fallback=1: the place's saved photo failed to load (e.g. an expired provider link), so look it up anyway.
   const fallback = request.nextUrl.searchParams.get('fallback') === '1'
-  if (!apiKey || !id || !/^[a-zA-Z0-9_-]{1,128}$/.test(id)) return reply(null)
+  // Imported places have ids like "<request id>:3", hence the colon.
+  if (!apiKey || !id || !/^[a-zA-Z0-9_:-]{1,128}$/.test(id)) return reply(null)
   const item = await prisma.destItem.findUnique({ where: { id }, include: { destination: { include: { itinerary: { select: { visibility: true, userId: true } } } } } })
   if (!item) return reply(null)
   const viewerId = (await auth())?.user?.id
@@ -34,6 +35,8 @@ export async function GET(request: NextRequest) {
   await saveAddress(photo?.address)
   if (photo || item.type === 'transport' || item.destination.name === 'Destination to decide') return reply(photo)
   // Google has no photo of it: show a stock photo of its town instead of a blank card.
-  const stock = await fetchStockPhoto(`${item.destination.name}${item.destination.country ? ` ${item.destination.country}` : ''} travel`)
+  // A stop with an unusual name ("Baltra / Santa Cruz Island") can find nothing, so then try its country.
+  const { name, country } = item.destination
+  const stock = await fetchStockPhoto(`${name}${country ? ` ${country}` : ''} travel`) ?? (country ? await fetchStockPhoto(`${country} travel`) : null)
   return reply(stock ? { url: stock, authors: [], mapsUrl: '', placeId: '' } : null)
 }
