@@ -91,6 +91,12 @@ export async function POST(request: Request) {
     : '<current_trip>Not started yet. Adding a recommendation will create it.</current_trip>'
   // The setup answers ride along with the first message, so they stay in the conversation history.
   const preferences = cleanPreferences(body?.preferences)
+  // Friends picked under "With friends": only people this traveler follows, by their real names.
+  if (preferences?.friendIds?.length) {
+    const follows = await prisma.follow.findMany({ where: { followerId: userId, status: 'accepted', followingId: { in: preferences.friendIds } }, select: { following: { select: { name: true } } } })
+    preferences.friends = follows.map(follow => follow.following.name)
+    if (!preferences.friends.length) delete preferences.friends
+  }
   const traveler = `<traveler past_trips="${context.hasOwnTrips ? 'yes' : 'none'}" />`
   const preferencesBlock = preferences ? `\n<traveler_preferences>\n${describePreferences(preferences)}\n</traveler_preferences>` : ''
   const userMessage: Anthropic.MessageParam = { role: 'user', content: `${current}\n${traveler}${preferencesBlock}\n\n${message}` }

@@ -16,7 +16,9 @@ import PlacePhoto from '@/components/PlacePhoto'
 import { addPlanPlace, startPlan } from '@/actions/planning'
 import { linkPlanChat } from '@/actions/planChat'
 import { tripMapLookupKey, validMapLocation, type TripMapPlace } from '@/lib/tripMapPlaces'
-import { BUDGETS, type TravelPreferences } from '@/lib/travelPreferences'
+import { BUDGETS, TRAVELER_LABELS, type TravelPreferences } from '@/lib/travelPreferences'
+import PlanLanding, { type Landing } from './PlanLanding'
+import { formatDate } from '@/lib/placeDates'
 
 type Place = { id: string; name: string; type: string; notes: string | null; placeId: string | null; lat: number | null; lng: number | null; day: number | null; photos: string[]; destination: string }
 type Trip = { id: string; title: string; places: Place[] }
@@ -47,7 +49,7 @@ type PastChat = { id: string; topic: string; summary?: string; updatedAt: string
 
 const starters = ['Surprise me with a long weekend', 'Where should we go this spring?', 'Somewhere new my friends haven’t been']
 
-export default function TestPlanner({ trip, chat, history, initialDraft = '', fromPlanner = false }: { fromPlanner?: boolean; initialDraft?: string; trip: Trip | null; chat: { id: string; turns: Turn[] } | null; history: PastChat[] }) {
+export default function TestPlanner({ trip, chat, history, landing = null, initialDraft = '', fromPlanner = false }: { fromPlanner?: boolean; initialDraft?: string; trip: Trip | null; chat: { id: string; turns: Turn[] } | null; history: PastChat[]; landing?: Landing | null }) {
   const router = useRouter()
   const [turns, setTurns] = useState<Turn[]>(chat?.turns ?? [])
   const chatId = useRef(chat?.id ?? '')
@@ -79,6 +81,8 @@ export default function TestPlanner({ trip, chat, history, initialDraft = '', fr
   // also says how tall the keyboard is, and the box keeps clear of it either way.
   const form = useRef<HTMLFormElement>(null)
   const [pinnedTop, setPinnedTop] = useState<number | null>(null)
+  // The start page has no message box; it's set up when the chat appears.
+  const onLanding = !!landing && !trip && !turns.length
   useEffect(() => {
     const box = composer.current
     const viewport = window.visualViewport
@@ -127,7 +131,7 @@ export default function TestPlanner({ trip, chat, history, initialDraft = '', fr
       viewport.removeEventListener('resize', measure); viewport.removeEventListener('scroll', measure); window.removeEventListener('resize', measure)
       for (const listener of listeners) void listener.then(handle => handle.remove()).catch(() => {})
     }
-  }, [])
+  }, [onLanding])
   // The message box grows with what's typed (up to its max height), then scrolls.
   useEffect(() => {
     const box = composer.current
@@ -229,6 +233,12 @@ export default function TestPlanner({ trip, chat, history, initialDraft = '', fr
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not add this place.') }
     finally { setAdding(null) }
   }
+
+  // A new chat that isn't about a trip starts on the Plan with Postcard page; asking switches to the chat.
+  if (onLanding) return <>
+    <PlanLanding landing={landing} history={history} busy={thinking} onSend={(text, preferences) => void send(text, preferences)} />
+    {error && <p role="alert" className="mx-auto max-w-2xl px-4 pb-6 text-sm text-danger">{error}</p>}
+  </>
 
   return <div className={`mx-auto grid max-w-[1440px] gap-4 px-4 pt-4 text-ink lg:h-[calc(100dvh-4.5rem-var(--app-bottom-clearance))] ${mapView === 'hidden' ? 'lg:grid-cols-[220px_minmax(0,1fr)]' : mapView === 'small' ? 'lg:grid-cols-[220px_minmax(0,1fr)_320px]' : 'lg:grid-cols-[220px_minmax(0,1fr)_minmax(0,1.1fr)]'}`}>
     {/* Desktop: past conversations down the left. */}
@@ -336,7 +346,10 @@ function RecommendationCard({ rec, color, grouped = false, added, busy, disabled
 
 function PreferencesSummary({ preferences }: { preferences: TravelPreferences }) {
   const budget = BUDGETS.find(option => option.value === preferences.budget)
-  const parts = [preferences.travelers, preferences.length, budget?.label, preferences.destinationTypes.join(', '), preferences.activities.join(', ')].filter(Boolean)
+  const when = preferences.when === 'Specific dates' && preferences.startDate ? `${formatDate(preferences.startDate)}${preferences.endDate ? ` – ${formatDate(preferences.endDate)}` : ''}` : preferences.when
+  const parts = [preferences.travelers && (TRAVELER_LABELS[preferences.travelers as keyof typeof TRAVELER_LABELS] ?? preferences.travelers), preferences.length, when,
+    preferences.distance && `${preferences.distance}${preferences.from ? ` from ${preferences.from}` : ''}`, budget?.label, preferences.destinationTypes.join(', '), preferences.activities.join(', '),
+    preferences.vibes?.join(', '), preferences.friends?.length && `With ${preferences.friends.map(name => name.split(' ')[0]).join(', ')}’s places`].filter(Boolean)
   return <p className="ml-auto w-fit max-w-[85%] rounded-2xl border border-mist-line bg-mist px-4 py-2 text-xs text-ink"><span className="font-semibold">This trip:</span> {parts.join(' · ')}</p>
 }
 

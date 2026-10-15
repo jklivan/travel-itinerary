@@ -20,13 +20,18 @@ function clip(value: string | null, max: number) {
 // Builds a compact, deterministic text dump of the viewer's trips and their friends' published trips.
 // `excludeTripId` keeps the trip being planned out of the cached context; its live state is sent per turn instead.
 export async function loadPlanningContext(userId: string, excludeTripId?: string) {
-  const [mine, friends] = await Promise.all([
+  const [mine, friends, saved] = await Promise.all([
     prisma.itinerary.findMany({ where: { userId, ...(excludeTripId ? { id: { not: excludeTripId } } : {}) }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 60, select: tripSelect }),
     prisma.itinerary.findMany({ where: { visibility: 'public', userId: { not: userId }, user: { followers: { some: { followerId: userId, status: 'accepted' } } } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 200, select: tripSelect }),
+    // Trips you saved from anyone (Saved), for "Plan from your saved places".
+    prisma.itinerary.findMany({ where: { visibility: 'public', userId: { not: userId }, bucketedBy: { some: { userId } } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 40, select: tripSelect }),
   ])
+  const friendIds = new Set(friends.map(trip => trip.id))
+  const savedOnly = saved.filter(trip => !friendIds.has(trip.id))
+  const savedIds = new Set(saved.map(trip => trip.id))
   const items = new Map<string, ContextItem>()
-  const sections = [...mine.map(trip => ({ trip, isMine: true })), ...friends.map(trip => ({ trip, isMine: false }))].map(({ trip, isMine }) => {
-    const header = [`## ${isMine ? 'Your trip' : `${trip.user.name}'s trip`}: "${trip.title}"`,
+  const sections = [...mine.map(trip => ({ trip, isMine: true })), ...friends.map(trip => ({ trip, isMine: false })), ...savedOnly.map(trip => ({ trip, isMine: false }))].map(({ trip, isMine }) => {
+    const header = [`## ${isMine ? 'Your trip' : `${trip.user.name}'s trip`}${savedIds.has(trip.id) ? ' (you saved it)' : ''}: "${trip.title}"`,
       trip.visibility === 'draft' ? 'draft plan' : trip.postType,
       trip.datesFlexible ? '' : trip.startDate.toISOString().slice(0, 7),
       trip.tripRating ? `trip rated ${trip.tripRating}/5` : '', `for ${trip.audience}`,

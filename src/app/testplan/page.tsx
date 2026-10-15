@@ -4,6 +4,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import TestPlanner, { type Turn } from './TestPlanner'
+import type { Landing } from './PlanLanding'
 import { SETUP_MESSAGE } from '@/lib/travelPreferences'
 import { nameChat } from '@/lib/chatTitle'
 
@@ -18,7 +19,7 @@ function chatTopic(turns: Turn[], tripTitle: string | null | undefined) {
   const question = turns.find(turn => turn.role === 'user' && turn.text !== SETUP_MESSAGE)
   if (question && question.role === 'user') return question.text.length > 60 ? `${question.text.slice(0, 57)}…` : question.text
   const preferences = turns.find(turn => turn.role === 'preferences')
-  const kinds = preferences && preferences.role === 'preferences' ? preferences.preferences.destinationTypes : []
+  const kinds = preferences && preferences.role === 'preferences' ? [...preferences.preferences.destinationTypes, ...(preferences.preferences.vibes ?? [])] : []
   return kinds.length ? `${kinds.slice(0, 3).join(' · ')} ideas` : 'Trip ideas'
 }
 
@@ -44,10 +45,39 @@ export default async function TestPlanPage({ searchParams }: { searchParams: Pro
   // ?ask= (from "Ask AI about this place" in the planner): start a question about that place.
   const askPlace = ask ? trip?.destinations.flatMap(d => d.items.map(item => ({ item, d }))).find(({ item }) => item.id === ask) : undefined
   const initialDraft = askPlace ? `Tell me more about ${askPlace.item.name} (${[askPlace.d.name, askPlace.d.country].filter(Boolean).join(', ')}): ` : ''
-  return <TestPlanner key={`${chat?.id ?? `new:${tripId ?? ''}`}:${ask ?? ''}`} initialDraft={initialDraft} fromPlanner={from === 'planner'} history={history} chat={chat && { id: chat.id, turns: chat.turns as unknown as Turn[] }} trip={trip && { id: trip.id, title: trip.title,
+  // A new chat that isn't about a trip opens on the Plan with Postcard start page.
+  const landing = !chat && !trip ? await landingData(userId) : null
+  return <TestPlanner key={`${chat?.id ?? `new:${tripId ?? ''}`}:${ask ?? ''}`} landing={landing} initialDraft={initialDraft} fromPlanner={from === 'planner'} history={history} chat={chat && { id: chat.id, turns: chat.turns as unknown as Turn[] }} trip={trip && { id: trip.id, title: trip.title,
     places: trip.destinations.flatMap(d => d.items.map(item => ({ id: item.id, name: item.name, type: item.type, notes: item.notes, placeId: item.placeId, lat: item.lat, lng: item.lng,
       day: item.dayIndex === null ? null : item.dayIndex + (d.items.some(i => i.type !== 'hotel' && i.dayIndex === 0) ? 1 : 0),
       photos: item.photoUrls.length ? item.photoUrls : item.photoUrl ? [item.photoUrl] : [],
       destination: item.address ? placeTown(item.address) : [d.name, d.country].filter(Boolean).join(', ') }))),
   }} />
+}
+
+// The start page: your latest private plans, places from trips you saved (by kind, with a photo), and who you follow.
+async function landingData(userId: string): Promise<Landing> {
+  const [plans, savedPlaces, follows] = await Promise.all([
+    prisma.itinerary.findMany({ where: { userId, visibility: 'draft' }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 3, select: {
+      id: true, title: true, datesFlexible: true, startDate: true, endDate: true, coverPhoto: true,
+      photos: { where: { isStock: false }, take: 1, select: { url: true } },
+      destinations: { select: { items: { orderBy: { order: 'asc' }, select: { id: true, type: true, photoUrl: true, photoUrls: true } } } } } }),
+    prisma.destItem.findMany({ where: { destination: { itinerary: { visibility: 'public', userId: { not: userId }, bucketedBy: { some: { userId } } } } }, take: 400, select: { type: true, photoUrl: true, photoUrls: true } }),
+    prisma.follow.findMany({ where: { followerId: userId, status: 'accepted' }, take: 40, select: { following: { select: { id: true, name: true, image: true } } }, orderBy: { following: { name: 'asc' } } }),
+  ])
+  const photoOf = (item: { photoUrl: string | null; photoUrls: string[] }) => item.photoUrls[0] ?? item.photoUrl ?? null
+  const saved = (['food_drink', 'hotel', 'activity'] as const).map(type => {
+    const items = savedPlaces.filter(item => item.type === type)
+    return { type, count: items.length, photo: items.map(photoOf).find(Boolean) ?? null }
+  })
+  return {
+    plans: plans.map(plan => {
+      const items = plan.destinations.flatMap(d => d.items)
+      return { id: plan.id, title: plan.title || 'Untitled trip', places: items.length,
+        dates: plan.datesFlexible ? null : { start: plan.startDate.toISOString().slice(0, 10), end: plan.endDate.toISOString().slice(0, 10) },
+        cover: { saved: plan.coverPhoto ?? plan.photos[0]?.url ?? items.map(photoOf).find(Boolean) ?? null, itemId: items.find(item => item.type !== 'transport')?.id ?? null, stock: null } }
+    }),
+    saved,
+    friends: follows.map(follow => follow.following),
+  }
 }

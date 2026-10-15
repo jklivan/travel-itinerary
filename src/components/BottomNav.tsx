@@ -39,7 +39,7 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
         </Link>
 
         {/* Plan sits raised in the middle: a navy disc with the Postcard compass star. */}
-        <Link href={userId ? '/plan' : '/login'} aria-current={isPlanner ? 'page' : undefined} className={`${cls(isPlanner)} -mt-7`}>
+        <Link href={userId ? '/testplan' : '/login'} aria-current={isPlanner ? 'page' : undefined} className={`${cls(isPlanner)} -mt-7`}>
           <span className="flex size-[62px] items-center justify-center rounded-full border-4 border-cream bg-ink text-white shadow-pop"><CompassStar /></span>
           <span className={label}>Plan</span>
         </Link>
