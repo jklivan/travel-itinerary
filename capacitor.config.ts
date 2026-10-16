@@ -10,9 +10,9 @@ const config: CapacitorConfig = {
   webDir: 'mobile',
   plugins: {
     PushNotifications: { presentationOptions: ['sound', 'banner', 'list'] },
-    // The app shrinks the page while the keyboard is open instead of sliding it up, so the header and
-    // bottom bar stay put when the keyboard closes.
-    Keyboard: { resize: KeyboardResize.Native },
+    // The app shrinks the page while the keyboard is open (SceneDelegate pins the page to the keyboard's top edge,
+    // so the plugin itself doesn't resize), and the header and bottom bar stay put when the keyboard closes.
+    Keyboard: { resize: KeyboardResize.None },
   },
   server: {
     url: 'https://travel-itinerary-gules.vercel.app',

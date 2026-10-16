@@ -125,7 +125,10 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
       // If the page already shrank for the keyboard, its visible bottom is the keyboard's top. Only when it didn't
       // (the keyboard slides over the page) does the keyboard's own height need taking off.
       const shrank = !keyboard || viewport.height < full - keyboard / 2
-      const keyboardTop = shrank ? viewport.offsetTop + viewport.height : viewport.offsetTop + full - keyboard
+      // When the keyboard slides over the page, its height is measured from the bottom of the screen, but the app's page
+      // stops above the home bar (about 34pt on Face ID iPhones), so add that back or the box floats above the keyboard.
+      const homeBar = Capacitor.isNativePlatform() && window.innerHeight > window.innerWidth && window.screen.height - full > 60 ? 34 : 0
+      const keyboardTop = shrank ? viewport.offsetTop + viewport.height : viewport.offsetTop + full + homeBar - keyboard
       const top = keyboardTop - height - 8
       // A position up under the header means the numbers were off; leave the box where it normally sits.
       setPinnedTop(top > viewport.offsetTop + 80 ? top : null)
