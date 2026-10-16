@@ -158,11 +158,9 @@ export async function runHotelPrices(raw: unknown): Promise<{ content: string; i
       ...stay, cityName: input.city.trim(), countryCode: input.country_code.toUpperCase(), ...(name ? { hotelName: name } : {}), limit: name ? 10 : 60,
     }) })
     if (!first.ok) {
-      // LiteAPI refused or failed: say why in the logs, and try Google Hotels before giving up.
+      // Why LiteAPI refused, in the logs.
       const reason = first.data.error?.message ?? 'LiteAPI error'
       console.warn('[hotel_prices] LiteAPI', first.status, reason, JSON.stringify(searchSummary(input)))
-      const google = await googleHotelPrices(input, nights).catch(() => null)
-      if (google?.length) return result('google_hotels', 'priced_elsewhere', `LiteAPI couldn't price this (${reason}). Prices shown are Google Hotels' (from booking sites), for reference only. Each is per night for the whole group together; Google Hotels doesn't say how many rooms that covers, so say it's for all the guests.`, google)
       return { content: `Price lookup failed: ${reason}`, isError: true }
     }
     let priced = pricedHotels(first.data, nights)
@@ -190,8 +188,6 @@ export async function runHotelPrices(raw: unknown): Promise<{ content: string; i
     return result('liteapi', name && listed ? 'no_availability' : name ? 'not_listed' : 'no_availability', `${why}${process.env.SERPAPI_KEY ? ' Google Hotels had no prices either.' : ''}`, [])
   } catch (error) {
     console.warn('[hotel_prices] failed', error instanceof Error ? error.message : String(error), JSON.stringify(searchSummary(input)))
-    const google = await googleHotelPrices(input, nights).catch(() => null)
-    if (google?.length) return result('google_hotels', 'priced_elsewhere', 'LiteAPI didn\'t answer in time. Prices shown are Google Hotels\' (from booking sites), for reference only. Each is per night for the whole group together; Google Hotels doesn\'t say how many rooms that covers, so say it\'s for all the guests.', google)
     return { content: 'The price lookup timed out. Try again or suggest checking the hotel directly.', isError: true }
   }
 }
