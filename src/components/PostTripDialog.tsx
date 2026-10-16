@@ -8,7 +8,7 @@ import styles from './Stories.module.css'
 
 type Plan = { id: string; title: string; isPlan: boolean; places: number }
 
-// The header's + button: pick one of your private plans to post, or start a new trip from scratch.
+// The header's + button: pick one of your private plans to post, or add another trip they've taken.
 // Same shape as the snapshot composer.
 export default function PostTripDialog({ onClose }: { onClose: () => void }) {
   const router = useRouter()
@@ -40,17 +40,17 @@ export default function PostTripDialog({ onClose }: { onClose: () => void }) {
   }
 
   return <dialog ref={dialog} className={styles.composer} aria-labelledby={titleId} onClose={onClose}>
-    <header className={styles.composerHeader}><div><h2 id={titleId}>Post a trip</h2><p>Share one of your private plans, or start a new one from scratch.</p></div><button type="button" className={styles.close} aria-label="Close" onClick={() => dialog.current?.close()}><X size={18} /></button></header>
+    <header className={styles.composerHeader}><div><h2 id={titleId}>Post a trip</h2><p>Share one of your private plans, or add another trip you’ve taken.</p></div><button type="button" className={styles.close} aria-label="Close" onClick={() => dialog.current?.close()}><X size={18} /></button></header>
     <form onSubmit={event => { event.preventDefault(); go() }}>
       {!plans ? <p role="status" className={styles.empty}>Loading…</p> : <fieldset className={styles.fields}>
         <label>Which trip?<select value={choice} onChange={event => setChoice(event.target.value)}>
           {plans.map(p => <option key={p.id} value={p.id}>{p.title} · {p.places} {p.places === 1 ? 'place' : 'places'}</option>)}
-          <option value="new">＋ New trip from scratch</option>
+          <option value="new">＋ Another trip</option>
         </select></label>
         {plan && plan.places === 0 && <p className={styles.privacy}>This plan has no places yet. Add at least one before you post it.</p>}
-        {!plans.length && !error && <p className={styles.privacy}>You don’t have any private plans yet, so you’ll start from scratch.</p>}
+        {!plans.length && !error && <p className={styles.privacy}>You don’t have any private plans yet, so you’ll add a new trip.</p>}
         {error && <p role="alert" className={styles.error}>{error}</p>}
-        <button type="submit" className={styles.post}>{!plan ? 'Start from scratch →' : plan.places === 0 ? 'Open plan →' : 'Continue to post →'}</button>
+        <button type="submit" className={styles.post}>{!plan ? 'Add another trip →' : plan.places === 0 ? 'Open plan →' : 'Continue to post →'}</button>
       </fieldset>}
     </form>
   </dialog>
