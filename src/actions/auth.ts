@@ -6,6 +6,7 @@ import { signIn } from '@/auth'
 import { redirect } from 'next/navigation'
 import { AuthError } from 'next-auth'
 import { saveTripId } from '@/lib/saveTripReturn'
+import { followSuggestedPeople } from '@/lib/suggestedPeople'
 
 type FieldErrors = { name?: string[]; email?: string[]; password?: string[] }
 
@@ -30,7 +31,9 @@ export async function register(state: RegisterState, formData: FormData): Promis
   if (existing) return { errors: { email: ['An account with this email already exists.'] } }
 
   const hashed = await bcrypt.hash(password, 10)
-  await prisma.user.create({ data: { name, email, password: hashed } })
+  const user = await prisma.user.create({ data: { name, email, password: hashed }, select: { id: true } })
+  // Start out following the most active travelers (shown on the welcome page, where they can unfollow).
+  await followSuggestedPeople(user.id).catch(error => console.error('[register] suggested follows failed', error))
 
   const tripId = saveTripId(formData.get('saveTrip'))
   redirect(`/login?registered=1${tripId ? `&saveTrip=${encodeURIComponent(tripId)}` : ''}`)

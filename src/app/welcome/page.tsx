@@ -4,36 +4,27 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { saveTripId } from '@/lib/saveTripReturn'
 import PeopleList from '@/components/PeopleList'
+import { suggestedPeople } from '@/lib/suggestedPeople'
 
-// Right after signing up: a few people to follow so the feed isn't empty. For now, the five travelers with the most posted trips.
+// Right after signing up: the people they already follow (the five travelers with the most posted trips, followed
+// when the account was made), so the feed isn't empty. Tap to unfollow any of them.
 export default async function WelcomePage({ searchParams }: { searchParams: Promise<{ saveTrip?: string }> }) {
   const userId = (await auth())?.user?.id
   if (!userId) redirect('/login?callbackUrl=%2Fwelcome')
   const tripId = saveTripId((await searchParams).saveTrip ?? null)
   const next = tripId ? `/itinerary/${tripId}` : '/'
 
-  const posted = { visibility: { not: 'draft' } }
-  const [candidates, following] = await Promise.all([
-    prisma.user.findMany({
-      where: { id: { not: userId }, itineraries: { some: posted } },
-      select: { id: true, name: true, image: true, _count: { select: { itineraries: { where: posted } } } },
-      // Rough order by all trips (drafts included), then re-sorted below by posted trips only.
-      orderBy: { itineraries: { _count: 'desc' } },
-      take: 20,
-    }),
+  const [suggested, following] = await Promise.all([
+    suggestedPeople(userId),
     prisma.follow.findMany({ where: { followerId: userId }, select: { followingId: true } }),
   ])
   const followingIds = new Set(following.map(f => f.followingId))
-  const people = candidates
-    .map(person => ({ id: person.id, name: person.name, image: person.image, trips: person._count.itineraries, following: followingIds.has(person.id) }))
-    .sort((a, b) => b.trips - a.trips)
-    .slice(0, 5)
-    .map(({ trips, ...person }) => ({ ...person, meta: `${trips} ${trips === 1 ? 'trip' : 'trips'} posted` }))
+  const people = suggested.map(({ trips, ...person }) => ({ ...person, following: followingIds.has(person.id), meta: `${trips} ${trips === 1 ? 'trip' : 'trips'} posted` }))
 
   return <div className="page-wrap">
     <header className="page-header">
       <h1 className="page-title">Welcome to Postcard</h1>
-      <p className="page-subtitle">Follow a few travelers to fill your feed with their trips. You can find more people any time under Friends.</p>
+      <p className="page-subtitle">You’re following a few travelers so your feed has trips in it. Unfollow anyone you like, and find more people any time under Friends.</p>
     </header>
     {people.length > 0
       ? <PeopleList people={people} viewerId={userId} />
