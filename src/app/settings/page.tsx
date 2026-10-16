@@ -1,11 +1,10 @@
-import { auth, signOut } from '@/auth'
+import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { NotificationPreferences } from '@/components/NativeNotifications'
-import { unregisterPushDevice } from '@/actions/notifications'
-import { LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import DeleteAccount from '@/components/DeleteAccount'
+import SignOutButton from '@/components/SignOutButton'
 import BlockButton from '@/components/BlockButton'
 import UserAvatar from '@/components/UserAvatar'
 
@@ -27,13 +26,7 @@ export default async function SettingsPage() {
           </p>
         </div>
       </section>
-      <form className="mt-6" action={async () => {
-        'use server'
-        await unregisterPushDevice()
-        await signOut({ redirectTo: '/' })
-      }}>
-        <button type="submit" className="btn btn-outline"><LogOut size={16} />Sign out</button>
-      </form>
+      <div className="mt-6"><SignOutButton /></div>
       {/* People you've blocked, with Unblock. */}
       {blocked.length > 0 && <section className="panel mt-6 p-5" aria-labelledby="blocked-heading">
         <h2 id="blocked-heading" className="type-label text-ink">Blocked accounts</h2>
@@ -42,8 +35,9 @@ export default async function SettingsPage() {
           <BlockButton userId={person.id} name={person.name} initialBlocked />
         </li>)}</ul>
       </section>}
+      <p className="mt-8 text-xs text-muted"><Link href="/terms" className="underline">Terms of use</Link> · <Link href="/privacy" className="underline">Privacy</Link></p>
+      {/* Kept small and last, away from Sign out, so no one deletes their account by mistake. */}
       <DeleteAccount />
-      <p className="mt-6 text-xs text-muted"><Link href="/terms" className="underline">Terms of use</Link> · <Link href="/privacy" className="underline">Privacy</Link></p>
     </div>
   )
 }

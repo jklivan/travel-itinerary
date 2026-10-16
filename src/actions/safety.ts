@@ -72,7 +72,9 @@ export async function deleteAccount(confirmation: string) {
       prisma.user.delete({ where: { id: userId } }),
     ])
   } catch { return { error: 'Could not delete your account. Please try again.' } }
-  await signOut({ redirectTo: '/?accountDeleted=1' })
+  // The page then reloads itself on the home page.
+  await signOut({ redirect: false })
+  return { success: true }
 }
 
 // Admin: mark a report handled.
