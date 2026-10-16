@@ -29,17 +29,11 @@ export async function POST(request: Request) {
   if (!missing.length) return Response.json({ descriptions: {} })
 
   try {
-    const response = await client.messages.create({
-      model: 'claude-sonnet-5',
-      max_tokens: 6000,
-      output_config: { effort: 'low', format: { type: 'json_schema', schema } },
-      system: 'You write short descriptions for place cards in Postcard, a travel app. For each place, write 2-3 sentences describing the place itself: what it is, what it\'s like, and what to order or see. Be specific and accurate; if you don\'t know a place well, describe it briefly and generally rather than inventing details. No marketing language. Return one entry per key, using the key exactly as given.',
-      messages: [{ role: 'user', content: missing.map(card => `- key ${card.key}: ${card.name} (${card.type === 'food_drink' ? 'restaurant or bar' : card.type === 'hotel' ? 'place to stay' : 'thing to do'}), ${[card.destination, card.country].filter(Boolean).join(', ')}`).join('\n') }],
-    })
-    const text = response.content.find(block => block.type === 'text')?.text ?? ''
+    // Small batches at the same time: a few seconds in all, instead of one long list written in a row.
+    const batches = Array.from({ length: Math.ceil(missing.length / 3) }, (_, index) => missing.slice(index * 3, index * 3 + 3))
+    const written = await Promise.all(batches.map(batch => describe(batch).catch(error => { console.error('[testplan/describe]', error instanceof Error ? error.message : error); return [] })))
     const wanted = new Set(missing.map(card => card.key))
-    const descriptions = Object.fromEntries((JSON.parse(text) as { descriptions: { key: string; description: string }[] }).descriptions
-      .filter(entry => wanted.has(entry.key) && entry.description.trim()).map(entry => [entry.key, entry.description.trim().slice(0, 800)]))
+    const descriptions = Object.fromEntries(written.flat().filter(entry => wanted.has(entry.key) && entry.description.trim()).map(entry => [entry.key, entry.description.trim().slice(0, 800)]))
     // Save them into the conversation as it is now (another message may have been added meanwhile).
     const latest = await prisma.planChat.findFirst({ where: { id: chatId, userId }, select: { turns: true } })
     if (latest) {
@@ -52,4 +46,16 @@ export async function POST(request: Request) {
     console.error('[testplan/describe]', error instanceof Error ? error.message : error)
     return Response.json({ descriptions: {} })
   }
+}
+
+async function describe(cards: Card[]) {
+  const response = await client.messages.create({
+    model: 'claude-sonnet-5',
+    max_tokens: 2000,
+    output_config: { effort: 'low', format: { type: 'json_schema', schema } },
+    system: 'You write short descriptions for place cards in Postcard, a travel app. For each place, write 2-3 sentences describing the place itself: what it is, what it\'s like, and what to order or see. Be specific and accurate; if you don\'t know a place well, describe it briefly and generally rather than inventing details. No marketing language. Return one entry per key, using the key exactly as given.',
+    messages: [{ role: 'user', content: cards.map(card => `- key ${card.key}: ${card.name} (${card.type === 'food_drink' ? 'restaurant or bar' : card.type === 'hotel' ? 'place to stay' : 'thing to do'}), ${[card.destination, card.country].filter(Boolean).join(', ')}`).join('\n') }],
+  })
+  const text = response.content.find(block => block.type === 'text')?.text ?? ''
+  return (JSON.parse(text) as { descriptions: { key: string; description: string }[] }).descriptions
 }
