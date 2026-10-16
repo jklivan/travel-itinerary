@@ -1,22 +1,15 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { loadLikers } from '@/actions/likes'
-import { sendFollowRequest, unfollowUser } from '@/actions/friends'
+import FollowButton from './FollowButton'
 import UserAvatar from './UserAvatar'
 import BottomSheet from './ui/BottomSheet'
 
 type Liker = { id: string; name: string; image: string | null; following: boolean }
 
-function FollowButton({ liker, onChange }: { liker: Liker; onChange: (following: boolean) => void }) {
-  const [pending, startTransition] = useTransition()
-  return <button type="button" disabled={pending} aria-pressed={liker.following} onClick={() => startTransition(async () => {
-    if (liker.following) await unfollowUser(liker.id); else await sendFollowRequest(liker.id)
-    onChange(!liker.following)
-  })} className="chip shrink-0">{liker.following ? 'Following' : 'Follow'}</button>
-}
 
 // Feed: "Liked by … and N others" opens who liked the trip, each with Follow, like Instagram.
 function Sheet({ itineraryId, title, onClose }: { itineraryId: string; title: string; onClose: (changed: boolean) => void }) {
@@ -42,7 +35,7 @@ function Sheet({ itineraryId, title, onClose }: { itineraryId: string; title: st
           <UserAvatar name={liker.name} image={liker.image} size={40} />
           <span className="truncate text-sm font-semibold text-ink">{liker.name}</span>
         </Link>
-        {userId && liker.id !== userId && <FollowButton liker={liker} onChange={following => { changed.current = true; setLikers(current => current?.map(item => item.id === liker.id ? { ...item, following } : item) ?? null) }} />}
+        {userId && liker.id !== userId && <FollowButton userId={liker.id} name={liker.name} initialStatus={liker.following} onChange={following => { changed.current = true; setLikers(current => current?.map(item => item.id === liker.id ? { ...item, following } : item) ?? null) }} />}
       </li>)}</ul>}
   </BottomSheet>
 }

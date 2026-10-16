@@ -12,7 +12,7 @@ import Image from 'next/image'
 import PhotoStrip from '@/components/PhotoStrip'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
+import FollowButton from '@/components/FollowButton'
 import { Plane, Hotel, Utensils, Camera, MapPin, Check, Ban, Star, Users, Pencil, Clock } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import LikeButton from '@/components/LikeButton'
@@ -585,16 +585,7 @@ export default async function ItineraryPage({
               </span>
             </>}
             {session?.user && !isOwn && (
-              <form className="ml-auto shrink-0" action={async () => {
-                'use server'
-                if (followStatus === 'accepted') await unfollowUser(it.user.id)
-                else if (followStatus === 'pending') await cancelFollowRequest(it.user.id)
-                else await sendFollowRequest(it.user.id)
-              }}>
-                <button type="submit" aria-pressed={followStatus === 'accepted'} className="chip">
-                  {followStatus === 'accepted' ? 'Following' : followStatus === 'pending' ? 'Requested' : '+ Follow'}
-                </button>
-              </form>
+              <span className="ml-auto shrink-0"><FollowButton userId={it.user.id} name={it.user.name} initialStatus={followStatus === 'accepted' || followStatus === 'pending' ? followStatus : null} refresh /></span>
             )}
           </div>
 

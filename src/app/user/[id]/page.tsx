@@ -13,7 +13,7 @@ import SavedFolderPicker from '@/components/SavedFolderPicker'
 import DeleteButton from '@/components/DeleteButton'
 import { tripPhotoGallery } from '@/lib/eventPhotos'
 import { fetchStockPhoto } from '@/lib/stockPhoto'
-import { sendFollowRequest, cancelFollowRequest, unfollowUser } from '@/actions/friends'
+import FollowButton from '@/components/FollowButton'
 import { ChevronRight, Settings } from 'lucide-react'
 import { PostStamp } from '@/components/PostcardLogo'
 
@@ -147,16 +147,7 @@ export default async function UserProfilePage({
         </div>
         {isOwn && <Link href="/settings" aria-label="Settings" className="btn-icon"><Settings size={18} /></Link>}
         {session?.user && !isOwn && !blocked && (
-          <form action={async () => {
-            'use server'
-            if (followStatus === 'accepted') await unfollowUser(id)
-            else if (followStatus === 'pending') await cancelFollowRequest(id)
-            else await sendFollowRequest(id)
-          }}>
-            <button type="submit" aria-pressed={followStatus === 'accepted'} className="chip">
-              {followStatus === 'accepted' ? 'Following' : followStatus === 'pending' ? 'Requested' : '+ Follow'}
-            </button>
-          </form>
+          <FollowButton userId={id} name={user.name} initialStatus={followStatus === 'accepted' || followStatus === 'pending' ? followStatus : null} refresh />
         )}
       </div>}
 

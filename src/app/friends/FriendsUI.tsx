@@ -92,12 +92,16 @@ export default function FriendsUI({
   }
 
   // Follows go through straight away (profiles are public), so the person moves into People you follow.
+  // Both change on screen straight away (saving takes a moment) and change back if the save fails.
   function handleFollow(userId: string) {
+    setFollowingIds((prev) => new Set([...prev, userId]))
+    const user = [...nameResults, ...followers].find((u) => u.id === userId)
+    if (user) setFollowingList((prev) => prev.some((u) => u.id === userId) ? prev : [user, ...prev])
     startTransition(async () => {
-      await sendFollowRequest(userId)
-      setFollowingIds((prev) => new Set([...prev, userId]))
-      const user = [...nameResults, ...followers].find((u) => u.id === userId)
-      if (user) setFollowingList((prev) => prev.some((u) => u.id === userId) ? prev : [user, ...prev])
+      try { await sendFollowRequest(userId) } catch {
+        setFollowingIds((prev) => { const n = new Set(prev); n.delete(userId); return n })
+        setFollowingList((prev) => prev.filter((u) => u.id !== userId))
+      }
     })
   }
 
@@ -109,10 +113,14 @@ export default function FriendsUI({
   }
 
   function handleUnfollow(userId: string) {
+    const removed = followingList.find((u) => u.id === userId)
+    setFollowingIds((prev) => { const n = new Set(prev); n.delete(userId); return n })
+    setFollowingList((prev) => prev.filter((u) => u.id !== userId))
     startTransition(async () => {
-      await unfollowUser(userId)
-      setFollowingIds((prev) => { const n = new Set(prev); n.delete(userId); return n })
-      setFollowingList((prev) => prev.filter((u) => u.id !== userId))
+      try { await unfollowUser(userId) } catch {
+        setFollowingIds((prev) => new Set([...prev, userId]))
+        if (removed) setFollowingList((prev) => [removed, ...prev])
+      }
     })
   }
 
