@@ -6,7 +6,12 @@ import DateRangeCalendar from '@/components/ui/DateRangeCalendar'
 import { daysBetween, formatDate } from '@/lib/placeDates'
 
 // What the planner's question offers instead of typing: chips to choose from, travel dates, or who's going.
-export type Ask = { kind: 'none' | 'choose' | 'dates' | 'guests' | 'dates_and_guests'; question: string; options: string[]; multiple: boolean }
+export type Ask = { kind: 'none' | 'choose' | 'dates' | 'guests' | 'dates_and_guests' | 'trip_basics'; question: string; options: string[]; multiple: boolean }
+
+// "trip_basics": a new traveler's three starting questions at once.
+const TRIP_TYPES = ['Beach', 'City', 'Mountains', 'Countryside', 'Islands', 'Snow & ski', 'Wine country', 'Adventure']
+const BUDGETS = ['$ Budget-friendly', '$$ Mid-range', '$$$ Upscale', '$$$$ Luxury']
+const WHO = [['Solo', 'Just me'], ['Couple', 'Couple'], ['Family with kids', 'Family with kids'], ['Friends', 'Friends']] as const
 
 const longDate = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 const list = (items: (string | number)[]) => items.length > 1 ? `${items.slice(0, -1).join(', ')} and ${items.at(-1)}` : String(items[0] ?? '')
@@ -18,6 +23,7 @@ export default function AskPicker({ ask, disabled, onAnswer: send }: { ask: Ask;
   const [answered, setAnswered] = useState(false)
   const onAnswer = (text: string) => { setAnswered(true); send(text) }
   const [picked, setPicked] = useState<string[]>([])
+  const [basics, setBasics] = useState<Record<string, string[]>>({})
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [start, setStart] = useState(''), [end, setEnd] = useState('')
   const [adults, setAdults] = useState(2)
@@ -26,6 +32,20 @@ export default function AskPicker({ ask, disabled, onAnswer: send }: { ask: Ask;
   if (answered) return <p className="text-xs text-muted">Sending…</p>
   const wantsGuests = ask.kind === 'guests' || ask.kind === 'dates_and_guests'
 
+  if (ask.kind === 'trip_basics') {
+    const chip = (group: string, value: string, label: string, many: boolean) => {
+      const chosen = basics[group]?.includes(value) ?? false
+      return <button key={value} type="button" aria-pressed={chosen} onClick={() => setBasics(current => ({ ...current, [group]: many ? (chosen ? current[group].filter(item => item !== value) : [...(current[group] ?? []), value]) : chosen ? [] : [value] }))} className="chip">{chosen && many && <Check size={14} />}{label}</button>
+    }
+    const types = basics.types ?? [], budget = basics.budget?.[0], who = basics.who?.[0]
+    const answer = [types.length && `${list(types)} trip`, budget && `${budget} budget`, who && (who === 'Solo' ? 'just me' : who === 'Couple' ? 'for a couple' : who === 'Friends' ? 'with friends' : 'for a family with kids')].filter(Boolean).join(', ')
+    return <div className="panel-inset space-y-4 p-3">
+      <fieldset><legend className="mb-2 text-sm font-semibold">What kind of trip? <span className="font-normal text-muted">(pick any)</span></legend><div className="flex flex-wrap gap-2">{TRIP_TYPES.map(value => chip('types', value, value, true))}</div></fieldset>
+      <fieldset><legend className="mb-2 text-sm font-semibold">Budget</legend><div className="flex flex-wrap gap-2">{BUDGETS.map(value => chip('budget', value, value, false))}</div></fieldset>
+      <fieldset><legend className="mb-2 text-sm font-semibold">Who’s going?</legend><div className="flex flex-wrap gap-2">{WHO.map(([value, label]) => chip('who', value, label, false))}</div></fieldset>
+      <button type="button" disabled={disabled || !answer} onClick={() => onAnswer(answer.charAt(0).toUpperCase() + answer.slice(1) + '.')} className="btn btn-primary btn-sm">Continue<ArrowRight size={16} /></button>
+    </div>
+  }
   if (ask.kind === 'choose' && ask.options.length) return <div className="space-y-2">
     <div className="flex flex-wrap gap-2">{ask.options.map(option => ask.multiple
       ? <button key={option} type="button" disabled={disabled} aria-pressed={picked.includes(option)} onClick={() => setPicked(list => list.includes(option) ? list.filter(item => item !== option) : [...list, option])} className="chip">{picked.includes(option) && <Check size={14} />}{option}</button>
