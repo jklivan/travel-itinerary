@@ -26,6 +26,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   pages: {
     signIn: '/login',
   },
+  // After signing in or out, stay on the address you're using (www.postcardtravel.app, or the app's own address).
+  trustHost: true,
   session: { strategy: 'jwt' },
   callbacks: {
     jwt({ token, user }) {
