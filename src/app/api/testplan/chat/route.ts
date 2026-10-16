@@ -35,7 +35,6 @@ For each recommendation:
 - sourceItemId = the bracketed id of the place in the data below when source is "friend" or "you"; otherwise "".
 - friendName = the friend's name when source is "friend"; otherwise "".
 - destination = the city or area; country = the country.
-- description = 2-3 sentences describing the place itself (what it is, what it's like, what to order or see). This is separate from "why", which says why it suits this user.
 - price = for a hotel you priced with hotel_prices, e.g. "from $420/night · Jun 3–7", or "from $780/night · 2 rooms · Jun 3–7" for more than one room; otherwise "".
 - tripOption = a short name (2-4 words) for the trip idea this place belongs to, e.g. "Amalfi Coast" or "Greek islands". When you suggest alternative trips, give each its own name and use exactly the same name for every place in it. Reuse a name from earlier in the conversation when adding to that idea.
 Also return, for the conversation list:
@@ -59,14 +58,13 @@ const schema = {
     recommendations: { type: 'array', items: {
       type: 'object',
       additionalProperties: false,
-      required: ['name', 'type', 'destination', 'country', 'tripOption', 'description', 'why', 'price', 'source', 'sourceItemId', 'friendName'],
+      required: ['name', 'type', 'destination', 'country', 'tripOption', 'why', 'price', 'source', 'sourceItemId', 'friendName'],
       properties: {
         name: { type: 'string' },
         type: { type: 'string', enum: ['hotel', 'food_drink', 'activity'] },
         destination: { type: 'string' },
         country: { type: 'string' },
         tripOption: { type: 'string' },
-        description: { type: 'string' },
         why: { type: 'string' },
         price: { type: 'string' },
         source: { type: 'string', enum: ['friend', 'you', 'claude'] },
@@ -77,7 +75,7 @@ const schema = {
   },
 }
 
-type RawRecommendation = { name: string; type: 'hotel' | 'food_drink' | 'activity'; destination: string; country: string; tripOption: string; description: string; why: string; price?: string; source: 'friend' | 'you' | 'claude'; sourceItemId: string; friendName: string }
+type RawRecommendation = { name: string; type: 'hotel' | 'food_drink' | 'activity'; destination: string; country: string; tripOption: string; why: string; price?: string; source: 'friend' | 'you' | 'claude'; sourceItemId: string; friendName: string }
 
 export async function POST(request: Request) {
   const userId = (await auth())?.user?.id
@@ -136,7 +134,7 @@ export async function POST(request: Request) {
       const card = (rec: RawRecommendation, index: number, messageId: string) => {
         const source = context.items.get(rec.sourceItemId)
         return {
-          key: `${messageId}:${index}`, name: rec.name, type: rec.type, why: rec.why, price: rec.price?.trim() || '', tripOption: rec.tripOption.trim(), description: rec.description.trim(),
+          key: `${messageId}:${index}`, name: rec.name, type: rec.type, why: rec.why, price: rec.price?.trim() || '', tripOption: rec.tripOption.trim(), description: '',
           destination: source?.destination ?? rec.destination, country: source?.country ?? (rec.country || null),
           source: source ? (source.mine ? 'you' : 'friend') : 'claude' as const,
           friendName: source && !source.mine ? source.owner : '',
@@ -213,7 +211,9 @@ export async function POST(request: Request) {
       const recommendations = parsed.recommendations.map((rec, index) => card(rec, index, response.id))
       const nextHistory = [...history, ...turns, { role: 'assistant', content: response.content }] as unknown as Prisma.InputJsonValue
       const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, ...(ask ? { ask } : {}), title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160) }]
-      const saved = await prisma.planChat.update({ where: { id: activeChatId }, data: { history: nextHistory, turns: [...((chat?.turns ?? []) as Prisma.JsonArray), ...newTurns] as Prisma.InputJsonValue, ...(trip && !chat?.tripId ? { tripId } : {}) }, select: { id: true } })
+      // The turns as saved now (descriptions may have been added to earlier cards since this started).
+      const latest = await prisma.planChat.findUnique({ where: { id: activeChatId }, select: { turns: true } })
+      const saved = await prisma.planChat.update({ where: { id: activeChatId }, data: { history: nextHistory, turns: [...((latest?.turns ?? chat?.turns ?? []) as Prisma.JsonArray), ...newTurns] as Prisma.InputJsonValue, ...(trip && !chat?.tripId ? { tripId } : {}) }, select: { id: true } })
       emit({ type: 'done', chatId: saved.id, reply: parsed.reply, recommendations, ...(ask ? { ask } : {}) })
     } catch (error) {
       if (error instanceof Anthropic.RateLimitError) return emit({ type: 'error', error: 'Postcard is busy. Try again in a moment.' })

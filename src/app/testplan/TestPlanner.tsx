@@ -217,6 +217,15 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
     chatId.current = ''; tripId.current = ''; setTurns([]); setAdded(new Set()); setError(''); router.push('/testplan?new=1')
   }
 
+  // The cards' descriptions are written just after the answer (so the cards themselves arrive sooner).
+  async function describeCards(id: string) {
+    const response = await fetch('/api/testplan/describe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chatId: id }) }).catch(() => null)
+    const found = (response?.ok ? (await response.json().catch(() => null) as { descriptions?: Record<string, string> } | null)?.descriptions : null) ?? {}
+    if (!Object.keys(found).length) return
+    setTurns(current => current.map(turn => turn.role === 'assistant'
+      ? { ...turn, recommendations: turn.recommendations.map(rec => !rec.description && found[rec.key] ? { ...rec, description: found[rec.key] } : rec) } : turn))
+  }
+
   async function send(text: string, preferences?: TravelPreferences) {
     const message = text.trim()
     if (!message || thinking) return
@@ -234,7 +243,7 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
       }
       // The answer streams in as lines of JSON: the reply as it's written, then the place cards when it's done.
       const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
-      let buffer = '', finished = false
+      let buffer = '', finished = false, cards = 0
       while (!finished) {
         const { value, done } = await reader.read()
         if (done) break
@@ -253,17 +262,19 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
           else if (event.type === 'done') {
             chatId.current = event.chatId ?? ''
             setTurns(current => [...current, { role: 'assistant', text: event.reply ?? '', recommendations: event.recommendations ?? [], ...(event.ask ? { ask: event.ask } : {}) }])
+            cards = event.recommendations?.length ?? 0
             finished = true
           }
         }
       }
       if (!finished) throw new Error('The answer was cut off. Please try again.')
+      if (cards) void describeCards(chatId.current)
     } catch (caught) {
       // The connection dropped (say, switching to another app): the answer is still being saved, so wait for it.
       if (!(caught instanceof AnswerError) && chatId.current) {
         setStreaming(''); setStatus('Reconnecting…')
         const saved = await savedAnswer(chatId.current, expected)
-        if (saved) { setTurns(saved); return }
+        if (saved) { setTurns(saved); void describeCards(chatId.current); return }
       }
       setTurns(current => current.slice(0, -pending.length)); if (!preferences) setDraft(message)
       setError(caught instanceof Error && caught.message && caught instanceof AnswerError ? caught.message : 'Lost the connection. Please try again.')
@@ -274,6 +285,7 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
     }
   }
   useEffect(() => { sendLatest.current = text => void send(text) })
+
 
   async function add(rec: Recommendation) {
     if (adding) return
