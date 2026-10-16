@@ -21,13 +21,16 @@ function clip(value: string | null, max: number) {
 // Builds a compact, deterministic text dump of the viewer's trips and their friends' published trips.
 // `excludeTripId` keeps the trip being planned out of the cached context; its live state is sent per turn instead.
 export async function loadPlanningContext(userId: string, excludeTripId?: string) {
-  const [mine, friends, saved, account] = await Promise.all([
+  const [mine, friends, saved, account, likes] = await Promise.all([
     prisma.itinerary.findMany({ where: { userId, ...(excludeTripId ? { id: { not: excludeTripId } } : {}) }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 60, select: tripSelect }),
     prisma.itinerary.findMany({ where: { visibility: 'public', userId: { notIn: [userId, ...hiddenAccountsFor(userId)] }, user: { followers: { some: { followerId: userId, status: 'accepted' } } } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 200, select: tripSelect }),
     // Trips you saved from anyone (Saved), for "Plan from your saved places".
     prisma.itinerary.findMany({ where: { visibility: 'public', userId: { notIn: [userId, ...hiddenAccountsFor(userId)] }, bucketedBy: { some: { userId } } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 40, select: tripSelect }),
     // Sign-up's "your best vacation" answers.
     prisma.user.findUnique({ where: { id: userId }, select: { bestVacation: true } }),
+    // Trips they've hearted, for the destinations they like.
+    prisma.tripLike.findMany({ where: { userId, itinerary: { visibility: { not: 'draft' }, userId: { notIn: [userId, ...hiddenAccountsFor(userId)] } } }, orderBy: { createdAt: 'desc' }, take: 40,
+      select: { itinerary: { select: { title: true, user: { select: { name: true } }, destinations: { orderBy: { order: 'asc' }, select: { name: true, country: true } } } } } }),
   ])
   const friendIds = new Set(friends.map(trip => trip.id))
   const savedOnly = saved.filter(trip => !friendIds.has(trip.id))
@@ -59,6 +62,22 @@ export async function loadPlanningContext(userId: string, excludeTripId?: string
       ? `## Your trip: their best vacation (from sign-up): "${best.destination}"${details ? ` · ${details}` : ''}`
       : `## Their best vacation (told us at sign-up; they have no trips logged yet, so this is the main clue to their taste: use it for the kinds of places and things they enjoy): "${best.destination}"${details ? ` · ${details}` : ''}`)
   }
+  // What they like, up front so it's weighed: places they rated highly or poorly on their own trips, and the
+  // destinations of trips they've liked.
+  const rated = mine.flatMap(trip => trip.destinations.flatMap(destination => destination.items.filter(item => item.rating)
+    .map(item => ({ rating: item.rating!, line: `${item.name} (${typeLabel[item.type] ?? item.type}), ${[destination.name, destination.country].filter(Boolean).join(', ')} ★${item.rating}` }))))
+  const loved = rated.filter(item => item.rating >= 4).slice(0, 40).map(item => item.line)
+  const disliked = rated.filter(item => item.rating <= 2).slice(0, 20).map(item => item.line)
+  const likedPlaces = [...new Map(likes.flatMap(like => like.itinerary.destinations.map(destination => {
+    const place = [destination.name, destination.country].filter(Boolean).join(', ')
+    return [place.toLowerCase(), `${place} (liked ${like.itinerary.user.name}'s trip "${like.itinerary.title}")`] as const
+  }))).values()].slice(0, 30)
+  const tastes = [
+    loved.length && `Places they loved (rated 4-5 stars on their own trips; weigh these heavily and suggest similar places):\n${loved.map(line => `- ${line}`).join('\n')}`,
+    disliked.length && `Places they didn't like (rated 1-2 stars; steer away from similar places):\n${disliked.map(line => `- ${line}`).join('\n')}`,
+    likedPlaces.length && `Destinations they've liked on Postcard (from trips they hearted):\n${likedPlaces.map(line => `- ${line}`).join('\n')}`,
+  ].filter(Boolean)
+  if (tastes.length) sections.unshift(`## What this traveler likes\n${tastes.join('\n\n')}`)
   const text = sections.length ? sections.join('\n\n') : '(No trips yet from you or your friends.)'
   return { text, items, friendCount: new Set(friends.map(trip => trip.user.name)).size, hasOwnTrips }
 }
