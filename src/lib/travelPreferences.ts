@@ -90,5 +90,7 @@ export function picksQuestion(preferences: TravelPreferences, formatDate: (date:
   const budgetOption = BUDGETS.find(option => option.value === preferences.budget)
   const budget = budgetOption ? `${budgetOption.label} ${budgetOption.hint.toLowerCase()}` : ''
   const first = [PICKS_PREFIX, distance && `${distance}${from}`, when].filter(Boolean).join(' ')
-  return `${[first, who, vibe, budget, friends].filter(Boolean).join(', ')}.`
+  const rest = [who, vibe, budget, friends].filter(Boolean)
+  // "Show me trip ideas for a couple, …", or after a distance or date: "…within 2 hours, for a couple, …".
+  return `${first}${rest.length ? `${first === PICKS_PREFIX ? ' ' : ', '}${rest.join(', ')}` : ''}.`
 }

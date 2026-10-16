@@ -15,4 +15,5 @@ test('the start page says its choices in words as the question', () => {
     'Show me trip ideas within 2 hours of Greenwich for this weekend, for a couple, with a relaxing, beach vibe, using places Jennifer loved.')
   assert.equal(exports.picksQuestion({ ...base, when: 'Specific dates', startDate: '2026-08-12', endDate: '2026-08-15', distance: 'A short flight', from: 'New York' }, date),
     'Show me trip ideas a short flight away from New York for Wed, Aug 12 – Sat, Aug 15.')
+  assert.equal(exports.picksQuestion({ ...base, travelers: 'Couple', vibes: ['Beach'], budget: 2 }, date), 'Show me trip ideas for a couple, with a beach vibe, $$ mid-range.')
 })
