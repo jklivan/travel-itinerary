@@ -33,8 +33,10 @@ export default function PlanLanding({ history, busy, onSend }: { landing: Landin
     const message = text.trim() || (prefs ? picksQuestion(prefs, formatDate) : '')
     if (message && !busy) onSend(message, prefs)
   }
-  const row = (label: string, chips: ReactNode) => <div className="flex items-start gap-3">
-    <span className="type-label w-16 shrink-0 pt-2.5 text-muted">{label}</span><div className="flex min-w-0 flex-wrap gap-2">{chips}</div>
+  // One line per row (swipe sideways on a narrow phone), its label on the left.
+  const row = (label: string, chips: ReactNode) => <div className="flex items-center gap-2">
+    <span className="type-label w-14 shrink-0 text-muted">{label}</span>
+    <div className="-mr-4 flex min-w-0 flex-1 gap-1.5 overflow-x-auto pr-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{chips}</div>
   </div>
   const chats = allChats ? history : history.slice(0, 3)
 
