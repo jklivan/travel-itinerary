@@ -26,7 +26,7 @@ export default function AskPicker({ ask, disabled, onAnswer }: { ask: Ask; disab
     <div className="flex flex-wrap gap-2">{ask.options.map(option => ask.multiple
       ? <button key={option} type="button" disabled={disabled} aria-pressed={picked.includes(option)} onClick={() => setPicked(list => list.includes(option) ? list.filter(item => item !== option) : [...list, option])} className="chip">{picked.includes(option) && <Check size={14} />}{option}</button>
       : <button key={option} type="button" disabled={disabled} onClick={() => onAnswer(option)} className="chip">{option}</button>)}</div>
-    {ask.multiple && <button type="button" disabled={disabled || !picked.length} onClick={() => onAnswer(list(picked))} className="btn btn-primary btn-sm">Send<ArrowRight size={16} /></button>}
+    {ask.multiple && <button type="button" disabled={disabled || !picked.length} onClick={() => onAnswer(list(picked))} className="btn btn-primary btn-sm">Continue<ArrowRight size={16} /></button>}
   </div>
   if (!wantsDates && !wantsGuests) return null
 
@@ -47,7 +47,7 @@ export default function AskPicker({ ask, disabled, onAnswer }: { ask: Ask; disab
           {Array.from({ length: 18 }, (_, value) => <option key={value} value={value}>{value}</option>)}
         </select></label>)}</div>}
     </div>}
-    <button type="button" disabled={!ready} onClick={() => onAnswer([datesText, wantsGuests && guestsText].filter(Boolean).join(', '))} className="btn btn-primary btn-sm">Send<ArrowRight size={16} /></button>
+    <button type="button" disabled={!ready} onClick={() => onAnswer([datesText, wantsGuests && guestsText].filter(Boolean).join(', '))} className="btn btn-primary btn-sm">Continue<ArrowRight size={16} /></button>
   </div>
 }
 
