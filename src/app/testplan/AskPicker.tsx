@@ -15,7 +15,7 @@ const list = (items: (string | number)[]) => items.length > 1 ? `${items.slice(0
 export default function AskPicker({ ask, disabled, onAnswer }: { ask: Ask; disabled: boolean; onAnswer: (text: string) => void }) {
   const [today] = useState(() => new Date().toISOString().slice(0, 10))
   const [picked, setPicked] = useState<string[]>([])
-  const [calendarOpen, setCalendarOpen] = useState(true)
+  const [calendarOpen, setCalendarOpen] = useState(false)
   const [start, setStart] = useState(''), [end, setEnd] = useState('')
   const [adults, setAdults] = useState(2)
   const [children, setChildren] = useState<number[]>([])
