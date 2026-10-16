@@ -5,10 +5,24 @@ import { getForumReplyInbox } from '@/actions/questions'
 import { openNotification } from '@/actions/notifications'
 import MessageRefresh from '@/components/MessageRefresh'
 import MessageInbox, { type InboxPerson } from '@/components/MessageInbox'
+import NewMessage, { FriendPicker } from '@/components/NewMessage'
+import { auth } from '@/auth'
+import { prisma } from '@/lib/prisma'
+import { hiddenUserIds } from '@/lib/blocks'
 
 export default async function InboxPage() {
-  const [result, forumReplies] = await Promise.all([getMessageInbox(), getForumReplyInbox()])
-  if (!result.threads) redirect('/login?callbackUrl=%2Fmessages')
+  const [result, forumReplies, session] = await Promise.all([getMessageInbox(), getForumReplyInbox(), auth()])
+  if (!result.threads || !session?.user?.id) redirect('/login?callbackUrl=%2Fmessages')
+  // Friends to start a conversation with: people you follow and people who follow you (not blocked or hidden).
+  const userId = session.user.id
+  const hidden = await hiddenUserIds(userId)
+  const person = { select: { id: true, name: true, image: true } }
+  const [following, followers] = await Promise.all([
+    prisma.follow.findMany({ where: { followerId: userId, status: 'accepted', followingId: { notIn: hidden } }, select: { following: person } }),
+    prisma.follow.findMany({ where: { followingId: userId, status: 'accepted', followerId: { notIn: hidden } }, select: { follower: person } }),
+  ])
+  const friends = [...new Map([...following.map(f => f.following), ...followers.map(f => f.follower)].map(friend => [friend.id, friend])).values()]
+    .sort((a, b) => a.name.localeCompare(b.name))
   // One section per person, ordered by their latest message; their conversations (newest first) underneath.
   const people = result.threads.reduce<InboxPerson[]>((groups, thread) => {
     const conversation = { itineraryId: thread.itineraryId, title: thread.itineraryId ? thread.itineraryTitle || 'Trip conversation' : 'General conversation', placeName: thread.placeName, content: thread.content, createdAt: thread.createdAt.toISOString(), unread: thread.unread }
@@ -18,7 +32,7 @@ export default async function InboxPage() {
     return groups
   }, [])
   return <div className="max-w-2xl mx-auto px-4 py-6">
-    <div className="my-5 flex flex-wrap items-center justify-between gap-3 border-b border-line-strong pb-4"><h1 className="type-display">Messages</h1><MessageRefresh /></div>
+    <div className="my-5 flex flex-wrap items-center justify-between gap-3 border-b border-line-strong pb-4"><h1 className="type-display">Messages</h1><MessageRefresh />{(result.threads.length > 0 || forumReplies.length > 0) && friends.length > 0 && <NewMessage friends={friends} />}</div>
     {forumReplies.length > 0 && <section aria-label="Replies to your forum questions" className="mb-7 space-y-3">
       <h2 className="type-title">Replies to your questions</h2>
       {forumReplies.map(reply => {
@@ -27,7 +41,11 @@ export default async function InboxPage() {
       })}
     </section>}
     {forumReplies.length > 0 && <h2 className="type-title mb-3">Private conversations</h2>}
-    {result.threads.length === 0 && forumReplies.length === 0 && <p className="panel p-6 text-sm leading-relaxed text-brown">No messages yet. Open a traveler’s profile or a place on their trip to start a conversation.</p>}
+    {result.threads.length === 0 && forumReplies.length === 0 && <section className="panel p-5" aria-labelledby="start-heading">
+      <h2 id="start-heading" className="type-label text-ink">Message a friend</h2>
+      <p className="mt-1 mb-3 text-sm text-muted">No messages yet. Tap a friend to start a conversation.</p>
+      <FriendPicker friends={friends} />
+    </section>}
     <MessageInbox people={people} />
   </div>
 }
