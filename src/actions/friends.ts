@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { revalidatePath } from 'next/cache'
 import { isBlockedBetween } from '@/lib/blocks'
+import { hiddenAccountsFor } from '@/lib/hiddenAccounts'
 import { after } from 'next/server'
 import { createFollowNotification } from '@/lib/notifications'
 import { deliverNotification } from '@/lib/push'
@@ -86,7 +87,7 @@ export async function searchUsers(query: string): Promise<{ id: string; name: st
   const session = await auth()
   if (!session?.user?.id || !query.trim()) return []
   return prisma.user.findMany({
-    where: { name: { contains: query.trim(), mode: 'insensitive' }, NOT: { id: session.user.id } },
+    where: { name: { contains: query.trim(), mode: 'insensitive' }, id: { notIn: [session.user.id, ...hiddenAccountsFor(session.user.id)] } },
     select: { id: true, name: true, image: true },
     take: 10,
   })

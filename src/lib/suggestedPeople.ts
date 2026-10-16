@@ -1,6 +1,7 @@
 import { after } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { hiddenUserIds } from '@/lib/blocks'
+import { hiddenAccountsFor } from '@/lib/hiddenAccounts'
 import { createFollowNotification } from '@/lib/notifications'
 import { deliverNotification } from '@/lib/push'
 
@@ -8,7 +9,7 @@ import { deliverNotification } from '@/lib/push'
 export async function suggestedPeople(userId: string, limit = 5) {
   const posted = { visibility: { not: 'draft' } }
   const candidates = await prisma.user.findMany({
-    where: { id: { not: userId }, itineraries: { some: posted } },
+    where: { id: { notIn: [userId, ...hiddenAccountsFor(userId)] }, itineraries: { some: posted } },
     select: { id: true, name: true, image: true, _count: { select: { itineraries: { where: posted } } } },
     // Rough order by all trips (drafts included), then re-sorted below by posted trips only.
     orderBy: { itineraries: { _count: 'desc' } },

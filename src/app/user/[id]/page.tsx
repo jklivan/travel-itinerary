@@ -1,5 +1,6 @@
 
 import { prisma } from '@/lib/prisma'
+import { hiddenAccountsFor } from '@/lib/hiddenAccounts'
 import { auth } from '@/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -44,7 +45,7 @@ export default async function UserProfilePage({
     where: { id },
     select: { id: true, name: true, image: true, createdAt: true },
   })
-  if (!user) notFound()
+  if (!user || hiddenAccountsFor(session?.user?.id).includes(user.id)) notFound()
 
   const isOwn = session?.user?.id === user.id
   const viewerId = session?.user?.id ?? null

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { hiddenAccountsFor } from '@/lib/hiddenAccounts'
 import { Heart, MessageCircle, Plane, UserPlus } from 'lucide-react'
 import { openNotification } from '@/actions/notifications'
 import FollowBackButton from '@/components/FollowBackButton'
@@ -16,7 +17,7 @@ export function notificationWhere(userId: string, alertsOnly = false) {
 // The list of notifications (newest first). Unread ones are brighter with a blue dot; "started following you" has Follow back.
 export default async function NotificationList({ userId, alertsOnly = false, take = 100, empty }: { userId: string; alertsOnly?: boolean; take?: number; empty: string }) {
   const notifications = await prisma.notification.findMany({
-    where: notificationWhere(userId, alertsOnly),
+    where: { ...notificationWhere(userId, alertsOnly), actorId: { notIn: hiddenAccountsFor(userId) } },
     include: { actor: { select: { name: true } }, itinerary: { select: { title: true } }, comment: { select: { content: true } } },
     orderBy: { createdAt: 'desc' }, take,
   })

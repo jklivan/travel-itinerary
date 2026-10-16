@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import FriendsUI from './FriendsUI'
 import { peopleToFollow } from '@/lib/suggestedPeople'
+import { hiddenAccountsFor } from '@/lib/hiddenAccounts'
 
 export default async function FriendsPage() {
   const session = await auth()
@@ -36,6 +37,9 @@ export default async function FriendsPage() {
     peopleToFollow(session.user.id),
   ])
 
+  // Test accounts never show in anyone else's lists.
+  const visible = (person: { id: string }) => !hiddenAccountsFor(session.user!.id).includes(person.id)
+
   return (
     <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
       <div className="mb-5">
@@ -45,10 +49,10 @@ export default async function FriendsPage() {
         </p>
       </div>
       <FriendsUI
-        following={acceptedFollows.map((f) => f.following)}
+        following={acceptedFollows.map((f) => f.following).filter(visible)}
         pendingOutgoing={pendingOutgoingFollows.map((f) => f.following)}
         incomingRequests={incomingFollowRequests.map((f) => f.follower)}
-        followers={followerRows.map((f) => f.follower)}
+        followers={followerRows.map((f) => f.follower).filter(visible)}
         suggested={suggested.map(person => ({ ...person, following: false }))}
         viewerId={session.user.id}
       />

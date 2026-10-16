@@ -11,7 +11,7 @@ function row(userId, options = {}) {
 }
 function harness(rows = [], signedIn = true, own = null) {
   const queries = [], exports = {}
-  vm.runInNewContext(code, { exports, require: name => ({ '@/auth': { auth: async () => signedIn ? { user: { id: 'me' } } : null }, '@/lib/prisma': { prisma: { follow: { findMany: async q => { queries.push(q); return [{ followingId: 'friend' }] } }, destItem: { findMany: async q => { queries.push(q); return rows }, findFirst: async () => own } } }, '@/lib/placeRecommendation': recommendations, '@/lib/placeMatching': placeMatching })[name] })
+  vm.runInNewContext(code, { exports, require: name => ({ '@/auth': { auth: async () => signedIn ? { user: { id: 'me' } } : null }, '@/lib/prisma': { prisma: { follow: { findMany: async q => { queries.push(q); return [{ followingId: 'friend' }] } }, destItem: { findMany: async q => { queries.push(q); return rows }, findFirst: async () => own } } }, '@/lib/placeRecommendation': recommendations, '@/lib/placeMatching': placeMatching, '@/lib/hiddenAccounts': { hiddenAccountsFor: () => [] } })[name] })
   return { run: exports.placePeople, queries }
 }
 test('matches exact Google place identity and restricts to public trips and visible accounts', async () => {
@@ -21,7 +21,7 @@ test('matches exact Google place identity and restricts to public trips and visi
   const where = h.queries[1].where
   assert.equal(where.OR[0].placeId, 'google-place')
   assert.equal(where.destination.itinerary.visibility, 'public')
-  assert.equal(where.destination.itinerary.userId.not, 'me')
+  assert.ok(where.destination.itinerary.userId.notIn.includes('me'))
   assert.equal(where.destination.itinerary.user.OR[0].isPrivate, false)
   assert.deepEqual(Array.from(where.destination.itinerary.user.OR[1].id.in), ['friend'])
 })

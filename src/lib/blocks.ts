@@ -1,10 +1,11 @@
 import { prisma } from '@/lib/prisma'
+import { hiddenAccountsFor } from '@/lib/hiddenAccounts'
 
-// Everyone hidden from this person: people they blocked, and people who blocked them (it works both ways).
+// Everyone hidden from this person: people they blocked, people who blocked them (it works both ways), and test accounts.
 export async function hiddenUserIds(userId: string | null | undefined): Promise<string[]> {
-  if (!userId) return []
+  if (!userId) return hiddenAccountsFor(null)
   const rows = await prisma.block.findMany({ where: { OR: [{ blockerId: userId }, { blockedId: userId }] }, select: { blockerId: true, blockedId: true } })
-  return [...new Set(rows.map(row => row.blockerId === userId ? row.blockedId : row.blockerId))]
+  return [...new Set([...rows.map(row => row.blockerId === userId ? row.blockedId : row.blockerId), ...hiddenAccountsFor(userId)])]
 }
 
 // Whether either of two people has blocked the other.

@@ -7,6 +7,7 @@ import ItineraryCard from '@/components/ItineraryCard'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import WelcomeScreen from '@/components/WelcomeScreen'
+import { hiddenAccountsFor } from '@/lib/hiddenAccounts'
 
 export default async function FeedPage({
   searchParams,
@@ -71,7 +72,7 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
   // Instagram-style lines under each card: who liked it (friends first) and one comment preview
   // (a friend's, else the most-replied, else the newest).
   const tripIds = feedTrips.map(trip => trip.id)
-  const friendIds = userId ? (await prisma.follow.findMany({ where: { followerId: userId, status: 'accepted' }, select: { followingId: true } })).map(row => row.followingId) : []
+  const friendIds = userId ? (await prisma.follow.findMany({ where: { followerId: userId, status: 'accepted', followingId: { notIn: hiddenAccountsFor(userId) } }, select: { followingId: true } })).map(row => row.followingId) : []
   const [friendLikes, topComments] = tripIds.length ? await Promise.all([
     friendIds.length ? prisma.tripLike.findMany({ where: { itineraryId: { in: tripIds }, userId: { in: friendIds } }, orderBy: { createdAt: 'desc' }, select: { itineraryId: true, user: { select: { id: true, name: true } } } }) : Promise.resolve([]),
     prisma.comment.findMany({ where: { itineraryId: { in: tripIds }, parentId: null, user: notBlocked(userId) }, orderBy: { createdAt: 'desc' }, select: { itineraryId: true, content: true, userId: true, user: { select: { name: true } }, _count: { select: { replies: true } } } }),

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { hiddenAccountsFor } from '@/lib/hiddenAccounts'
 import { notFound } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
@@ -17,7 +18,7 @@ export default async function PeoplePage({ params, searchParams }: { params: Pro
     prisma.follow.findMany({ where: { followingId: id, status: 'accepted' }, orderBy: { createdAt: 'desc' }, select: { follower: person } }),
     prisma.follow.findMany({ where: { followerId: id, status: 'accepted' }, orderBy: { createdAt: 'desc' }, select: { following: person } }),
   ])
-  const shown = tab === 'followers' ? followers.map(f => f.follower) : following.map(f => f.following)
+  const shown = (tab === 'followers' ? followers.map(f => f.follower) : following.map(f => f.following)).filter(p => !hiddenAccountsFor(viewerId).includes(p.id))
   // For the viewer's chips: who they follow, and who follows them (for "Follow back").
   const ids = shown.map(p => p.id)
   const [viewerFollows, followsViewer] = viewerId && ids.length ? await Promise.all([

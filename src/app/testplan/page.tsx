@@ -7,6 +7,7 @@ import TestPlanner, { type Turn } from './TestPlanner'
 import type { Landing } from './PlanLanding'
 import { SETUP_MESSAGE } from '@/lib/travelPreferences'
 import { nameChat } from '@/lib/chatTitle'
+import { hiddenAccountsFor } from '@/lib/hiddenAccounts'
 
 export const metadata: Metadata = { title: 'Plan with Postcard', robots: { index: false, follow: false } }
 export const maxDuration = 300
@@ -63,7 +64,7 @@ async function landingData(userId: string): Promise<Landing> {
       photos: { where: { isStock: false }, take: 1, select: { url: true } },
       destinations: { select: { items: { orderBy: { order: 'asc' }, select: { id: true, type: true, photoUrl: true, photoUrls: true } } } } } }),
     prisma.destItem.findMany({ where: { destination: { itinerary: { visibility: 'public', userId: { not: userId }, bucketedBy: { some: { userId } } } } }, take: 400, select: { type: true, photoUrl: true, photoUrls: true } }),
-    prisma.follow.findMany({ where: { followerId: userId, status: 'accepted' }, take: 40, select: { following: { select: { id: true, name: true, image: true } } }, orderBy: { following: { name: 'asc' } } }),
+    prisma.follow.findMany({ where: { followerId: userId, status: 'accepted', followingId: { notIn: hiddenAccountsFor(userId) } }, take: 40, select: { following: { select: { id: true, name: true, image: true } } }, orderBy: { following: { name: 'asc' } } }),
   ])
   const photoOf = (item: { photoUrl: string | null; photoUrls: string[] }) => item.photoUrls[0] ?? item.photoUrl ?? null
   const saved = (['food_drink', 'hotel', 'activity'] as const).map(type => {

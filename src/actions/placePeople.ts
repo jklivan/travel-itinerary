@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import type { Prisma } from '@/generated/prisma/client'
 import { getRecommendation } from '@/lib/placeRecommendation'
 import { genericPlaceName, metresApart, sameAddress } from '@/lib/placeMatching'
+import { hiddenAccountsFor } from '@/lib/hiddenAccounts'
 
 // itemId: the place being looked at (planner cards), whose map position and address must agree with a same-name match.
 export async function placePeople(placeId: string, name = '', location = '', itemId = '') {
@@ -20,7 +21,7 @@ export async function placePeople(placeId: string, name = '', location = '', ite
     const follows = await prisma.follow.findMany({ where: { followerId: userId, status: 'accepted' }, select: { followingId: true } })
     const friendIds = follows.map(follow => follow.followingId)
     const rows = await prisma.destItem.findMany({
-      where: { OR: matches, destination: { itinerary: { visibility: 'public', userId: { not: userId }, user: { OR: [{ isPrivate: false }, { id: { in: friendIds } }] } } } },
+      where: { OR: matches, destination: { itinerary: { visibility: 'public', userId: { notIn: [userId, ...hiddenAccountsFor(userId)] }, user: { OR: [{ isPrivate: false }, { id: { in: friendIds } }] } } } },
       select: { rating: true, tags: true, notes: true, planningStatus: true, placeId: true, lat: true, lng: true, address: true, destination: { select: { itinerary: { select: { id: true, title: true, isPlan: true, datesFlexible: true, postType: true, endDate: true, createdAt: true, user: { select: { id: true, name: true } } } } } } },
       orderBy: { destination: { itinerary: { createdAt: 'desc' } } },
     })

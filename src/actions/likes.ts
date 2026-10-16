@@ -1,6 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
+import { hiddenAccountsFor } from '@/lib/hiddenAccounts'
 import { auth } from '@/auth'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
@@ -16,7 +17,8 @@ export async function loadLikers(itineraryId: string) {
   if (!itinerary || (itinerary.visibility === 'draft' && itinerary.userId !== userId)) return { error: 'Not found.', likers: [], userId }
   const likes = await prisma.tripLike.findMany({ where: { itineraryId }, orderBy: { createdAt: 'desc' }, take: 500, select: { user: { select: { id: true, name: true, image: true } } } })
   const following = userId ? new Set((await prisma.follow.findMany({ where: { followerId: userId, status: 'accepted', followingId: { in: likes.map(like => like.user.id) } }, select: { followingId: true } })).map(row => row.followingId)) : new Set<string>()
-  return { userId, likers: likes.map(({ user }) => ({ ...user, following: following.has(user.id) })) }
+  const hidden = hiddenAccountsFor(userId)
+  return { userId, likers: likes.filter(({ user }) => !hidden.includes(user.id)).map(({ user }) => ({ ...user, following: following.has(user.id) })) }
 }
 
 

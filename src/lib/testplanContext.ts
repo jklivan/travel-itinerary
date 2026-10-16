@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { hiddenAccountsFor } from '@/lib/hiddenAccounts'
 
 export type ContextItem = { id: string; name: string; type: string; placeId: string | null; lat: number | null; lng: number | null; destination: string; country: string | null; tripId: string; owner: string; mine: boolean }
 
@@ -22,9 +23,9 @@ function clip(value: string | null, max: number) {
 export async function loadPlanningContext(userId: string, excludeTripId?: string) {
   const [mine, friends, saved] = await Promise.all([
     prisma.itinerary.findMany({ where: { userId, ...(excludeTripId ? { id: { not: excludeTripId } } : {}) }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 60, select: tripSelect }),
-    prisma.itinerary.findMany({ where: { visibility: 'public', userId: { not: userId }, user: { followers: { some: { followerId: userId, status: 'accepted' } } } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 200, select: tripSelect }),
+    prisma.itinerary.findMany({ where: { visibility: 'public', userId: { notIn: [userId, ...hiddenAccountsFor(userId)] }, user: { followers: { some: { followerId: userId, status: 'accepted' } } } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 200, select: tripSelect }),
     // Trips you saved from anyone (Saved), for "Plan from your saved places".
-    prisma.itinerary.findMany({ where: { visibility: 'public', userId: { not: userId }, bucketedBy: { some: { userId } } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 40, select: tripSelect }),
+    prisma.itinerary.findMany({ where: { visibility: 'public', userId: { notIn: [userId, ...hiddenAccountsFor(userId)] }, bucketedBy: { some: { userId } } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 40, select: tripSelect }),
   ])
   const friendIds = new Set(friends.map(trip => trip.id))
   const savedOnly = saved.filter(trip => !friendIds.has(trip.id))

@@ -22,7 +22,7 @@ async function feed(activeFeed, userId = 'alice', searchQuery = '') {
     '@/components/ItineraryCard': { default: () => null },
     'next/link': { default: 'a' }, react: React, 'react/jsx-runtime': jsx,
   }
-  vm.runInNewContext(ts.transpileModule(source + '\nexports.results = FeedResults', { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText, { exports, URLSearchParams, require: name => dependencies[name] ?? (name === '@/lib/blocks' ? { notBlocked: () => ({}) } : undefined) })
+  vm.runInNewContext(ts.transpileModule(source + '\nexports.results = FeedResults', { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText, { exports, URLSearchParams, require: name => dependencies[name] ?? (name === '@/lib/blocks' ? { notBlocked: () => ({}) } : name === '@/lib/hiddenAccounts' ? { hiddenAccountsFor: () => [] } : undefined) })
   const element = await exports.results({ activeFeed, searchQuery })
   return { queries, follows, element }
 }
