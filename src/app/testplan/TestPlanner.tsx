@@ -80,7 +80,10 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
   const [streamingAsk, setStreamingAsk] = useState<Ask | null>(null)
   // An answer tapped in the picker while the reply is still finishing: sent as soon as it's done.
   const queued = useRef<string | null>(null)
-  const sendLatest = useRef<(text: string) => void>(() => {})
+  // Whether an answer is on its way, and the turns so far, read at the moment (state can be a render behind).
+  const answering = useRef(false)
+  const turnsNow = useRef(turns)
+  useEffect(() => { turnsNow.current = turns })
   const [error, setError] = useState('')
   const [added, setAdded] = useState<Set<string>>(new Set())
   const [adding, setAdding] = useState<string | null>(null)
@@ -228,11 +231,12 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
 
   async function send(text: string, preferences?: TravelPreferences) {
     const message = text.trim()
-    if (!message || thinking) return
+    if (!message || answering.current) return
+    answering.current = true
     setThinking(true); setError(''); setDraft(''); setShowHistory(false)
     const pending: Turn[] = [...(preferences ? [{ role: 'preferences' as const, preferences }] : []), { role: 'user', text: message }]
     // The conversation's turns once this answer is saved: the ones so far, these, and the reply.
-    const expected = turns.length + pending.length + 1
+    const expected = turnsNow.current.length + pending.length + 1
     setTurns(current => [...current, ...pending])
     try {
       const response = await fetch('/api/testplan/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chatId: chatId.current, message, tripId: tripId.current, preferences }) })
@@ -280,11 +284,11 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
       setError(caught instanceof Error && caught.message && caught instanceof AnswerError ? caught.message : 'Lost the connection. Please try again.')
     } finally {
       setThinking(false); setStreaming(''); setStatus(''); setStreamingCards([]); setStreamingAsk(null)
+      answering.current = false
       const next = queued.current
-      if (next) { queued.current = null; setTimeout(() => sendLatest.current(next), 0) }
+      if (next) { queued.current = null; void send(next) }
     }
   }
-  useEffect(() => { sendLatest.current = text => void send(text) })
 
 
   async function add(rec: Recommendation) {
@@ -365,7 +369,7 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
             ? <p key={index} ref={index === lastQuestionIndex ? lastQuestion : undefined} className="ml-auto w-fit max-w-[85%] scroll-mt-28 whitespace-pre-wrap rounded-2xl rounded-br-sm bg-ink px-4 py-2 text-sm text-white">{turn.text}</p>
             : <div key={index} className="space-y-3"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed"><BoldText text={turn.text} /></p>
               {/* The latest question's answers to tap (choices, dates, who's going) instead of typing. */}
-              {turn.ask && index === shownTurns.length - 1 && <AskPicker key={index} ask={turn.ask} disabled={false} onAnswer={text => { if (thinking) queued.current = text; else void send(text) }} />}
+              {turn.ask && index === shownTurns.length - 1 && <AskPicker key={index} ask={turn.ask} disabled={false} waiting={thinking} onAnswer={text => { if (answering.current) queued.current = text; else void send(text) }} />}
               {/* Each option folds up to its name, places and counts; tap to see its cards. A short single answer starts open. */}
               {groupByOption(turn.recommendations).map(([option, recs], _i, options) => <details key={option} open={options.length === 1 && recs.length <= 4} className="group rounded-xl border-l-4 bg-cream py-3 pl-3 pr-2" style={{ borderColor: colorOf(recs[0]) }}>
                 <summary className="flex cursor-pointer list-none items-start gap-2 [&::-webkit-details-marker]:hidden">
