@@ -1,4 +1,7 @@
+import { after } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { createFollowNotification } from '@/lib/notifications'
+import { deliverNotification } from '@/lib/push'
 
 // The travelers new people are pointed to: the five with the most posted trips (excluding themselves).
 export async function suggestedPeople(userId: string) {
@@ -15,8 +18,17 @@ export async function suggestedPeople(userId: string) {
 }
 
 // A new account starts out following the suggested people, so the feed has trips in it straight away (they can
-// unfollow on the welcome page). Quiet: no "followed you" alert, or the most active travelers would get one per sign-up.
+// unfollow on the welcome page). Each gets the usual "followed you" alert, as with a tapped Follow.
 export async function followSuggestedPeople(userId: string) {
-  const people = await suggestedPeople(userId)
-  if (people.length) await prisma.follow.createMany({ data: people.map(person => ({ followerId: userId, followingId: person.id, status: 'accepted' })), skipDuplicates: true })
+  for (const person of await suggestedPeople(userId)) {
+    const notificationId = await prisma.$transaction(async tx => {
+      await tx.follow.upsert({
+        where: { followerId_followingId: { followerId: userId, followingId: person.id } },
+        update: { status: 'accepted' },
+        create: { followerId: userId, followingId: person.id, status: 'accepted' },
+      })
+      return createFollowNotification(tx, userId, person.id)
+    })
+    if (notificationId) after(async () => { try { await deliverNotification(notificationId) } catch { console.error('Follow push delivery failed') } })
+  }
 }
