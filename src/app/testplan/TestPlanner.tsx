@@ -75,6 +75,12 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
   // While an answer streams in: the reply so far, and a note such as "Checking live hotel prices…".
   const [streaming, setStreaming] = useState('')
   const [status, setStatus] = useState('')
+  // …and the cards and the question's picker as each is written.
+  const [streamingCards, setStreamingCards] = useState<Recommendation[]>([])
+  const [streamingAsk, setStreamingAsk] = useState<Ask | null>(null)
+  // An answer tapped in the picker while the reply is still finishing: sent as soon as it's done.
+  const queued = useRef<string | null>(null)
+  const sendLatest = useRef<(text: string) => void>(() => {})
   const [error, setError] = useState('')
   const [added, setAdded] = useState<Set<string>>(new Set())
   const [adding, setAdding] = useState<string | null>(null)
@@ -189,6 +195,8 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
   }, [turns, thinking])
 
   const lastQuestionIndex = turns.findLastIndex(turn => turn.role === 'user')
+  // While an answer is being written, it shows as a reply in progress: its text, cards and picker so far.
+  const shownTurns: Turn[] = thinking && streaming ? [...turns, { role: 'assistant', text: streaming, recommendations: streamingCards, ...(streamingAsk ? { ask: streamingAsk } : {}) }] : turns
   const places = trip?.places ?? []
   const inTrip = (rec: Recommendation) => added.has(rec.key) || places.some(place => place.name.trim().toLowerCase() === rec.name.trim().toLowerCase())
   const allRecommendations = turns.flatMap(turn => turn.role === 'assistant' ? turn.recommendations : [])
@@ -233,10 +241,13 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
         buffer += value
         const lines = buffer.split('\n'); buffer = lines.pop() ?? ''
         for (const line of lines.filter(Boolean)) {
-          const event = JSON.parse(line) as { type: string; text?: string; error?: string; chatId?: string; reply?: string; recommendations?: Recommendation[]; ask?: Ask }
+          const event = JSON.parse(line) as { type: string; text?: string; error?: string; chatId?: string; reply?: string; recommendations?: Recommendation[]; ask?: Ask; card?: Recommendation }
           if (event.type === 'start') chatId.current = event.chatId ?? chatId.current
           else if (event.type === 'delta') { setStatus(''); setStreaming(current => current + (event.text ?? '')) }
           else if (event.type === 'reply') setStreaming(event.text ?? '')
+          else if (event.type === 'card' && event.card) { const next = event.card; setStreamingCards(current => [...current, next]) }
+          else if (event.type === 'ask') setStreamingAsk(event.ask ?? null)
+          else if (event.type === 'reset') { setStreamingCards([]); setStreamingAsk(null) }
           else if (event.type === 'status') setStatus(event.text ?? '')
           else if (event.type === 'error') throw new AnswerError(event.error || 'Something went wrong.')
           else if (event.type === 'done') {
@@ -256,8 +267,13 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
       }
       setTurns(current => current.slice(0, -pending.length)); if (!preferences) setDraft(message)
       setError(caught instanceof Error && caught.message && caught instanceof AnswerError ? caught.message : 'Lost the connection. Please try again.')
-    } finally { setThinking(false); setStreaming(''); setStatus('') }
+    } finally {
+      setThinking(false); setStreaming(''); setStatus(''); setStreamingCards([]); setStreamingAsk(null)
+      const next = queued.current
+      if (next) { queued.current = null; setTimeout(() => sendLatest.current(next), 0) }
+    }
   }
+  useEffect(() => { sendLatest.current = text => void send(text) })
 
   async function add(rec: Recommendation) {
     if (adding) return
@@ -330,14 +346,14 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
       <section aria-label="Chat with Postcard" className="panel flex min-h-0 flex-col lg:h-auto lg:flex-[1.2]">
         <div ref={scroller} className="min-h-0 flex-1 space-y-4 p-4 lg:overflow-y-auto" aria-live="polite">
           {!turns.length && !tripChat && <div className="text-sm text-muted"><p>Postcard uses your trips and your friends’ trips—their ratings and notes—plus its own picks. Try:</p><div className="mt-3 flex flex-wrap gap-2">{starters.map(starter => <button key={starter} type="button" onClick={() => void send(starter)} className="chip text-left">{starter}</button>)}</div></div>}
-          {turns.map((turn, index) => turn.role === 'preferences'
+          {shownTurns.map((turn, index) => turn.role === 'preferences'
             // The question already says the choices in words: no separate summary.
             ? (next => next?.role === 'user' && next.text.startsWith(PICKS_PREFIX) && next.text !== SETUP_MESSAGE ? null : <PreferencesSummary key={index} preferences={turn.preferences} />)(turns[index + 1])
             : turn.role === 'user'
             ? <p key={index} ref={index === lastQuestionIndex ? lastQuestion : undefined} className="ml-auto w-fit max-w-[85%] scroll-mt-28 whitespace-pre-wrap rounded-2xl rounded-br-sm bg-ink px-4 py-2 text-sm text-white">{turn.text}</p>
             : <div key={index} className="space-y-3"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed"><BoldText text={turn.text} /></p>
               {/* The latest question's answers to tap (choices, dates, who's going) instead of typing. */}
-              {turn.ask && index === turns.length - 1 && !thinking && <AskPicker key={index} ask={turn.ask} disabled={thinking} onAnswer={text => void send(text)} />}
+              {turn.ask && index === shownTurns.length - 1 && <AskPicker key={index} ask={turn.ask} disabled={false} onAnswer={text => { if (thinking) queued.current = text; else void send(text) }} />}
               {/* Each option folds up to its name, places and counts; tap to see its cards. A short single answer starts open. */}
               {groupByOption(turn.recommendations).map(([option, recs], _i, options) => <details key={option} open={options.length === 1 && recs.length <= 4} className="group rounded-xl border-l-4 bg-cream py-3 pl-3 pr-2" style={{ borderColor: colorOf(recs[0]) }}>
                 <summary className="flex cursor-pointer list-none items-start gap-2 [&::-webkit-details-marker]:hidden">
@@ -354,9 +370,7 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
                 </div> })}
               </details>)}
             </div>)}
-          {thinking && (streaming
-            ? <div className="space-y-2"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed"><BoldText text={streaming} /></p><p className="text-xs text-muted">{status || 'Finding the places…'}</p></div>
-            : <p className="text-sm text-muted">{status || 'Planning in progress…'}</p>)}
+          {thinking && <p className="text-sm text-muted">{status || (streaming ? 'Finding the places…' : 'Planning in progress…')}</p>}
         </div>
         {error && <p role="alert" className="px-4 pb-2 text-sm text-danger">{error}</p>}
         <div ref={endOfChat} aria-hidden="true" style={{ scrollMarginBottom: 'calc(var(--app-bottom-clearance) + 4.5rem)' }} />

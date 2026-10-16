@@ -12,14 +12,18 @@ const longDate = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateStr
 const list = (items: (string | number)[]) => items.length > 1 ? `${items.slice(0, -1).join(', ')} and ${items.at(-1)}` : String(items[0] ?? '')
 
 // Under the planner's latest question: tap an answer instead of typing it. The answer is sent as a message.
-export default function AskPicker({ ask, disabled, onAnswer }: { ask: Ask; disabled: boolean; onAnswer: (text: string) => void }) {
+export default function AskPicker({ ask, disabled, onAnswer: send }: { ask: Ask; disabled: boolean; onAnswer: (text: string) => void }) {
   const [today] = useState(() => new Date().toISOString().slice(0, 10))
+  // Answered while the reply is still finishing: it's sent as soon as it's done.
+  const [answered, setAnswered] = useState(false)
+  const onAnswer = (text: string) => { setAnswered(true); send(text) }
   const [picked, setPicked] = useState<string[]>([])
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [start, setStart] = useState(''), [end, setEnd] = useState('')
   const [adults, setAdults] = useState(2)
   const [children, setChildren] = useState<number[]>([])
   const wantsDates = ask.kind === 'dates' || ask.kind === 'dates_and_guests'
+  if (answered) return <p className="text-xs text-muted">Sending…</p>
   const wantsGuests = ask.kind === 'guests' || ask.kind === 'dates_and_guests'
 
   if (ask.kind === 'choose' && ask.options.length) return <div className="space-y-2">

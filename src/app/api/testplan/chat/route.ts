@@ -6,7 +6,7 @@ import { loadPlanningContext } from '@/lib/testplanContext'
 import { cleanPreferences, describePreferences } from '@/lib/travelPreferences'
 import type { Prisma } from '@/generated/prisma/client'
 import { hotelPricesTool, runHotelPrices } from '@/lib/hotelPrices'
-import { partialJsonString } from '@/lib/partialJson'
+import { finishedJsonItems, finishedJsonObject, partialJsonString } from '@/lib/partialJson'
 import type { Ask } from '@/app/testplan/AskPicker'
 
 export const maxDuration = 300
@@ -131,6 +131,20 @@ export async function POST(request: Request) {
   async function answer() {
     try {
       // A new conversation is saved straight away, so its answer has somewhere to go if the page loses the connection.
+      // A card for one recommendation (also sent while the answer is still being written), and the question's
+      // tap-to-answer picker when it's usable.
+      const card = (rec: RawRecommendation, index: number, messageId: string) => {
+        const source = context.items.get(rec.sourceItemId)
+        return {
+          key: `${messageId}:${index}`, name: rec.name, type: rec.type, why: rec.why, price: rec.price?.trim() || '', tripOption: rec.tripOption.trim(), description: rec.description.trim(),
+          destination: source?.destination ?? rec.destination, country: source?.country ?? (rec.country || null),
+          source: source ? (source.mine ? 'you' : 'friend') : 'claude' as const,
+          friendName: source && !source.mine ? source.owner : '',
+          sourceItemId: source?.id ?? '', placeId: source?.placeId ?? null, lat: source?.lat ?? null, lng: source?.lng ?? null,
+        }
+      }
+      const usableAsk = (raw: Ask | null | undefined) => raw && raw.kind !== 'none' && (raw.kind !== 'choose' || raw.options.length > 1)
+        ? { kind: raw.kind, question: raw.question.slice(0, 60), options: raw.options.map(option => option.trim().slice(0, 60)).filter(Boolean).slice(0, 8), multiple: !!raw.multiple } satisfies Ask : null
       const activeChatId = chat?.id ?? (await prisma.planChat.create({ data: { userId: owner, tripId: trip ? tripId : null, history: [], turns: [] }, select: { id: true } })).id
       emit({ type: 'start', chatId: activeChatId })
       // A tool loop: when the planner looks up hotel prices, run the lookups and send the results back, until it
@@ -154,11 +168,23 @@ export async function POST(request: Request) {
         })
         // The reply as it's written: send what's new each time (the whole reply again if it ever changes).
         let shown = ''
+        // Then the question's picker and each card, as soon as each is completely written.
+        let messageId = '', askSent = false, cardsSent = 0
+        stream.on('streamEvent', event => { if (event.type === 'message_start') messageId = event.message.id })
         stream.on('text', (_delta, snapshot) => {
           const reply = partialJsonString(snapshot, 'reply')
-          if (reply === null || reply === shown) return
-          emit(reply.startsWith(shown) ? { type: 'delta', text: reply.slice(shown.length) } : { type: 'reply', text: reply })
-          shown = reply
+          if (reply !== null && reply !== shown) {
+            emit(reply.startsWith(shown) ? { type: 'delta', text: reply.slice(shown.length) } : { type: 'reply', text: reply })
+            shown = reply
+          }
+          if (!askSent) {
+            const ask = finishedJsonObject<Ask>(snapshot, 'ask')
+            if (ask) { askSent = true; const usable = usableAsk(ask); if (usable) emit({ type: 'ask', ask: usable }) }
+          }
+          const finished = finishedJsonItems<RawRecommendation>(snapshot, 'recommendations')
+          for (; cardsSent < finished.length; cardsSent++) {
+            try { emit({ type: 'card', card: card(finished[cardsSent], cardsSent, messageId) }) } catch { /* a malformed card waits for the final answer */ }
+          }
         })
         response = await stream.finalMessage()
         const calls = response.content.filter((block): block is Anthropic.ToolUseBlock => block.type === 'tool_use')
@@ -166,6 +192,7 @@ export async function POST(request: Request) {
         if (round >= 3) return emit({ type: 'error', error: 'Postcard took too long looking up prices. Please try again.' })
         // Looking up prices: anything shown so far starts over with the next round.
         if (shown) emit({ type: 'reply', text: '' })
+        emit({ type: 'reset' })
         emit({ type: 'status', text: 'Checking live hotel prices…' })
         turns.push({ role: 'assistant', content: response.content })
         const results = await Promise.all(calls.map(async call => {
@@ -182,18 +209,8 @@ export async function POST(request: Request) {
       try { parsed = JSON.parse(text ?? '') } catch { return emit({ type: 'error', error: 'The answer was cut off. Please try again.' }) }
 
       // Something to tap for the reply's question, kept only when it's usable.
-      const ask = parsed.ask && parsed.ask.kind !== 'none' && (parsed.ask.kind !== 'choose' || parsed.ask.options.length > 1)
-        ? { kind: parsed.ask.kind, question: parsed.ask.question.slice(0, 60), options: parsed.ask.options.map(option => option.trim().slice(0, 60)).filter(Boolean).slice(0, 8), multiple: !!parsed.ask.multiple } satisfies Ask : null
-      const recommendations = parsed.recommendations.map((rec, index) => {
-        const source = context.items.get(rec.sourceItemId)
-        return {
-          key: `${response.id}:${index}`, name: rec.name, type: rec.type, why: rec.why, price: rec.price?.trim() || '', tripOption: rec.tripOption.trim(), description: rec.description.trim(),
-          destination: source?.destination ?? rec.destination, country: source?.country ?? (rec.country || null),
-          source: source ? (source.mine ? 'you' : 'friend') : 'claude' as const,
-          friendName: source && !source.mine ? source.owner : '',
-          sourceItemId: source?.id ?? '', placeId: source?.placeId ?? null, lat: source?.lat ?? null, lng: source?.lng ?? null,
-        }
-      })
+      const ask = usableAsk(parsed.ask)
+      const recommendations = parsed.recommendations.map((rec, index) => card(rec, index, response.id))
       const nextHistory = [...history, ...turns, { role: 'assistant', content: response.content }] as unknown as Prisma.InputJsonValue
       const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, ...(ask ? { ask } : {}), title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160) }]
       const saved = await prisma.planChat.update({ where: { id: activeChatId }, data: { history: nextHistory, turns: [...((chat?.turns ?? []) as Prisma.JsonArray), ...newTurns] as Prisma.InputJsonValue, ...(trip && !chat?.tripId ? { tripId } : {}) }, select: { id: true } })
