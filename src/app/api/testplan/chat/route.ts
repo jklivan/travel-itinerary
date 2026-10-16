@@ -127,6 +127,7 @@ export async function POST(request: Request) {
       turns.push({ role: 'assistant', content: response.content })
       const results = await Promise.all(calls.map(async call => {
         const result = call.name === 'hotel_prices' ? await runHotelPrices(call.input) : { content: `Unknown tool ${call.name}.`, isError: true }
+        if (result.isError) console.warn('[hotel_prices] error for the planner', result.content.slice(0, 300))
         return { type: 'tool_result' as const, tool_use_id: call.id, content: result.content, ...(result.isError ? { is_error: true } : {}) }
       }))
       turns.push({ role: 'user', content: results })
