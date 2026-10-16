@@ -6,6 +6,9 @@ import { prisma } from '@/lib/prisma'
 import { sendEmail } from '@/lib/email'
 import { makeResetToken, readResetToken, resetTokenValid, RESET_LINK_MINUTES } from '@/lib/passwordReset'
 
+// A link from an older email, or one already used: the password changed after it was sent.
+const USED = 'This link was already used, or your password changed after it was sent. If you just set a new password, sign in with it. Otherwise use the link in your newest email.'
+
 export type ResetState = { message?: string; sent?: boolean } | undefined
 
 // The site the link points to. Never taken from the request, so a forged Host header can't redirect the link.
@@ -28,12 +31,14 @@ export async function requestPasswordReset(state: ResetState, formData: FormData
     const link = `${siteUrl()}/reset-password?token=${encodeURIComponent(makeResetToken(user.id, user.password, secret))}`
     const sent = await sendEmail({
       to: user.email,
-      subject: 'Reset your Postcard password',
+      // Its own subject each time, so Gmail doesn't group the emails and show an older (used) link first.
+      subject: `Reset your Postcard password (code ${String(Date.now() % 10000).padStart(4, '0')})`,
       text: `Hi ${user.name},\n\nTap this link to choose a new Postcard password:\n${link}\n\nIt works once, for the next ${RESET_LINK_MINUTES} minutes. If you didn’t ask for this, you can ignore this email; your password hasn’t changed.`,
       html: `<p>Hi ${escape(user.name)},</p><p>Tap the button to choose a new Postcard password.</p><p><a href="${escape(link)}" style="display:inline-block;background:#1f3354;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:600">Choose a new password</a></p><p style="color:#6b6b6b;font-size:13px">It works once, for the next ${RESET_LINK_MINUTES} minutes. If you didn’t ask for this, you can ignore this email; your password hasn’t changed.</p>`,
     })
+    console.warn('[password-reset] request', JSON.stringify({ account: user.id, sent }))
     if (!sent) return { message: 'We couldn’t send the email. Please try again in a few minutes.' }
-  }
+  } else console.warn('[password-reset] request', JSON.stringify({ account: null }))
   return { sent: true }
 }
 
@@ -47,9 +52,11 @@ export async function resetPassword(state: ResetState, formData: FormData): Prom
   const secret = process.env.AUTH_SECRET
   const read = readResetToken(token)
   const user = read && secret ? await prisma.user.findUnique({ where: { id: read.userId }, select: { id: true, password: true } }) : null
-  if (!user || !secret || !resetTokenValid(token, user.password, secret)) return { message: 'This link has expired or was already used.' }
+  if (read && read.expires < Date.now()) { console.warn('[password-reset] refused', JSON.stringify({ account: read.userId, reason: 'expired' })); return { message: 'This link has expired (links work for an hour).' } }
+  if (!user || !secret || !resetTokenValid(token, user.password, secret)) { console.warn('[password-reset] refused', JSON.stringify({ account: read?.userId ?? null, reason: user ? 'used or changed' : 'no account' })); return { message: USED } }
   // Only saves if the password hasn't changed since the link was checked, so a link can't be used twice at once.
   const saved = await prisma.user.updateMany({ where: { id: user.id, password: user.password }, data: { password: await bcrypt.hash(password, 10) } })
-  if (!saved.count) return { message: 'This link has expired or was already used.' }
+  if (!saved.count) return { message: USED }
+  console.warn('[password-reset] changed', JSON.stringify({ account: user.id }))
   redirect('/login?reset=1')
 }

@@ -23,7 +23,7 @@ function ResetForm() {
               <input type="hidden" name="token" value={token} />
               {state?.message && (
                 <p role="alert" className="text-sm text-danger bg-danger/10 border border-danger/30 rounded-lg px-4 py-3">
-                  {state.message}{/expired/.test(state.message) && <> <Link href="/forgot-password" className="underline">Send a new link</Link></>}
+                  {state.message}{/expired|already used/.test(state.message) && <> <Link href="/login" className="underline">Sign in</Link> · <Link href="/forgot-password" className="underline">Send a new link</Link></>}
                 </p>
               )}
               <div>

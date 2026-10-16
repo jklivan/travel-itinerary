@@ -12,9 +12,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       },
       authorize: async (credentials) => {
         if (!credentials?.email || !credentials?.password) return null
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
-        })
+        const email = String(credentials.email).trim()
+        // Email capitals don't matter (older accounts kept the capitals they were made with); an exact match wins.
+        const user = await prisma.user.findUnique({ where: { email } })
+          ?? await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } }, orderBy: { createdAt: 'asc' } })
         if (!user) return null
         const valid = await bcrypt.compare(credentials.password as string, user.password)
         if (!valid) return null
