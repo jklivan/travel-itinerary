@@ -353,7 +353,7 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
             </div>)}
           {thinking && (streaming
             ? <div className="space-y-2"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed"><BoldText text={streaming} /></p><p className="text-xs text-muted">{status || 'Finding the places…'}</p></div>
-            : <p className="text-sm text-muted">{status || 'Postcard is looking through your trips…'}</p>)}
+            : <p className="text-sm text-muted">{status || 'Planning in progress…'}</p>)}
         </div>
         {error && <p role="alert" className="px-4 pb-2 text-sm text-danger">{error}</p>}
         <div ref={endOfChat} aria-hidden="true" style={{ scrollMarginBottom: 'calc(var(--app-bottom-clearance) + 4.5rem)' }} />
