@@ -49,6 +49,22 @@ type PastChat = { id: string; topic: string; summary?: string; updatedAt: string
 
 const starters = ['Surprise me with a long weekend', 'Where should we go this spring?', 'Somewhere new my friends haven’t been']
 
+// A problem the server reported (as opposed to the connection dropping).
+class AnswerError extends Error {}
+
+// After the connection dropped: checks every 2 seconds (while the page is showing), for up to 3 minutes, for the
+// conversation's saved answer, and returns its turns once they're all there.
+async function savedAnswer(id: string, expected: number): Promise<Turn[] | null> {
+  for (const until = Date.now() + 180_000; Date.now() < until;) {
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    if (document.hidden) continue
+    const response = await fetch(`/api/testplan/chat?chat=${encodeURIComponent(id)}`, { cache: 'no-store' }).catch(() => null)
+    const data = response?.ok ? await response.json().catch(() => null) as { turns?: Turn[] } | null : null
+    if (data?.turns && data.turns.length >= expected) return data.turns
+  }
+  return null
+}
+
 export default function TestPlanner({ trip, chat, history, landing = null, initialDraft = '', fromPlanner = false }: { fromPlanner?: boolean; initialDraft?: string; trip: Trip | null; chat: { id: string; turns: Turn[] } | null; history: PastChat[]; landing?: Landing | null }) {
   const router = useRouter()
   const [turns, setTurns] = useState<Turn[]>(chat?.turns ?? [])
@@ -194,13 +210,15 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
     if (!message || thinking) return
     setThinking(true); setError(''); setDraft(''); setShowHistory(false)
     const pending: Turn[] = [...(preferences ? [{ role: 'preferences' as const, preferences }] : []), { role: 'user', text: message }]
+    // The conversation's turns once this answer is saved: the ones so far, these, and the reply.
+    const expected = turns.length + pending.length + 1
     setTurns(current => [...current, ...pending])
     try {
       const response = await fetch('/api/testplan/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chatId: chatId.current, message, tripId: tripId.current, preferences }) })
       // Problems before the answer starts come back as plain JSON.
       if (!response.ok || !response.body || !response.headers.get('content-type')?.includes('ndjson')) {
         const data = await response.json().catch(() => ({}))
-        throw new Error(data.error || 'Something went wrong.')
+        throw new AnswerError(data.error || 'Something went wrong.')
       }
       // The answer streams in as lines of JSON: the reply as it's written, then the place cards when it's done.
       const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
@@ -212,10 +230,11 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
         const lines = buffer.split('\n'); buffer = lines.pop() ?? ''
         for (const line of lines.filter(Boolean)) {
           const event = JSON.parse(line) as { type: string; text?: string; error?: string; chatId?: string; reply?: string; recommendations?: Recommendation[] }
-          if (event.type === 'delta') { setStatus(''); setStreaming(current => current + (event.text ?? '')) }
+          if (event.type === 'start') chatId.current = event.chatId ?? chatId.current
+          else if (event.type === 'delta') { setStatus(''); setStreaming(current => current + (event.text ?? '')) }
           else if (event.type === 'reply') setStreaming(event.text ?? '')
           else if (event.type === 'status') setStatus(event.text ?? '')
-          else if (event.type === 'error') throw new Error(event.error || 'Something went wrong.')
+          else if (event.type === 'error') throw new AnswerError(event.error || 'Something went wrong.')
           else if (event.type === 'done') {
             chatId.current = event.chatId ?? ''
             setTurns(current => [...current, { role: 'assistant', text: event.reply ?? '', recommendations: event.recommendations ?? [] }])
@@ -225,8 +244,14 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
       }
       if (!finished) throw new Error('The answer was cut off. Please try again.')
     } catch (caught) {
+      // The connection dropped (say, switching to another app): the answer is still being saved, so wait for it.
+      if (!(caught instanceof AnswerError) && chatId.current) {
+        setStreaming(''); setStatus('Reconnecting…')
+        const saved = await savedAnswer(chatId.current, expected)
+        if (saved) { setTurns(saved); return }
+      }
       setTurns(current => current.slice(0, -pending.length)); if (!preferences) setDraft(message)
-      setError(caught instanceof Error ? caught.message : 'Something went wrong.')
+      setError(caught instanceof Error && caught.message && caught instanceof AnswerError ? caught.message : 'Lost the connection. Please try again.')
     } finally { setThinking(false); setStreaming(''); setStatus('') }
   }
 
