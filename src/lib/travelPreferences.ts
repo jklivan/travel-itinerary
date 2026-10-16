@@ -15,7 +15,7 @@ export const ACTIVITIES = ['Food & restaurants', 'Wine & bars', 'Museums & histo
 // The Plan with Postcard start page: When (Dates), Somewhere nearby, With friends and Vibe.
 export const WHEN = ['This weekend', 'Next weekend', 'I’m flexible', 'Specific dates'] as const
 export const DISTANCES = ['Up to 1 hour', 'Up to 2 hours', 'Up to 4 hours', 'A short flight'] as const
-export const VIBES = ['Relaxing', 'Adventure', 'Food & wine', 'Luxury', 'Culture', 'Family fun', 'Beach', 'Outdoors'] as const
+export const VIBES = ['Relaxing', 'Adventure', 'Food & wine', 'Luxury', 'Culture', 'Family fun', 'Beach', 'Outdoors', 'City'] as const
 // "With friends" shows these words for TRAVELERS.
 export const TRAVELER_LABELS: Record<typeof TRAVELERS[number], string> = { Solo: 'Just me', Couple: 'Couples trip', Friends: 'Friends trip', 'Family with kids': 'Family with kids' }
 
@@ -87,6 +87,8 @@ export function picksQuestion(preferences: TravelPreferences, formatDate: (date:
   const who = { Solo: 'for just me', Couple: 'for a couple', Friends: 'for a friends trip', 'Family with kids': 'for a family with kids' }[preferences.travelers] ?? ''
   const vibe = preferences.vibes?.length ? `with a ${preferences.vibes.join(', ').toLowerCase()} vibe` : ''
   const friends = preferences.friends?.length ? `using places ${preferences.friends.map(name => name.split(' ')[0]).join(' and ')} loved` : ''
+  const budgetOption = BUDGETS.find(option => option.value === preferences.budget)
+  const budget = budgetOption ? `${budgetOption.label} ${budgetOption.hint.toLowerCase()}` : ''
   const first = [PICKS_PREFIX, distance && `${distance}${from}`, when].filter(Boolean).join(' ')
-  return `${[first, who, vibe, friends].filter(Boolean).join(', ')}.`
+  return `${[first, who, vibe, budget, friends].filter(Boolean).join(', ')}.`
 }
