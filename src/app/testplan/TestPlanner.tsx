@@ -18,12 +18,13 @@ import { linkPlanChat } from '@/actions/planChat'
 import { tripMapLookupKey, validMapLocation, type TripMapPlace } from '@/lib/tripMapPlaces'
 import { BUDGETS, PICKS_PREFIX, SETUP_MESSAGE, TRAVELER_LABELS, type TravelPreferences } from '@/lib/travelPreferences'
 import PlanLanding, { type Landing } from './PlanLanding'
+import AskPicker, { type Ask } from './AskPicker'
 import { formatDate } from '@/lib/placeDates'
 
 type Place = { id: string; name: string; type: string; notes: string | null; placeId: string | null; lat: number | null; lng: number | null; day: number | null; photos: string[]; destination: string }
 type Trip = { id: string; title: string; places: Place[] }
 type Recommendation = { key: string; name: string; type: 'hotel' | 'food_drink' | 'activity'; why: string; price?: string; destination: string; country: string | null; tripOption?: string; description?: string; source: 'friend' | 'you' | 'claude'; friendName: string; sourceItemId: string; placeId: string | null; lat: number | null; lng: number | null }
-export type Turn = { role: 'user'; text: string } | { role: 'assistant'; text: string; recommendations: Recommendation[]; title?: string; summary?: string } | { role: 'preferences'; preferences: TravelPreferences }
+export type Turn = { role: 'user'; text: string } | { role: 'assistant'; text: string; recommendations: Recommendation[]; title?: string; summary?: string; ask?: Ask } | { role: 'preferences'; preferences: TravelPreferences }
 type MapPlace = TripMapPlace & { lat: number | null; lng: number | null; color?: string; label?: string }
 
 const categories = [{ value: 'hotel', label: 'Accommodation', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
@@ -232,7 +233,7 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
         buffer += value
         const lines = buffer.split('\n'); buffer = lines.pop() ?? ''
         for (const line of lines.filter(Boolean)) {
-          const event = JSON.parse(line) as { type: string; text?: string; error?: string; chatId?: string; reply?: string; recommendations?: Recommendation[] }
+          const event = JSON.parse(line) as { type: string; text?: string; error?: string; chatId?: string; reply?: string; recommendations?: Recommendation[]; ask?: Ask }
           if (event.type === 'start') chatId.current = event.chatId ?? chatId.current
           else if (event.type === 'delta') { setStatus(''); setStreaming(current => current + (event.text ?? '')) }
           else if (event.type === 'reply') setStreaming(event.text ?? '')
@@ -240,7 +241,7 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
           else if (event.type === 'error') throw new AnswerError(event.error || 'Something went wrong.')
           else if (event.type === 'done') {
             chatId.current = event.chatId ?? ''
-            setTurns(current => [...current, { role: 'assistant', text: event.reply ?? '', recommendations: event.recommendations ?? [] }])
+            setTurns(current => [...current, { role: 'assistant', text: event.reply ?? '', recommendations: event.recommendations ?? [], ...(event.ask ? { ask: event.ask } : {}) }])
             finished = true
           }
         }
@@ -335,6 +336,8 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
             : turn.role === 'user'
             ? <p key={index} ref={index === lastQuestionIndex ? lastQuestion : undefined} className="ml-auto w-fit max-w-[85%] scroll-mt-28 whitespace-pre-wrap rounded-2xl rounded-br-sm bg-ink px-4 py-2 text-sm text-white">{turn.text}</p>
             : <div key={index} className="space-y-3"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed"><BoldText text={turn.text} /></p>
+              {/* The latest question's answers to tap (choices, dates, who's going) instead of typing. */}
+              {turn.ask && index === turns.length - 1 && !thinking && <AskPicker key={index} ask={turn.ask} disabled={thinking} onAnswer={text => void send(text)} />}
               {/* Each option folds up to its name, places and counts; tap to see its cards. A short single answer starts open. */}
               {groupByOption(turn.recommendations).map(([option, recs], _i, options) => <details key={option} open={options.length === 1 && recs.length <= 4} className="group rounded-xl border-l-4 bg-cream py-3 pl-3 pr-2" style={{ borderColor: colorOf(recs[0]) }}>
                 <summary className="flex cursor-pointer list-none items-start gap-2 [&::-webkit-details-marker]:hidden">

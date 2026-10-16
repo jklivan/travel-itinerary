@@ -148,6 +148,13 @@
   .panel-hint { border: 1px solid var(--color-mist-line); border-radius: 1rem; background: var(--color-mist); }
   .panel-dashed { border: 1px dashed var(--color-line); border-radius: 1rem; background: transparent; }
   .panel-inset { border: 1px solid var(--color-line-soft); border-radius: .75rem; background: var(--color-cream); }
+
+  /* Days in ui/DateRangeCalendar: navy for the chosen first and last day, a light band for the days between. */
+  .calendar-day { display: grid; place-items: center; width: 100%; aspect-ratio: 1; border-radius: 9999px; font-size: .875rem; color: var(--color-ink); cursor: pointer; }
+  .calendar-day:hover:not(:disabled):not([aria-pressed="true"]) { background: var(--color-cream); }
+  .calendar-day:disabled { color: var(--color-muted); opacity: .45; cursor: default; }
+  .calendar-day[data-between="true"] { border-radius: 0; background: var(--color-mist); }
+  .calendar-day[aria-pressed="true"] { background: var(--color-ink); color: #fff; font-weight: 600; }
 }
 
 :root {

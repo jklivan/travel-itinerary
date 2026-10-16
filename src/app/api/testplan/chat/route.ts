@@ -7,6 +7,7 @@ import { cleanPreferences, describePreferences } from '@/lib/travelPreferences'
 import type { Prisma } from '@/generated/prisma/client'
 import { hotelPricesTool, runHotelPrices } from '@/lib/hotelPrices'
 import { partialJsonString } from '@/lib/partialJson'
+import type { Ask } from '@/app/testplan/AskPicker'
 
 export const maxDuration = 300
 
@@ -23,7 +24,9 @@ How to help:
 - Keep the reply conversational and brief (a few short paragraphs at most). The recommendations list renders as cards next to your reply, so don't repeat every detail in the reply text.
 - Whenever you suggest trip ideas, at least one must be a whole destination that nobody in the travel data has been to, so the user discovers somewhere new — even when friends' trips would fill the list. Name it as its own trip idea and make its places your own picks. The exception is when the user asks about one specific place (e.g. "what should we do in Lisbon?"): then stay in that place.
 - When you suggest a destination, cover it as a whole trip: a place or two to stay, a few things to do, and a few places to eat. When you offer alternative destinations, do this for each one.
-- Before recommending places, you need to know: what kind of trip this is now (who's going, how long), their budget, the types of destination they like, and what they like to do. Use <traveler_preferences> when present. When the user has past trips of their own, infer budget, destination types and activities from those trips (budgets, ratings, tags, places) instead of asking. If the user has no past trips and hasn't shared preferences, don't recommend yet: reply with one short, friendly question asking for what's missing, and return an empty recommendations list.
+- Before recommending places, you need to know: what kind of trip this is now (who's going, how long), their budget, the types of destination they like, and what they like to do. Use <traveler_preferences> when present. When the user has past trips of their own, infer budget, destination types and activities from those trips (budgets, ratings, tags, places) instead of asking.
+- A user with no past trips who hasn't said what they want: don't recommend yet. Ask these three questions, one per message and in this order, skipping any already answered (in <traveler_preferences> or their messages), each with tappable choices in "ask": 1) what kind of trip: kind "choose", multiple true, options "Beach", "City", "Mountains", "Countryside", "Islands", "Snow & ski", "Wine country", "Adventure"; 2) budget: kind "choose", multiple false, options "$ Budget-friendly", "$$ Mid-range", "$$$ Upscale", "$$$$ Luxury"; 3) who's going: kind "choose", multiple false, options "Solo", "Couple", "Family with kids", "Friends". Keep each question to one short, friendly sentence and return an empty recommendations list until all three are answered.
+- ask = something to tap instead of typing, for the question your reply ends with: kind "choose" with 2-8 short options (multiple true when several can apply) for any question with a small set of answers; kind "dates" when you need their travel dates; kind "guests" when you need how many adults and children (and children's ages) are going; kind "dates_and_guests" when you need both (e.g. before looking up hotel prices). question = a 2-5 word label for it. Otherwise kind "none", question "", options [], multiple false. Ask one thing at a time.
 - Recommendations are optional: return an empty list when the user is just chatting or asking a question that doesn't call for places.
 - Prices: when the user asks what hotels cost, about their budget, or for cheaper or better-value places to stay, look up live prices with the hotel_prices tool instead of estimating, and recommend hotels it returned. It needs dates and guests: use the trip's dates and travelers when you have them; otherwise ask for them in one short question before searching. Price the rooms the group needs: unless they say how they'll sleep, put up to 2 adults (plus up to 2 young children) in each room, say how you split them (e.g. "priced as 2 rooms"), and offer to check a family room or another split. Give prices as "from $X/night" for the dates you searched (for all the rooms, saying how many) and mention they're live rates that can change. Never make up a price. The tool's status says what happened: "no_availability" means the price source has the hotel (or city) but no rooms for those dates, likely sold out; "not_listed" means it isn't on the price source at all, so say you couldn't get a price, not that it's sold out; "priced_elsewhere" means the prices come from Google Hotels for reference (say so, and that they're for the whole group with the number of rooms unknown). Search only upcoming dates (today's date is given below): a month with no year means its next one, and never search or mention dates that have passed. Don't talk about how you look prices up ("my usual source", "my rate source"): say "live rates" or "a reference price from Google Hotels". Postcard doesn't book hotels: never offer to book, hold or reserve a room, and don't say whether a price can or can't be booked here. If they're ready to book, tell them to book on the hotel's own website or a booking site.
 
@@ -42,9 +45,15 @@ Also return, for the conversation list:
 const schema = {
   type: 'object',
   additionalProperties: false,
-  required: ['reply', 'recommendations', 'title', 'summary'],
+  required: ['reply', 'recommendations', 'title', 'summary', 'ask'],
   properties: {
     reply: { type: 'string' },
+    ask: { type: 'object', additionalProperties: false, required: ['kind', 'question', 'options', 'multiple'], properties: {
+      kind: { type: 'string', enum: ['none', 'choose', 'dates', 'guests', 'dates_and_guests'] },
+      question: { type: 'string' },
+      options: { type: 'array', items: { type: 'string' } },
+      multiple: { type: 'boolean' },
+    } },
     title: { type: 'string' },
     summary: { type: 'string' },
     recommendations: { type: 'array', items: {
@@ -169,9 +178,12 @@ export async function POST(request: Request) {
 
       if (response.stop_reason === 'refusal') return emit({ type: 'error', error: 'Postcard couldn’t answer that one. Try rephrasing.' })
       const text = response.content.find(block => block.type === 'text')?.text
-      let parsed: { reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string }
+      let parsed: { reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string; ask?: Ask }
       try { parsed = JSON.parse(text ?? '') } catch { return emit({ type: 'error', error: 'The answer was cut off. Please try again.' }) }
 
+      // Something to tap for the reply's question, kept only when it's usable.
+      const ask = parsed.ask && parsed.ask.kind !== 'none' && (parsed.ask.kind !== 'choose' || parsed.ask.options.length > 1)
+        ? { kind: parsed.ask.kind, question: parsed.ask.question.slice(0, 60), options: parsed.ask.options.map(option => option.trim().slice(0, 60)).filter(Boolean).slice(0, 8), multiple: !!parsed.ask.multiple } satisfies Ask : null
       const recommendations = parsed.recommendations.map((rec, index) => {
         const source = context.items.get(rec.sourceItemId)
         return {
@@ -183,9 +195,9 @@ export async function POST(request: Request) {
         }
       })
       const nextHistory = [...history, ...turns, { role: 'assistant', content: response.content }] as unknown as Prisma.InputJsonValue
-      const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160) }]
+      const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, ...(ask ? { ask } : {}), title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160) }]
       const saved = await prisma.planChat.update({ where: { id: activeChatId }, data: { history: nextHistory, turns: [...((chat?.turns ?? []) as Prisma.JsonArray), ...newTurns] as Prisma.InputJsonValue, ...(trip && !chat?.tripId ? { tripId } : {}) }, select: { id: true } })
-      emit({ type: 'done', chatId: saved.id, reply: parsed.reply, recommendations })
+      emit({ type: 'done', chatId: saved.id, reply: parsed.reply, recommendations, ...(ask ? { ask } : {}) })
     } catch (error) {
       if (error instanceof Anthropic.RateLimitError) return emit({ type: 'error', error: 'Postcard is busy. Try again in a moment.' })
       if (error instanceof Anthropic.APIError) console.error('[testplan] Claude API error', error.status, error.message)
