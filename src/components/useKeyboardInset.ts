@@ -31,7 +31,10 @@ export default function useKeyboardInset(ref: RefObject<HTMLElement | null>) {
       const full = fullHeight()
       const belowVisible = Math.max(0, window.innerHeight - (viewport.offsetTop + viewport.height))
       const pageShrank = window.innerHeight < full - 100
-      const covered = !typing ? 0 : pageShrank ? belowVisible : Math.max(belowVisible, keyboard)
+      // The app's keyboard height is measured from the bottom of the screen, but its page stops above the home bar
+      // (about 34pt on Face ID iPhones), so that much of the keyboard isn't over the page.
+      const homeBar = Capacitor.isNativePlatform() && window.innerHeight > window.innerWidth && window.screen.height - full > 60 ? 34 : 0
+      const covered = !typing ? 0 : pageShrank ? belowVisible : Math.max(belowVisible, keyboard - homeBar)
       box.style.setProperty('--keyboard', `${covered > 40 ? Math.round(covered) : 0}px`)
       if (typing && covered > 40) requestAnimationFrame(() => field.scrollIntoView({ block: 'nearest' }))
     }
