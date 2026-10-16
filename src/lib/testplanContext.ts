@@ -21,11 +21,13 @@ function clip(value: string | null, max: number) {
 // Builds a compact, deterministic text dump of the viewer's trips and their friends' published trips.
 // `excludeTripId` keeps the trip being planned out of the cached context; its live state is sent per turn instead.
 export async function loadPlanningContext(userId: string, excludeTripId?: string) {
-  const [mine, friends, saved] = await Promise.all([
+  const [mine, friends, saved, account] = await Promise.all([
     prisma.itinerary.findMany({ where: { userId, ...(excludeTripId ? { id: { not: excludeTripId } } : {}) }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 60, select: tripSelect }),
     prisma.itinerary.findMany({ where: { visibility: 'public', userId: { notIn: [userId, ...hiddenAccountsFor(userId)] }, user: { followers: { some: { followerId: userId, status: 'accepted' } } } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 200, select: tripSelect }),
     // Trips you saved from anyone (Saved), for "Plan from your saved places".
     prisma.itinerary.findMany({ where: { visibility: 'public', userId: { notIn: [userId, ...hiddenAccountsFor(userId)] }, bucketedBy: { some: { userId } } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 40, select: tripSelect }),
+    // Sign-up's "your best vacation" answers.
+    prisma.user.findUnique({ where: { id: userId }, select: { bestVacation: true } }),
   ])
   const friendIds = new Set(friends.map(trip => trip.id))
   const savedOnly = saved.filter(trip => !friendIds.has(trip.id))
@@ -46,8 +48,17 @@ export async function loadPlanningContext(userId: string, excludeTripId?: string
     }).join('\n')
     return `${header}\n${body}`
   })
-  const text = sections.length ? sections.join('\n\n') : '(No trips yet from you or your friends.)'
   // Trips with at least one place say enough about the traveler's taste to skip the budget/type/activity questions.
   const hasOwnTrips = mine.some(trip => trip.destinations.some(destination => destination.items.length > 0))
+  // Their best vacation from sign-up: the main clue to their taste while they have no trips of their own, then
+  // listed like one of their trips (no more weight than the others).
+  const best = account?.bestVacation as { destination?: string; travelers?: string; hotel?: { name?: string } | null; tags?: string[] } | null
+  if (best?.destination) {
+    const details = [best.travelers && `with: ${best.travelers}`, best.tags?.length && `they did: ${best.tags.join(', ')}`, best.hotel?.name && `stayed at ${best.hotel.name}`].filter(Boolean).join(' · ')
+    sections[hasOwnTrips ? 'push' : 'unshift'](hasOwnTrips
+      ? `## Your trip: their best vacation (from sign-up): "${best.destination}"${details ? ` · ${details}` : ''}`
+      : `## Their best vacation (told us at sign-up; they have no trips logged yet, so this is the main clue to their taste: use it for the kinds of places and things they enjoy): "${best.destination}"${details ? ` · ${details}` : ''}`)
+  }
+  const text = sections.length ? sections.join('\n\n') : '(No trips yet from you or your friends.)'
   return { text, items, friendCount: new Set(friends.map(trip => trip.user.name)).size, hasOwnTrips }
 }
