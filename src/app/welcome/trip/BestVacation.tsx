@@ -55,7 +55,7 @@ export default function BestVacation({ next }: { next: string }) {
     <div className="mt-6 flex items-center gap-3">
       {step > 0 && <button type="button" disabled={busy} onClick={() => setStep(step - 1)} className="btn btn-outline"><ArrowLeft size={18} />Back</button>}
       <button type="button" disabled={busy || (step === 0 && !current.ready)} onClick={() => last ? void finish() : setStep(step + 1)} className="btn btn-primary flex-1">
-        {busy ? 'Saving…' : last ? 'Finish' : current.ready ? 'Next' : 'Skip'}<ArrowRight size={18} /></button>
+        {busy ? 'Saving…' : last ? 'Finish' : current.ready || step === 0 ? 'Next' : 'Skip'}<ArrowRight size={18} /></button>
     </div>
     <p className="mt-4 text-center text-sm"><button type="button" disabled={busy} onClick={() => window.location.assign(next)} className="text-link underline">Skip all of this</button></p>
   </div>
