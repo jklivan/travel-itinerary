@@ -45,9 +45,14 @@ class AppViewController: UIViewController {
         webContent.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(webContent)
         let safeArea = view.safeAreaLayoutGuide
+        let pageBottom = webContent.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor)
+        pageBottom.priority = .defaultHigh
         NSLayoutConstraint.activate([
             webContent.topAnchor.constraint(equalTo: safeArea.topAnchor),
-            webContent.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor),
+            // The page ends at the top of the on-screen keyboard while it's open (and at the safe area otherwise),
+            // so the web app's visible bottom is exactly where the keyboard starts.
+            webContent.bottomAnchor.constraint(lessThanOrEqualTo: view.keyboardLayoutGuide.topAnchor),
+            pageBottom,
             webContent.leadingAnchor.constraint(equalTo: safeArea.leadingAnchor),
             webContent.trailingAnchor.constraint(equalTo: safeArea.trailingAnchor),
             bottomBand.topAnchor.constraint(equalTo: safeArea.bottomAnchor),
