@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { Users, Search } from 'lucide-react'
+import { Users, Search, UserPlus } from 'lucide-react'
 import UserAvatar from '@/components/UserAvatar'
 import SearchField from '@/components/ui/SearchField'
+import PeopleList, { type ListedPerson } from '@/components/PeopleList'
 import {
   searchUsers,
   sendFollowRequest,
@@ -58,11 +59,15 @@ export default function FriendsUI({
   pendingOutgoing,
   incomingRequests,
   followers,
+  suggested,
+  viewerId,
 }: {
   following: User[]
   pendingOutgoing: User[]
   incomingRequests: User[]
   followers: User[]
+  suggested: ListedPerson[]
+  viewerId: string
 }) {
   const [nameQuery, setNameQuery] = useState('')
   const [nameResults, setNameResults] = useState<User[]>([])
@@ -128,7 +133,7 @@ export default function FriendsUI({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-5">
       {/* Incoming requests */}
       {requests.length > 0 && (
         <section className="panel overflow-hidden">
@@ -193,6 +198,15 @@ export default function FriendsUI({
           )}
         </div>
       </section>
+
+      {/* Suggested for you: friends of friends, then the most active travelers. Shown first while you follow no one. */}
+      {suggested.length > 0 && <section className={`panel overflow-hidden ${followingList.length ? 'order-last' : ''}`}>
+        <div className="px-5 py-3 border-b border-sand flex items-center gap-2">
+          <UserPlus size={16} className="text-brown" />
+          <h2 className="type-label text-ink">Suggested for you</h2>
+        </div>
+        <PeopleList people={suggested} viewerId={viewerId} bare />
+      </section>}
 
       {/* Following list */}
       <section className="panel overflow-hidden">

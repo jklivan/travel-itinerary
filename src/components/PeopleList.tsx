@@ -18,9 +18,10 @@ function FollowChip({ person, onChange }: { person: ListedPerson; onChange: (fol
 
 // A list of people (suggested travelers, someone's followers, who they follow), each with a Follow chip.
 // No chip on yourself, or when signed out.
-export default function PeopleList({ people: initial, viewerId }: { people: ListedPerson[]; viewerId: string | null }) {
+// bare: no box of its own, for a list inside another panel.
+export default function PeopleList({ people: initial, viewerId, bare = false }: { people: ListedPerson[]; viewerId: string | null; bare?: boolean }) {
   const [people, setPeople] = useState(initial)
-  return <ul className="panel divide-y divide-line-soft">{people.map(person => <li key={person.id} className="flex items-center gap-3 p-4">
+  return <ul className={`${bare ? '' : 'panel '}divide-y divide-line-soft`}>{people.map(person => <li key={person.id} className="flex items-center gap-3 p-4">
     <Link href={`/user/${person.id}`} className="flex min-w-0 flex-1 items-center gap-3">
       <UserAvatar name={person.name} image={person.image} size={48} />
       <span className="min-w-0">

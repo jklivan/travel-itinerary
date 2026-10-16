@@ -2,12 +2,13 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import FriendsUI from './FriendsUI'
+import { peopleToFollow } from '@/lib/suggestedPeople'
 
 export default async function FriendsPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
-  const [acceptedFollows, pendingOutgoingFollows, incomingFollowRequests, followerRows] = await Promise.all([
+  const [acceptedFollows, pendingOutgoingFollows, incomingFollowRequests, followerRows, suggested] = await Promise.all([
     // People I follow (accepted)
     prisma.follow.findMany({
       where: { followerId: session.user.id, status: 'accepted' },
@@ -32,6 +33,7 @@ export default async function FriendsPage() {
       include: { follower: { select: { id: true, name: true, image: true } } },
       orderBy: { createdAt: 'desc' },
     }),
+    peopleToFollow(session.user.id),
   ])
 
   return (
@@ -47,6 +49,8 @@ export default async function FriendsPage() {
         pendingOutgoing={pendingOutgoingFollows.map((f) => f.following)}
         incomingRequests={incomingFollowRequests.map((f) => f.follower)}
         followers={followerRows.map((f) => f.follower)}
+        suggested={suggested.map(person => ({ ...person, following: false }))}
+        viewerId={session.user.id}
       />
     </div>
   )
