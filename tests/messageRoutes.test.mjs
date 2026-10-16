@@ -28,6 +28,7 @@ const common = {
   'next/link': 'a', 'next/navigation': { notFound() { throw Error('notFound') }, redirect(path) { throw Error(`redirect:${path}`) } },
   '@/lib/messageThread': hrefs, '@/components/MessageRefresh': 'message-refresh', '@/components/MessageInbox': { __esModule: true, default: 'message-inbox' }, '@/components/MessageThread': 'message-thread', '@/components/MarkMessagesRead': 'mark-read',
   '@/auth': { auth: async () => ({ user: { id: 'me' } }) },
+  '@/lib/prisma': { prisma: { follow: { findMany: async () => [] } } }, '@/components/NewMessage': { __esModule: true, default: 'new-message', FriendPicker: 'friend-picker' },
 }
 test('inbox presents separate links for two trips with the same person and general messages', async () => {
   const Inbox = load('../src/app/messages/page.tsx', { ...common, '@/actions/messages': { unreadMessageIds: async () => [], getMessageInbox: async () => ({ threads: [
