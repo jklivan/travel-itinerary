@@ -5,6 +5,7 @@ import { loadPlanningContext } from '@/lib/testplanContext'
 import { cleanPreferences, describePreferences } from '@/lib/travelPreferences'
 import type { Prisma } from '@/generated/prisma/client'
 import { hotelPricesTool, runHotelPrices } from '@/lib/hotelPrices'
+import { partialJsonString } from '@/lib/partialJson'
 
 export const maxDuration = 300
 
@@ -101,62 +102,86 @@ export async function POST(request: Request) {
   const preferencesBlock = preferences ? `\n<traveler_preferences>\n${describePreferences(preferences)}\n</traveler_preferences>` : ''
   const userMessage: Anthropic.MessageParam = { role: 'user', content: `${current}\n${traveler}${preferencesBlock}\n\n${message}` }
 
-  try {
-    // A tool loop: when the planner looks up hotel prices, run the lookups and send the results back, until it
-    // answers. Every turn is kept, in order, in the saved history.
-    const turns: Anthropic.MessageParam[] = [userMessage]
-    let response: Anthropic.Message
-    for (let round = 0; ; round++) {
-      response = await client.messages.stream({
-        model: 'claude-opus-5-5',
-        max_tokens: 32000,
-        output_config: { effort: 'medium', format: { type: 'json_schema', schema } },
-        cache_control: { type: 'ephemeral' },
-        system: [
-          { type: 'text', text: INSTRUCTIONS },
-          { type: 'text', text: `<travel_data>\n${context.text}\n</travel_data>`, cache_control: { type: 'ephemeral' } },
-          // After the cached blocks, so the date changing each day doesn't undo the cache.
-          { type: 'text', text: `Today is ${new Date().toISOString().slice(0, 10)}.` },
-        ],
-        tools: [hotelPricesTool],
-        messages: [...history, ...turns],
-      }).finalMessage()
-      const calls = response.content.filter((block): block is Anthropic.ToolUseBlock => block.type === 'tool_use')
-      if (response.stop_reason !== 'tool_use' || !calls.length) break
-      if (round >= 3) return Response.json({ error: 'Postcard took too long looking up prices. Please try again.' }, { status: 502 })
-      turns.push({ role: 'assistant', content: response.content })
-      const results = await Promise.all(calls.map(async call => {
-        const result = call.name === 'hotel_prices' ? await runHotelPrices(call.input) : { content: `Unknown tool ${call.name}.`, isError: true }
-        if (result.isError) console.warn('[hotel_prices] error for the planner', result.content.slice(0, 300))
-        return { type: 'tool_result' as const, tool_use_id: call.id, content: result.content, ...(result.isError ? { is_error: true } : {}) }
-      }))
-      turns.push({ role: 'user', content: results })
-    }
+  // The answer streams back as lines of JSON: the reply as it's written ("delta"/"reply"), a "status" while
+  // checking prices, then "done" with the saved chat and the place cards (or "error").
+  const encoder = new TextEncoder()
+  const owner = userId
+  const output = new ReadableStream({ async start(controller) {
+    const emit = (event: Record<string, unknown>) => { controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`)) }
+    try { await answer() } finally { controller.close() }
+    async function answer() {
+      try {
+        // A tool loop: when the planner looks up hotel prices, run the lookups and send the results back, until it
+        // answers. Every turn is kept, in order, in the saved history.
+        const turns: Anthropic.MessageParam[] = [userMessage]
+        let response: Anthropic.Message
+        for (let round = 0; ; round++) {
+          const stream = client.messages.stream({
+            model: 'claude-opus-5-5',
+            max_tokens: 32000,
+            output_config: { effort: 'medium', format: { type: 'json_schema', schema } },
+            cache_control: { type: 'ephemeral' },
+            system: [
+              { type: 'text', text: INSTRUCTIONS },
+              { type: 'text', text: `<travel_data>\n${context.text}\n</travel_data>`, cache_control: { type: 'ephemeral' } },
+              // After the cached blocks, so the date changing each day doesn't undo the cache.
+              { type: 'text', text: `Today is ${new Date().toISOString().slice(0, 10)}.` },
+            ],
+            tools: [hotelPricesTool],
+            messages: [...history, ...turns],
+          })
+          // The reply as it's written: send what's new each time (the whole reply again if it ever changes).
+          let shown = ''
+          stream.on('text', (_delta, snapshot) => {
+            const reply = partialJsonString(snapshot, 'reply')
+            if (reply === null || reply === shown) return
+            emit(reply.startsWith(shown) ? { type: 'delta', text: reply.slice(shown.length) } : { type: 'reply', text: reply })
+            shown = reply
+          })
+          response = await stream.finalMessage()
+          const calls = response.content.filter((block): block is Anthropic.ToolUseBlock => block.type === 'tool_use')
+          if (response.stop_reason !== 'tool_use' || !calls.length) break
+          if (round >= 3) return emit({ type: 'error', error: 'Postcard took too long looking up prices. Please try again.' })
+          // Looking up prices: anything shown so far starts over with the next round.
+          if (shown) emit({ type: 'reply', text: '' })
+          emit({ type: 'status', text: 'Checking live hotel prices…' })
+          turns.push({ role: 'assistant', content: response.content })
+          const results = await Promise.all(calls.map(async call => {
+            const result = call.name === 'hotel_prices' ? await runHotelPrices(call.input) : { content: `Unknown tool ${call.name}.`, isError: true }
+            if (result.isError) console.warn('[hotel_prices] error for the planner', result.content.slice(0, 300))
+            return { type: 'tool_result' as const, tool_use_id: call.id, content: result.content, ...(result.isError ? { is_error: true } : {}) }
+          }))
+          turns.push({ role: 'user', content: results })
+        }
 
-    if (response.stop_reason === 'refusal') return Response.json({ error: 'Postcard couldn’t answer that one. Try rephrasing.' }, { status: 422 })
-    const text = response.content.find(block => block.type === 'text')?.text
-    let parsed: { reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string }
-    try { parsed = JSON.parse(text ?? '') } catch { return Response.json({ error: 'The answer was cut off. Please try again.' }, { status: 502 }) }
+        if (response.stop_reason === 'refusal') return emit({ type: 'error', error: 'Postcard couldn’t answer that one. Try rephrasing.' })
+        const text = response.content.find(block => block.type === 'text')?.text
+        let parsed: { reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string }
+        try { parsed = JSON.parse(text ?? '') } catch { return emit({ type: 'error', error: 'The answer was cut off. Please try again.' }) }
 
-    const recommendations = parsed.recommendations.map((rec, index) => {
-      const source = context.items.get(rec.sourceItemId)
-      return {
-        key: `${response.id}:${index}`, name: rec.name, type: rec.type, why: rec.why, price: rec.price?.trim() || '', tripOption: rec.tripOption.trim(), description: rec.description.trim(),
-        destination: source?.destination ?? rec.destination, country: source?.country ?? (rec.country || null),
-        source: source ? (source.mine ? 'you' : 'friend') : 'claude' as const,
-        friendName: source && !source.mine ? source.owner : '',
-        sourceItemId: source?.id ?? '', placeId: source?.placeId ?? null, lat: source?.lat ?? null, lng: source?.lng ?? null,
+        const recommendations = parsed.recommendations.map((rec, index) => {
+          const source = context.items.get(rec.sourceItemId)
+          return {
+            key: `${response.id}:${index}`, name: rec.name, type: rec.type, why: rec.why, price: rec.price?.trim() || '', tripOption: rec.tripOption.trim(), description: rec.description.trim(),
+            destination: source?.destination ?? rec.destination, country: source?.country ?? (rec.country || null),
+            source: source ? (source.mine ? 'you' : 'friend') : 'claude' as const,
+            friendName: source && !source.mine ? source.owner : '',
+            sourceItemId: source?.id ?? '', placeId: source?.placeId ?? null, lat: source?.lat ?? null, lng: source?.lng ?? null,
+          }
+        })
+        const nextHistory = [...history, ...turns, { role: 'assistant', content: response.content }] as unknown as Prisma.InputJsonValue
+        const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160) }]
+        const saved = chat
+          ? await prisma.planChat.update({ where: { id: chat.id }, data: { history: nextHistory, turns: [...(chat.turns as Prisma.JsonArray), ...newTurns] as Prisma.InputJsonValue, ...(trip && !chat.tripId ? { tripId } : {}) }, select: { id: true } })
+          : await prisma.planChat.create({ data: { userId: owner, tripId: trip ? tripId : null, history: nextHistory, turns: newTurns as Prisma.InputJsonValue }, select: { id: true } })
+        emit({ type: 'done', chatId: saved.id, reply: parsed.reply, recommendations })
+      } catch (error) {
+        if (error instanceof Anthropic.RateLimitError) return emit({ type: 'error', error: 'Postcard is busy. Try again in a moment.' })
+        if (error instanceof Anthropic.APIError) console.error('[testplan] Claude API error', error.status, error.message)
+        else console.error('[testplan] chat failed', error)
+        emit({ type: 'error', error: 'Postcard couldn’t answer right now. Please try again.' })
       }
-    })
-    const nextHistory = [...history, ...turns, { role: 'assistant', content: response.content }] as unknown as Prisma.InputJsonValue
-    const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160) }]
-    const saved = chat
-      ? await prisma.planChat.update({ where: { id: chat.id }, data: { history: nextHistory, turns: [...(chat.turns as Prisma.JsonArray), ...newTurns] as Prisma.InputJsonValue, ...(trip && !chat.tripId ? { tripId } : {}) }, select: { id: true } })
-      : await prisma.planChat.create({ data: { userId, tripId: trip ? tripId : null, history: nextHistory, turns: newTurns as Prisma.InputJsonValue }, select: { id: true } })
-    return Response.json({ chatId: saved.id, reply: parsed.reply, recommendations })
-  } catch (error) {
-    if (error instanceof Anthropic.RateLimitError) return Response.json({ error: 'Postcard is busy. Try again in a moment.' }, { status: 429 })
-    if (error instanceof Anthropic.APIError) { console.error('[testplan] Claude API error', error.status, error.message); return Response.json({ error: 'Postcard couldn’t answer right now. Please try again.' }, { status: 502 }) }
-    throw error
-  }
+    }
+  } })
+  return new Response(output, { headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' } })
 }

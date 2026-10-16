@@ -55,6 +55,9 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
   const chatId = useRef(chat?.id ?? '')
   const [draft, setDraft] = useState(initialDraft)
   const [thinking, setThinking] = useState(false)
+  // While an answer streams in: the reply so far, and a note such as "Checking live hotel prices…".
+  const [streaming, setStreaming] = useState('')
+  const [status, setStatus] = useState('')
   const [error, setError] = useState('')
   const [added, setAdded] = useState<Set<string>>(new Set())
   const [adding, setAdding] = useState<string | null>(null)
@@ -194,14 +197,37 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
     setTurns(current => [...current, ...pending])
     try {
       const response = await fetch('/api/testplan/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chatId: chatId.current, message, tripId: tripId.current, preferences }) })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Something went wrong.')
-      chatId.current = data.chatId
-      setTurns(current => [...current, { role: 'assistant', text: data.reply, recommendations: data.recommendations }])
+      // Problems before the answer starts come back as plain JSON.
+      if (!response.ok || !response.body || !response.headers.get('content-type')?.includes('ndjson')) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || 'Something went wrong.')
+      }
+      // The answer streams in as lines of JSON: the reply as it's written, then the place cards when it's done.
+      const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
+      let buffer = '', finished = false
+      while (!finished) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += value
+        const lines = buffer.split('\n'); buffer = lines.pop() ?? ''
+        for (const line of lines.filter(Boolean)) {
+          const event = JSON.parse(line) as { type: string; text?: string; error?: string; chatId?: string; reply?: string; recommendations?: Recommendation[] }
+          if (event.type === 'delta') { setStatus(''); setStreaming(current => current + (event.text ?? '')) }
+          else if (event.type === 'reply') setStreaming(event.text ?? '')
+          else if (event.type === 'status') setStatus(event.text ?? '')
+          else if (event.type === 'error') throw new Error(event.error || 'Something went wrong.')
+          else if (event.type === 'done') {
+            chatId.current = event.chatId ?? ''
+            setTurns(current => [...current, { role: 'assistant', text: event.reply ?? '', recommendations: event.recommendations ?? [] }])
+            finished = true
+          }
+        }
+      }
+      if (!finished) throw new Error('The answer was cut off. Please try again.')
     } catch (caught) {
       setTurns(current => current.slice(0, -pending.length)); if (!preferences) setDraft(message)
       setError(caught instanceof Error ? caught.message : 'Something went wrong.')
-    } finally { setThinking(false) }
+    } finally { setThinking(false); setStreaming(''); setStatus('') }
   }
 
   async function add(rec: Recommendation) {
@@ -297,7 +323,9 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
                 </div> })}
               </details>)}
             </div>)}
-          {thinking && <p className="text-sm text-muted">Postcard is looking through your trips…</p>}
+          {thinking && (streaming
+            ? <div className="space-y-2"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed"><BoldText text={streaming} /></p><p className="text-xs text-muted">{status || 'Finding the places…'}</p></div>
+            : <p className="text-sm text-muted">{status || 'Postcard is looking through your trips…'}</p>)}
         </div>
         {error && <p role="alert" className="px-4 pb-2 text-sm text-danger">{error}</p>}
         <div ref={endOfChat} aria-hidden="true" style={{ scrollMarginBottom: 'calc(var(--app-bottom-clearance) + 4.5rem)' }} />
