@@ -48,8 +48,8 @@ export default function IntroSlides({ next }: { next: string }) {
     <div aria-hidden="true" className="flex justify-center gap-2 pt-4">
       {SLIDES.map((slide, i) => <span key={slide.image} className={`${styles.dot} ${i === index ? styles.dotActive : ''}`} />)}
     </div>
-    <div className="px-6 pt-4">
-      <button type="button" onClick={() => last ? router.push(next) : go(index + 1)} className="btn btn-primary mx-auto w-full max-w-sm text-base">
+    <div className="flex justify-center px-6 pt-4">
+      <button type="button" onClick={() => last ? router.push(next) : go(index + 1)} className="btn btn-primary w-full max-w-sm text-base">
         {last ? 'Get started' : 'Next'} <ArrowRight size={18} />
       </button>
     </div>
