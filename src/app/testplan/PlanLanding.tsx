@@ -25,9 +25,9 @@ export default function PlanLanding({ history, busy, onSend }: { landing: Landin
     {/* A coastline behind the title (fading into the page under the text and at the bottom), and a postcard of it
         with the Postcard stamp. Edge to edge on phones; the question box overlaps its foot. */}
     <header className="relative -mx-4 h-[370px] overflow-hidden sm:mx-0 sm:mt-6 sm:h-[380px] sm:rounded-2xl">
-      {/* The photo itself fades out at the bottom (a mask, not a cover), so no edge shows where it ends. */}
-      <Image src="/brand/plan-hero-capri.jpg" alt="" fill priority sizes="(min-width: 672px) 672px, 100vw" className="object-cover [mask-image:linear-gradient(to_bottom,black_55%,transparent_96%)]" />
-      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-paper/80 via-paper/20 to-transparent [mask-image:linear-gradient(to_bottom,black_55%,transparent_96%)]" />
+      {/* Full colour (the film photo is flat, so it gets a boost), with no wash over it. It still fades out at the
+          bottom (a mask, not a cover), so no edge shows where it ends. */}
+      <Image src="/brand/plan-hero-capri.jpg" alt="" fill priority sizes="(min-width: 672px) 672px, 100vw" className="object-cover saturate-150 contrast-110 [mask-image:linear-gradient(to_bottom,black_55%,transparent_96%)]" />
       <div className="relative z-10 max-w-[54%] px-4 pt-8 sm:max-w-[52%] sm:px-8">
         <h1 className="type-display">Plan with Postcard</h1>
         <p className="mt-3 text-sm text-ink-soft">Ideas, itineraries, hotels and restaurants, based on what you and your friends love.</p>
