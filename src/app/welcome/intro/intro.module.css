@@ -1,18 +1,16 @@
-/* A phone around each screenshot: a dark bezel with rounded corners. The screen keeps the screenshot's exact
-   proportions (390 × 844), so nothing is cropped; the bezel sits outside it. */
+/* A phone around each screenshot. The space under the text is a size container, so the screen's height is a
+   definite number (the taller of that space, or its width at 390 × 844) and its width follows from the shape:
+   nothing is cropped. The bezel is padding around the screen. */
+.stage { container-type: size; }
 .phone {
-  /* content-box: the 390 × 844 shape is the screen's, and the bezel padding goes around it. */
-  box-sizing: content-box;
-  height: calc(100% - 12px);
-  aspect-ratio: 390 / 844;
   padding: 6px;
   border-radius: 1.75rem;
   background: var(--color-ink);
 }
 .screen {
   position: relative;
-  width: 100%;
-  height: 100%;
+  height: min(calc(100cqh - 12px), calc((100cqw - 12px) * 844 / 390));
+  aspect-ratio: 390 / 844;
   border-radius: 1.375rem;
   overflow: hidden;
   background: var(--color-paper);

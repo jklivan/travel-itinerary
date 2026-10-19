@@ -36,7 +36,7 @@ export default function IntroSlides({ next }: { next: string }) {
         className="flex w-full shrink-0 snap-center flex-col items-center px-6">
         <h1 className={`type-display ${styles.headline} max-w-sm text-center`}>{slide.title}</h1>
         <p className="mt-3 max-w-sm text-center text-base leading-snug text-link">{slide.text}</p>
-        <div className="mt-5 flex min-h-0 w-full flex-1 justify-center pb-1">
+        <div className={`${styles.stage} mt-5 flex min-h-0 w-full flex-1 items-start justify-center`}>
           <div className={`${styles.phone} shadow-pop`}>
             <div className={styles.screen}>
               <Image src={slide.image} alt="" fill sizes="300px" priority={i < 2} className="object-cover object-top" />
