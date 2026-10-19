@@ -29,8 +29,6 @@ export default function PlanLanding({ landing, history, busy, onSend }: { landin
           bottom (a mask, not a cover), so no edge shows where it ends. */}
       <Image src="/brand/plan-hero-capri.jpg" alt="" fill priority sizes="(min-width: 672px) 672px, 100vw" className="object-cover [mask-image:linear-gradient(to_bottom,black_55%,transparent_96%)]" />
       <div className="relative z-10 max-w-[54%] px-4 pt-8 sm:max-w-[52%] sm:px-8">
-        {/* A soft glow just behind the words, so they read over the rocks without dulling the rest of the photo. */}
-        <div aria-hidden="true" className="absolute -inset-x-4 -bottom-4 top-4 -z-10 rounded-full bg-paper/70 blur-2xl" />
         <h1 className="type-display">Plan with Postcard</h1>
         <p className="mt-3 text-sm text-ink-soft">Ideas, itineraries, hotels and restaurants, based on what you and your friends love.</p>
       </div>
