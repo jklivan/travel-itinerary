@@ -94,6 +94,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const multiDestination = destinations.length > 1
   // Destinations that start with the same name ("Capri" and "Capri, Metropolitan City of Naples, Italy"), grouped,
   // so the planner can offer to merge them. Each group keeps its shortest name.
+  const photoSorter = places.length > 0 && <PhotoSorter places={places} prompt={trip.start ? 'Choose all its photos at once, then tap them into places.' : 'No dates on this trip? Choose all its photos at once, then tap them into places.'} />
   const lookAlikes = destinations.reduce<{ keep: typeof destinations[number]; others: typeof destinations }[]>((groups, destination) => {
     const group = groups.find(g => samePlanDestination(g.keep, destination))
     if (!group) return [...groups, { keep: destination, others: [] }]
@@ -165,7 +166,9 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       {/* A plan with several destinations shows their headings (each with Add a place) even before anything is added. */}
       {tab === 'map' ? null : !places.length && !(multiDestination && tab === 'places') && !(tab === 'itinerary' && trip.durationDays) ? <div className="panel-dashed p-8 text-center"><MapPin size={28} className="mx-auto mb-3 text-link" /><h2 className="type-title">A place to start</h2><p className="mt-2 text-sm text-muted">A hotel you love, a restaurant someone mentioned, something you want to do. Add it now and decide when later.</p></div> : tab === 'places' ? <>
         <p className="mb-5 text-sm text-muted">Everything you’re considering, all in one place. Days are optional.</p>
-        {places.length > 0 && <PhotoSorter places={places} prompt={trip.start ? 'Choose all its photos at once, then tap them into places.' : 'No dates on this trip? Choose all its photos at once, then tap them into places.'} />}
+        {/* Adding the trip's photos: first on a posted trip; at the bottom while you're still planning it (you
+            haven't been yet). */}
+        {trip.visibility !== 'draft' && photoSorter}
         {lookAlikes.map(group => <MergeLookAlikes key={group.keep.id} tripId={trip.id} keep={group.keep} others={group.others} />)}
         {multiDestination ? destinations.map(destination => { const items = places.filter(p => p.destinationId === destination.id); return <section key={destination.id} aria-label={destination.name} className="mb-10">
           <div className="mb-3 flex items-baseline justify-between gap-3 border-b-2 border-ink pb-2"><h2 className="type-title flex min-w-0 items-center gap-2 [overflow-wrap:anywhere]"><MapPin size={18} className="shrink-0 text-link" />{destination.name}</h2><span className="flex shrink-0 items-center gap-3"><span className="text-xs font-semibold uppercase tracking-wider text-muted">{items.length} {items.length === 1 ? 'place' : 'places'}</span><button type="button" aria-expanded={editingDestination === destination.id} onClick={() => setEditingDestination(current => current === destination.id ? null : destination.id)} className="inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-link"><Pencil size={14} />Edit</button></span></div>
@@ -175,6 +178,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
           {addForm(`destination:${destination.id}`)}
           {categorySections(items)}
         </section> }) : categorySections(places)}
+        {trip.visibility === 'draft' && <div className="mt-6">{photoSorter}</div>}
       </> : <>
         {!trip.durationDays && <TripDaysPrompt tripId={trip.id} />}
         {/* One switch: plan by calendar days. Turning it on asks for the start date if the plan has none. */}
