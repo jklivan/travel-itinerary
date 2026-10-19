@@ -24,7 +24,7 @@ export default function PlanLanding({ history, busy, onSend }: { landing: Landin
   return <div className="mx-auto max-w-2xl px-4 pb-7 text-ink">
     {/* A coastline behind the title (fading into the page under the text and at the bottom), and a postcard of it
         with the Postcard stamp. Edge to edge on phones; the question box overlaps its foot. */}
-    <header className="relative -mx-4 h-[370px] overflow-hidden sm:mx-0 sm:mt-6 sm:h-[380px] sm:rounded-3xl">
+    <header className="relative -mx-4 h-[370px] overflow-hidden sm:mx-0 sm:mt-6 sm:h-[380px] sm:rounded-2xl">
       {/* The photo itself fades out at the bottom (a mask, not a cover), so no edge shows where it ends. */}
       <Image src="/brand/plan-hero-capri.jpg" alt="" fill priority sizes="(min-width: 672px) 672px, 100vw" className="object-cover [mask-image:linear-gradient(to_bottom,black_55%,transparent_96%)]" />
       <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-paper/80 via-paper/20 to-transparent [mask-image:linear-gradient(to_bottom,black_55%,transparent_96%)]" />
