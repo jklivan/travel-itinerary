@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import NewPlanForm from './NewPlanForm'
 import { ChevronRight, Sparkles } from 'lucide-react'
-import PostcardLogo from '@/components/PostcardLogo'
 
 export default async function PlansPage({ searchParams }: { searchParams: Promise<{ savePlace?: string; saveStory?: string; from?: string }> }) {
   const { savePlace, saveStory, from } = await searchParams
@@ -13,9 +12,8 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
   if (!userId) redirect('/login?callbackUrl=%2Fplan')
   return <div className="mx-auto max-w-2xl px-4 py-7 text-ink">
     <section aria-labelledby="start-planning-heading" className="bg-transparent">
-      <header className="relative mb-5 px-1">
-        <h1 id="start-planning-heading" className="type-display max-w-sm pr-20 sm:pr-8">{posting ? 'Tell us about your trip' : 'Your next trip starts here'}</h1>
-        <PostcardLogo size={84} className="absolute -top-1 right-0 rotate-[8deg]" />
+      <header className="mb-5 px-1">
+        <h1 id="start-planning-heading" className="type-display max-w-sm">{posting ? 'Tell us about your trip' : 'Your next trip starts here'}</h1>
         <p className="mt-2 text-sm text-muted">{posting ? 'Add the places you went, then post it when you’re ready.' : 'Collect places now. Add details later.'}</p>
       </header>
       {!posting && <Link href="/testplan" className="panel-hint group mb-5 flex items-center gap-3 p-4 text-ink transition-colors hover:bg-mist-strong">
