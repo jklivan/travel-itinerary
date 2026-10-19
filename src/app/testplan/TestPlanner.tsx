@@ -317,7 +317,9 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
       const result = await addPlanPlace(tripId.current, form)
       if (result.error) throw new Error(result.error)
       setAdded(current => new Set(current).add(rec.key))
-      if (created) router.replace(`/testplan?trip=${tripId.current}`, { scroll: false })
+      // The first place started a trip: reopen this same conversation, now linked to it, so the chat and its other
+      // suggestions stay (opening by ?trip= alone would start a new, blank chat).
+      if (created) router.replace(chatId.current ? `/testplan?chat=${chatId.current}` : `/testplan?trip=${tripId.current}`, { scroll: false })
       else router.refresh()
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not add this place.') }
     finally { setAdding(null) }
