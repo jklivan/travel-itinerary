@@ -2,7 +2,6 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
-import HeaderPostButton from './HeaderPostButton'
 import { previousPage } from '@/lib/backNavigation'
 import { tripReturnPath } from '@/lib/tripNavigation'
 
@@ -16,11 +15,11 @@ function parentPath(pathname: string, search: string) {
   return parent || '/'
 }
 
-// Left of the logo: + (post a trip) on Feed; Back everywhere else. Pages don't have their own Back links.
+// Left of the logo: Back everywhere but the Feed (where Post is in the bottom bar). Pages don't have their own Back links.
 export default function HeaderLeft() {
   const pathname = usePathname()
   const router = useRouter()
-  if (pathname === '/') return <HeaderPostButton />
+  if (pathname === '/') return <span aria-hidden="true" className="size-11" />
   return <button type="button" onClick={() => {
     if (previousPage(window.history.state)) router.back()
     else router.push(parentPath(pathname, window.location.search))

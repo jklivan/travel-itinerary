@@ -8,7 +8,7 @@ import styles from './Stories.module.css'
 
 type Plan = { id: string; title: string; isPlan: boolean; places: number }
 
-// The header's + button: pick one of your private plans to post, or add another trip they've taken.
+// The bottom bar's Post button: pick one of your private plans to post, or add another trip you've taken.
 // Same shape as the snapshot composer.
 export default function PostTripDialog({ onClose }: { onClose: () => void }) {
   const router = useRouter()
