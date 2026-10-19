@@ -32,7 +32,7 @@ export default function PlanLanding({ history, busy, onSend }: { landing: Landin
         <h1 className="type-display">Plan with Postcard</h1>
         <p className="mt-3 text-sm text-ink-soft">Ideas, itineraries, hotels and restaurants, based on what you and your friends love.</p>
       </div>
-      <div aria-hidden="true" className="absolute right-3 top-9 w-[37%] max-w-[230px] sm:right-10 sm:top-7 sm:w-[30%] sm:max-w-[200px] rotate-[5deg] bg-card p-1.5 pb-6 shadow-[0_10px_24px_#1f335433] ">
+      <div aria-hidden="true" className="absolute right-3 top-9 w-[37%] max-w-[230px] sm:right-10 sm:top-7 sm:w-[30%] sm:max-w-[200px] rotate-[5deg] bg-card p-1.5 pb-6 shadow-pop">
         <div className="relative aspect-[4/5] overflow-hidden">
           <Image src="/brand/plan-postcard-capri.jpg" alt="" fill sizes="230px" className="object-cover" />
           <PostcardLogo size={48} className="absolute right-1.5 top-1.5 size-11 rotate-[-4deg] opacity-90 sm:size-12" />
@@ -40,7 +40,7 @@ export default function PlanLanding({ history, busy, onSend }: { landing: Landin
       </div>
     </header>
 
-    <form className="panel relative z-10 -mt-16 flex items-center gap-3 p-3 shadow-[0_6px_20px_#1f33541f]" onSubmit={event => { event.preventDefault(); submit() }}>
+    <form className="panel relative z-10 -mt-16 flex items-center gap-3 p-3 shadow-card" onSubmit={event => { event.preventDefault(); submit() }}>
       <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Sparkles size={18} /></span>
       <label className="min-w-0 flex-1"><span className="sr-only">Where do you want to go?</span>
         <input value={text} onChange={event => setText(event.target.value)} maxLength={4000} placeholder="Where do you want to go?" className="field" /></label>
