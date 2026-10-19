@@ -28,3 +28,8 @@
   width: 1.25rem;
   background: var(--color-ink);
 }
+
+/* The app's display serif, in sentence case like the rest of the slide's text. Smaller on short phones so the
+   phone screenshot keeps room. */
+h1.headline { text-transform: none; letter-spacing: 0; }
+@media (max-height: 700px) { h1.headline { font-size: 22px; } }
