@@ -25,8 +25,10 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
   function cls(active: boolean) {
     return `flex min-w-0 flex-col items-center gap-1 px-1 py-2 transition-colors ${active ? 'text-ink' : 'text-brown hover:text-ink'}`
   }
+  // Every icon sits in the same 44px square as the Post and Plan discs, so the labels line up. The current tab is
+  // just darker (no disc), so it never looks like a third navy button.
   function iconClass(active: boolean) {
-    return active ? 'flex size-9 items-center justify-center rounded-full bg-ink text-white' : 'flex size-9 items-center justify-center'
+    return `flex size-11 items-center justify-center ${active ? 'text-ink' : ''}`
   }
   const label = 'text-label font-medium uppercase tracking-widest'
   // Post and Plan: a navy disc, always filled.
