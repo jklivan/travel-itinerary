@@ -334,9 +334,10 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
       {history.length ? <div className="min-h-0 overflow-y-auto p-2"><PastChats history={history} currentId={chat?.id} /></div> : <p className="p-4 text-sm text-muted">Your conversations will appear here.</p>}
     </aside>
     <div className="flex min-h-0 flex-col gap-4">
-      <section aria-label="New trip" className={`panel min-h-0 overflow-y-auto p-4 ${places.length ? 'lg:flex-1' : 'lg:flex-none'}`}>
-        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><Sparkles size={14} />Plan with Postcard</p>
-        <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
+      {/* No trip yet: just the map switch. With a trip: its name and places, as they're added. */}
+      {!trip && !places.length ? (mapView === 'hidden' || mapView === 'auto') && <div className={`flex justify-end text-sm font-semibold text-link ${mapView === 'auto' ? 'lg:hidden' : ''}`}><button type="button" onClick={() => setMapView('normal')} className="inline-flex min-h-9 items-center gap-1"><MapIcon size={14} />Show map</button></div>
+      : <section aria-label="Your trip" className={`panel min-h-0 overflow-y-auto p-4 ${places.length ? 'lg:flex-1' : 'lg:flex-none'}`}>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="type-title">{trip?.title ?? 'Your next trip'}</h1>
           <div className="flex items-center gap-4 text-sm font-semibold text-link">
             {/* For a trip the chat built, a link to open it. From the planner, the header's Back returns there. */}
@@ -344,12 +345,11 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
             {(mapView === 'hidden' || mapView === 'auto') && <button type="button" onClick={() => setMapView('normal')} className={`inline-flex items-center gap-1 ${mapView === 'auto' ? 'lg:hidden' : ''}`}><MapIcon size={14} />Show map</button>}
           </div>
         </div>
-        {!places.length ? <p className="mt-3 text-sm text-muted">{tripChat ? 'Ask Postcard what to add to this trip: places to stay, eat or see. Places you add from its suggestions show up here.' : 'Ask Postcard where to go. Places you add from its suggestions will build your itinerary here.'}</p>
-          : categories.map(category => { const items = places.filter(place => place.type === category.value); return items.length > 0 && <section key={category.value} className="mt-5"><div className={`${styles.categoryHeading} ${styles[category.value]}`}><h3><span className={styles.categoryIcon}><category.Icon size={17} /></span>{category.label}</h3><span className={styles.count}>{items.length} {items.length === 1 ? 'place' : 'places'}</span></div><div className="space-y-3">{items.map(place => <article key={place.id} className={`${planningStyles.place} ${styles[category.value]}`}><div className={`${styles.card} ${planningStyles.card}`}>
+        {places.length > 0 && categories.map(category => { const items = places.filter(place => place.type === category.value); return items.length > 0 && <section key={category.value} className="mt-5"><div className={`${styles.categoryHeading} ${styles[category.value]}`}><h3><span className={styles.categoryIcon}><category.Icon size={17} /></span>{category.label}</h3><span className={styles.count}>{items.length} {items.length === 1 ? 'place' : 'places'}</span></div><div className="space-y-3">{items.map(place => <article key={place.id} className={`${planningStyles.place} ${styles[category.value]}`}><div className={`${styles.card} ${planningStyles.card}`}>
             <PlacePhoto itemId={place.id} name={place.name} photos={place.photos} thumbnailClass={styles.thumbnail} fallback={<div className={styles.keepsake} aria-hidden="true"><span>{category.eyebrow}</span><category.Icon size={25} strokeWidth={1} /><span>{place.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span></div>} />
             <div className={styles.cardBody}><p className={styles.eyebrow}>{category.eyebrow}{place.day !== null && ` · Day ${place.day}`}</p><h3 className={styles.placeName}>{place.name}</h3><p className={planningStyles.location}>{place.destination}</p>{place.notes && <p className={styles.note}>{place.notes}</p>}</div>
           </div></article>)}</div></section> })}
-      </section>
+      </section>}
 
       {/* Between the trip card and the chat: start over, or (on phones) open a past conversation. Not when you came
           from a trip's planner: that chat is about the trip, which it already knows. */}
