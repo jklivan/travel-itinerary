@@ -28,12 +28,13 @@ export default function PlanLanding({ landing, history, busy, onSend }: { landin
       {/* Full colour (the photo file itself is colour-graded: blue sky, turquoise sea), with no wash over it. It still fades out at the
           bottom (a mask, not a cover), so no edge shows where it ends. */}
       <Image src="/brand/plan-hero-capri.jpg" alt="" fill priority sizes="(min-width: 672px) 672px, 100vw" className="object-cover [mask-image:linear-gradient(to_bottom,black_55%,transparent_96%)]" />
-      <div className="relative z-10 max-w-[54%] px-4 pt-8 sm:max-w-[52%] sm:px-8">
+      <div className="relative z-10 max-w-[68%] px-4 pt-7 sm:max-w-[52%] sm:px-8">
         <h1 className="type-display">Plan with Postcard</h1>
-        <p className="mt-3 text-sm text-ink-soft">Ideas, itineraries, hotels and restaurants, based on what you and your friends love.</p>
+        {/* A faint halo keeps the small text readable where it crosses the rocks, without dimming the photo. */}
+        <p className="mt-3 text-sm font-medium text-ink [text-shadow:0_0_6px_var(--color-paper),0_0_2px_var(--color-paper)]">Ideas, itineraries, hotels and restaurants, based on what you and your friends love.</p>
       </div>
       {/* A postcard, not a polaroid: landscape, an even white border, the stamp in its corner. */}
-      <div aria-hidden="true" className="absolute right-3 top-[150px] w-[48%] max-w-[260px] sm:right-10 sm:top-12 sm:w-[38%] rotate-[4deg] bg-card p-1.5 shadow-pop">
+      <div aria-hidden="true" className="absolute right-3 top-[176px] w-[46%] max-w-[260px] sm:right-10 sm:top-12 sm:w-[38%] rotate-[4deg] bg-card p-1.5 shadow-pop">
         <div className="relative aspect-[3/2] overflow-hidden">
           <Image src="/brand/plan-postcard-capri.jpg" alt="" fill sizes="260px" className="object-cover object-[50%_45%]" />
           <PostcardLogo size={40} className="absolute right-1.5 top-1.5 size-9 rotate-[-4deg] opacity-90 sm:size-10" />
