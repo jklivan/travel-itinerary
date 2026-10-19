@@ -40,12 +40,14 @@ For each recommendation:
 - tripOption = a short name (2-4 words) for the trip idea this place belongs to, e.g. "Amalfi Coast" or "Greek islands". When you suggest alternative trips, give each its own name and use exactly the same name for every place in it. Reuse a name from earlier in the conversation when adding to that idea.
 Also return, for the conversation list:
 - title = a short, evocative title for the whole conversation so far (2-5 words, no quotes or emoji), e.g. "Amalfi coast honeymoon" or "Greenwich dinner favorites". Update it as the conversation develops.
-- summary = one plain sentence (at most 15 words) on what's been discussed or decided so far.`
+- summary = one plain sentence (at most 15 words) on what's been discussed or decided so far.
+- notes = this conversation's memory for later chats about the same trip: a few short phrases, separated by "; ", on what's been decided or learned (the trip idea or places they chose, dates, who's going, budget, likes and dislikes such as "no big resorts", what they've added or turned down). At most 60 words. Keep what still holds from earlier and update what changed; "" when nothing's been decided yet.
+- <earlier_chats_about_this_trip>, when present, holds the notes from the traveler's other conversations about this trip. Treat them as things the traveler already told you: don't ask again, and don't re-suggest what they turned down.`
 
 const schema = {
   type: 'object',
   additionalProperties: false,
-  required: ['reply', 'recommendations', 'title', 'summary', 'ask'],
+  required: ['reply', 'recommendations', 'title', 'summary', 'notes', 'ask'],
   properties: {
     reply: { type: 'string' },
     ask: { type: 'object', additionalProperties: false, required: ['kind', 'question', 'options', 'multiple'], properties: {
@@ -56,6 +58,7 @@ const schema = {
     } },
     title: { type: 'string' },
     summary: { type: 'string' },
+    notes: { type: 'string' },
     recommendations: { type: 'array', items: {
       type: 'object',
       additionalProperties: false,
@@ -109,7 +112,16 @@ export async function POST(request: Request) {
   }
   const traveler = `<traveler past_trips="${context.hasOwnTrips ? 'yes' : 'none'}" />`
   const preferencesBlock = preferences ? `\n<traveler_preferences>\n${describePreferences(preferences)}\n</traveler_preferences>` : ''
-  const userMessage: Anthropic.MessageParam = { role: 'user', content: `${current}\n${traveler}${preferencesBlock}\n\n${message}` }
+  // What the traveler's other conversations about this trip settled: each one's latest notes (or, for chats from
+  // before notes existed, its summary), newest first.
+  const otherChats = trip ? await prisma.planChat.findMany({ where: { userId, tripId, ...(chat ? { id: { not: chat.id } } : {}) }, orderBy: { updatedAt: 'desc' }, take: 8, select: { updatedAt: true, turns: true } }) : []
+  const earlier = otherChats.flatMap(other => {
+    const last = (other.turns as unknown as { role: string; title?: string; summary?: string; notes?: string }[]).findLast(turn => turn.role === 'assistant')
+    const memory = (last?.notes || last?.summary || '').trim()
+    return memory ? [`- ${other.updatedAt.toISOString().slice(0, 10)}${last?.title ? ` "${last.title}"` : ''}: ${memory}`] : []
+  })
+  const earlierBlock = earlier.length ? `\n<earlier_chats_about_this_trip>\n${earlier.join('\n')}\n</earlier_chats_about_this_trip>` : ''
+  const userMessage: Anthropic.MessageParam = { role: 'user', content: `${current}${earlierBlock}\n${traveler}${preferencesBlock}\n\n${message}` }
 
   // The answer streams back as lines of JSON: the reply as it's written ("delta"/"reply"), a "status" while
   // checking prices, then "done" with the saved chat and the place cards (or "error").
@@ -204,14 +216,14 @@ export async function POST(request: Request) {
 
       if (response.stop_reason === 'refusal') return emit({ type: 'error', error: 'Postcard couldn’t answer that one. Try rephrasing.' })
       const text = response.content.find(block => block.type === 'text')?.text
-      let parsed: { reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string; ask?: Ask }
+      let parsed: { reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string; notes?: string; ask?: Ask }
       try { parsed = JSON.parse(text ?? '') } catch { return emit({ type: 'error', error: 'The answer was cut off. Please try again.' }) }
 
       // Something to tap for the reply's question, kept only when it's usable.
       const ask = usableAsk(parsed.ask)
       const recommendations = parsed.recommendations.map((rec, index) => card(rec, index, response.id))
       const nextHistory = [...history, ...turns, { role: 'assistant', content: response.content }] as unknown as Prisma.InputJsonValue
-      const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, ...(ask ? { ask } : {}), title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160) }]
+      const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, ...(ask ? { ask } : {}), title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160), notes: (parsed.notes ?? '').trim().slice(0, 600) }]
       // The turns as saved now (descriptions may have been added to earlier cards since this started).
       const latest = await prisma.planChat.findUnique({ where: { id: activeChatId }, select: { turns: true } })
       const saved = await prisma.planChat.update({ where: { id: activeChatId }, data: { history: nextHistory, turns: [...((latest?.turns ?? chat?.turns ?? []) as Prisma.JsonArray), ...newTurns] as Prisma.InputJsonValue, ...(trip && !chat?.tripId ? { tripId } : {}) }, select: { id: true } })
