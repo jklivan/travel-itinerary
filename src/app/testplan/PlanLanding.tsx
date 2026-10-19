@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { ArrowUp, ChevronRight, Sparkles } from 'lucide-react'
+import Image from 'next/image'
 import PostcardLogo from '@/components/PostcardLogo'
 import type { TravelPreferences } from '@/lib/travelPreferences'
 
@@ -20,14 +21,26 @@ export default function PlanLanding({ history, busy, onSend }: { landing: Landin
   }
   const chats = allChats ? history : history.slice(0, 3)
 
-  return <div className="mx-auto max-w-2xl px-4 py-7 text-ink">
-    <header className="relative mb-5 px-1">
-      <h1 className="type-display max-w-sm pr-20 sm:pr-8">Plan with Postcard</h1>
-      <PostcardLogo size={84} className="absolute -top-1 right-0 rotate-[8deg]" />
-      <p className="mt-2 max-w-sm text-sm text-muted">Ideas, itineraries, hotels and restaurants, based on what you and your friends love.</p>
+  return <div className="mx-auto max-w-2xl px-4 pb-7 text-ink">
+    {/* A coastline behind the title (fading into the page under the text and at the bottom), and a postcard of it
+        with the Postcard stamp. Edge to edge on phones; the question box overlaps its foot. */}
+    <header className="relative -mx-4 h-[370px] overflow-hidden sm:mx-0 sm:mt-6 sm:h-[380px] sm:rounded-3xl">
+      {/* The photo itself fades out at the bottom (a mask, not a cover), so no edge shows where it ends. */}
+      <Image src="/brand/plan-hero-capri.jpg" alt="" fill priority sizes="(min-width: 672px) 672px, 100vw" className="object-cover [mask-image:linear-gradient(to_bottom,black_55%,transparent_96%)]" />
+      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-paper/80 via-paper/20 to-transparent [mask-image:linear-gradient(to_bottom,black_55%,transparent_96%)]" />
+      <div className="relative z-10 max-w-[62%] px-4 pt-8 sm:max-w-[52%] sm:px-8">
+        <h1 className="type-display">Plan with Postcard</h1>
+        <p className="mt-3 text-sm text-ink-soft">Ideas, itineraries, hotels and restaurants, based on what you and your friends love.</p>
+      </div>
+      <div aria-hidden="true" className="absolute right-3 top-9 w-[37%] max-w-[230px] sm:right-10 sm:top-7 sm:w-[30%] sm:max-w-[200px] rotate-[5deg] bg-card p-1.5 pb-6 shadow-[0_10px_24px_#1f335433] ">
+        <div className="relative aspect-[4/5] overflow-hidden">
+          <Image src="/brand/plan-postcard-capri.jpg" alt="" fill sizes="230px" className="object-cover" />
+          <PostcardLogo size={48} className="absolute right-1.5 top-1.5 size-11 rotate-[-4deg] opacity-90 sm:size-12" />
+        </div>
+      </div>
     </header>
 
-    <form className="panel flex items-center gap-3 p-3" onSubmit={event => { event.preventDefault(); submit() }}>
+    <form className="panel relative z-10 -mt-16 flex items-center gap-3 p-3 shadow-[0_6px_20px_#1f33541f]" onSubmit={event => { event.preventDefault(); submit() }}>
       <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Sparkles size={18} /></span>
       <label className="min-w-0 flex-1"><span className="sr-only">Where do you want to go?</span>
         <input value={text} onChange={event => setText(event.target.value)} maxLength={4000} placeholder="Where do you want to go?" className="field" /></label>
