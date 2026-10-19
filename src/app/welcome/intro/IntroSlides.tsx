@@ -3,14 +3,16 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 import styles from './intro.module.css'
 
 // Each slide: a heading, a line about it, and a real screenshot of that page (public/brand/intro, taken at phone size
-// from the live app, so the fonts match the app exactly).
-const SLIDES = [
+// from the live app, so the fonts match the app exactly). The trip slide plays a short screen recording instead:
+// opening a friend's trip, scrolling its places, then its day-by-day itinerary.
+const SLIDES: { title: string; text: string; image: string; video?: string }[] = [
   { title: 'Discover real travel inspiration.', text: 'Browse the Feed to see where friends have been, get ideas, and explore places worth adding to your list.', image: '/brand/intro/feed.jpg' },
+  { title: 'Look inside any trip.', text: 'See every place they stayed, ate and explored, then follow their trip day by day.', image: '/brand/intro/trip-poster.jpg', video: '/brand/intro/trip.mp4' },
   { title: 'Explore ideas for your next trip.', text: 'Search destinations, browse trip types, and find inspiration for your next adventure.', image: '/brand/intro/explore.jpg' },
   { title: 'Plan with Postcard.', text: 'Get personalized ideas, build an itinerary, and organize your plans with the help of Postcard.', image: '/brand/intro/plan.jpg' },
   { title: 'Create and share your own trips.', text: 'Add the places you went (hotels, restaurants and activities), then post it to share with friends.', image: '/brand/intro/post.jpg' },
@@ -39,7 +41,9 @@ export default function IntroSlides({ next }: { next: string }) {
         <div className={`${styles.stage} mt-5 flex min-h-0 w-full flex-1 items-start justify-center`}>
           <div className={`${styles.phone} shadow-pop`}>
             <div className={styles.screen}>
-              <Image src={slide.image} alt="" fill sizes="300px" priority={i < 2} className="object-cover object-top" />
+              {slide.video
+                ? <SlideVideo src={slide.video} poster={slide.image} active={i === index} />
+                : <Image src={slide.image} alt="" fill sizes="300px" priority={i < 2} className="object-cover object-top" />}
             </div>
           </div>
         </div>
@@ -54,4 +58,16 @@ export default function IntroSlides({ next }: { next: string }) {
       </button>
     </div>
   </div>
+}
+
+// A silent screen recording that starts from the beginning each time its slide comes into view, and pauses when it
+// leaves.
+function SlideVideo({ src, poster, active }: { src: string; poster: string; active: boolean }) {
+  const video = useRef<HTMLVideoElement>(null)
+  useEffect(() => {
+    const element = video.current
+    if (!element) return
+    if (active) { element.currentTime = 0; void element.play().catch(() => {}) } else element.pause()
+  }, [active])
+  return <video ref={video} src={src} poster={poster} muted loop playsInline preload="auto" aria-hidden="true" className="absolute inset-0 size-full object-cover object-top" />
 }
