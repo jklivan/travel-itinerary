@@ -217,7 +217,9 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
   // Already on a blank chat (past chats listed above it on phones): close the list and go to the message box.
   function startNewChat() {
     if (!turns.length) { setShowHistory(false); requestAnimationFrame(() => { composer.current?.scrollIntoView({ block: 'center' }); composer.current?.focus() }); return }
-    chatId.current = ''; tripId.current = ''; setTurns([]); setAdded(new Set()); setError(''); router.push('/testplan?new=1')
+    // A trip's chat starts over on the same trip; otherwise a fresh chat with no trip.
+    chatId.current = ''; tripId.current = tripChat && trip ? trip.id : ''; setTurns([]); setAdded(new Set()); setError('')
+    router.push(tripChat && trip ? `/testplan?trip=${trip.id}&from=planner&new=1` : '/testplan?new=1')
   }
 
   // The cards' descriptions are written just after the answer (so the cards themselves arrive sooner).
@@ -330,13 +332,14 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
   return <div className={`mx-auto grid max-w-[1440px] gap-4 px-4 pt-4 text-ink lg:h-[calc(100dvh-4.5rem-var(--app-bottom-clearance))] ${mapView === 'hidden' ? 'lg:grid-cols-[220px_minmax(0,1fr)]' : mapView === 'small' ? 'lg:grid-cols-[220px_minmax(0,1fr)_320px]' : 'lg:grid-cols-[220px_minmax(0,1fr)_minmax(0,1.1fr)]'}`}>
     {/* Desktop: past conversations down the left. */}
     <aside aria-label="Past chats" className="panel hidden min-h-0 flex-col overflow-hidden lg:flex">
-      <p className="flex items-center gap-2 border-b border-line-soft px-4 py-3 text-xs font-semibold uppercase tracking-wide text-link"><History size={14} />Past chats</p>
-      {history.length ? <div className="min-h-0 overflow-y-auto p-2"><PastChats history={history} currentId={chat?.id} /></div> : <p className="p-4 text-sm text-muted">Your conversations will appear here.</p>}
+      <p className="flex items-center gap-2 border-b border-line-soft px-4 py-3 text-xs font-semibold uppercase tracking-wide text-link"><History size={14} />{tripChat ? 'This trip’s chats' : 'Past chats'}</p>
+      {history.length ? <div className="min-h-0 overflow-y-auto p-2"><PastChats history={history} currentId={chat?.id} fromTrip={tripChat} /></div> : <p className="p-4 text-sm text-muted">Your conversations will appear here.</p>}
     </aside>
     <div className="flex min-h-0 flex-col gap-4">
-      <section aria-label="New trip" className={`panel min-h-0 overflow-y-auto p-4 ${places.length ? 'lg:flex-1' : 'lg:flex-none'}`}>
-        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><Sparkles size={14} />Plan with Postcard</p>
-        <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
+      {/* No trip yet: just the map switch. With a trip: its name and places, as they're added. */}
+      {!trip && !places.length ? (mapView === 'hidden' || mapView === 'auto') && <div className={`flex justify-end text-sm font-semibold text-link ${mapView === 'auto' ? 'lg:hidden' : ''}`}><button type="button" onClick={() => setMapView('normal')} className="inline-flex min-h-9 items-center gap-1"><MapIcon size={14} />Show map</button></div>
+      : <section aria-label="Your trip" className={`panel min-h-0 overflow-y-auto p-4 ${places.length ? 'lg:flex-1' : 'lg:flex-none'} ${tripChat ? 'order-last lg:order-none' : ''}`}>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="type-title">{trip?.title ?? 'Your next trip'}</h1>
           <div className="flex items-center gap-4 text-sm font-semibold text-link">
             {/* For a trip the chat built, a link to open it. From the planner, the header's Back returns there. */}
@@ -344,20 +347,19 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
             {(mapView === 'hidden' || mapView === 'auto') && <button type="button" onClick={() => setMapView('normal')} className={`inline-flex items-center gap-1 ${mapView === 'auto' ? 'lg:hidden' : ''}`}><MapIcon size={14} />Show map</button>}
           </div>
         </div>
-        {!places.length ? <p className="mt-3 text-sm text-muted">{tripChat ? 'Ask Postcard what to add to this trip: places to stay, eat or see. Places you add from its suggestions show up here.' : 'Ask Postcard where to go. Places you add from its suggestions will build your itinerary here.'}</p>
-          : categories.map(category => { const items = places.filter(place => place.type === category.value); return items.length > 0 && <section key={category.value} className="mt-5"><div className={`${styles.categoryHeading} ${styles[category.value]}`}><h3><span className={styles.categoryIcon}><category.Icon size={17} /></span>{category.label}</h3><span className={styles.count}>{items.length} {items.length === 1 ? 'place' : 'places'}</span></div><div className="space-y-3">{items.map(place => <article key={place.id} className={`${planningStyles.place} ${styles[category.value]}`}><div className={`${styles.card} ${planningStyles.card}`}>
+        {places.length > 0 && categories.map(category => { const items = places.filter(place => place.type === category.value); return items.length > 0 && <section key={category.value} className="mt-5"><div className={`${styles.categoryHeading} ${styles[category.value]}`}><h3><span className={styles.categoryIcon}><category.Icon size={17} /></span>{category.label}</h3><span className={styles.count}>{items.length} {items.length === 1 ? 'place' : 'places'}</span></div><div className="space-y-3">{items.map(place => <article key={place.id} className={`${planningStyles.place} ${styles[category.value]}`}><div className={`${styles.card} ${planningStyles.card}`}>
             <PlacePhoto itemId={place.id} name={place.name} photos={place.photos} thumbnailClass={styles.thumbnail} fallback={<div className={styles.keepsake} aria-hidden="true"><span>{category.eyebrow}</span><category.Icon size={25} strokeWidth={1} /><span>{place.name.split(/\s+/).map(word => word[0]).slice(0, 3).join('')}</span></div>} />
             <div className={styles.cardBody}><p className={styles.eyebrow}>{category.eyebrow}{place.day !== null && ` · Day ${place.day}`}</p><h3 className={styles.placeName}>{place.name}</h3><p className={planningStyles.location}>{place.destination}</p>{place.notes && <p className={styles.note}>{place.notes}</p>}</div>
           </div></article>)}</div></section> })}
-      </section>
+      </section>}
 
-      {/* Between the trip card and the chat: start over, or (on phones) open a past conversation. Not when you came
-          from a trip's planner: that chat is about the trip, which it already knows. */}
-      {!tripChat && <div className="flex gap-2">
+      {/* Above the chat: start over, or (on phones) open a past conversation. From a trip's planner, those are the
+          trip's own chats, and the trip's places sit below the chat on phones so the chat comes first. */}
+      <div className="flex gap-2">
         <button type="button" disabled={thinking} onClick={startNewChat} className="btn btn-outline flex-1"><SquarePen size={16} />Start a new chat</button>
         {history.length > 0 && <button type="button" onClick={() => setShowHistory(value => !value)} aria-expanded={showHistory} aria-controls="past-chats-phone" className="btn btn-outline lg:hidden"><History size={16} />Past chats</button>}
-      </div>}
-      {!tripChat && showHistory && history.length > 0 && <div id="past-chats-phone" className="panel p-2 lg:hidden"><p className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-link">Past chats</p><PastChats history={history} currentId={chat?.id} limit={5} /></div>}
+      </div>
+      {showHistory && history.length > 0 && <div id="past-chats-phone" className="panel p-2 lg:hidden"><p className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-link">{tripChat ? 'This trip’s chats' : 'Past chats'}</p><PastChats history={history} currentId={chat?.id} limit={5} fromTrip={tripChat} /></div>}
 
       <section aria-label="Chat with Postcard" className="panel flex min-h-0 flex-col lg:h-auto lg:flex-[1.2]">
         <div ref={scroller} className="min-h-0 flex-1 space-y-4 p-4 lg:overflow-y-auto" aria-live="polite">
@@ -568,11 +570,12 @@ function TripMap({ places }: { places: MapPlace[] }) {
 }
 
 // Past conversations, newest first, each labelled by its topic.
-function PastChats({ history, currentId, limit }: { history: PastChat[]; currentId?: string; limit?: number }) {
+// fromTrip: opened from a trip's planner, so a past chat reopens as that trip's chat.
+function PastChats({ history, currentId, limit, fromTrip = false }: { history: PastChat[]; currentId?: string; limit?: number; fromTrip?: boolean }) {
   const [all, setAll] = useState(false)
   const shown = limit && !all ? history.slice(0, limit) : history
   return <><ul className="space-y-1">{shown.map(past => <li key={past.id}>
-    <Link href={`/testplan?chat=${past.id}`} aria-current={past.id === currentId ? 'page' : undefined}
+    <Link href={`/testplan?chat=${past.id}${fromTrip ? '&from=planner' : ''}`} aria-current={past.id === currentId ? 'page' : undefined}
       className={`block rounded-xl px-3 py-2 text-sm hover:bg-paper ${past.id === currentId ? 'bg-mist font-semibold text-ink' : 'text-ink'}`}>
       <span className="block [overflow-wrap:anywhere]">{past.topic}</span>
       {past.summary && <span className="mt-0.5 line-clamp-2 block text-xs font-normal text-ink-soft">{past.summary}</span>}

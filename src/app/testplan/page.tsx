@@ -30,7 +30,8 @@ export default async function TestPlanPage({ searchParams }: { searchParams: Pro
   // Plan with AI always opens a blank chat (on the trip, with ?trip=); ?chat= reopens a past conversation.
   const chat = fresh || !chatParam ? null : await prisma.planChat.findFirst({ where: { userId, id: chatParam }, select: { id: true, tripId: true, turns: true } })
   const tripId = chatParam ? chat?.tripId ?? undefined : tripParam
-  const pastChats = await prisma.planChat.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' }, take: 30, select: { id: true, updatedAt: true, turns: true, trip: { select: { title: true } } } })
+  // From a trip's planner, past chats are that trip's only.
+  const pastChats = await prisma.planChat.findMany({ where: { userId, ...(from === 'planner' && tripId ? { tripId } : {}) }, orderBy: { updatedAt: 'desc' }, take: 30, select: { id: true, updatedAt: true, turns: true, trip: { select: { title: true } } } })
   const history = await Promise.all(pastChats.filter(past => (past.turns as unknown as Turn[]).some(turn => turn.role === 'user'))
     .map(async past => {
       // The AI's latest title and summary for the conversation. Chats from before the planner named
