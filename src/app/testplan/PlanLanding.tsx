@@ -32,10 +32,11 @@ export default function PlanLanding({ history, busy, onSend }: { landing: Landin
         <h1 className="type-display">Plan with Postcard</h1>
         <p className="mt-3 text-sm text-ink-soft">Ideas, itineraries, hotels and restaurants, based on what you and your friends love.</p>
       </div>
-      <div aria-hidden="true" className="absolute right-3 top-9 w-[37%] max-w-[230px] sm:right-10 sm:top-7 sm:w-[30%] sm:max-w-[200px] rotate-[5deg] bg-card p-1.5 pb-6 shadow-pop">
-        <div className="relative aspect-[4/5] overflow-hidden">
-          <Image src="/brand/plan-postcard-capri.jpg" alt="" fill sizes="230px" className="object-cover" />
-          <PostcardLogo size={48} className="absolute right-1.5 top-1.5 size-11 rotate-[-4deg] opacity-90 sm:size-12" />
+      {/* A postcard, not a polaroid: landscape, an even white border, the stamp in its corner. */}
+      <div aria-hidden="true" className="absolute right-3 top-[150px] w-[48%] max-w-[260px] sm:right-10 sm:top-12 sm:w-[38%] rotate-[4deg] bg-card p-1.5 shadow-pop">
+        <div className="relative aspect-[3/2] overflow-hidden">
+          <Image src="/brand/plan-postcard-capri.jpg" alt="" fill sizes="260px" className="object-cover object-[50%_45%]" />
+          <PostcardLogo size={40} className="absolute right-1.5 top-1.5 size-9 rotate-[-4deg] opacity-90 sm:size-10" />
         </div>
       </div>
     </header>
