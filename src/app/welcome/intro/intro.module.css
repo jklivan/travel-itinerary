@@ -1,5 +1,5 @@
 /* A phone around each screenshot. The space under the text is a size container, so the screen's height is a
-   definite number (the taller of that space, or its width at 390 × 844) and its width follows from the shape:
+   definite number (the taller of that space, or its width at 393 × 852) and its width follows from the shape:
    nothing is cropped. The bezel is padding around the screen. */
 .stage { container-type: size; }
 .phone {
@@ -9,8 +9,8 @@
 }
 .screen {
   position: relative;
-  height: min(calc(100cqh - 12px), calc((100cqw - 12px) * 844 / 390));
-  aspect-ratio: 390 / 844;
+  height: min(calc(100cqh - 12px), calc((100cqw - 12px) * 852 / 393));
+  aspect-ratio: 393 / 852;
   border-radius: 1.375rem;
   overflow: hidden;
   background: var(--color-paper);
