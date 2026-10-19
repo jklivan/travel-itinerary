@@ -3,12 +3,13 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Bookmark, BriefcaseBusiness, Compass, Home, Plus } from 'lucide-react'
+import { BriefcaseBusiness, Compass, Home, Plus } from 'lucide-react'
 import useBottomToolbar from './useBottomToolbar'
 import PostTripDialog from './PostTripDialog'
 
-// Post · Feed · Explore | Plan · My Trips · Saved. Post (a trip you've taken, or one of your plans) and Plan (with
-// Postcard's AI) are the two navy discs, one on each side of the divider. Messages live in the header.
+// Feed · Explore | Post · Plan · My Trips. Post (a trip you've taken, or one of your plans) and Plan (with Postcard's
+// AI) are the two navy discs in the middle, after a divider from the browsing tabs. Messages live in the header; Saved
+// is reached from Plan with AI and Profile.
 export default function BottomNav({ userId }: { pendingCount: number; userId: string | null }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -18,7 +19,6 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
   const isFeed = pathname === '/'
   const isExplore = pathname.startsWith('/explore')
   const isTrips = pathname === '/trips'
-  const isSaved = pathname === '/saved'
   // Starting a trip (/plan) and the AI planner it links to both count as Plan.
   const isPlanner = pathname === '/plan' || pathname === '/testplan'
 
@@ -36,12 +36,7 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
 
   return (
     <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl border-t border-line-soft bg-cream shadow-nav">
-      <div className="max-w-2xl mx-auto grid grid-cols-6 items-center py-2">
-        <button type="button" onClick={() => userId ? setPosting(true) : router.push('/login')} aria-haspopup="dialog" className={cls(false)}>
-          <span className={disc}><Plus size={22} /></span>
-          <span className={`${label} text-ink`}>Post</span>
-        </button>
-
+      <div className="max-w-2xl mx-auto grid grid-cols-5 items-center py-2">
         <Link href="/" aria-current={isFeed ? 'page' : undefined} className={cls(isFeed)}>
           <span className={iconClass(isFeed)}><Home size={22} /></span>
           <span className={label}>Feed</span>
@@ -52,8 +47,14 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
           <span className={label}>Explore</span>
         </Link>
 
-        {/* Plan: the Postcard compass star, after a divider from the browsing tabs. */}
-        <Link href={userId ? '/testplan' : '/login'} aria-current={isPlanner ? 'page' : undefined} className={`${cls(isPlanner)} relative before:absolute before:inset-y-2 before:left-0 before:w-px before:bg-line`}>
+        {/* Post: after a divider from the browsing tabs. */}
+        <button type="button" onClick={() => userId ? setPosting(true) : router.push('/login')} aria-haspopup="dialog" className={`${cls(false)} relative before:absolute before:inset-y-2 before:left-0 before:w-px before:bg-line`}>
+          <span className={disc}><Plus size={22} /></span>
+          <span className={`${label} text-ink`}>Post</span>
+        </button>
+
+        {/* Plan: the Postcard compass star. */}
+        <Link href={userId ? '/testplan' : '/login'} aria-current={isPlanner ? 'page' : undefined} className={cls(isPlanner)}>
           <span className={disc}><CompassStar /></span>
           <span className={`${label} text-ink`}>Plan</span>
         </Link>
@@ -61,11 +62,6 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
         <Link href={userId ? '/trips' : '/login'} aria-current={isTrips ? 'page' : undefined} className={cls(isTrips)}>
           <span className={iconClass(isTrips)}><BriefcaseBusiness size={22} /></span>
           <span className={label}>My Trips</span>
-        </Link>
-
-        <Link href={userId ? '/saved' : '/login'} aria-current={isSaved ? 'page' : undefined} className={cls(isSaved)}>
-          <span className={iconClass(isSaved)}><Bookmark size={22} /></span>
-          <span className={label}>Saved</span>
         </Link>
       </div>
       {posting && <PostTripDialog onClose={() => setPosting(false)} />}

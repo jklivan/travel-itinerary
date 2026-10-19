@@ -4,7 +4,7 @@ import MarkNotificationsRead from '@/components/MarkNotificationsRead'
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
-import { ChevronRight, Settings, Users } from 'lucide-react'
+import { Bookmark, ChevronRight, Settings, Users } from 'lucide-react'
 import ItineraryCard from '@/components/ItineraryCard'
 import ProfilePhotoPicker from '@/components/ProfilePhotoPicker'
 import { tripPhotoGallery } from '@/lib/eventPhotos'
@@ -13,12 +13,13 @@ export default async function ProfilePage() {
   const session = await auth()
   const userId = session?.user?.id
   if (!userId) redirect('/login?callbackUrl=%2Fprofile')
-  const [user, followers, following, pending, sharedTrips] = await Promise.all([
+  const [user, followers, following, pending, sharedTrips, savedCount] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, image: true } }),
     prisma.follow.count({ where: { followingId: userId, status: 'accepted' } }),
     prisma.follow.count({ where: { followerId: userId, status: 'accepted' } }),
     prisma.follow.count({ where: { followingId: userId, status: 'pending' } }),
     prisma.itinerary.findMany({ where: { userId, visibility: 'public' }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], include: { destinations: { orderBy: { order: 'asc' }, include: { items: true } }, photos: { orderBy: { isStock: 'asc' } }, likes: { where: { userId: userId ?? '' }, select: { id: true }, take: 1 }, _count: { select: { likes: true, bucketedBy: true } } } }),
+    prisma.bucketListItem.count({ where: { userId, itinerary: { visibility: { not: 'draft' } } } }),
   ])
   if (!user) redirect('/login')
   return <main className="mx-auto max-w-xl px-5 py-7 text-ink sm:px-8">
@@ -44,6 +45,11 @@ export default async function ProfilePage() {
       <Link href="/friends" className="panel group flex min-h-20 items-center gap-4 p-4 hover:bg-paper">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Users size={22} /></span>
         <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-title">Friends</span><span className="mt-0.5 block text-sm text-muted">{pending ? `${pending} friend request${pending === 1 ? '' : 's'} waiting` : 'Find friends & see who you follow'}</span></span>{pending > 0 && <span className="rounded-full bg-link px-2 py-1 text-xs font-semibold text-white">{pending}</span>}<ChevronRight size={18} className="text-link" />
+      </Link>
+      {/* Saved isn't in the bottom bar; it's here and on Plan with AI. */}
+      <Link href="/saved" className="panel group flex min-h-20 items-center gap-4 p-4 hover:bg-paper">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Bookmark size={22} /></span>
+        <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-title">Saved</span><span className="mt-0.5 block text-sm text-muted">{savedCount ? `${savedCount} ${savedCount === 1 ? 'trip' : 'trips'} saved, in your folders` : 'Trips you save from friends'}</span></span><ChevronRight size={18} className="text-link" />
       </Link>
       <Link href="/settings" className="panel group flex min-h-20 items-center gap-4 p-4 hover:bg-paper">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Settings size={22} /></span>

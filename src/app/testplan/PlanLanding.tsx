@@ -2,17 +2,17 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { ArrowUp, ChevronRight, Sparkles } from 'lucide-react'
+import { ArrowUp, Bookmark, ChevronRight, Sparkles } from 'lucide-react'
 import Image from 'next/image'
 import PostcardLogo from '@/components/PostcardLogo'
 import type { TravelPreferences } from '@/lib/travelPreferences'
 
-// Nothing extra is loaded for the start page; kept as a type so the page can say it's showing it.
-export type Landing = Record<string, never>
+// What the start page loads besides the past chats: how many trips are in Saved (its row under the chats).
+export type Landing = { savedCount: number }
 
 // Plan with Postcard's start page (the bottom bar's Plan button): ask where to go, or reopen a past chat. Who's going,
 // budget and the kind of trip aren't asked here: the planner asks a new traveler for them in the chat.
-export default function PlanLanding({ history, busy, onSend }: { landing: Landing; history: { id: string; topic: string }[]; busy: boolean; onSend: (text: string, preferences?: TravelPreferences) => void }) {
+export default function PlanLanding({ landing, history, busy, onSend }: { landing: Landing; history: { id: string; topic: string }[]; busy: boolean; onSend: (text: string, preferences?: TravelPreferences) => void }) {
   const [text, setText] = useState('')
   const [allChats, setAllChats] = useState(false)
   function submit() {
@@ -57,6 +57,16 @@ export default function PlanLanding({ history, busy, onSend }: { landing: Landin
       <div className="space-y-2">{chats.map(chat => <Link key={chat.id} href={`/testplan?chat=${chat.id}`} className="panel flex items-center gap-3 px-4 py-3 text-sm text-ink transition-colors hover:bg-cream">
         <span className="min-w-0 flex-1 truncate">{chat.topic}</span><ChevronRight size={18} className="shrink-0 text-link" /></Link>)}</div>
     </section>}
+
+    {/* Saved (no longer in the bottom bar): trips saved from others, for ideas while planning. */}
+    <section className="mt-8" aria-labelledby="saved-heading">
+      <h2 id="saved-heading" className="type-title mb-3">Saved</h2>
+      <Link href="/saved" className="panel flex items-center gap-3 p-4 text-ink transition-colors hover:bg-cream">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Bookmark size={18} /></span>
+        <span className="min-w-0 flex-1"><span className="block font-semibold">Saved trips</span><span className="block text-sm text-muted">{landing.savedCount ? `${landing.savedCount} ${landing.savedCount === 1 ? 'trip' : 'trips'} saved, in your folders` : 'Trips you save from friends show up here.'}</span></span>
+        <ChevronRight size={18} className="shrink-0 text-link" />
+      </Link>
+    </section>
 
     <p className="mt-8 text-center text-sm"><Link href="/plan" className="text-link underline">Start a plan without AI</Link></p>
   </div>

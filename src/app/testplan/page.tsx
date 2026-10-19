@@ -47,7 +47,7 @@ export default async function TestPlanPage({ searchParams }: { searchParams: Pro
   const askPlace = ask ? trip?.destinations.flatMap(d => d.items.map(item => ({ item, d }))).find(({ item }) => item.id === ask) : undefined
   const initialDraft = askPlace ? `Tell me more about ${askPlace.item.name} (${[askPlace.d.name, askPlace.d.country].filter(Boolean).join(', ')}): ` : ''
   // A new chat that isn't about a trip opens on the Plan with Postcard start page.
-  const landing: Landing | null = !chat && !trip ? {} : null
+  const landing: Landing | null = !chat && !trip ? { savedCount: await prisma.bucketListItem.count({ where: { userId, itinerary: { visibility: { not: 'draft' } } } }) } : null
   return <TestPlanner key={`${chat?.id ?? `new:${tripId ?? ''}`}:${ask ?? ''}`} landing={landing} initialDraft={initialDraft} fromPlanner={from === 'planner'} history={history} chat={chat && { id: chat.id, turns: chat.turns as unknown as Turn[] }} trip={trip && { id: trip.id, title: trip.title,
     places: trip.destinations.flatMap(d => d.items.map(item => ({ id: item.id, name: item.name, type: item.type, notes: item.notes, placeId: item.placeId, lat: item.lat, lng: item.lng,
       day: item.dayIndex === null ? null : item.dayIndex + (d.items.some(i => i.type !== 'hotel' && i.dayIndex === 0) ? 1 : 0),
