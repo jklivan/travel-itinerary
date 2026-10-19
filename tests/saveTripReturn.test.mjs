@@ -15,7 +15,7 @@ test('successful sign-in returns to the selected trip, otherwise home', async ()
   const fns = ['loginDestination', 'login'].map(name => source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === name).getText(source).replace('export ', ''))
   const code = ts.transpileModule(fns.join('\n') + '\nlogin(undefined, formData)', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText
   // [trip being saved, just created an account, where sign-in goes]
-  for (const [id, registered, expected] of [['test-trip', false, '/itinerary/test-trip'], ['', false, '/'], ['//evil.test', false, '/'], ['', true, '/welcome'], ['test-trip', true, '/welcome?saveTrip=test-trip']]) {
+  for (const [id, registered, expected] of [['test-trip', false, '/itinerary/test-trip'], ['', false, '/'], ['//evil.test', false, '/'], ['', true, '/welcome/intro'], ['test-trip', true, '/welcome/intro?saveTrip=test-trip']]) {
     const formData = new FormData()
     formData.set('saveTrip', id)
     if (registered) formData.set('registered', '1')

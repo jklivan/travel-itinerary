@@ -41,9 +41,10 @@ export async function register(state: RegisterState, formData: FormData): Promis
 
 export type LoginState = { message?: string } | undefined
 
-// First sign-in after creating an account goes to the suggested people to follow (then on to the trip they were saving, if any).
+// First sign-in after creating an account goes to the intro slides, then the suggested people to follow (then on
+// to the trip they were saving, if any).
 function loginDestination(tripId: string, justRegistered: boolean) {
-  if (justRegistered) return tripId ? `/welcome?saveTrip=${encodeURIComponent(tripId)}` : '/welcome'
+  if (justRegistered) return tripId ? `/welcome/intro?saveTrip=${encodeURIComponent(tripId)}` : '/welcome/intro'
   return tripId ? `/itinerary/${tripId}` : '/'
 }
 
