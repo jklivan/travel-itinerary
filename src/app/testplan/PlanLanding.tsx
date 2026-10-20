@@ -48,8 +48,8 @@ export default function PlanLanding({ landing, history, busy, onSend }: { landin
 
     <form className="panel relative z-10 -mt-16 flex items-center gap-3 p-3 shadow-card" onSubmit={event => { event.preventDefault(); submit() }}>
       <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Sparkles size={18} /></span>
-      <label className="min-w-0 flex-1"><span className="sr-only">Where do you want to go?</span>
-        <input value={text} onChange={event => setText(event.target.value)} maxLength={4000} placeholder="Where do you want to go?" className="field" /></label>
+      <label className="min-w-0 flex-1"><span className="sr-only">Tell Postcard AI where you want to go</span>
+        <input value={text} onChange={event => setText(event.target.value)} maxLength={4000} placeholder="Tell Postcard AI where you want to go" className="field" /></label>
       <button type="submit" disabled={busy || !text.trim()} aria-label="Ask Postcard" className="btn btn-primary w-11 shrink-0 !px-0"><ArrowUp size={18} /></button>
     </form>
     <p className="mt-2 px-1 text-xs text-muted">Try “A long weekend in Italy with kids”</p>
