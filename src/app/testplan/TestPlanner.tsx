@@ -13,7 +13,8 @@ import detailStyles from '@/components/PlaceDetailsCard.module.css'
 import ItineraryMap from '@/components/ItineraryMap'
 import type { ItemPin } from '@/components/ItineraryMapInner'
 import PlacePhoto from '@/components/PlacePhoto'
-import { addPlanPlace, startPlan } from '@/actions/planning'
+import { addPlanPlace, plansForSaving, startPlan } from '@/actions/planning'
+import { plannerTrip } from './actions'
 import { linkPlanChat } from '@/actions/planChat'
 import { tripMapLookupKey, validMapLocation, type TripMapPlace } from '@/lib/tripMapPlaces'
 import { BUDGETS, PICKS_PREFIX, SETUP_MESSAGE, TRAVELER_LABELS, type TravelPreferences } from '@/lib/travelPreferences'
@@ -66,8 +67,10 @@ async function savedAnswer(id: string, expected: number): Promise<Turn[] | null>
   return null
 }
 
-export default function TestPlanner({ trip, chat, history, landing = null, initialDraft = '', fromPlanner = false }: { fromPlanner?: boolean; initialDraft?: string; trip: Trip | null; chat: { id: string; turns: Turn[] } | null; history: PastChat[]; landing?: Landing | null }) {
+export default function TestPlanner({ trip: initialTrip, chat, history, landing = null, initialDraft = '', fromPlanner = false }: { fromPlanner?: boolean; initialDraft?: string; trip: Trip | null; chat: { id: string; turns: Turn[] } | null; history: PastChat[]; landing?: Landing | null }) {
   const router = useRouter()
+  // The trip the chat is filling, kept here so adding places updates "Your trip" in place (no page reload).
+  const [trip, setTrip] = useState<Trip | null>(initialTrip)
   const [turns, setTurns] = useState<Turn[]>(chat?.turns ?? [])
   const chatId = useRef(chat?.id ?? '')
   const [draft, setDraft] = useState(initialDraft)
@@ -86,7 +89,12 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
   useEffect(() => { turnsNow.current = turns })
   const [error, setError] = useState('')
   const [added, setAdded] = useState<Set<string>>(new Set())
-  const [adding, setAdding] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Map<string, Recommendation>>(new Map())
+  const [addingSelected, setAddingSelected] = useState(false)
+  // Where the selected places go: '' means the chat's trip (or a new one when it has none), 'new', or a plan's id.
+  const [target, setTarget] = useState('')
+  const [plans, setPlans] = useState<{ id: string; title: string }[] | null>(null)
+  const [notice, setNotice] = useState<{ count: number; title: string; href: string } | null>(null)
   // 'auto' until changed: the map shows on desktop and starts hidden on phones, behind "Show map". Phones
   // don't load it (or look up its places) until it's shown.
   const [mapView, setMapView] = useState<'auto' | 'normal' | 'small' | 'hidden'>('auto')
@@ -257,7 +265,11 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
         const lines = buffer.split('\n'); buffer = lines.pop() ?? ''
         for (const line of lines.filter(Boolean)) {
           const event = JSON.parse(line) as { type: string; text?: string; error?: string; chatId?: string; reply?: string; recommendations?: Recommendation[]; ask?: Ask; card?: Recommendation }
-          if (event.type === 'start') chatId.current = event.chatId ?? chatId.current
+          if (event.type === 'start') {
+            chatId.current = event.chatId ?? chatId.current
+            // The address follows the chat (so a reload reopens it) without reloading the page.
+            if (chatId.current && !tripChat) window.history.replaceState(null, '', `/testplan?chat=${chatId.current}`)
+          }
           else if (event.type === 'delta') { setStatus(''); setStreaming(current => current + (event.text ?? '')) }
           else if (event.type === 'reply') setStreaming(event.text ?? '')
           else if (event.type === 'card' && event.card) { const next = event.card; setStreamingCards(current => [...current, next]) }
@@ -293,36 +305,45 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
   }
 
 
-  async function add(rec: Recommendation) {
-    if (adding) return
-    setAdding(rec.key); setError('')
-    const destination = [rec.destination, rec.country].filter(Boolean).join(', ')
+  // Picking several suggestions, then adding them together: to the chat's trip, a new trip, or another plan.
+  function toggle(rec: Recommendation) {
+    setSelected(current => { const next = new Map(current); if (next.has(rec.key)) next.delete(rec.key); else next.set(rec.key, rec); return next })
+    setNotice(null)
+    if (plans === null) { setPlans([]); void plansForSaving().then(result => setPlans(result.trips ?? []), () => setPlans([])) }
+  }
+  async function addSelected() {
+    const recs = [...selected.values()]
+    if (!recs.length || addingSelected) return
+    setAddingSelected(true); setError('')
+    const choice = target || (tripId.current ? tripId.current : 'new')
     try {
-      let created = false
-      if (!tripId.current) {
+      // Their Google places first (all at once), so the planner can show photos and map pins.
+      const placeIds = await Promise.all(recs.map(rec => rec.placeId ? Promise.resolve(rec.placeId) : loadPickInfo(rec).then(info => info.placeId, () => null)))
+      let planId = choice, title = choice === tripId.current ? trip?.title ?? 'your trip' : plans?.find(plan => plan.id === choice)?.title ?? 'your trip'
+      if (choice === 'new') {
         const form = new FormData()
-        for (const [key, value] of Object.entries({ clientId: crypto.randomUUID(), title: '', destination, audience: 'family', format: 'itinerary', startDate: '', endDate: '' })) form.set(key, value)
+        for (const [key, value] of Object.entries({ clientId: crypto.randomUUID(), title: '', destination: [recs[0].destination, recs[0].country].filter(Boolean).join(', '), audience: 'family', format: 'itinerary', startDate: '', endDate: '' })) form.set(key, value)
         const result = await startPlan(form)
         if (result.error || !result.id) throw new Error(result.error || 'Could not start the trip.')
-        tripId.current = result.id; created = true
-        if (chatId.current) await linkPlanChat(chatId.current, result.id)
+        planId = result.id; title = 'your new trip'
       }
-      const form = new FormData()
-      for (const [key, value] of Object.entries({ name: rec.name, type: rec.type, destination, notes: `${rec.why}${rec.friendName ? ` — via ${rec.friendName}` : ''}`, clientId: crypto.randomUUID(), day: '', source: 'ai' })) form.set(key, value)
-      // Save the place's Google ID (from the same lookup the pick's pop-out uses), so the planner can show
-      // its photo and map pin. Without it, names like "Hotel Romazzino" vs Google's "Romazzino, A Belmond
-      // Hotel" are too different to match later.
-      const placeId = rec.placeId ?? await loadPickInfo(rec).then(info => info.placeId, () => null)
-      if (placeId) form.set('placeId', placeId)
-      const result = await addPlanPlace(tripId.current, form)
-      if (result.error) throw new Error(result.error)
-      setAdded(current => new Set(current).add(rec.key))
-      // The first place started a trip: reopen this same conversation, now linked to it, so the chat and its other
-      // suggestions stay (opening by ?trip= alone would start a new, blank chat).
-      if (created) router.replace(chatId.current ? `/testplan?chat=${chatId.current}` : `/testplan?trip=${tripId.current}`, { scroll: false })
-      else router.refresh()
-    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not add this place.') }
-    finally { setAdding(null) }
+      // A chat with no trip yet now fills this one.
+      if (!tripId.current) { tripId.current = planId; if (chatId.current) await linkPlanChat(chatId.current, planId) }
+      const done: string[] = []
+      for (const [index, rec] of recs.entries()) {
+        const form = new FormData()
+        for (const [key, value] of Object.entries({ name: rec.name, type: rec.type, destination: [rec.destination, rec.country].filter(Boolean).join(', '), notes: `${rec.why}${rec.friendName ? ` — via ${rec.friendName}` : ''}`, clientId: crypto.randomUUID(), day: '', source: 'ai' })) form.set(key, value)
+        if (placeIds[index]) form.set('placeId', placeIds[index]!)
+        const result = await addPlanPlace(planId, form)
+        if (result.error) { setError(`${rec.name}: ${result.error}`); break }
+        done.push(rec.key)
+      }
+      setAdded(current => new Set([...current, ...done]))
+      setSelected(current => { const next = new Map(current); for (const key of done) next.delete(key); return next })
+      if (planId === tripId.current) { const fresh = await plannerTrip(planId); if (fresh) { setTrip(fresh); title = fresh.title || title } }
+      setNotice({ count: done.length, title, href: `/plan/${planId}` }); setTarget('')
+    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not add these places.') }
+    finally { setAddingSelected(false) }
   }
 
   // A new chat that isn't about a trip starts on the Plan with Postcard page; asking switches to the chat.
@@ -386,7 +407,7 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
                 </summary>
                 {sectionOrder.map(({ type, label, Icon }) => { const items = recs.filter(rec => rec.type === type); return items.length > 0 && <div key={type} className="mt-3">
                   <h4 className="type-label mb-1.5 flex items-center gap-1.5"><Icon size={12} />{label}</h4>
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-2">{items.map(rec => <RecommendationCard key={rec.key} rec={rec} color={colorOf(rec)} grouped added={inTrip(rec)} busy={adding === rec.key} disabled={adding !== null} onAdd={() => void add(rec)} />)}</div>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-2">{items.map(rec => <RecommendationCard key={rec.key} rec={rec} color={colorOf(rec)} grouped added={inTrip(rec)} selected={selected.has(rec.key)} disabled={addingSelected} onToggle={() => toggle(rec)} />)}</div>
                 </div> })}
               </details>)}
             </div>)}
@@ -413,13 +434,37 @@ export default function TestPlanner({ trip, chat, history, landing = null, initi
         {legend.map(option => <p key={option} className="flex items-center gap-2"><span aria-hidden="true" className="size-3 shrink-0 rounded-full border-2 border-white shadow-card" style={{ background: optionColors[options.indexOf(option) % optionColors.length] }} /><span className="truncate">{option}</span></p>)}
       </div>}
     </section>}
+
+    {/* Picked suggestions: one bar to add them all, to this chat's trip, a new trip or another plan. It stays put
+        while you keep scrolling and picking. After adding, a short note with a link to the trip. */}
+    {(selected.size > 0 || notice) && <div role="region" aria-label="Add selected places" className="fixed inset-x-0 bottom-[calc(var(--app-bottom-clearance)-1.25rem)] z-40 px-4">
+      <div className="panel mx-auto flex max-w-2xl flex-wrap items-center gap-2 p-3 shadow-pop">
+        {selected.size > 0 ? <>
+          <span className="text-sm font-semibold text-ink">{selected.size} selected</span>
+          <label className="min-w-0 flex-1"><span className="sr-only">Add them to</span>
+            <select value={target || trip?.id || 'new'} onChange={event => setTarget(event.target.value)} disabled={addingSelected} className="field !min-h-9 !py-1.5">
+              {trip?.id && <option value={trip?.id}>{trip?.title || 'This chat’s trip'}</option>}
+              <option value="new">A new trip</option>
+              {(plans ?? []).filter(plan => plan.id !== trip?.id).map(plan => <option key={plan.id} value={plan.id}>{plan.title || 'Untitled trip'}</option>)}
+            </select></label>
+          <button type="button" onClick={() => void addSelected()} disabled={addingSelected} className="btn btn-primary btn-sm">{addingSelected ? 'Adding…' : `Add ${selected.size}`}</button>
+          <button type="button" onClick={() => setSelected(new Map())} disabled={addingSelected} className="btn btn-outline btn-sm">Clear</button>
+        </> : notice && <>
+          <Check size={16} className="text-link" />
+          <span className="min-w-0 flex-1 text-sm text-ink">Added {notice.count} {notice.count === 1 ? 'place' : 'places'} to {notice.title}.</span>
+          <Link href={notice.href} className="text-sm font-semibold text-link underline underline-offset-2">Open trip</Link>
+          <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss" className="btn-icon !size-8"><X size={14} /></button>
+        </>}
+      </div>
+    </div>}
   </div>
 }
 
-function RecommendationCard({ rec, color, grouped = false, added, busy, disabled, onAdd }: { rec: Recommendation; color: string; grouped?: boolean; added: boolean; busy: boolean; disabled: boolean; onAdd: () => void }) {
+function RecommendationCard({ rec, color, grouped = false, added, selected, disabled, onToggle }: { rec: Recommendation; color: string; grouped?: boolean; added: boolean; selected: boolean; disabled: boolean; onToggle: () => void }) {
   const category = categories.find(category => category.value === rec.type) ?? categories[2]
   const [open, setOpen] = useState(false)
-  const addButton = <button type="button" onClick={onAdd} disabled={added || disabled} className="chip">{added ? <><Check size={14} />Added</> : busy ? 'Adding…' : <><Plus size={14} />Add to trip</>}</button>
+  // Tap to pick it (several at once), then add them together from the bar at the bottom.
+  const addButton = <button type="button" onClick={onToggle} aria-pressed={selected} disabled={added || disabled} className="chip">{added ? <><Check size={14} />Added</> : selected ? <><Check size={14} />Selected</> : <><Plus size={14} />Select</>}</button>
   return <article className="panel-inset flex flex-col p-3 transition-shadow hover:shadow-card">
     <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={`View details for ${rec.name}`} className="flex flex-1 flex-col text-left">
       {/* In a grouped reply the idea and category are already in the headings above. */}
