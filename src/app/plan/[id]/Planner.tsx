@@ -59,6 +59,14 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   // Day-by-day plans open on their days; idea lists on Places.
   // "Plan my days with AI" tapped before the trip had a length: plan as soon as the days are set.
   const [aiAfterDays, setAiAfterDays] = useState(false)
+  // Trips imported before the import set a length: places are on days but the trip has none, so save it from the
+  // last day once, instead of asking how many days.
+  const lastScheduledDay = Math.max(0, ...trip.destinations.flatMap(d => d.items.flatMap(item => item.day === null ? [] : [item.day])))
+  useEffect(() => {
+    if (trip.durationDays || lastScheduledDay < 1 || lastScheduledDay > 365) return
+    void setPlanDays(trip.id, lastScheduledDay).then(result => { if (!result.error) router.refresh() }).catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trip.id, trip.durationDays, lastScheduledDay])
   const [tab, setTab] = useState<'places' | 'itinerary' | 'map'>(trip.durationDays ? 'itinerary' : 'places')
   const [mapOpened, setMapOpened] = useState(false)
   // Days or dates (remembered on this device). Dates need the plan's start date.
@@ -190,7 +198,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
         </section> }) : categorySections(places)}
         {trip.visibility === 'draft' && <div className="mt-6">{photoSorter}</div>}
       </> : <>
-        {!trip.durationDays && <TripDaysPrompt tripId={trip.id} hint={aiAfterDays ? 'Then Postcard plans your days.' : undefined} />}
+        {!trip.durationDays && !lastScheduledDay && <TripDaysPrompt tripId={trip.id} hint={aiAfterDays ? 'Then Postcard plans your days.' : undefined} />}
         {/* One switch: plan by calendar days. Turning it on asks for the start date if the plan has none. */}
         {!!trip.durationDays && <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
           <button type="button" aria-pressed={showDates} onClick={() => { if (showDates) { chooseDayNames(false); setAskingStart(false) } else if (trip.start) chooseDayNames(true); else setAskingStart(value => !value) }} className="chip"><CalendarDays size={14} />Plan by calendar days</button>

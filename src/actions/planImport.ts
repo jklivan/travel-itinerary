@@ -61,6 +61,14 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
           date: place.date ? new Date(`${place.date}T00:00:00Z`) : null, time: place.time || null, endDate: place.endDate ? new Date(`${place.endDate}T00:00:00Z`) : null, endTime: place.endTime || null,
           nights: place.type === 'hotel' && place.nights && place.nights >= 1 && place.nights <= 60 ? place.nights : null, order: (last._max.order ?? -1) + 1, groupIndex: place.type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0 } })
       }
+      // Days in the document but no dates: the trip's length is its last day, so the planner shows the days rather
+      // than asking how many. (A dated trip got its length from its dates above.)
+      const trip = await tx.itinerary.findUnique({ where: { id: planId }, select: { durationDays: true, tags: true } })
+      const lastDay = (await tx.destItem.aggregate({ where: { destination: { itineraryId: planId } }, _max: { dayIndex: true } }))._max.dayIndex ?? 0
+      if (trip && !trip.durationDays && lastDay >= 1 && lastDay <= 365) await tx.itinerary.update({ where: { id: planId }, data: {
+        durationDays: lastDay, postType: lastDay === 1 ? 'day-trip' : 'itinerary',
+        tags: lastDay === 1 ? [...new Set([...trip.tags, 'day-trip'])] : trip.tags.filter(tag => tag !== 'day-trip'),
+      } })
       if (typeof splitFrom === 'string' && splitFrom.trim()) await tx.destination.deleteMany({ where: { itineraryId: planId, name: { equals: splitFrom.trim(), mode: 'insensitive' }, notes: null, items: { none: {} } } })
     }, { timeout: 60000 })
     after(() => enrichPlaceIds(places.map((_, index) => `${requestId}:${index}`), new Map(places.flatMap((place, index) => place.near?.name.trim() ? [[`${requestId}:${index}`, place.near] as const] : []))).catch(() => undefined))
