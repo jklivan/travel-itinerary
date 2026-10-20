@@ -663,3 +663,22 @@ export async function setTransportPrivate(tripId: string, on: boolean): Promise<
     return { success: true }
   } catch { return { error: 'Could not save. Please try again.' } }
 }
+
+// A trip from Plan with AI picks up the dates settled in the chat, but only when it has none yet (dates the person
+// set on the trip are never replaced). Its length follows the dates when it had no length either.
+export async function setPlanDatesIfMissing(id: string, start: string, end: string): Promise<Result> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  const form = new FormData(); form.set('startDate', typeof start === 'string' ? start : ''); form.set('endDate', typeof end === 'string' ? end : '')
+  try {
+    const parsed = dates(form)
+    if (parsed.datesFlexible) return { error: 'Choose dates.' }
+    const length = Math.round((parsed.endDate.getTime() - parsed.startDate.getTime()) / 864e5) + 1
+    const trip = await prisma.itinerary.findFirst({ where: { id, userId }, select: { datesFlexible: true, durationDays: true } })
+    if (!trip) return { error: unavailable }
+    if (!trip.datesFlexible) return { success: true }
+    await prisma.itinerary.updateMany({ where: { id, userId, datesFlexible: true }, data: { ...parsed, ...(trip.durationDays ? {} : { durationDays: length }) } })
+    refresh(id, userId)
+    return { success: true }
+  } catch (error) { return message(error) }
+}
