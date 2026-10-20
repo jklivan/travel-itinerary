@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { ArrowUp, Bookmark, ChevronRight, Sparkles } from 'lucide-react'
+import { ArrowUp, Bookmark, ChevronRight, PenLine, Sparkles } from 'lucide-react'
 import Image from 'next/image'
 import PostcardLogo from '@/components/PostcardLogo'
 import type { TravelPreferences } from '@/lib/travelPreferences'
@@ -54,6 +54,13 @@ export default function PlanLanding({ landing, history, busy, onSend }: { landin
     </form>
     <p className="mt-2 px-1 text-xs text-muted">Try “A long weekend in Italy with kids”</p>
 
+    {/* The way in without AI: its own box, right under the question, rather than a small link at the bottom. */}
+    <Link href="/plan" className="panel mt-4 flex items-center gap-3 p-4 text-ink transition-colors hover:bg-cream">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><PenLine size={18} /></span>
+      <span className="min-w-0 flex-1"><span className="block font-semibold">Start a plan yourself</span><span className="block text-sm text-muted">Add the places and days on your own.</span></span>
+      <ChevronRight size={18} className="shrink-0 text-link" />
+    </Link>
+
     {history.length > 0 && <section className="mt-8" aria-labelledby="chats-heading">
       <div className="mb-3 flex items-baseline justify-between gap-3"><h2 id="chats-heading" className="type-title">Past chats</h2>
         {history.length > 3 && <button type="button" onClick={() => setAllChats(open => !open)} className="inline-flex shrink-0 items-center text-sm text-link">{allChats ? 'Show fewer' : 'See all'}<ChevronRight size={16} /></button>}</div>
@@ -71,6 +78,5 @@ export default function PlanLanding({ landing, history, busy, onSend }: { landin
       </Link>
     </section>
 
-    <p className="mt-8 text-center text-sm"><Link href="/plan" className="text-link underline">Start a plan without AI</Link></p>
   </div>
 }

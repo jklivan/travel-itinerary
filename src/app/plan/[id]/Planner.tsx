@@ -189,9 +189,9 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
         </div>}
         {/* Right here, so you don't have to scroll up to the trip details. */}
         {askingStart && <StartDateForm tripId={trip.id} initial={trip.start} onDone={() => { setAskingStart(false); chooseDayNames(true) }} />}
-        {/* AI day planning, at the top so it's easy to find: fills in the places without a day, or, once every place
-            has one, re-plans the whole trip. Either way it's a suggestion to review first. */}
-        {!!trip.durationDays && places.length > 0 && <OrganizeWithAI tripId={trip.id} places={places} replan={places.every(p => p.day !== null)} />}
+        {/* AI day planning, at the top so it's easy to find: fills in the places without a day, and once some places
+            have days, can also re-plan the whole trip. Either way it's a suggestion to review first. */}
+        {!!trip.durationDays && places.length > 0 && <OrganizeWithAI tripId={trip.id} places={places} canFill={places.some(p => p.day === null)} canReplan={places.some(p => p.day !== null)} />}
         {Array.from({ length: maxDay }, (_, index) => index + 1).filter(day => trip.durationDays || scheduled.includes(day)).map(day => { const dayPlaces = places.filter(p => p.day === day).sort((a, b) => a.order - b.order); const stay = stayOn(day, trip.destinations, ranges); const dayLocation = stay.destination ?? [...new Set(dayPlaces.map(p => p.destinationName))].filter(name => name !== 'Destination to decide').join(' · '); return <section key={day} className="mb-6"><h2 className={styles.dayHeading}>{dayName(day)}{showDates && <span className="font-sans text-sm text-muted">Day {day}</span>}{dayLocation && <span className="font-sans text-sm text-muted">{dayLocation}</span>}</h2>{stay.hotel && <p className="mb-3 flex items-center gap-1.5 text-sm text-link"><Hotel size={16} />Staying at {stay.hotel}</p>}{/* Add a place stays at the bottom of each day, also once the day has places. */}{dayPlaces.length > 0 && <div className="mb-3"><SortableDay tripId={trip.id} places={dayPlaces} render={renderDayPlace} /></div>}{adding?.at !== `day:${day}` && <button type="button" onClick={() => { setImporting(false); setAdding({ at: `day:${day}`, day, destination: dayDestination(day) }) }} className="flex w-full items-center gap-1.5 rounded-xl border border-dashed border-line px-4 py-3 text-sm font-semibold text-link hover:bg-mist"><Plus size={16} />Add a place</button>}
           {addForm(`day:${day}`)}
           {!!trip.durationDays && trip.durationDays > 1 && <DeleteDay tripId={trip.id} day={day} places={dayPlaces.length} />}</section> })}
@@ -676,17 +676,19 @@ function DayChips({ itemId, days, range, destination }: { itemId: string; days: 
 }
 
 // Itinerary tab: ask the AI to put the unscheduled places on days, review its plan, then apply it.
-function OrganizeWithAI({ tripId, places, replan }: { tripId: string; places: (Place & { destination: string })[]; replan: boolean }) {
+function OrganizeWithAI({ tripId, places, canFill, canReplan }: { tripId: string; places: (Place & { destination: string })[]; canFill: boolean; canReplan: boolean }) {
   const dayName = useContext(DayNames)
   const router = useRouter()
   const [state, setState] = useState<'idle' | 'thinking' | 'review' | 'applying'>('idle')
   const [plan, setPlan] = useState<{ assignments: { id: string; day: number }[]; days: { day: number; theme: string; why: string }[] } | null>(null)
   const [error, setError] = useState('')
+  // Re-plan: every place, from scratch (also moves places already on a day). Otherwise only the unscheduled ones.
+  const [replan, setReplan] = useState(false)
   const name = (id: string) => places.find(place => place.id === id)?.name ?? ''
-  async function organize() {
-    setState('thinking'); setError('')
+  async function organize(whole: boolean) {
+    setReplan(whole); setState('thinking'); setError('')
     try {
-      const response = await fetch(`/api/plan/${tripId}/organize`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ replan }) })
+      const response = await fetch(`/api/plan/${tripId}/organize`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ replan: whole }) })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Something went wrong.')
       if (!data.assignments.length) throw new Error('Postcard couldn’t find a good day for these places. Try the day buttons instead.')
@@ -701,7 +703,10 @@ function OrganizeWithAI({ tripId, places, replan }: { tripId: string; places: (P
   }
   const byDay = plan ? [...new Set(plan.assignments.map(a => a.day))].sort((a, b) => a - b) : []
   return <div className="mb-4">
-    {state !== 'review' && state !== 'applying' ? <button type="button" disabled={state === 'thinking'} onClick={() => void organize()} className="btn btn-outline w-full bg-mist hover:bg-mist-strong"><Sparkles size={16} />{state === 'thinking' ? 'Planning your days…' : replan ? 'Re-plan my days with AI' : 'Plan my days with AI'}</button>
+    {state !== 'review' && state !== 'applying' ? <div className="flex flex-col items-center gap-2">
+      <button type="button" disabled={state === 'thinking'} onClick={() => void organize(!canFill)} className="btn btn-outline w-full bg-mist hover:bg-mist-strong"><Sparkles size={16} />{state === 'thinking' ? 'Planning your days…' : canFill ? 'Plan my days with AI' : 'Re-plan my days with AI'}</button>
+      {canFill && canReplan && state !== 'thinking' && <button type="button" onClick={() => void organize(true)} className="text-sm font-semibold text-link underline underline-offset-2">Or re-plan every day from scratch</button>}
+    </div>
     : plan && <div className="panel p-4">
       <p className="flex items-center gap-2 text-sm font-semibold text-ink"><Sparkles size={16} />Suggested days</p>
       <p className="mt-1 text-xs text-muted">{replan ? 'A fresh plan for every place. ' : ''}Nothing moves until you apply. You can change any day afterwards.</p>
