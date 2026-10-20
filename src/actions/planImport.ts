@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache'
 import { locateTripPlaces } from '@/lib/locatePlaces'
 import type { ImportedPlace } from '@/lib/planImport'
 import { isDate, isTime, tripDay, daysBetween } from '@/lib/placeDates'
+import { samePlaceName } from '@/lib/planPlaceIdentity'
 
 // tripDates: the trip's dates, when the trip had none and the import suggested them (earliest to latest date in the documents).
 // splitFrom: the destination picked for the import when the document's own stops were used instead (France → Loire Valley,
@@ -53,10 +54,28 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
         if (previous.destination.itineraryId !== planId) throw Error('Unavailable')
         return
       }
+      // Places already in the trip (or earlier in this file) aren't added twice: the import fills in what it knows
+      // that the existing place doesn't have yet (dates, times, nights, its day, notes) instead.
+      const existing: { id: string; name: string; notes: string | null; date: Date | null; time: string | null; endDate: Date | null; endTime: string | null; nights: number | null; dayIndex: number | null }[] =
+        await tx.destItem.findMany({ where: { destination: { itineraryId: planId } }, select: { id: true, name: true, notes: true, date: true, time: true, endDate: true, endTime: true, nights: true, dayIndex: true } })
       for (const [index, place] of places.entries()) {
+        const same = existing.find(item => samePlaceName(item.name, place.name))
+        if (same) {
+          const notes = place.notes?.trim()
+          const fill = {
+            ...(!same.date && place.date ? { date: new Date(`${place.date}T00:00:00Z`) } : {}), ...(!same.time && place.time ? { time: place.time } : {}),
+            ...(!same.endDate && place.endDate ? { endDate: new Date(`${place.endDate}T00:00:00Z`) } : {}), ...(!same.endTime && place.endTime ? { endTime: place.endTime } : {}),
+            ...(!same.nights && place.type === 'hotel' && place.nights && place.nights >= 1 && place.nights <= 60 ? { nights: place.nights } : {}),
+            ...(same.dayIndex === null && dayOf(place) !== null ? { dayIndex: dayOf(place) } : {}),
+            ...(notes && !(same.notes ?? '').includes(notes) ? { notes: same.notes ? `${same.notes}\n\n${notes}` : notes } : {}),
+          }
+          if (Object.keys(fill).length) { await tx.destItem.update({ where: { id: same.id }, data: fill }); Object.assign(same, fill) }
+          continue
+        }
         let destination = await tx.destination.findFirst({ where: { itineraryId: planId, name: { equals: place.destination.trim(), mode: 'insensitive' }, ...(place.country ? { country: { equals: place.country, mode: 'insensitive' } } : {}) } })
         if (!destination) destination = await tx.destination.create({ data: { itineraryId: planId, name: place.destination.trim(), country: place.country || null, order: await tx.destination.count({ where: { itineraryId: planId } }) } })
         const last = await tx.destItem.aggregate({ where: { destinationId: destination.id }, _max: { order: true, groupIndex: true } })
+        existing.push({ id: `${requestId}:${index}`, name: place.name.trim(), notes: place.notes || null, date: place.date ? new Date(`${place.date}T00:00:00Z`) : null, time: place.time || null, endDate: place.endDate ? new Date(`${place.endDate}T00:00:00Z`) : null, endTime: place.endTime || null, nights: place.nights ?? null, dayIndex: dayOf(place) })
         await tx.destItem.create({ data: { id: `${requestId}:${index}`, destinationId: destination.id, name: place.name.trim(), type: place.type, notes: place.notes || null, rating: place.rating, mealType: place.type === 'food_drink' ? place.mealType || null : null, dayIndex: dayOf(place),
           date: place.date ? new Date(`${place.date}T00:00:00Z`) : null, time: place.time || null, endDate: place.endDate ? new Date(`${place.endDate}T00:00:00Z`) : null, endTime: place.endTime || null,
           nights: place.type === 'hotel' && place.nights && place.nights >= 1 && place.nights <= 60 ? place.nights : null, order: (last._max.order ?? -1) + 1, groupIndex: place.type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0 } })

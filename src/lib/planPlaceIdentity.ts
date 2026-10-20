@@ -35,3 +35,16 @@ export function planSuggestionQuery(title: string, destinations: Destination[]) 
   // Plans can start with only a title, e.g. "London w kids".
   return title.replace(/^trip to\s+/i, '').replace(/\s+(?:with|w\/?)\s+(?:the\s+)?kids\b.*$/i, '').trim().slice(0, 160)
 }
+
+// Loosely the same place by name, for imports into a trip that already has places: the same words ignoring case,
+// accents, punctuation and "the"/"and" ("The Mayflower Inn & Spa" = "Mayflower Inn and Spa"), or every word of a
+// two-word-or-longer name inside the other ("Mayflower Inn" ⊂ "Mayflower Inn & Spa").
+const nameWords = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/&/g, ' and ')
+  .replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(word => word && word !== 'the' && word !== 'and')
+export function samePlaceName(a: string, b: string) {
+  const x = nameWords(a), y = nameWords(b)
+  if (!x.length || !y.length) return false
+  if (x.join(' ') === y.join(' ')) return true
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x]
+  return short.length >= 2 && short.every(word => long.includes(word))
+}

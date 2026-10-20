@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
+import * as placeIdentity from '../src/lib/planPlaceIdentity.ts'
 function load(path, deps = {}) {
   const exports = {}
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, { exports, require: name => deps[name] ?? (name === './placeDates' || name === '@/lib/placeDates' ? dates : undefined), Date })
@@ -23,10 +24,12 @@ function harness(user = 'owner', fail = false, trip = { datesFlexible: true }) {
       findUnique: async ({ where }) => items.some(item => item.id === where.id) ? { destination: { itineraryId: 'plan' } } : null,
       aggregate: async () => ({ _max: { order: items.length - 1, groupIndex: 0 } }),
       create: async ({ data }) => { if (fail && data.name === 'Cafe') throw Error('offline'); items.push(data) },
+      findMany: async () => items.map(item => ({ notes: null, date: null, time: null, endDate: null, endTime: null, nights: null, dayIndex: null, ...item })),
+      update: async ({ where, data }) => { const item = items.find(i => i.id === where.id); Object.assign(item, data); updates.push({ id: where.id, ...data }) },
     },
   }
   const prisma = { $transaction: async callback => { const previous = structuredClone(items); try { return await callback(tx) } catch (error) { items = previous; throw error } } }
-  const action = load('../src/actions/planImport.ts', { 'next/server': { after() {} }, '@/lib/enrichPlaceIds': { enrichPlaceIds: async () => {} }, '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} } }).importIntoPlan
+  const action = load('../src/actions/planImport.ts', { '@/lib/planPlaceIdentity': placeIdentity, 'next/server': { after() {} }, '@/lib/enrichPlaceIds': { enrichPlaceIds: async () => {} }, '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} } }).importIntoPlan
   return { action, items: () => items, updates }
 }
 test('import keeps explicit days (hotels too, on their check-in day) and leaves undated places unscheduled', () => {
@@ -89,3 +92,19 @@ test('a hotel keeps the nights the itinerary gives; guide awards never become a 
   assert.equal(restaurant.rating, null)
 })
 
+
+test('importing a file into a trip fills in places it already has instead of adding them twice', async () => {
+  const h = harness()
+  h.items().push({ id: 'mayflower', name: 'The Mayflower Inn & Spa', destinationId: 'rome', dayIndex: null, notes: 'Spa first' })
+  const file = [
+    { name: 'Mayflower Inn and Spa', type: 'hotel', destination: 'Rome', country: 'Italy', notes: 'Confirmation 12345', mealType: '', rating: null, day: 1, date: null, time: null, endDate: null, endTime: null, nights: 2 },
+    { name: 'New Trattoria', type: 'food_drink', destination: 'Rome', country: 'Italy', notes: '', mealType: '', rating: null, day: null, date: null, time: null, endDate: null, endTime: null },
+    { name: 'New Trattoria', type: 'food_drink', destination: 'Rome', country: 'Italy', notes: 'Book ahead', mealType: '', rating: null, day: null, date: null, time: null, endDate: null, endTime: null },
+  ]
+  const result = await h.action('plan', id, file); assert.ok(result.success, JSON.stringify(result))
+  const names = h.items().map(item => item.name)
+  assert.equal(names.filter(name => /mayflower/i.test(name)).length, 1)
+  assert.equal(names.filter(name => name === 'New Trattoria').length, 1)
+  const mayflower = h.items().find(item => item.id === 'mayflower')
+  assert.equal(mayflower.nights, 2); assert.equal(mayflower.dayIndex, 1); assert.equal(mayflower.notes, 'Spa first\n\nConfirmation 12345')
+})

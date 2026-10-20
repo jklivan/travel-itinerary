@@ -16,7 +16,7 @@ const SLIDES: { title: string; text: string; image: string; video?: string }[] =
   { title: 'Explore ideas for your next trip.', text: 'Search destinations, browse trip types, and find inspiration for your next adventure.', image: '/brand/intro/explore.jpg' },
   { title: 'Plan with Postcard.', text: 'Get personalized ideas, build an itinerary, and organize your plans with the help of Postcard.', image: '/brand/intro/plan.jpg' },
   { title: 'Create and share your own trips.', text: 'Add the places you went (hotels, restaurants and activities), then post it to share with friends.', image: '/brand/intro/post.jpg' },
-  { title: 'Keep track of your trips.', text: 'See your posted trips, plan your upcoming adventures, and save places you love, all in one place.', image: '/brand/intro/trips.jpg' },
+  { title: 'Stay organized.', text: 'See your posted trips, plan your upcoming adventures, and save places you love, all in one place.', image: '/brand/intro/trips.jpg' },
 ]
 
 // Full screen over the app's header and bottom bar. Swipe between slides (they snap), or tap Next; Skip and the
