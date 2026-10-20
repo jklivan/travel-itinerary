@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useId, useRef, useState } from 'react'
-import { Check, X } from 'lucide-react'
+import { Check, Heart, X } from 'lucide-react'
 import { PostcardPhotos, type LibraryPhoto } from '@/lib/tripPhotos'
 
 // In the iPhone app: the photos taken during the trip (from the day before it starts to the day after it ends, for
@@ -18,6 +18,8 @@ export default function TripPhotoPicker({ start, end, name, onPick, onFallback, 
   const [access, setAccess] = useState<'all' | 'limited' | 'denied' | 'unavailable' | 'failed'>('all')
   const [thumbs, setThumbs] = useState<Record<string, string>>({})
   const [selected, setSelected] = useState<string[]>([])
+  // Only the photos hearted in the Photos app.
+  const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [adding, setAdding] = useState('')
   const [error, setError] = useState('')
   useEffect(() => {
@@ -58,7 +60,8 @@ export default function TripPhotoPicker({ start, end, name, onPick, onFallback, 
   }
 
   const days = new Map<string, LibraryPhoto[]>()
-  for (const photo of photos ?? []) {
+  const favorites = (photos ?? []).filter(photo => photo.favorite).length
+  for (const photo of (photos ?? []).filter(photo => !favoritesOnly || photo.favorite)) {
     const label = photo.date ? new Date(photo.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Undated'
     days.set(label, [...(days.get(label) ?? []), photo])
   }
@@ -68,6 +71,7 @@ export default function TripPhotoPicker({ start, end, name, onPick, onFallback, 
       <button type="button" aria-label="Close" onClick={() => dialog.current?.close()} className="flex size-10 shrink-0 items-center justify-center rounded-full"><X size={18} /></button>
     </header>
     <div className="flex-1 overflow-y-auto p-4">
+      {favorites > 0 && <button type="button" aria-pressed={favoritesOnly} onClick={() => setFavoritesOnly(value => !value)} className="chip mb-4"><Heart size={13} fill={favoritesOnly ? 'currentColor' : 'none'} />Favorites only ({favorites})</button>}
       {photos === null ? <p className="type-body text-muted">Finding your trip’s photos…</p>
         : access === 'failed' ? <p className="type-body">Couldn’t read your trip’s photos. Try again, or <button type="button" className="text-link underline" onClick={() => { dialog.current?.close(); onFallback() }}>choose from your library</button>.</p>
         : access === 'unavailable' ? <p className="type-body">Update the Postcard app to see your trip’s photos here. For now, <button type="button" className="text-link underline" onClick={() => { dialog.current?.close(); onFallback() }}>choose from your library</button>.</p>
@@ -80,6 +84,7 @@ export default function TripPhotoPicker({ start, end, name, onPick, onFallback, 
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {thumbs[photo.id] && <img src={`data:image/jpeg;base64,${thumbs[photo.id]}`} alt="" className={`size-full object-cover ${on ? 'opacity-80' : ''}`} />}
             {on && <span className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-link text-white ring-2 ring-white"><Check size={14} /></span>}
+            {photo.favorite && <Heart size={14} aria-label="Favorite" fill="currentColor" className="absolute bottom-1 left-1 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" />}
           </button> })}</div>
         </section>)}
       {access === 'limited' && !!photos?.length && <p className="type-meta">Showing the photos you’ve shared with Postcard. To see all of this trip’s photos, choose “Full Access” in Settings → Postcard → Photos.</p>}

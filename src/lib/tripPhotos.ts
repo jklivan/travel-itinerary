@@ -5,7 +5,8 @@ import { Capacitor, registerPlugin } from '@capacitor/core'
 
 // The iPhone app's PostcardPhotos plugin (ios/App/App/PostcardPhotos.swift): photos from the library by date, so
 // adding photos to an old trip can start at that trip's photos instead of the whole library.
-export type LibraryPhoto = { id: string; date?: string; lat?: number; lng?: number }
+// favorite: hearted in the Photos app (app builds from before this leave it out).
+export type LibraryPhoto = { id: string; date?: string; lat?: number; lng?: number; favorite?: boolean }
 type PostcardPhotosPlugin = {
   photosBetween(options: { start: string; end: string; limit?: number }): Promise<{ access: 'all' | 'limited' | 'denied'; photos: LibraryPhoto[] }>
   thumbnails(options: { ids: string[]; size?: number }): Promise<{ thumbnails: Record<string, string> }>
