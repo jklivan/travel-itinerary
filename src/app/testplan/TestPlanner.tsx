@@ -265,11 +265,9 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
         const lines = buffer.split('\n'); buffer = lines.pop() ?? ''
         for (const line of lines.filter(Boolean)) {
           const event = JSON.parse(line) as { type: string; text?: string; error?: string; chatId?: string; reply?: string; recommendations?: Recommendation[]; ask?: Ask; card?: Recommendation }
-          if (event.type === 'start') {
-            chatId.current = event.chatId ?? chatId.current
-            // The address follows the chat (so a reload reopens it) without reloading the page.
-            if (chatId.current && !tripChat) window.history.replaceState(null, '', `/testplan?chat=${chatId.current}`)
-          }
+          // The address stays as it is: saving places refreshes this page from the server, and a different address
+          // would rebuild it from scratch (losing your place in the chat and what you've picked).
+          if (event.type === 'start') chatId.current = event.chatId ?? chatId.current
           else if (event.type === 'delta') { setStatus(''); setStreaming(current => current + (event.text ?? '')) }
           else if (event.type === 'reply') setStreaming(event.text ?? '')
           else if (event.type === 'card' && event.card) { const next = event.card; setStreamingCards(current => [...current, next]) }
