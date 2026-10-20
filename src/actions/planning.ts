@@ -273,7 +273,8 @@ export async function setDayOrder(tripId: string, itemIds: string[]): Promise<Re
 }
 
 // "Organize with AI" → Apply: puts each listed place on its day. Only places still unscheduled move.
-export async function applyDayPlan(tripId: string, assignments: { id: string; day: number }[]): Promise<Result> {
+// `replan`: the plan covers every place (Re-plan my days), so places already on a day move too.
+export async function applyDayPlan(tripId: string, assignments: { id: string; day: number }[], replan = false): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
   if (!Array.isArray(assignments) || assignments.length > 500 || assignments.some(a => !a || typeof a.id !== 'string' || a.id.length > 100 || !Number.isInteger(a.day) || a.day < 1 || a.day > 365)) return { error: 'Please try organizing again.' }
@@ -283,11 +284,11 @@ export async function applyDayPlan(tripId: string, assignments: { id: string; da
     const days = trip.durationDays ?? 0
     await prisma.$transaction(async tx => {
       for (const destination of trip.destinations) {
-        const moving = assignments.filter(a => a.day <= days && destination.items.some(item => item.id === a.id && item.dayIndex === null))
+        const moving = assignments.filter(a => a.day <= days && destination.items.some(item => item.id === a.id && (replan || item.dayIndex === null)))
         if (!moving.length) continue
         // Older trips count days from 0; move them to count from 1 first, as the planner shows them.
         if (destination.items.some(item => item.type !== 'hotel' && item.dayIndex === 0)) await tx.destItem.updateMany({ where: { destinationId: destination.id, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
-        for (const a of moving) await tx.destItem.updateMany({ where: { id: a.id, destinationId: destination.id, dayIndex: null }, data: { dayIndex: a.day } })
+        for (const a of moving) await tx.destItem.updateMany({ where: { id: a.id, destinationId: destination.id, ...(replan ? {} : { dayIndex: null }) }, data: { dayIndex: a.day } })
       }
     })
     refresh(tripId, userId)

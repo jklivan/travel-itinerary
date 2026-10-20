@@ -189,12 +189,15 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
         </div>}
         {/* Right here, so you don't have to scroll up to the trip details. */}
         {askingStart && <StartDateForm tripId={trip.id} initial={trip.start} onDone={() => { setAskingStart(false); chooseDayNames(true) }} />}
+        {/* AI day planning, at the top so it's easy to find: fills in the places without a day, or, once every place
+            has one, re-plans the whole trip. Either way it's a suggestion to review first. */}
+        {!!trip.durationDays && places.length > 0 && <OrganizeWithAI tripId={trip.id} places={places} replan={places.every(p => p.day !== null)} />}
         {Array.from({ length: maxDay }, (_, index) => index + 1).filter(day => trip.durationDays || scheduled.includes(day)).map(day => { const dayPlaces = places.filter(p => p.day === day).sort((a, b) => a.order - b.order); const stay = stayOn(day, trip.destinations, ranges); const dayLocation = stay.destination ?? [...new Set(dayPlaces.map(p => p.destinationName))].filter(name => name !== 'Destination to decide').join(' · '); return <section key={day} className="mb-6"><h2 className={styles.dayHeading}>{dayName(day)}{showDates && <span className="font-sans text-sm text-muted">Day {day}</span>}{dayLocation && <span className="font-sans text-sm text-muted">{dayLocation}</span>}</h2>{stay.hotel && <p className="mb-3 flex items-center gap-1.5 text-sm text-link"><Hotel size={16} />Staying at {stay.hotel}</p>}{/* Add a place stays at the bottom of each day, also once the day has places. */}{dayPlaces.length > 0 && <div className="mb-3"><SortableDay tripId={trip.id} places={dayPlaces} render={renderDayPlace} /></div>}{adding?.at !== `day:${day}` && <button type="button" onClick={() => { setImporting(false); setAdding({ at: `day:${day}`, day, destination: dayDestination(day) }) }} className="flex w-full items-center gap-1.5 rounded-xl border border-dashed border-line px-4 py-3 text-sm font-semibold text-link hover:bg-mist"><Plus size={16} />Add a place</button>}
           {addForm(`day:${day}`)}
           {!!trip.durationDays && trip.durationDays > 1 && <DeleteDay tripId={trip.id} day={day} places={dayPlaces.length} />}</section> })}
         {!!trip.durationDays && <AddDay tripId={trip.id} days={trip.durationDays} />}
         <section><h2 className={styles.dayHeading}>Unscheduled</h2>
-          {!!trip.durationDays && places.some(p => p.day === null) && <OrganizeWithAI tripId={trip.id} places={places} />}<div className="space-y-3">{places.filter(p => p.day === null).map(place => trip.durationDays ? <PlaceRow key={place.id} tripId={trip.id} tripStart={trip.start} place={place} maxDay={maxDay} destinationChoices={destinations.map(d => ({ id: d.id, name: d.name }))} dayChips={trip.durationDays} dayRange={ranges.get(place.destinationId)} /> : renderPlace(place))}</div>{places.length > 0 && places.every(p => p.day !== null) && <p className="text-sm text-muted">All your places have a day.</p>}{!places.length && <p className="text-sm text-muted">Places you haven’t put on a day yet show here.</p>}</section>
+          <div className="space-y-3">{places.filter(p => p.day === null).map(place => trip.durationDays ? <PlaceRow key={place.id} tripId={trip.id} tripStart={trip.start} place={place} maxDay={maxDay} destinationChoices={destinations.map(d => ({ id: d.id, name: d.name }))} dayChips={trip.durationDays} dayRange={ranges.get(place.destinationId)} /> : renderPlace(place))}</div>{places.length > 0 && places.every(p => p.day !== null) && <p className="text-sm text-muted">All your places have a day.</p>}{!places.length && <p className="text-sm text-muted">Places you haven’t put on a day yet show here.</p>}</section>
       </>}
     </section>
     <div className="mt-8 border-t border-line pt-5"><div className="flex flex-wrap items-center justify-between gap-3">{/* Post on the left, delete on the right (also when there's nothing to post). */}{trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={() => setPublishFormat(trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary')} aria-label="Post trip" title="Post trip" className="pointer-events-auto relative inline-flex size-20 items-center justify-center transition-transform hover:-rotate-6 hover:scale-105 disabled:opacity-60"><PostStamp size={80} /><span className="sr-only">Post</span></button>}<div className="pointer-events-auto ml-auto"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div></div></div>
@@ -673,7 +676,7 @@ function DayChips({ itemId, days, range, destination }: { itemId: string; days: 
 }
 
 // Itinerary tab: ask the AI to put the unscheduled places on days, review its plan, then apply it.
-function OrganizeWithAI({ tripId, places }: { tripId: string; places: (Place & { destination: string })[] }) {
+function OrganizeWithAI({ tripId, places, replan }: { tripId: string; places: (Place & { destination: string })[]; replan: boolean }) {
   const dayName = useContext(DayNames)
   const router = useRouter()
   const [state, setState] = useState<'idle' | 'thinking' | 'review' | 'applying'>('idle')
@@ -683,7 +686,7 @@ function OrganizeWithAI({ tripId, places }: { tripId: string; places: (Place & {
   async function organize() {
     setState('thinking'); setError('')
     try {
-      const response = await fetch(`/api/plan/${tripId}/organize`, { method: 'POST' })
+      const response = await fetch(`/api/plan/${tripId}/organize`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ replan }) })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Something went wrong.')
       if (!data.assignments.length) throw new Error('Postcard couldn’t find a good day for these places. Try the day buttons instead.')
@@ -693,15 +696,15 @@ function OrganizeWithAI({ tripId, places }: { tripId: string; places: (Place & {
   async function apply() {
     if (!plan) return
     setState('applying'); setError('')
-    try { const result = await applyDayPlan(tripId, plan.assignments); if (result.error) { setError(result.error); setState('review') } else { setPlan(null); setState('idle'); router.refresh() } }
+    try { const result = await applyDayPlan(tripId, plan.assignments, replan); if (result.error) { setError(result.error); setState('review') } else { setPlan(null); setState('idle'); router.refresh() } }
     catch { setError('Could not apply the plan. Please try again.'); setState('review') }
   }
   const byDay = plan ? [...new Set(plan.assignments.map(a => a.day))].sort((a, b) => a - b) : []
   return <div className="mb-4">
-    {state !== 'review' && state !== 'applying' ? <button type="button" disabled={state === 'thinking'} onClick={() => void organize()} className="btn btn-outline w-full bg-mist hover:bg-mist-strong"><Sparkles size={16} />{state === 'thinking' ? 'Organizing your days…' : 'Organize with AI'}</button>
+    {state !== 'review' && state !== 'applying' ? <button type="button" disabled={state === 'thinking'} onClick={() => void organize()} className="btn btn-outline w-full bg-mist hover:bg-mist-strong"><Sparkles size={16} />{state === 'thinking' ? 'Planning your days…' : replan ? 'Re-plan my days with AI' : 'Plan my days with AI'}</button>
     : plan && <div className="panel p-4">
       <p className="flex items-center gap-2 text-sm font-semibold text-ink"><Sparkles size={16} />Suggested days</p>
-      <p className="mt-1 text-xs text-muted">Nothing moves until you apply. You can change any day afterwards.</p>
+      <p className="mt-1 text-xs text-muted">{replan ? 'A fresh plan for every place. ' : ''}Nothing moves until you apply. You can change any day afterwards.</p>
       <div className="mt-3 space-y-3">{byDay.map(day => { const theme = plan.days.find(d => d.day === day); return <section key={day} className="rounded-xl bg-paper p-3">
         <h3 className="type-label text-ink normal-case">{dayName(day)}{theme ? ` · ${theme.theme}` : ''}</h3>
         {theme?.why && <p className="mt-0.5 text-xs text-muted">{theme.why}</p>}

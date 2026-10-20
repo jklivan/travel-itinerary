@@ -11,7 +11,7 @@ How to arrange:
 - Group places that are near each other on the same day (use the coordinates when given, otherwise what you know about where the place is), so each day is easy to get around.
 - Give each day a sensible mix: a few things to do and places to eat for different meals, not five restaurants on one day. Respect meal types (breakfast, lunch, dinner) when given.
 - Don't overload a day; spread places across all the days when there's enough to do.
-- Keep the places already on days where they are, and fit the unscheduled places around them.
+- Keep the places already on days where they are, and fit the unscheduled places around them (unless asked to re-plan the whole trip: then arrange every place from scratch).
 - Hotels: put a hotel on the first day the traveler would stay there. Transport: put it on the day it's most likely used, or leave it unscheduled (day 0) if unclear.
 - Leave a place unscheduled (day 0) only when there is genuinely no good fit.
 Return every unscheduled place exactly once, by its id. For each day you use, give a short theme (3-6 words, e.g. "Old town and waterfront") and one sentence on why.`
@@ -25,9 +25,9 @@ const schema = {
   },
 }
 
-// "Organize with AI" on the planner's Itinerary tab: proposes a day for each unscheduled place.
-// Nothing is saved here; the traveler reviews the plan and applies it.
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+// "Plan my days with AI" on the planner's Itinerary tab: proposes a day for each unscheduled place, or with
+// { replan: true } ("Re-plan my days") for every place. Nothing is saved here; the traveler reviews and applies it.
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const userId = (await auth())?.user?.id
   if (!userId) return Response.json({ error: 'Please sign in.' }, { status: 401 })
@@ -36,6 +36,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   if (!trip) return Response.json({ error: 'This trip is unavailable.' }, { status: 404 })
   const days = trip.durationDays
   if (!days) return Response.json({ error: 'Set how many days your trip is first.' }, { status: 400 })
+  const replan = (await request.json().catch(() => null))?.replan === true
   const lines: string[] = []
   const unscheduled = new Set<string>()
   for (const destination of trip.destinations) {
@@ -44,7 +45,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       // Backup places ("Save as alternative") aren't part of the plan.
       if (item.tags.includes('__option')) continue
       const day = item.dayIndex === null ? null : item.dayIndex + offset
-      if (day === null) unscheduled.add(item.id)
+      if (day === null || replan) unscheduled.add(item.id)
       const where = [destination.name, destination.country].filter(Boolean).join(', ')
       const coords = item.lat != null && item.lng != null ? ` @${item.lat.toFixed(4)},${item.lng.toFixed(4)}` : ''
       const meal = item.mealType ? `, ${item.mealType}` : ''
@@ -52,7 +53,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       lines.push(`[${item.id}] ${item.name} (${item.type}${meal}, ${where})${coords} ${day === null ? 'UNSCHEDULED' : `day ${day}`}${note}`)
     }
   }
-  if (!unscheduled.size) return Response.json({ error: 'Every place already has a day.' }, { status: 400 })
+  if (!unscheduled.size) return Response.json({ error: replan ? 'Add some places first.' : 'Every place already has a day.' }, { status: 400 })
 
   try {
     const response = await client.messages.create({
@@ -60,7 +61,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       max_tokens: 8000,
       output_config: { effort: 'low', format: { type: 'json_schema', schema } },
       system: INSTRUCTIONS,
-      messages: [{ role: 'user', content: `<trip title="${trip.title.replace(/"/g, "'")}" days="${days}">\n${lines.join('\n')}\n</trip>\n\nArrange the unscheduled places into days 1 to ${days}.` }],
+      messages: [{ role: 'user', content: `<trip title="${trip.title.replace(/"/g, "'")}" days="${days}">\n${lines.join('\n')}\n</trip>\n\n${replan ? `Re-plan the whole trip: arrange every place into days 1 to ${days} from scratch, ignoring their current days, and return every place.` : `Arrange the unscheduled places into days 1 to ${days}.`}` }],
     })
     if (response.stop_reason === 'refusal') return Response.json({ error: 'Postcard couldn’t organize this trip. Try again.' }, { status: 422 })
     const text = response.content.find(block => block.type === 'text')?.text
