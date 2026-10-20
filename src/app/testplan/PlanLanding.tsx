@@ -25,13 +25,17 @@ export default function PlanLanding({ landing, history, busy, onSend }: { landin
     {/* A coastline behind the title (fading into the page under the text and at the bottom), and a postcard of it
         with the Postcard stamp. Edge to edge on phones; the question box overlaps its foot. */}
     <header className="relative -mx-4 h-[370px] overflow-hidden sm:mx-0 sm:mt-6 sm:h-[380px] sm:rounded-2xl">
-      {/* Full colour (the photo file itself is colour-graded: blue sky, turquoise sea), with no wash over it. It still fades out at the
-          bottom (a mask, not a cover), so no edge shows where it ends. */}
-      <Image src="/brand/plan-hero-capri.jpg" alt="" fill priority sizes="(min-width: 672px) 672px, 100vw" className="object-cover [mask-image:linear-gradient(to_bottom,black_55%,transparent_96%)]" />
+      {/* Full colour (the photo file itself is colour-graded: blue sky, turquoise sea), with no wash over it. It's
+          mirrored (open sea on the left, the cliff behind the postcard) and set lower, with its own sky blue above it,
+          so the words sit on clear sky. The whole thing fades into the page at the bottom (a mask, not a cover). */}
+      <div aria-hidden="true" className="absolute inset-0 bg-sky [mask-image:linear-gradient(to_bottom,black_55%,transparent_96%)]">
+        <div className="absolute inset-x-0 top-24 -bottom-24 [mask-image:linear-gradient(to_bottom,transparent,black_14%)]">
+          <Image src="/brand/plan-hero-capri.jpg" alt="" fill priority sizes="(min-width: 672px) 672px, 100vw" className="-scale-x-100 object-cover object-top" />
+        </div>
+      </div>
       <div className="relative z-10 max-w-[68%] px-4 pt-7 sm:max-w-[52%] sm:px-8">
         <h1 className="type-display">Plan with Postcard</h1>
-        {/* A faint halo keeps the small text readable where it crosses the rocks, without dimming the photo. */}
-        <p className="mt-3 text-sm font-medium text-ink [text-shadow:0_0_6px_var(--color-paper),0_0_2px_var(--color-paper)]">Ideas, itineraries, hotels and restaurants, based on what you and your friends love.</p>
+        <p className="mt-3 text-sm text-ink">Ideas, itineraries, hotels and restaurants, based on what you and your friends love.</p>
       </div>
       {/* A postcard, not a polaroid: landscape, an even white border, the stamp in its corner. */}
       <div aria-hidden="true" className="absolute right-3 top-[176px] w-[46%] max-w-[260px] sm:right-10 sm:top-12 sm:w-[38%] rotate-[4deg] bg-card p-1.5 shadow-pop">
