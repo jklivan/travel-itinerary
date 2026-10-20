@@ -55,9 +55,9 @@ export default function PlanLanding({ landing, history, busy, onSend }: { landin
     <p className="mt-2 px-1 text-xs text-muted">Try “A long weekend in Italy with kids”</p>
 
     {/* The way in without AI: its own box, right under the question, rather than a small link at the bottom. */}
-    <Link href="/plan" className="panel mt-4 flex items-center gap-3 p-4 text-ink transition-colors hover:bg-cream">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><PenLine size={18} /></span>
-      <span className="min-w-0 flex-1"><span className="block font-semibold">Start a plan yourself</span><span className="block text-sm text-muted">Add the places and days on your own.</span></span>
+    <Link href="/plan" className="panel mt-4 flex items-center gap-3 px-4 py-2.5 text-ink transition-colors hover:bg-cream">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><PenLine size={15} /></span>
+      <span className="min-w-0 flex-1 text-sm font-semibold">Start a plan yourself</span>
       <ChevronRight size={18} className="shrink-0 text-link" />
     </Link>
 
