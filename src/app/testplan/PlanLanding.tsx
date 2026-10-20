@@ -28,7 +28,7 @@ export default function PlanLanding({ landing, history, busy, onSend }: { landin
       {/* Jen's Capri photo: lots of clear sky at the top for the words, the cliffs and Faraglioni below. Full colour,
           no wash over it. It fades into the page at the bottom (a mask, not a cover). */}
       <div aria-hidden="true" className="absolute inset-0 bg-sky [mask-image:linear-gradient(to_bottom,black_55%,transparent_96%)]">
-        <Image src="/brand/plan-hero-capri.jpg" alt="" fill priority sizes="(min-width: 672px) 672px, 100vw" className="object-cover object-[30%_top]" />
+        <Image src="/brand/plan-hero-capri-sunny.jpg" alt="" fill priority sizes="(min-width: 672px) 672px, 100vw" className="object-cover object-[30%_top]" />
       </div>
       <div className="relative z-10 max-w-[68%] px-4 pt-7 sm:max-w-[52%] sm:px-8">
         <h1 className="type-display">Plan with Postcard</h1>
