@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
+import { SUPPORT_EMAIL } from '@/lib/support'
 import Link from 'next/link'
 
 export const metadata: Metadata = { title: 'Terms of Use — Postcard' }
 
-const CONTACT_EMAIL = 'jklivan@gmail.com'
-const UPDATED = 'October 13, 2026'
+const UPDATED = 'October 19, 2026'
 
 const sections: { title: string; body: React.ReactNode }[] = [
   { title: 'Using Postcard', body: <p>Postcard lets you plan trips and share the places worth going with the people you follow. By creating an account or using Postcard, you agree to these terms. You must be at least 13 years old.</p> },
@@ -15,7 +15,7 @@ const sections: { title: string; body: React.ReactNode }[] = [
   { title: 'Reporting and blocking', body: <p>You can report any trip, comment, message, snapshot or account, and block anyone. We review reports within 24 hours, remove content that breaks these terms, and remove accounts that do so.</p> },
   { title: 'Your account', body: <p>Keep your password safe. You can delete your account at any time in <strong>Settings → Delete account</strong>. We may suspend or remove accounts that break these terms.</p> },
   { title: 'Recommendations and prices', body: <p>Places, AI suggestions and hotel prices are for planning and can be out of date. Postcard doesn’t book anything; check details with the hotel, restaurant or booking site before you travel.</p> },
-  { title: 'Changes and contact', body: <p>If we change these terms, we’ll update the date above. Questions or concerns? Email <a href={`mailto:${CONTACT_EMAIL}`} className="underline">{CONTACT_EMAIL}</a>. See also our <Link href="/privacy" className="underline">Privacy Policy</Link>.</p> },
+  { title: 'Changes and contact', body: <p>If we change these terms, we’ll update the date above. Questions or concerns? Email <a href={`mailto:${SUPPORT_EMAIL}`} className="underline">{SUPPORT_EMAIL}</a>. See also our <Link href="/privacy" className="underline">Privacy Policy</Link>.</p> },
 ]
 
 export default function TermsPage() {

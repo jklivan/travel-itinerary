@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
+import { SUPPORT_EMAIL } from '@/lib/support'
 
 export const metadata: Metadata = { title: 'Privacy Policy — Postcard' }
 
-const CONTACT_EMAIL = 'jklivan@gmail.com'
-const UPDATED = 'October 13, 2026'
+const UPDATED = 'October 19, 2026'
 
 const sections: { title: string; body: React.ReactNode }[] = [
   { title: 'What we collect', body: <ul className="list-disc space-y-1 pl-5">
@@ -30,10 +30,10 @@ const sections: { title: string; body: React.ReactNode }[] = [
       <li><strong>Apple</strong> delivers push notifications; <strong>Google and Apple</strong> handle sign-in if you choose them.</li>
     </ul>
   </> },
-  { title: 'Keeping and deleting your data', body: <p>We keep your information while your account is open. You can delete your account and everything in it at any time in <strong>Settings → Delete account</strong>; it’s removed right away and can’t be undone. You can also email us at <a href={`mailto:${CONTACT_EMAIL}`} className="underline">{CONTACT_EMAIL}</a>.</p> },
+  { title: 'Keeping and deleting your data', body: <p>We keep your information while your account is open. You can delete your account and everything in it at any time in <strong>Settings → Delete account</strong>; it’s removed right away and can’t be undone. You can also email us at <a href={`mailto:${SUPPORT_EMAIL}`} className="underline">{SUPPORT_EMAIL}</a>.</p> },
   { title: 'Security', body: <p>Passwords are stored as secure hashes, and data is sent over encrypted connections.</p> },
   { title: 'Children', body: <p>Postcard is not intended for children under 13, and we do not knowingly collect their information.</p> },
-  { title: 'Changes and contact', body: <p>If we change this policy, we will update the date above. Questions? Email <a href={`mailto:${CONTACT_EMAIL}`} className="underline">{CONTACT_EMAIL}</a>.</p> },
+  { title: 'Changes and contact', body: <p>If we change this policy, we will update the date above. Questions? Email <a href={`mailto:${SUPPORT_EMAIL}`} className="underline">{SUPPORT_EMAIL}</a>.</p> },
 ]
 
 export default function PrivacyPage() {

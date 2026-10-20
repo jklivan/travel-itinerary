@@ -35,7 +35,7 @@ export default async function SettingsPage() {
           <BlockButton userId={person.id} name={person.name} initialBlocked />
         </li>)}</ul>
       </section>}
-      <p className="mt-8 text-xs text-muted"><Link href="/terms" className="underline">Terms of use</Link> · <Link href="/privacy" className="underline">Privacy</Link></p>
+      <p className="mt-8 text-xs text-muted"><Link href="/support" className="underline">Help</Link> · <Link href="/terms" className="underline">Terms of use</Link> · <Link href="/privacy" className="underline">Privacy</Link></p>
       {/* Kept small and last, away from Sign out, so no one deletes their account by mistake. */}
       <DeleteAccount />
     </div>
