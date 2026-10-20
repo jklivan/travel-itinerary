@@ -19,7 +19,7 @@ function harness(user = 'owner', fail = false, trip = { datesFlexible: true }) {
   let items = [{ id: 'existing', name: 'Original place', destinationId: 'rome', dayIndex: null }]
   const destinations = [{ id: 'rome', name: 'Rome', country: 'Italy', itineraryId: 'plan' }]
   const tx = {
-    itinerary: { findFirst: async ({ where }) => where.id === 'plan' && where.userId === 'owner' ? { id: 'plan', startDate: new Date('2000-01-01T00:00:00Z'), endDate: new Date('2000-01-01T00:00:00Z'), durationDays: null, ...trip } : null, update: async ({ data }) => { updates.push(data) } },
+    itinerary: { findUnique: async () => ({ durationDays: trip.durationDays ?? null, tags: [] }), findFirst: async ({ where }) => where.id === 'plan' && where.userId === 'owner' ? { id: 'plan', startDate: new Date('2000-01-01T00:00:00Z'), endDate: new Date('2000-01-01T00:00:00Z'), durationDays: null, ...trip } : null, update: async ({ data }) => { updates.push(data) } },
     destination: { findFirst: async () => destinations[0] },
     destItem: {
       findUnique: async ({ where }) => items.some(item => item.id === where.id) ? { destination: { itineraryId: 'plan' } } : null,

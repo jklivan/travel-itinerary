@@ -71,7 +71,7 @@ export default function TripPhotoPicker({ start, end, name, onPick, onFallback, 
       <button type="button" aria-label="Close" onClick={() => dialog.current?.close()} className="flex size-10 shrink-0 items-center justify-center rounded-full"><X size={18} /></button>
     </header>
     <div className="flex-1 overflow-y-auto p-4">
-      {favorites > 0 && <button type="button" aria-pressed={favoritesOnly} onClick={() => setFavoritesOnly(value => !value)} className="chip mb-4"><Heart size={13} fill={favoritesOnly ? 'currentColor' : 'none'} />Favorites only ({favorites})</button>}
+      {favorites > 0 && <button type="button" aria-pressed={favoritesOnly} onClick={() => setFavoritesOnly(value => !value)} className="chip mb-4"><Heart size={12} fill={favoritesOnly ? 'currentColor' : 'none'} />Favorites only ({favorites})</button>}
       {photos === null ? <p className="type-body text-muted">Finding your trip’s photos…</p>
         : access === 'failed' ? <p className="type-body">Couldn’t read your trip’s photos. Try again, or <button type="button" className="text-link underline" onClick={() => { dialog.current?.close(); onFallback() }}>choose from your library</button>.</p>
         : access === 'unavailable' ? <p className="type-body">Update the Postcard app to see your trip’s photos here. For now, <button type="button" className="text-link underline" onClick={() => { dialog.current?.close(); onFallback() }}>choose from your library</button>.</p>
