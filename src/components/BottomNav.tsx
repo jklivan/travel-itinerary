@@ -7,9 +7,8 @@ import { BriefcaseBusiness, Compass, Home, Plus } from 'lucide-react'
 import useBottomToolbar from './useBottomToolbar'
 import PostTripDialog from './PostTripDialog'
 
-// Feed · Explore | Post · Plan · My Trips. Post (a trip you've taken, or one of your plans) and Plan (with Postcard's
-// AI) are the two navy discs in the middle, after a divider from the browsing tabs. Messages live in the header; Saved
-// is reached from Plan with AI and Profile.
+// Feed · Explore · Post · Plan · My Trips, all alike: Post (a trip you've taken, or one of your plans) opens the post
+// sheet, Plan is Postcard's AI planner. Messages live in the header; Saved is reached from Plan with AI and Profile.
 export default function BottomNav({ userId }: { pendingCount: number; userId: string | null }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -25,14 +24,11 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
   function cls(active: boolean) {
     return `flex min-w-0 flex-col items-center gap-1 px-1 py-2 transition-colors ${active ? 'text-ink' : 'text-brown hover:text-ink'}`
   }
-  // Every icon sits in the same 44px square as the Post and Plan discs, so the labels line up. The current tab is
-  // just darker (no disc), so it never looks like a third navy button.
+  // Every icon sits in the same 44px square, so the labels line up. The current tab is just darker.
   function iconClass(active: boolean) {
     return `flex size-11 items-center justify-center ${active ? 'text-ink' : ''}`
   }
   const label = 'text-label font-medium uppercase tracking-widest'
-  // Post and Plan: a navy disc, always filled.
-  const disc = 'flex size-11 items-center justify-center rounded-full bg-ink text-white shadow-card'
 
   return (
     <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl border-t border-line-soft bg-cream shadow-nav">
@@ -47,16 +43,15 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
           <span className={label}>Explore</span>
         </Link>
 
-        {/* Post: after a divider from the browsing tabs. */}
-        <button type="button" onClick={() => userId ? setPosting(true) : router.push('/login')} aria-haspopup="dialog" className={`${cls(false)} relative before:absolute before:inset-y-2 before:left-0 before:w-px before:bg-line`}>
-          <span className={disc}><Plus size={22} /></span>
-          <span className={`${label} text-ink`}>Post</span>
+        <button type="button" onClick={() => userId ? setPosting(true) : router.push('/login')} aria-haspopup="dialog" className={cls(false)}>
+          <span className={iconClass(false)}><Plus size={22} /></span>
+          <span className={label}>Post</span>
         </button>
 
         {/* Plan: the Postcard compass star. */}
         <Link href={userId ? '/testplan' : '/login'} aria-current={isPlanner ? 'page' : undefined} className={cls(isPlanner)}>
-          <span className={disc}><CompassStar /></span>
-          <span className={`${label} text-ink`}>Plan</span>
+          <span className={iconClass(isPlanner)}><CompassStar /></span>
+          <span className={label}>Plan</span>
         </Link>
 
         <Link href={userId ? '/trips' : '/login'} aria-current={isTrips ? 'page' : undefined} className={cls(isTrips)}>
