@@ -33,6 +33,7 @@ import { DateFields, inputClass, buttonClass } from '../NewPlanForm'
 import { TAGS, tagMeta } from '@/lib/tags'
 import TagChip from '@/components/ui/TagChip'
 import { samePlanDestination } from '@/lib/planPlaceIdentity'
+import { stayLookAlikes } from '@/lib/planDestinationMatch'
 import { getRecommendation } from '@/lib/placeRecommendation'
 import { PostStamp } from '@/components/PostcardLogo'
 
@@ -101,6 +102,9 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     if (destination.name.length < group.keep.name.length) { group.others.push(group.keep); group.keep = destination } else group.others.push(destination)
     return groups
   }, []).filter(group => group.others.length > 0)
+  // And destinations with no hotel of their own that sit around another one's hotel: same hotel, same destination.
+  const inLookAlikes = new Set(lookAlikes.flatMap(group => [group.keep.id, ...group.others.map(other => other.id)]))
+  const sameStay = stayLookAlikes(destinations.map(d => ({ ...d, lat: null, lng: null }))).filter(pair => !inLookAlikes.has(pair.other.id))
   const scheduled = [...new Set(places.flatMap(p => p.day === null ? [] : [p.day]))].sort((a, b) => a - b)
   // Days each destination (or a hotel stay) covers, when the person has set them.
   const ranges = destinationRanges(trip.destinations)
@@ -170,6 +174,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
             haven't been yet). */}
         {trip.visibility !== 'draft' && photoSorter}
         {lookAlikes.map(group => <MergeLookAlikes key={group.keep.id} tripId={trip.id} keep={group.keep} others={group.others} />)}
+        {sameStay.map(pair => <MergeLookAlikes key={pair.other.id} tripId={trip.id} keep={pair.keep} others={[pair.other]} nearHotel />)}
         {multiDestination ? destinations.map(destination => { const items = places.filter(p => p.destinationId === destination.id); return <section key={destination.id} aria-label={destination.name} className="mb-10">
           <div className="mb-3 flex items-baseline justify-between gap-3 border-b-2 border-ink pb-2"><h2 className="type-title flex min-w-0 items-center gap-2 [overflow-wrap:anywhere]"><MapPin size={18} className="shrink-0 text-link" />{destination.name}</h2><span className="flex shrink-0 items-center gap-3"><span className="text-xs font-semibold uppercase tracking-wider text-muted">{items.length} {items.length === 1 ? 'place' : 'places'}</span><button type="button" aria-expanded={editingDestination === destination.id} onClick={() => setEditingDestination(current => current === destination.id ? null : destination.id)} className="inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-link"><Pencil size={14} />Edit</button></span></div>
           {editingDestination === destination.id && <DestinationEditor key={destination.id} tripId={trip.id} destination={destination} places={items.length} others={destinations.filter(other => other.id !== destination.id)} onClose={() => setEditingDestination(null)} />}
@@ -461,14 +466,16 @@ function DestinationPicker({ destinations, value, selectedId, onChange, labelCla
 
 // Two or more destinations that look like the same place: ask, then merge them into the shortest name (their
 // places, days and hotel stays move across). Asked rather than automatic: "Springfield, IL" and "Springfield, MO" differ.
-function MergeLookAlikes({ tripId, keep, others }: { tripId: string; keep: { id: string; name: string }; others: { id: string; name: string }[] }) {
+function MergeLookAlikes({ tripId, keep, others, nearHotel = false }: { tripId: string; keep: { id: string; name: string }; others: { id: string; name: string }[]; nearHotel?: boolean }) {
   const router = useRouter()
   const [hidden, setHidden] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   if (hidden) return null
   return <div role="status" className="panel mb-6 space-y-3 border-link p-4 text-sm">
-    <p className="text-ink"><strong>{cleanDestination(keep.name)}</strong> and {others.map((other, index) => <span key={other.id}>{index > 0 && ' and '}<strong>{cleanDestination(other.name)}</strong></span>)} look like the same place.</p>
+    {nearHotel
+      ? <p className="text-ink">The places in <strong>{cleanDestination(others[0].name)}</strong> are near your hotel in <strong>{cleanDestination(keep.name)}</strong>. Same hotel, same stay?</p>
+      : <p className="text-ink"><strong>{cleanDestination(keep.name)}</strong> and {others.map((other, index) => <span key={other.id}>{index > 0 && ' and '}<strong>{cleanDestination(other.name)}</strong></span>)} look like the same place.</p>}
     <div className="flex flex-wrap gap-2">
       <button type="button" disabled={busy} onClick={async () => {
         setBusy(true); setError('')
@@ -477,7 +484,7 @@ function MergeLookAlikes({ tripId, keep, others }: { tripId: string; keep: { id:
           router.refresh()
         } catch { setError('Could not merge them. Please try again.') } finally { setBusy(false) }
       }} className="btn btn-primary btn-sm">{busy ? 'Merging…' : `Merge into ${cleanDestination(keep.name)}`}</button>
-      <button type="button" disabled={busy} onClick={() => setHidden(true)} className="btn btn-outline btn-sm">They’re different</button>
+      <button type="button" disabled={busy} onClick={() => setHidden(true)} className="btn btn-outline btn-sm">{nearHotel ? 'Keep it separate' : 'They’re different'}</button>
     </div>
     {error && <p role="alert" className="text-danger">{error}</p>}
   </div>

@@ -71,3 +71,16 @@ export async function findPlaceAddress(placeId: string, apiKey: string) {
     return ((await response.json()) as { formattedAddress?: string }).formattedAddress?.slice(0, 500) || null
   } catch { return null }
 }
+
+// Where a Google place is (and its address), for filing a newly added place under the right destination.
+export async function findPlaceLocation(placeId: string, apiKey: string) {
+  try {
+    const response = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
+      headers: { 'X-Goog-Api-Key': apiKey, 'X-Goog-FieldMask': 'location,formattedAddress' }, cache: 'no-store', signal: AbortSignal.timeout(6000),
+    })
+    if (!response.ok) return null
+    const data = (await response.json()) as { location?: { latitude?: number; longitude?: number }; formattedAddress?: string }
+    if (typeof data.location?.latitude !== 'number' || typeof data.location?.longitude !== 'number') return null
+    return { lat: data.location.latitude, lng: data.location.longitude, address: data.formattedAddress?.slice(0, 500) || null }
+  } catch { return null }
+}

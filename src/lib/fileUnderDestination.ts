@@ -10,7 +10,7 @@ const label = (destination: { name: string; country?: string | null }) => [desti
 // Where a copied place goes in a plan: the destination it clearly belongs to, the one the person chose, or a new
 // destination for its own town ('new'). With no clear match and no choice yet, returns the question to ask instead.
 export async function fileUnderDestination(tx: Prisma.TransactionClient, planId: string, place: CopiedPlace, choice: DestinationChoice): Promise<{ id: string } | { ask: DestinationQuestion }> {
-  const destinations = await tx.destination.findMany({ where: { itineraryId: planId }, orderBy: { order: 'asc' }, include: { items: { where: { lat: { not: null } }, select: { lat: true, lng: true }, take: 50 } } })
+  const destinations = await tx.destination.findMany({ where: { itineraryId: planId }, orderBy: { order: 'asc' }, include: { items: { where: { lat: { not: null } }, select: { lat: true, lng: true, type: true }, take: 50 } } })
   if (choice && choice !== 'new') {
     const chosen = destinations.find(destination => destination.id === choice)
     if (chosen) return chosen

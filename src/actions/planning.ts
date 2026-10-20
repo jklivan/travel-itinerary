@@ -9,6 +9,8 @@ import { fetchStockPhoto } from '@/lib/stockPhoto'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
 import { pickPlanDestination } from '@/lib/planPlaceIdentity'
+import { planDestinationFor } from '@/lib/planDestinationMatch'
+import { findPlaceLocation } from '@/lib/placePhoto'
 import type { Prisma } from '@/generated/prisma/client'
 import { fileUnderDestination, type DestinationQuestion } from '@/lib/fileUnderDestination'
 import { locateDestinations } from '@/lib/locateDestinations'
@@ -335,6 +337,10 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
     if (!name || !destinationName || !['hotel', 'food_drink', 'activity', 'transport'].includes(type) || !/^[a-f0-9-]{36}$/.test(clientId)) return { error: 'Enter a place name and destination.' }
     const day = text(form, 'day', 4)
     if (day && (!/^\d+$/.test(day) || Number(day) < 1 || Number(day) > 365)) return { error: 'Choose a day from 1 to 365, or leave it unscheduled.' }
+    // Where it is, when it wasn't added under a particular destination: so a place near your hotel joins that stay
+    // instead of starting a new destination for its own neighbourhood (Google's town for it).
+    const key = process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_PLACES_API
+    const location = placeId && !destinationId && key ? await findPlaceLocation(placeId, key) : null
     await prisma.$transaction(async tx => {
       const trip = await tx.itinerary.findFirst({ where: { id, userId }, select: { id: true } })
       if (!trip) throw new InputError(unavailable)
@@ -343,12 +349,14 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
         if (existing.destination.itineraryId !== id) throw new InputError(unavailable)
         return
       }
-      let dest = pickPlanDestination(await tx.destination.findMany({ where: { itineraryId: id }, orderBy: { order: 'asc' } }), { id: destinationId, name: destinationName })
+      const destinations = await tx.destination.findMany({ where: { itineraryId: id }, orderBy: { order: 'asc' }, include: { items: { where: { lat: { not: null } }, select: { lat: true, lng: true, type: true }, take: 50 } } })
+      let dest: { id: string } | null | undefined = pickPlanDestination(destinations, { id: destinationId, name: destinationName })
+      if (!dest && location) dest = planDestinationFor(destinations, { type, lat: location.lat, lng: location.lng, address: location.address, destination: { name: destinationName } })
       if (!dest) dest = await tx.destination.create({ data: { itineraryId: id, name: destinationName, order: await tx.destination.count({ where: { itineraryId: id } }) } })
       const last = await tx.destItem.aggregate({ where: { destinationId: dest.id }, _max: { order: true, groupIndex: true } })
       const zeroBased = await tx.destItem.count({ where: { destinationId: dest.id, dayIndex: 0, type: { not: 'hotel' } } })
       if (zeroBased) await tx.destItem.updateMany({ where: { destinationId: dest.id, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
-      await tx.destItem.create({ data: { id: clientId, destinationId: dest.id, name, type, placeId: placeId ?? null, ...(form.get('source') === 'ai' ? { sourceKind: 'ai' } : {}), notes: notes || null,
+      await tx.destItem.create({ data: { id: clientId, destinationId: dest.id, name, type, placeId: placeId ?? null, ...(location ? { lat: location.lat, lng: location.lng, address: location.address } : {}), ...(form.get('source') === 'ai' ? { sourceKind: 'ai' } : {}), notes: notes || null,
         rating: rating || null, planningStatus: status, mealType: type === 'food_drink' ? mealType || null : null, tags, photoUrls, photoUrl: photoUrls[0] ?? null,
         dayIndex: day ? Number(day) : null, nights: type === 'hotel' ? nightsFrom(form) : null,
         order: (last._max.order ?? -1) + 1, groupIndex: type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0,

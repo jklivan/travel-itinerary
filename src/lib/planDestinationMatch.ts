@@ -2,14 +2,17 @@ import { samePlanDestination } from './planPlaceIdentity'
 
 // Which of a plan's destinations a place copied from someone else's trip (or a snapshot) belongs under.
 // Your destinations are the buckets: a place joins one when it's the same destination, when its town or address
-// names it ("Barano d'Ischia" → Ischia), or when it's the nearest one within 30 km. Otherwise there's no clear
-// answer (undefined), and the person is asked which destination to file it under.
+// names it ("Barano d'Ischia" → Ischia), or when it's the nearest one within 30 km. And as a rule, a place that isn't
+// a hotel stays with the hotel you're staying at (within 100 km): a new destination only starts with a new hotel.
+// Otherwise there's no clear answer (undefined), and the person is asked which destination to file it under.
 
 type Coords = { lat: number | null; lng: number | null }
-export type PlanDestination = { name: string; country: string | null } & Coords & { items?: Coords[] }
-export type CopiedPlace = { destination: { name: string; country?: string | null } & Partial<Coords>; address?: string | null } & Partial<Coords>
+export type PlanDestination = { name: string; country: string | null } & Coords & { items?: (Coords & { type?: string })[] }
+export type CopiedPlace = { destination: { name: string; country?: string | null } & Partial<Coords>; address?: string | null; type?: string } & Partial<Coords>
 
 const NEARBY_KM = 30
+// How far from your hotel a restaurant, sight or day trip still counts as part of that stay.
+const SAME_STAY_KM = 100
 const PLACEHOLDER = 'Destination to decide'
 
 const plain = (value: string) => value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase()
@@ -47,7 +50,32 @@ export function planDestinationFor<T extends PlanDestination>(destinations: T[],
       if (km <= NEARBY_KM && (!best || km < best.km)) best = { destination, km }
     }
   }
-  return best?.destination
+  if (best) return best.destination
+  // Same hotel, same destination: the nearest destination with a hotel within 100 km (in any country, so a day
+  // trip across a border stays with its stay). Hotels themselves can start a new destination.
+  if (place.type === 'hotel') return undefined
+  let stay: { destination: T; km: number } | undefined
+  for (const destination of real) {
+    for (const hotel of (destination.items ?? []).filter(item => item.type === 'hotel' && located(item))) {
+      const km = kmApart(point, hotel as { lat: number; lng: number })
+      if (km <= SAME_STAY_KM && (!stay || km < stay.km)) stay = { destination, km }
+    }
+  }
+  return stay?.destination
+}
+
+// Destinations that look like part of another one's stay: no hotel of their own, and every located place in them
+// is within 100 km of the other destination's hotel. The planner offers to fold them in (same hotel, same place).
+export function stayLookAlikes<T extends PlanDestination & { id: string }>(destinations: T[]) {
+  const pairs: { keep: T; other: T }[] = []
+  for (const other of destinations.filter(d => d.name !== PLACEHOLDER && !(d.items ?? []).some(item => item.type === 'hotel'))) {
+    const spots = (other.items ?? []).filter(located)
+    if (!spots.length) continue
+    const home = destinations.filter(d => d.id !== other.id && d.name !== PLACEHOLDER).find(d => (d.items ?? []).some(hotel => hotel.type === 'hotel' && located(hotel) &&
+      spots.every(spot => kmApart(spot as { lat: number; lng: number }, hotel as { lat: number; lng: number }) <= SAME_STAY_KM)))
+    if (home) pairs.push({ keep: home, other })
+  }
+  return pairs
 }
 
 // For the "Which destination?" question: your destinations, nearest first (ones with no location last).
