@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import * as privateTransport from '../src/lib/privateTransport.ts'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
@@ -28,7 +29,7 @@ function harness({ userId = 'me', owner = 'me', visibility = 'public', fail = fa
     },
   } }
   const exports = {}
-  vm.runInNewContext(code, { exports, require: name => ({ 'node:crypto': { createHash }, '@/auth': { auth: async () => userId ? { user: { id: userId } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath: p => paths.push(p) } })[name] })
+  vm.runInNewContext(code, { exports, require: name => ({ '@/lib/privateTransport': privateTransport, 'node:crypto': { createHash }, '@/auth': { auth: async () => userId ? { user: { id: userId } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath: p => paths.push(p) } })[name] })
   const input = { sourceId: 'capri', clientId: '12345678-1234-1234-1234-123456789012', title: 'Capri next summer', keepDays: true, keepNotes: true }
   return { ...exports, input, source, copies, paths, sourceReads: () => sourceReads }
 }

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import * as privateTransport from '../src/lib/privateTransport.ts'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
@@ -93,7 +94,7 @@ function harness(userId = 'me') {
       catch (e) { destinations.splice(0, destinations.length, ...before.destinations); items.splice(0, items.length, ...before.items); throw e }
     },
   }
-  const actions = load('../src/actions/planSuggestions.ts', { 'node:crypto': { createHash }, '@/auth': { auth: async () => userId ? { user: { id: userId } } : null }, '@/lib/prisma': { prisma }, '@/lib/planPlaceIdentity': identity, ...filingStubs, '@/lib/planDestinationMatch': destinationMatch, 'next/cache': { revalidatePath: p => paths.push(p) } })
+  const actions = load('../src/actions/planSuggestions.ts', { '@/lib/privateTransport': privateTransport, 'node:crypto': { createHash }, '@/auth': { auth: async () => userId ? { user: { id: userId } } : null }, '@/lib/prisma': { prisma }, '@/lib/planPlaceIdentity': identity, ...filingStubs, '@/lib/planDestinationMatch': destinationMatch, 'next/cache': { revalidatePath: p => paths.push(p) } })
   return { ...actions, items, trips, destinations, paths, follows, fail: () => { fail = true }, locks: () => locks, copies: () => items.filter(i => destinations.find(d => d.id === i.destinationId)?.itineraryId === 'plan') }
 }
 

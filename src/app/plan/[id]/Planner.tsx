@@ -8,9 +8,9 @@ import styles from '../../itinerary/[id]/places.module.css'
 import planningStyles from './Planner.module.css'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarDays, Clock, Plus, MapPin, Trash2, LockKeyhole, Check, Hotel, Utensils, Camera, Plane, Upload, Pencil, Sparkles, Users } from 'lucide-react'
+import { CalendarDays, Clock, Plus, MapPin, Trash2, LockKeyhole, Check, Hotel, Utensils, Camera, Plane, Upload, Pencil, Sparkles, Users, EyeOff } from 'lucide-react'
 import { daysBetween, isDate, tripDay, whenLabel } from '@/lib/placeDates'
-import { addPlanPlace, setPlanStartDate, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, sharePlan, removePlanDestination, renamePlanDestination, mergePlanDestination, setPlanDays, deletePlanDay, setPlaceDay, setPlaceTime, applyDayPlan, setTripCover } from '@/actions/planning'
+import { addPlanPlace, setPlanStartDate, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, sharePlan, removePlanDestination, renamePlanDestination, mergePlanDestination, setPlanDays, deletePlanDay, setPlaceDay, setPlaceTime, applyDayPlan, setTripCover, setTransportPrivate } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
 import PlaceEntryForm from '@/components/PlaceEntryForm'
 import PlaceEditForm, { type PlaceEditValues, type PlaceType } from '@/components/PlaceEditForm'
@@ -34,6 +34,7 @@ import { TAGS, tagMeta } from '@/lib/tags'
 import TagChip from '@/components/ui/TagChip'
 import { samePlanDestination } from '@/lib/planPlaceIdentity'
 import { stayLookAlikes } from '@/lib/planDestinationMatch'
+import { PRIVATE_TAG } from '@/lib/privateTransport'
 import { getRecommendation } from '@/lib/placeRecommendation'
 import { PostStamp } from '@/components/PostcardLogo'
 
@@ -109,13 +110,15 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   // Days each destination (or a hotel stay) covers, when the person has set them.
   const ranges = destinationRanges(trip.destinations)
   const maxDay = Math.max(trip.durationDays ?? 0, ...scheduled, totalDays(trip.destinations), 1)
+  // "Keep transport private": every transport place in the trip carries the hidden tag (they're switched together).
+  const transportPrivate = places.some(place => place.type === 'transport' && place.tags.includes(PRIVATE_TAG))
   const unrated = places.filter(place => place.type !== 'transport' && !place.rating && getRecommendation(place.tags) !== 'option')
   function renderPlace(place: Place & { destination: string; destinationName: string; destinationId: string }) { return <PlaceRow key={place.id} tripId={trip.id} tripStart={trip.start} place={place} maxDay={maxDay} destinationChoices={destinations.map(d => ({ id: d.id, name: d.name }))} /> }
   // Day by day: the same card with a quick Time setting under it.
   function renderDayPlace(place: Place & { destination: string; destinationName: string; destinationId: string }) { return <PlaceRow key={place.id} tripId={trip.id} tripStart={trip.start} place={place} maxDay={maxDay} destinationChoices={destinations.map(d => ({ id: d.id, name: d.name }))} dayTime /> }
   function addForm(at: string) { return adding?.at === at && !importing ? <AddPlace key={at} trip={trip} maxDay={maxDay} initialDestination={adding.destination} initialDestinationId={adding.destinationId} initialDay={adding.day} onClose={() => setAdding(null)} /> : null }
   function categorySections(items: typeof places) {
-    return categories.map(category => { const inCategory = items.filter(p => p.type === category.value); return inCategory.length > 0 && <section key={category.value} className="mb-7"><div className={`${styles.categoryHeading} ${styles[category.value]}`}><h3><span className={styles.categoryIcon}><category.Icon size={17} /></span>{category.label}</h3><span className={styles.count}>{inCategory.length} {inCategory.length === 1 ? 'place' : 'places'}</span></div><div className="space-y-3">{inCategory.map(renderPlace)}</div></section> })
+    return categories.map(category => { const inCategory = items.filter(p => p.type === category.value); return inCategory.length > 0 && <section key={category.value} className="mb-7"><div className={`${styles.categoryHeading} ${styles[category.value]}`}><h3><span className={styles.categoryIcon}><category.Icon size={17} /></span>{category.label}</h3><span className={styles.count}>{inCategory.length} {inCategory.length === 1 ? 'place' : 'places'}</span></div>{category.value === 'transport' && <TransportPrivacy tripId={trip.id} on={transportPrivate} />}<div className="space-y-3">{inCategory.map(renderPlace)}</div></section> })
   }
   // An empty day suggests the destination of the closest earlier day that has places.
   function dayDestination(day: number) { return stayOn(day, trip.destinations, ranges).destination ?? places.filter(p => p.day !== null && p.day < day).sort((a, b) => b.day! - a.day!)[0]?.destinationName }
@@ -221,6 +224,8 @@ function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, init
   const saving = useRef(false)
   const clientId = useRef('')
   const [category, setCategory] = useState<'hotel' | 'food_drink' | 'activity' | 'transport'>('hotel')
+  // For transport: the trip's current choice, changeable here (it applies to all the trip's transport).
+  const [privateTransport, setPrivateTransport] = useState(() => trip.destinations.some(d => d.items.some(item => item.type === 'transport' && item.tags.includes(PRIVATE_TAG))))
   const [uploading, setUploading] = useState(false)
   const [day, setDay] = useState(initialDay ? String(initialDay) : '')
   // Hotels: nights from the check-in day. Starts from the destination's days when they're set.
@@ -258,13 +263,17 @@ function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, init
       </label>)}
     </div></fieldset>
     </fieldset>
+    {category === 'transport' && <label className="flex items-start gap-3 rounded-xl bg-mist p-3 text-sm text-ink">
+      <input type="checkbox" checked={privateTransport} onChange={event => setPrivateTransport(event.target.checked)} className="mt-0.5 size-5 shrink-0 accent-link" />
+      <span><span className="block font-semibold">Keep all transport private</span><span className="block text-xs text-muted">Flights, trains and transfers stay in your plan, but aren’t shown when you post the trip.</span></span>
+    </label>}
     <PlaceEntryForm planning type={category} city={city || undefined} onPhotoBusyChange={setUploading} onClose={onClose} onAdd={async item => {
       if (saving.current) return false
       if (!destination.trim()) { setError('Choose a destination first.'); return false }
       saving.current = true; setBusy(true); setError('')
       if (!clientId.current) clientId.current = crypto.randomUUID()
       const data = new FormData()
-      for (const [key, value] of Object.entries({ ...item, destination, destinationId: destinationId ?? '', day, ...(category === 'hotel' && nights ? { nights } : {}), status, clientId: clientId.current })) data.set(key, Array.isArray(value) ? JSON.stringify(value) : String(value))
+      for (const [key, value] of Object.entries({ ...item, destination, destinationId: destinationId ?? '', day, ...(category === 'hotel' && nights ? { nights } : {}), ...(category === 'transport' ? { privateTransport: privateTransport ? '1' : '0' } : {}), status, clientId: clientId.current })) data.set(key, Array.isArray(value) ? JSON.stringify(value) : String(value))
       try {
         const result = await addPlanPlace(trip.id, data)
         if (result.error) { setError(result.error); return false }
@@ -734,4 +743,20 @@ function OrganizeWithAI({ tripId, places, canFill, canReplan }: { tripId: string
 // All of a trip's photos for choosing a cover: trip photos, then each place's, once each.
 function tripPhotoList(trip: Trip) {
   return [...new Set([...(trip.tripPhotos ?? []), ...trip.destinations.flatMap(d => d.items.flatMap(item => item.photos))])]
+}
+
+// Under the Transportation heading: keep all of the trip's transport to yourself when it's posted, or show it.
+function TransportPrivacy({ tripId, on }: { tripId: string; on: boolean }) {
+  const router = useRouter()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  return <div className="mb-3">
+    <button type="button" aria-pressed={on} disabled={busy} onClick={async () => {
+      setBusy(true); setError('')
+      try { const result = await setTransportPrivate(tripId, !on); if (result.error) setError(result.error); else router.refresh() }
+      catch { setError('Could not save. Please try again.') } finally { setBusy(false) }
+    }} className="chip"><EyeOff size={14} />{on ? 'Transport is private' : 'Keep transport private'}</button>
+    <p className="type-meta mt-1">{on ? 'Only you can see these. They won’t show when you post the trip.' : 'Hide your flights, trains and transfers when you post this trip.'}</p>
+    {error && <p role="alert" className="mt-1 text-sm text-danger">{error}</p>}
+  </div>
 }

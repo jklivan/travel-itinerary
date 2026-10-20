@@ -1,3 +1,4 @@
+import { withoutPrivateTransport } from '@/lib/privateTransport'
 import { prisma } from '@/lib/prisma'
 import { hiddenAccountsFor } from '@/lib/hiddenAccounts'
 
@@ -43,7 +44,7 @@ export async function loadPlanningContext(userId: string, excludeTripId?: string
       trip.tripRating ? `trip rated ${trip.tripRating}/5` : '', `for ${trip.audience}`,
       trip.budget ? `budget ${'$'.repeat(trip.budget)}` : '', trip.tags.length ? `tags: ${trip.tags.slice(0, 6).join(', ')}` : ''].filter(Boolean).join(' · ')
     const body = trip.destinations.map(destination => {
-      const lines = destination.items.map(item => {
+      const lines = (isMine ? destination.items : withoutPrivateTransport(destination.items)).map(item => {
         items.set(item.id, { id: item.id, name: item.name, type: item.type, placeId: item.placeId, lat: item.lat, lng: item.lng, destination: destination.name, country: destination.country, tripId: trip.id, owner: isMine ? 'you' : trip.user.name, mine: isMine })
         return `- [${item.id}] ${typeLabel[item.type] ?? item.type}: ${item.name}${item.rating ? ` · ★${item.rating}` : ''}${item.tags.length ? ` · ${item.tags.slice(0, 5).join(', ')}` : ''}${item.notes ? ` · "${clip(item.notes, 240)}"` : ''}`
       })

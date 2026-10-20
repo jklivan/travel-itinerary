@@ -11,6 +11,7 @@ import { auth } from '@/auth'
 import Image from 'next/image'
 import PhotoStrip from '@/components/PhotoStrip'
 import Link from 'next/link'
+import { withoutPrivateTransport } from '@/lib/privateTransport'
 import { notFound, redirect } from 'next/navigation'
 import FollowButton from '@/components/FollowButton'
 import { Plane, Hotel, Utensils, Camera, MapPin, Check, Ban, Star, Users, Pencil, Clock } from 'lucide-react'
@@ -228,6 +229,8 @@ export default async function ItineraryPage({
   if (!it) notFound()
 
   const isOwn = session?.user?.id === it.user.id
+  // Transport the owner keeps private isn't shown to anyone else.
+  if (!isOwn) for (const destination of it.destinations) destination.items = withoutPrivateTransport(destination.items)
   // A venue name can be stored as a destination when it was added from a story.
   // Merge nearby destination buckets for display so one local trip does not
   // produce a separate heading for every venue.

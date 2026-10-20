@@ -1,5 +1,6 @@
 'use server'
 
+import { withoutPrivateTransport } from '@/lib/privateTransport'
 import { createHash } from 'node:crypto'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
@@ -38,7 +39,7 @@ export async function findFriendsPlanPlaces(planId: string, query: string, befor
       ...(before ? { cursor: { id: before }, skip: 1 } : {}),
       select: { id: true, title: true, user: { select: { name: true } }, destinations: {
         orderBy: { order: 'asc' }, select: { name: true, country: true, items: { orderBy: { order: 'asc' }, select: {
-          id: true, name: true, type: true, placeId: true, address: true, notes: true, rating: true,
+          id: true, name: true, type: true, tags: true, placeId: true, address: true, notes: true, rating: true,
         } } },
       } },
     }),
@@ -48,7 +49,7 @@ export async function findFriendsPlanPlaces(planId: string, query: string, befor
     trips: trips.slice(0, pageSize).map(trip => {
       const matching = trip.destinations.filter(d => `${d.name} ${d.country ?? ''}`.toLocaleLowerCase().includes(search.toLocaleLowerCase()))
       const destinations = matching.length ? matching : trip.destinations
-      return { id: trip.id, title: trip.title, author: trip.user.name, places: destinations.flatMap(destination => destination.items.map(item => {
+      return { id: trip.id, title: trip.title, author: trip.user.name, places: destinations.flatMap(destination => withoutPrivateTransport(destination.items).map(item => {
         const place = { ...item, destination: { name: destination.name, country: destination.country } }
         return { ...place, alreadyAdded: existing.some(saved => saved.id === copyId(planId, item.id) || samePlanPlace(saved, place)) }
       })) }

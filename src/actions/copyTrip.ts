@@ -1,5 +1,6 @@
 'use server'
 
+import { withoutPrivateTransport } from '@/lib/privateTransport'
 import { createHash } from 'node:crypto'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
@@ -33,7 +34,8 @@ export async function copyTripToPlan(input: CopyInput): Promise<{ id?: string; e
         return {
           name: destination.name, country: destination.country, lat: destination.lat, lng: destination.lng, order: destination.order,
           notes: keepNotes ? destination.notes : null,
-          items: { create: destination.items.map(item => ({
+          // Someone else's private transport doesn't come along.
+          items: { create: (source.userId === userId ? destination.items : withoutPrivateTransport(destination.items)).map(item => ({
             name: item.name, type: item.type, mealType: item.mealType, address: item.address, link: item.link,
             placeId: item.placeId, lat: item.lat, lng: item.lng, order: item.order, groupIndex: item.groupIndex,
             dayIndex: input.keepDays && item.dayIndex !== null ? item.dayIndex + (zeroBased ? 1 : 0) : null,

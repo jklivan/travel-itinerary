@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import * as privateTransport from '../src/lib/privateTransport.ts'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
@@ -37,6 +38,8 @@ function harness({ user = 'owner', fail = false, zeroBased = false, empty = fals
     destItem: {
       findUnique: async ({ where }) => enrich(items.find(i => i.id === where.id)),
       findFirst: async ({ where }) => where.id === 'source' ? sourceVisibility === where.destination.itinerary.visibility ? source : null : enrich(itemMatch(where)),
+      findMany: async ({ where }) => items.filter(i => !where.type || i.type === where.type).map(i => ({ id: i.id, tags: i.tags ?? [] })),
+      update: async ({ where, data }) => { const item = items.find(i => i.id === where.id); Object.assign(item, data); return item },
       aggregate: async () => ({ _max: { order: 0, groupIndex: 0 } }), count: async ({ where }) => items.filter(i => i.destinationId === where.destinationId && i.dayIndex === 0 && i.type !== 'hotel').length,
       create: async ({ data }) => { if (fail) throw Error('connection contains secret'); writes.push(data); items.push(data); return data },
       updateMany: async ({ where, data }) => {
@@ -48,7 +51,7 @@ function harness({ user = 'owner', fail = false, zeroBased = false, empty = fals
   }
   prisma.$transaction = async callback => callback(prisma)
   const exports = {}
-  vm.runInNewContext(code, { exports, process: { env: {} }, require: name => ({ '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath: path => paths.push(path) }, '@/lib/tripPublishedNotifications': { scheduleTripPublishedNotifications: id => notifications.push(id) }, '@/lib/planPlaceIdentity': placeIdentity, ...filingStubs, '@/lib/planDestinationMatch': destinationMatch, '@/lib/placePhoto': { findPlaceLocation: async () => null } })[name] })
+  vm.runInNewContext(code, { exports, process: { env: {} }, require: name => ({ '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath: path => paths.push(path) }, '@/lib/tripPublishedNotifications': { scheduleTripPublishedNotifications: id => notifications.push(id) }, '@/lib/planPlaceIdentity': placeIdentity, ...filingStubs, '@/lib/planDestinationMatch': destinationMatch, '@/lib/placePhoto': { findPlaceLocation: async () => null }, '@/lib/privateTransport': privateTransport })[name] })
   return { actions: exports, trips, items, writes, paths, notifications }
 }
 test('new plans are private, dates optional, and retry returns the same trip', async () => {

@@ -1,3 +1,4 @@
+import { isPrivateTransport } from '@/lib/privateTransport'
 import { notFound } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
@@ -12,8 +13,9 @@ const CATEGORY: Record<string, string> = { hotel: 'Accommodation', food_drink: '
 export default async function PlacePage({ params }: { params: Promise<{ itemId: string }> }) {
   const { itemId } = await params
   const userId = (await auth())?.user?.id ?? null
-  const item = await prisma.destItem.findUnique({ where: { id: itemId }, select: { name: true, type: true, placeId: true, destination: { select: { name: true, country: true, itinerary: { select: { visibility: true, userId: true } } } } } })
-  if (!item || (item.destination.itinerary.visibility === 'draft' && item.destination.itinerary.userId !== userId)) notFound()
+  const item = await prisma.destItem.findUnique({ where: { id: itemId }, select: { name: true, type: true, tags: true, placeId: true, destination: { select: { name: true, country: true, itinerary: { select: { visibility: true, userId: true } } } } } })
+  // A draft's places, and transport its owner keeps private, are only for the owner.
+  if (!item || ((item.destination.itinerary.visibility === 'draft' || isPrivateTransport(item)) && item.destination.itinerary.userId !== userId)) notFound()
 
   // The same Google place in any category, or the same name in the same category (as on trip pages).
   const samePlace = { OR: [...(item.placeId ? [{ placeId: item.placeId }] : []), { type: item.type, name: { equals: item.name, mode: 'insensitive' as const } }] }
