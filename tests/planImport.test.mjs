@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
 import * as placeIdentity from '../src/lib/planPlaceIdentity.ts'
+const importMatchLib = (() => { const out = {}; vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/lib/importMatch.ts', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, { exports: out, require: () => placeIdentity }); return out })()
 function load(path, deps = {}) {
   const exports = {}
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, { exports, require: name => deps[name] ?? (name === './placeDates' || name === '@/lib/placeDates' ? dates : undefined), Date })
@@ -29,7 +30,7 @@ function harness(user = 'owner', fail = false, trip = { datesFlexible: true }) {
     },
   }
   const prisma = { $transaction: async callback => { const previous = structuredClone(items); try { return await callback(tx) } catch (error) { items = previous; throw error } } }
-  const action = load('../src/actions/planImport.ts', { '@/lib/planPlaceIdentity': placeIdentity, 'next/server': { after() {} }, '@/lib/enrichPlaceIds': { enrichPlaceIds: async () => {} }, '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} } }).importIntoPlan
+  const action = load('../src/actions/planImport.ts', { '@/lib/importMatch': importMatchLib, 'next/server': { after() {} }, '@/lib/enrichPlaceIds': { enrichPlaceIds: async () => {} }, '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} } }).importIntoPlan
   return { action, items: () => items, updates }
 }
 test('import keeps explicit days (hotels too, on their check-in day) and leaves undated places unscheduled', () => {
@@ -95,7 +96,7 @@ test('a hotel keeps the nights the itinerary gives; guide awards never become a 
 
 test('importing a file into a trip fills in places it already has instead of adding them twice', async () => {
   const h = harness()
-  h.items().push({ id: 'mayflower', name: 'The Mayflower Inn & Spa', destinationId: 'rome', dayIndex: null, notes: 'Spa first' })
+  h.items().push({ id: 'mayflower', name: 'The Mayflower Inn & Spa', type: 'hotel', destinationId: 'rome', dayIndex: null, notes: 'Spa first' })
   const file = [
     { name: 'Mayflower Inn and Spa', type: 'hotel', destination: 'Rome', country: 'Italy', notes: 'Confirmation 12345', mealType: '', rating: null, day: 1, date: null, time: null, endDate: null, endTime: null, nights: 2 },
     { name: 'New Trattoria', type: 'food_drink', destination: 'Rome', country: 'Italy', notes: '', mealType: '', rating: null, day: null, date: null, time: null, endDate: null, endTime: null },
@@ -107,4 +108,17 @@ test('importing a file into a trip fills in places it already has instead of add
   assert.equal(names.filter(name => name === 'New Trattoria').length, 1)
   const mayflower = h.items().find(item => item.id === 'mayflower')
   assert.equal(mayflower.nights, 2); assert.equal(mayflower.dayIndex, 1); assert.equal(mayflower.notes, 'Spa first\n\nConfirmation 12345')
+})
+
+test('an unclear match is added as new unless the person says it is the same place', async () => {
+  const place = { name: 'Cafe Roma', type: 'activity', destination: 'Rome', country: 'Italy', notes: 'Cooking class', mealType: '', rating: null, day: null, date: null, time: null, endDate: null, endTime: null }
+  // Same name, but filed as a restaurant in the trip: not sure, so without an answer it's added as its own place.
+  const h = harness(); h.items().push({ id: 'roma', name: 'Cafe Roma', type: 'food_drink', destinationId: 'rome', dayIndex: null, notes: null })
+  assert.ok((await h.action('plan', id, [place])).success)
+  assert.equal(h.items().filter(item => item.name === 'Cafe Roma').length, 2)
+  // Answered "Same place": it fills in the existing one instead.
+  const h2 = harness(); h2.items().push({ id: 'roma', name: 'Cafe Roma', type: 'food_drink', destinationId: 'rome', dayIndex: null, notes: null })
+  assert.ok((await h2.action('plan', '22345678-1234-1234-1234-123456789012', [place], null, undefined, { 0: 'roma' })).success)
+  assert.equal(h2.items().filter(item => item.name === 'Cafe Roma').length, 1)
+  assert.equal(h2.items().find(item => item.id === 'roma').notes, 'Cooking class')
 })

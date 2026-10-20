@@ -5,7 +5,8 @@ import { Upload } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { readFileForUpload, fetchExtraction } from '@/lib/importFiles'
 import { importedPlaces, type ImportedPlace } from '@/lib/planImport'
-import { importIntoPlan } from '@/actions/planImport'
+import { importIntoPlan, importMatches } from '@/actions/planImport'
+import type { ImportMatch } from '@/lib/importMatch'
 import PlacesAutocomplete from './PlacesAutocomplete'
 import { dateProblems, datesCovering, formatDate, tripDay, whenLabel } from '@/lib/placeDates'
 
@@ -24,6 +25,9 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
   const [useDates, setUseDates] = useState(true)
   const [places, setPlaces] = useState<ImportedPlace[]>([])
   const [selected, setSelected] = useState<Set<number>>(new Set())
+  // Places the trip may already have: sure ones merge into it; the rest are asked about (same place, or new).
+  const [matches, setMatches] = useState<Record<number, ImportMatch>>({})
+  const [answers, setAnswers] = useState<Record<number, 'same' | 'new'>>({})
   const [stage, setStage] = useState('')
   const [error, setError] = useState('')
   const [attemptedSave, setAttemptedSave] = useState(false)
@@ -68,6 +72,9 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
       if (chosen && !splitStops.current) result.forEach((place, index) => { result[index] = { ...place, destination: chosen.name, country: chosen.country ?? '', near: { name: place.destination, country: place.country } } })
       // In trip order: by date, then day, then time.
       result.sort((a, b) => (a.date ?? '9999').localeCompare(b.date ?? '9999') || (a.day ?? 999) - (b.day ?? 999) || (a.time ?? '99').localeCompare(b.time ?? '99'))
+      setStage('Checking your trip for these places…')
+      const found = await importMatches(tripId, result.map(place => ({ name: place.name, type: place.type, date: place.date ?? null, day: place.day ?? null })), trip?.start ?? null).catch(() => null)
+      setMatches(found && 'matches' in found ? found.matches : {}); setAnswers({})
       setPlaces(result); setSelected(new Set(result.map((_, index) => index))); requestId.current = crypto.randomUUID(); setAttemptedSave(false)
       if (failed.length) setError(`Couldn’t read ${failed.join(', ')}. The places from the other ${files.length - failed.length === 1 ? 'document are' : 'documents are'} below.`)
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not read this import. Please try again.') }
@@ -79,11 +86,15 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
   const daysFrom = useDates && suggested ? suggested : trip
   const dayOf = (place: ImportedPlace) => daysFrom && place.date ? tripDay(place.date, daysFrom.start) : place.day
   const problems = dateProblems(places, daysFrom)
+  // Unclear matches still to answer (only for places being added).
+  const unanswered = [...selected].filter(index => matches[index] && !matches[index].sure && !answers[index])
   async function save() {
-    if (busy.current || !selected.size) return
+    if (busy.current || !selected.size || unanswered.length) return
     busy.current = true; setStage('Adding places…'); setError(''); setAttemptedSave(true)
     try {
-      const result = await importIntoPlan(tripId, requestId.current, places.filter((_, index) => selected.has(index)), useDates ? suggested : null, splitStops.current && destination ? destination.name : undefined)
+      const chosen = places.map((_, index) => index).filter(index => selected.has(index))
+      const decided = Object.fromEntries(chosen.flatMap((index, position) => answers[index] ? [[position, answers[index] === 'same' ? matches[index].id : 'new']] : []))
+      const result = await importIntoPlan(tripId, requestId.current, chosen.map(index => places[index]), useDates ? suggested : null, splitStops.current && destination ? destination.name : undefined, decided)
       if (result.error) setError(result.error)
       else { router.refresh(); onClose() }
     } catch { setError('Could not save. Your review is still here; please try again.') }
@@ -114,10 +125,17 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
       <fieldset disabled={!!stage || attemptedSave} className="max-h-[50dvh] space-y-3 overflow-y-auto">
         {places.map((place, index) => <label key={index} className="flex items-start gap-3 rounded-xl border border-line p-3"><input type="checkbox" checked={selected.has(index)} onChange={event => setSelected(previous => { const next = new Set(previous); if (event.target.checked) next.add(index); else next.delete(index); return next })} className="mt-1 h-5 w-5 shrink-0" /><span className="min-w-0 break-words"><strong className="block text-sm">{place.name}</strong><span className="block text-xs text-muted">{[whenLabel(place), dayOf(place) ? `Day ${dayOf(place)}` : 'Unscheduled', place.nights ? `${place.nights} ${place.nights === 1 ? 'night' : 'nights'}` : ''].filter(Boolean).join(' · ')}</span>
           {problems[index] && <span className="mt-1 block text-xs font-semibold text-danger">{problems[index]}</span>}
+          {matches[index]?.sure && <span className="mt-1 block text-xs font-semibold text-link">Already in your trip as {matches[index].name}: its details are added there, not a copy.</span>}
+          {matches[index] && !matches[index].sure && <span className="panel-hint mt-2 block p-2.5 text-xs">
+            <span className="block text-ink">Is this <strong>{matches[index].name}</strong>, already in your trip? <span className="text-muted">({matches[index].reason})</span></span>
+            <span className="mt-2 flex flex-wrap gap-2">
+              <button type="button" aria-pressed={answers[index] === 'same'} onClick={event => { event.preventDefault(); setAnswers(current => ({ ...current, [index]: 'same' })) }} className="chip">Same place</button>
+              <button type="button" aria-pressed={answers[index] === 'new'} onClick={event => { event.preventDefault(); setAnswers(current => ({ ...current, [index]: 'new' })) }} className="chip">Add as new</button>
+            </span></span>}
           {files.length > 1 && place.file && <span className="block text-xs text-muted">From {place.file}</span>}{place.notes && <span className="mt-1 block whitespace-pre-wrap text-sm">{place.notes}</span>}</span></label>)}
       </fieldset>
       <p className="text-xs text-muted">Your existing places, dates, and sharing settings stay the same.</p>
-      <button type="button" disabled={!!stage || !selected.size} onClick={() => void save()} className="btn btn-primary w-full">{stage === 'Adding places…' ? stage : `Add ${selected.size} places to this trip`}</button>
+      <button type="button" disabled={!!stage || !selected.size || unanswered.length > 0} onClick={() => void save()} className="btn btn-primary w-full">{stage === 'Adding places…' ? stage : unanswered.length ? `Answer ${unanswered.length} ${unanswered.length === 1 ? 'question' : 'questions'} above` : `Add ${selected.size} places to this trip`}</button>
       {!attemptedSave && <button type="button" disabled={!!stage} onClick={() => { setPlaces([]); setError('') }} className="min-h-11 text-sm text-link">Back to import</button>}
     </>}
     {stage && <div role="status" className="text-sm text-link">{stage}{stage !== 'Adding places…' && <button type="button" onClick={() => controller.current?.abort()} className="ml-3 min-h-11 underline">Cancel</button>}</div>}
