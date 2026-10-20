@@ -27,7 +27,8 @@ public class PostcardPhotosPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    // Photos taken from start (inclusive) to end (exclusive), oldest first: id, date and where they were taken.
+    // Photos taken from start (inclusive) to end (exclusive), oldest first: id, date, where they were taken, and
+    // whether they're a favorite.
     @objc func photosBetween(_ call: CAPPluginCall) {
         guard let startText = call.getString("start"), let endText = call.getString("end"),
               let start = iso.date(from: startText), let end = iso.date(from: endText) else {
@@ -47,7 +48,8 @@ public class PostcardPhotosPlugin: CAPPlugin, CAPBridgedPlugin {
             options.fetchLimit = limit
             var photos: [[String: Any]] = []
             PHAsset.fetchAssets(with: options).enumerateObjects { asset, _, _ in
-                var item: [String: Any] = ["id": asset.localIdentifier]
+                // favorite: hearted in the Photos app.
+                var item: [String: Any] = ["id": asset.localIdentifier, "favorite": asset.isFavorite]
                 if let date = asset.creationDate { item["date"] = self.iso.string(from: date) }
                 if let location = asset.location {
                     item["lat"] = location.coordinate.latitude

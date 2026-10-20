@@ -57,6 +57,16 @@ const DAY_MODE_KEY = 'postcard-day-names'
 export default function Planner({ trip, initialImport = false, initialDetails = false, initialPost = false }: { trip: Trip; initialImport?: boolean; initialDetails?: boolean; initialPost?: boolean }) {
   const router = useRouter()
   // Day-by-day plans open on their days; idea lists on Places.
+  // "Plan my days with AI" tapped before the trip had a length: plan as soon as the days are set.
+  const [aiAfterDays, setAiAfterDays] = useState(false)
+  // Trips imported before the import set a length: places are on days but the trip has none, so save it from the
+  // last day once, instead of asking how many days.
+  const lastScheduledDay = Math.max(0, ...trip.destinations.flatMap(d => d.items.flatMap(item => item.day === null ? [] : [item.day])))
+  useEffect(() => {
+    if (trip.durationDays || lastScheduledDay < 1 || lastScheduledDay > 365) return
+    void setPlanDays(trip.id, lastScheduledDay).then(result => { if (!result.error) router.refresh() }).catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trip.id, trip.durationDays, lastScheduledDay])
   const [tab, setTab] = useState<'places' | 'itinerary' | 'map'>(trip.durationDays ? 'itinerary' : 'places')
   const [mapOpened, setMapOpened] = useState(false)
   // Days or dates (remembered on this device). Dates need the plan's start date.
@@ -188,7 +198,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
         </section> }) : categorySections(places)}
         {trip.visibility === 'draft' && <div className="mt-6">{photoSorter}</div>}
       </> : <>
-        {!trip.durationDays && <TripDaysPrompt tripId={trip.id} />}
+        {!trip.durationDays && !lastScheduledDay && <TripDaysPrompt tripId={trip.id} hint={aiAfterDays ? 'Then Postcard plans your days.' : undefined} />}
         {/* One switch: plan by calendar days. Turning it on asks for the start date if the plan has none. */}
         {!!trip.durationDays && <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
           <button type="button" aria-pressed={showDates} onClick={() => { if (showDates) { chooseDayNames(false); setAskingStart(false) } else if (trip.start) chooseDayNames(true); else setAskingStart(value => !value) }} className="chip"><CalendarDays size={14} />Plan by calendar days</button>
@@ -199,7 +209,11 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
         {askingStart && <StartDateForm tripId={trip.id} initial={trip.start} onDone={() => { setAskingStart(false); chooseDayNames(true) }} />}
         {/* AI day planning, at the top so it's easy to find: fills in the places without a day, and once some places
             have days, can also re-plan the whole trip. Either way it's a suggestion to review first. */}
-        {!!trip.durationDays && places.length > 0 && <OrganizeWithAI tripId={trip.id} places={places} canFill={places.some(p => p.day === null)} canReplan={places.some(p => p.day !== null)} />}
+        {/* Shown before the trip has a length too: tapping it then asks how many days (above), and planning starts once
+            they're set. */}
+        {places.length > 0 && <OrganizeWithAI tripId={trip.id} places={places} canFill={places.some(p => p.day === null)} canReplan={places.some(p => p.day !== null)}
+          hasDays={!!trip.durationDays} autoStart={aiAfterDays && !!trip.durationDays} onStarted={() => setAiAfterDays(false)}
+          onNeedDays={() => { setAiAfterDays(true); requestAnimationFrame(() => { const input = document.getElementById(`trip-days-${trip.id}`); input?.scrollIntoView({ block: 'center', behavior: 'smooth' }); input?.focus() }) }} />}
         {Array.from({ length: maxDay }, (_, index) => index + 1).filter(day => trip.durationDays || scheduled.includes(day)).map(day => { const dayPlaces = places.filter(p => p.day === day).sort((a, b) => a.order - b.order); const stay = stayOn(day, trip.destinations, ranges); const dayLocation = stay.destination ?? [...new Set(dayPlaces.map(p => p.destinationName))].filter(name => name !== 'Destination to decide').join(' · '); return <section key={day} className="mb-6"><h2 className={styles.dayHeading}>{dayName(day)}{showDates && <span className="font-sans text-sm text-muted">Day {day}</span>}{dayLocation && <span className="font-sans text-sm text-muted">{dayLocation}</span>}</h2>{stay.hotel && <p className="mb-3 flex items-center gap-1.5 text-sm text-link"><Hotel size={16} />Staying at {stay.hotel}</p>}{/* Add a place stays at the bottom of each day, also once the day has places. */}{dayPlaces.length > 0 && <div className="mb-3"><SortableDay tripId={trip.id} places={dayPlaces} render={renderDayPlace} /></div>}{adding?.at !== `day:${day}` && <button type="button" onClick={() => { setImporting(false); setAdding({ at: `day:${day}`, day, destination: dayDestination(day) }) }} className="flex w-full items-center gap-1.5 rounded-xl border border-dashed border-line px-4 py-3 text-sm font-semibold text-link hover:bg-mist"><Plus size={16} />Add a place</button>}
           {addForm(`day:${day}`)}
           {!!trip.durationDays && trip.durationDays > 1 && <DeleteDay tripId={trip.id} day={day} places={dayPlaces.length} />}</section> })}
@@ -573,7 +587,7 @@ function DetailsForm({ trip }: { trip: Trip }) {
 }
 
 // Itinerary tab: how many days the trip is, so places can be put on days.
-function TripDaysPrompt({ tripId, current, onDone }: { tripId: string; current?: number; onDone?: () => void }) {
+function TripDaysPrompt({ tripId, current, onDone, hint = 'Then give each place a day.' }: { tripId: string; current?: number; onDone?: () => void; hint?: string }) {
   const router = useRouter()
   const [days, setDays] = useState(current ? String(current) : '')
   const [busy, setBusy] = useState(false)
@@ -585,8 +599,8 @@ function TripDaysPrompt({ tripId, current, onDone }: { tripId: string; current?:
     catch { setError('Could not save. Please try again.') } finally { setBusy(false) }
   }}>
     <label className="block text-sm font-semibold text-ink">How many days is your trip?
-      <span className="mt-0.5 block text-xs font-normal text-muted">Then give each place a day.</span>
-      <span className="mt-2 flex items-center gap-2"><input type="number" inputMode="numeric" min={1} max={365} step={1} required value={days} onChange={event => setDays(event.target.value)} placeholder="e.g. 5" className="field max-w-32" />
+      <span className="mt-0.5 block text-xs font-normal text-muted">{hint}</span>
+      <span className="mt-2 flex items-center gap-2"><input id={`trip-days-${tripId}`} type="number" inputMode="numeric" min={1} max={365} step={1} required value={days} onChange={event => setDays(event.target.value)} placeholder="e.g. 5" className="field max-w-32" />
       <button disabled={busy} className={buttonClass}>{busy ? 'Saving…' : 'Set days'}</button></span>
     </label>
     {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
@@ -692,7 +706,7 @@ function DayChips({ itemId, days, range, destination }: { itemId: string; days: 
 }
 
 // Itinerary tab: ask the AI to put the unscheduled places on days, review its plan, then apply it.
-function OrganizeWithAI({ tripId, places, canFill, canReplan }: { tripId: string; places: (Place & { destination: string })[]; canFill: boolean; canReplan: boolean }) {
+function OrganizeWithAI({ tripId, places, canFill, canReplan, hasDays, autoStart, onStarted, onNeedDays }: { tripId: string; places: (Place & { destination: string })[]; canFill: boolean; canReplan: boolean; hasDays: boolean; autoStart: boolean; onStarted: () => void; onNeedDays: () => void }) {
   const dayName = useContext(DayNames)
   const router = useRouter()
   const [state, setState] = useState<'idle' | 'thinking' | 'review' | 'applying'>('idle')
@@ -717,11 +731,18 @@ function OrganizeWithAI({ tripId, places, canFill, canReplan }: { tripId: string
     try { const result = await applyDayPlan(tripId, plan.assignments, replan); if (result.error) { setError(result.error); setState('review') } else { setPlan(null); setState('idle'); router.refresh() } }
     catch { setError('Could not apply the plan. Please try again.'); setState('review') }
   }
+  // The days were just set after tapping the button without them: plan now.
+  useEffect(() => {
+    if (!autoStart) return
+    const timer = setTimeout(() => { onStarted(); void organize(false) }, 0)
+    return () => clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart])
   const byDay = plan ? [...new Set(plan.assignments.map(a => a.day))].sort((a, b) => a - b) : []
   return <div className="mb-4">
     {state !== 'review' && state !== 'applying' ? <div className="flex flex-col items-center gap-2">
-      <button type="button" disabled={state === 'thinking'} onClick={() => void organize(!canFill)} className="btn btn-outline w-full bg-mist hover:bg-mist-strong"><Sparkles size={16} />{state === 'thinking' ? 'Planning your days…' : canFill ? 'Plan my days with AI' : 'Re-plan my days with AI'}</button>
-      {canFill && canReplan && state !== 'thinking' && <button type="button" onClick={() => void organize(true)} className="text-sm font-semibold text-link underline underline-offset-2">Or re-plan every day from scratch</button>}
+      <button type="button" disabled={state === 'thinking'} onClick={() => { if (!hasDays) onNeedDays(); else void organize(!canFill) }} className="btn btn-outline w-full bg-mist hover:bg-mist-strong"><Sparkles size={16} />{state === 'thinking' ? 'Planning your days…' : canFill ? 'Plan my days with AI' : 'Re-plan my days with AI'}</button>
+      {hasDays && canFill && canReplan && state !== 'thinking' && <button type="button" onClick={() => void organize(true)} className="text-sm font-semibold text-link underline underline-offset-2">Or re-plan every day from scratch</button>}
     </div>
     : plan && <div className="panel p-4">
       <p className="flex items-center gap-2 text-sm font-semibold text-ink"><Sparkles size={16} />Suggested days</p>

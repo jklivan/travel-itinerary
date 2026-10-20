@@ -12,14 +12,17 @@ export type InboxPerson = {
 }
 
 // Messages grouped by person: each person's conversations (general, and one per trip) underneath, newest first.
-// A person's section folds up with the arrow. Conversations with unread messages keep a blue edge and an "N new" badge.
+// Only people with new messages start open; the rest are folded, and the arrow opens or folds any of them.
+// Conversations with unread messages keep a blue edge and an "N new" badge.
 export default function MessageInbox({ people }: { people: InboxPerson[] }) {
-  const [closed, setClosed] = useState<string[]>([])
+  // Sections opened or folded by hand; the others follow whether they have new messages (so one that gets a new
+  // message while the page is open, on its regular refresh, opens by itself).
+  const [toggled, setToggled] = useState<Record<string, boolean>>({})
   return <div className="divide-y divide-line">{people.map(({ person, threads }) => {
-    const open = !closed.includes(person.id)
     const unread = threads.reduce((sum, thread) => sum + thread.unread, 0)
+    const open = toggled[person.id] ?? unread > 0
     return <section key={person.id} aria-label={person.name} className="py-3 first:pt-0">
-      <button type="button" aria-expanded={open} onClick={() => setClosed(current => open ? [...current, person.id] : current.filter(id => id !== person.id))} className="flex w-full items-center gap-3 text-left">
+      <button type="button" aria-expanded={open} onClick={() => setToggled(current => ({ ...current, [person.id]: !open }))} className="flex w-full items-center gap-3 text-left">
         <UserAvatar name={person.name} image={person.image} size={44} className="shrink-0" />
         <span className="min-w-0 flex-1">
           <span className="block text-base font-semibold text-ink [overflow-wrap:anywhere]">{person.name}</span>
