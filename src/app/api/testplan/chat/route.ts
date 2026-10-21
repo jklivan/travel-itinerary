@@ -1,3 +1,4 @@
+import { placeStatus, type PlaceStatus } from '@/lib/placeStatus'
 import Anthropic from '@anthropic-ai/sdk'
 import { after } from 'next/server'
 import { auth } from '@/auth'
@@ -19,7 +20,7 @@ You're helping the user plan a new trip. Below is everything they and their frie
 How to help:
 - Lead with what their friends (and the user themselves) actually loved. Name the friend, and quote or paraphrase their note when it helps. High ratings and enthusiastic notes are the strongest signal; low ratings are warnings worth mentioning.
 - Always mix in new places that are not in the travel data, marked as source "claude" — even when friends have logged plenty. For every destination you suggest, include at least one place to stay, two things to do and two places to eat that nobody in the data has been to, alongside the friends' picks. When the data has little or nothing for a destination, say so plainly and make the whole suggestion from your own picks.
-- Only recommend real, specific places (a named hotel, restaurant, sight), not generic advice. Keep "why" to one or two sentences.
+- Only recommend real, specific places (a named hotel, restaurant, sight), not generic advice. Every place must be open and operating today: never recommend a place that has closed (permanently or for now), or been renamed or replaced; when you aren't sure a place still operates, pick another. Never recommend anything in <closed_places>. Keep "why" to one or two sentences.
 - Don't re-recommend places already in the user's current trip.
 - Keep the reply conversational and brief (a few short paragraphs at most). The recommendations list renders as cards next to your reply, so don't repeat every detail in the reply text.
 - Whenever you suggest trip ideas, at least one must be a whole destination that nobody in the travel data has been to, so the user discovers somewhere new — even when friends' trips would fill the list. Name it as its own trip idea and make its places your own picks. The exception is when the user asks about one specific place (e.g. "what should we do in Lisbon?"): then stay in that place.
@@ -123,7 +124,10 @@ export async function POST(request: Request) {
     return memory ? [`- ${other.updatedAt.toISOString().slice(0, 10)}${last?.title ? ` "${last.title}"` : ''}: ${memory}`] : []
   })
   const earlierBlock = earlier.length ? `\n<earlier_chats_about_this_trip>\n${earlier.join('\n')}\n</earlier_chats_about_this_trip>` : ''
-  const userMessage: Anthropic.MessageParam = { role: 'user', content: `${current}${earlierBlock}\n${traveler}${preferencesBlock}\n\n${message}` }
+  // Places this chat already found closed (left out of earlier answers), so they're never suggested again.
+  const closedBefore = [...new Set(((chat?.turns ?? []) as unknown as { role: string; closed?: string[] }[]).flatMap(turn => turn.role === 'assistant' ? turn.closed ?? [] : []))]
+  const closedBlock = closedBefore.length ? `\n<closed_places>\n${closedBefore.map(name => `- ${name}`).join('\n')}\n</closed_places>` : ''
+  const userMessage: Anthropic.MessageParam = { role: 'user', content: `${current}${earlierBlock}${closedBlock}\n${traveler}${preferencesBlock}\n\n${message}` }
 
   // The answer streams back as lines of JSON: the reply as it's written ("delta"/"reply"), a "status" while
   // checking prices, then "done" with the saved chat and the place cards (or "error").
@@ -164,7 +168,16 @@ export async function POST(request: Request) {
       // answers. Every turn is kept, in order, in the saved history.
       const turns: Anthropic.MessageParam[] = [userMessage]
       let response: Anthropic.Message
+      // Every pick is checked on Google as soon as it's written: closed places (permanently or for now) are never shown.
+      const checks = new Map<string, Promise<PlaceStatus>>()
+      const check = (rec: RawRecommendation) => {
+        const key = `${rec.name}|${rec.destination}`.toLowerCase()
+        if (!checks.has(key)) checks.set(key, placeStatus({ placeId: context.items.get(rec.sourceItemId)?.placeId, name: rec.name, city: rec.destination, country: rec.country }))
+        return checks.get(key)!
+      }
+      let liveRound = 0
       for (let round = 0; ; round++) {
+        liveRound = round
         const stream = client.messages.stream({
           model: 'claude-opus-5-5',
           max_tokens: 32000,
@@ -196,7 +209,9 @@ export async function POST(request: Request) {
           }
           const finished = finishedJsonItems<RawRecommendation>(snapshot, 'recommendations')
           for (; cardsSent < finished.length; cardsSent++) {
-            try { emit({ type: 'card', card: card(finished[cardsSent], cardsSent, messageId) }) } catch { /* a malformed card waits for the final answer */ }
+            const rec = finished[cardsSent], index = cardsSent, id = messageId, thisRound = round
+            // Shown once Google says it isn't closed (cards from a round that started over are dropped).
+            void check(rec).then(status => { if (status !== 'closed' && thisRound === liveRound) try { emit({ type: 'card', card: card(rec, index, id) }) } catch { /* a malformed card waits for the final answer */ } })
           }
         })
         response = await stream.finalMessage()
@@ -226,9 +241,13 @@ export async function POST(request: Request) {
       // The trip's dates from the chat, when real and in order (a trip made from it starts with them).
       const day = /^\d{4}-\d{2}-\d{2}$/
       const tripDates = parsed.tripDates && day.test(parsed.tripDates.start) && day.test(parsed.tripDates.end) && parsed.tripDates.end >= parsed.tripDates.start ? { start: parsed.tripDates.start, end: parsed.tripDates.end } : null
-      const recommendations = parsed.recommendations.map((rec, index) => card(rec, index, response.id))
+      // Picks Google lists as closed are left out, and the reply says so.
+      const statuses = await Promise.all(parsed.recommendations.map(rec => check(rec)))
+      const closed = parsed.recommendations.filter((_, index) => statuses[index] === 'closed').map(rec => rec.name)
+      if (closed.length) parsed.reply = `${parsed.reply}\n\n(I left out ${closed.join(', ')}: Google lists ${closed.length === 1 ? 'it' : 'them'} as closed.)`
+      const recommendations = parsed.recommendations.map((rec, index) => card(rec, index, response.id)).filter((_, index) => statuses[index] !== 'closed')
       const nextHistory = [...history, ...turns, { role: 'assistant', content: response.content }] as unknown as Prisma.InputJsonValue
-      const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, ...(ask ? { ask } : {}), title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160), notes: (parsed.notes ?? '').trim().slice(0, 600), ...(tripDates ? { tripDates } : {}) }]
+      const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, ...(ask ? { ask } : {}), title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160), notes: (parsed.notes ?? '').trim().slice(0, 600), ...(tripDates ? { tripDates } : {}), ...(closed.length ? { closed } : {}) }]
       // The turns as saved now (descriptions may have been added to earlier cards since this started).
       const latest = await prisma.planChat.findUnique({ where: { id: activeChatId }, select: { turns: true } })
       const saved = await prisma.planChat.update({ where: { id: activeChatId }, data: { history: nextHistory, turns: [...((latest?.turns ?? chat?.turns ?? []) as Prisma.JsonArray), ...newTurns] as Prisma.InputJsonValue, ...(trip && !chat?.tripId ? { tripId } : {}) }, select: { id: true } })
