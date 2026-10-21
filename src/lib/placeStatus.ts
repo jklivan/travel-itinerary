@@ -22,7 +22,7 @@ function sameKind(type: string | undefined, types: string[] = []) {
 const plain = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 // The same name (every word of ours in Google's, with few extra), whatever language the address is in: the search
 // already named the town, and Google writes addresses locally ("Lisboa" for Lisbon).
-const generic = ['the', 'hotel', 'restaurant']
+const generic = ['the', 'hotel', 'restaurant', 'restaurante', 'ristorante', 'hostal', 'hotels', 'resort', 'and', 'de', 'del', 'la', 'el', 'es', 'sa', 'le', 'les', 'di', 'da', 'do', 'des']
 const nameWords = (value: string) => plain(value).replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(word => word && !generic.includes(word))
 function sameName(name: string, found: string | undefined) {
   const wanted = nameWords(name), got = nameWords(found ?? '')
@@ -54,7 +54,10 @@ export async function placeStatus(query: { placeId?: string | null; name: string
     const only = places.length === 1 ? places[0] : null
     if (only?.id && only.displayName?.text && plain(only.formattedAddress ?? '').includes(plain(query.city)) && sameKind(query.type, only.types)) {
       const status = statusOf(only)
-      return status === 'operating' ? { renamed: only.displayName.text, placeId: only.id } : status
+      // Sharing a real word ("Cuevas del Drach" / "Coves del Drach", "Es Molí d'en Bou" / "Es Molí Restaurant") is
+      // the same place under another spelling, not a new name.
+      const shared = nameWords(query.name).some(word => word.length >= 4 && nameWords(only.displayName.text).includes(word))
+      return status === 'operating' && !shared ? { renamed: only.displayName.text, placeId: only.id } : status
     }
     return 'unknown'
   } catch { return 'unknown' }
