@@ -172,9 +172,12 @@ export async function POST(request: Request) {
       const checks = new Map<string, Promise<PlaceStatus>>()
       const check = (rec: RawRecommendation) => {
         const key = `${rec.name}|${rec.destination}`.toLowerCase()
-        if (!checks.has(key)) checks.set(key, placeStatus({ placeId: context.items.get(rec.sourceItemId)?.placeId, name: rec.name, city: rec.destination, country: rec.country }))
+        if (!checks.has(key)) checks.set(key, placeStatus({ placeId: context.items.get(rec.sourceItemId)?.placeId, name: rec.name, city: rec.destination, country: rec.country, type: rec.type }))
         return checks.get(key)!
       }
+      // A renamed place is shown under its current name, saying what it used to be called.
+      const current = (rec: RawRecommendation, status: PlaceStatus): RawRecommendation => typeof status === 'object'
+        ? { ...rec, name: status.renamed, why: `Now ${status.renamed} (formerly ${rec.name}). ${rec.why}` } : rec
       let liveRound = 0
       for (let round = 0; ; round++) {
         liveRound = round
@@ -211,7 +214,7 @@ export async function POST(request: Request) {
           for (; cardsSent < finished.length; cardsSent++) {
             const rec = finished[cardsSent], index = cardsSent, id = messageId, thisRound = round
             // Shown once Google says it isn't closed (cards from a round that started over are dropped).
-            void check(rec).then(status => { if (status !== 'closed' && thisRound === liveRound) try { emit({ type: 'card', card: card(rec, index, id) }) } catch { /* a malformed card waits for the final answer */ } })
+            void check(rec).then(status => { if (status !== 'closed' && thisRound === liveRound) try { emit({ type: 'card', card: { ...card(current(rec, status), index, id), ...(typeof status === 'object' ? { placeId: status.placeId } : {}) } }) } catch { /* a malformed card waits for the final answer */ } })
           }
         })
         response = await stream.finalMessage()
@@ -244,8 +247,10 @@ export async function POST(request: Request) {
       // Picks Google lists as closed are left out, and the reply says so.
       const statuses = await Promise.all(parsed.recommendations.map(rec => check(rec)))
       const closed = parsed.recommendations.filter((_, index) => statuses[index] === 'closed').map(rec => rec.name)
-      if (closed.length) parsed.reply = `${parsed.reply}\n\n(I left out ${closed.join(', ')}: Google lists ${closed.length === 1 ? 'it' : 'them'} as closed.)`
-      const recommendations = parsed.recommendations.map((rec, index) => card(rec, index, response.id)).filter((_, index) => statuses[index] !== 'closed')
+      const renamed = parsed.recommendations.flatMap((rec, index) => { const status = statuses[index]; return typeof status === 'object' ? [`${rec.name} is now called ${status.renamed}`] : [] })
+      const notes = [closed.length ? `I left out ${closed.join(', ')}: Google lists ${closed.length === 1 ? 'it' : 'them'} as closed.` : '', ...renamed.map(line => `${line}.`)].filter(Boolean)
+      if (notes.length) parsed.reply = `${parsed.reply}\n\n(${notes.join(' ')})`
+      const recommendations = parsed.recommendations.map((rec, index) => { const status = statuses[index]; return { ...card(current(rec, status), index, response.id), ...(typeof status === 'object' ? { placeId: status.placeId } : {}) } }).filter((_, index) => statuses[index] !== 'closed')
       const nextHistory = [...history, ...turns, { role: 'assistant', content: response.content }] as unknown as Prisma.InputJsonValue
       const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, ...(ask ? { ask } : {}), title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160), notes: (parsed.notes ?? '').trim().slice(0, 600), ...(tripDates ? { tripDates } : {}), ...(closed.length ? { closed } : {}) }]
       // The turns as saved now (descriptions may have been added to earlier cards since this started).

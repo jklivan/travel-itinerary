@@ -25,3 +25,9 @@ test('a different place, no match or no status is unknown, so the pick is kept',
   assert.equal(await load([])({ name: 'Old Hotel', city: 'Lisbon' }), 'unknown')
   assert.equal(await load([{ ...at('Old Hotel'), businessStatus: undefined }])({ name: 'Old Hotel', city: 'Lisbon' }), 'unknown')
 })
+test('a renamed place (one result, same kind, same town) shows under its new name; several results are unknown', async () => {
+  const capVermell = { id: 'cv', displayName: { text: 'Cap Vermell Grand Hotel' }, formattedAddress: 'Vial A, 12, 07589 Canyamel Platja, Spain', businessStatus: 'OPERATIONAL', types: ['hotel', 'lodging'] }
+  assert.equal(JSON.stringify(await load([capVermell])({ name: 'Park Hyatt Mallorca', city: 'Canyamel', type: 'hotel' })), JSON.stringify({ renamed: 'Cap Vermell Grand Hotel', placeId: 'cv' }))
+  assert.equal(await load([capVermell, { ...capVermell, id: 'b', displayName: { text: 'Hostal Boutique' } }])({ name: 'Park Hyatt Mallorca', city: 'Canyamel', type: 'hotel' }), 'unknown')
+  assert.equal(await load([{ ...capVermell, types: ['restaurant'] }])({ name: 'Park Hyatt Mallorca', city: 'Canyamel', type: 'hotel' }), 'unknown')
+})
