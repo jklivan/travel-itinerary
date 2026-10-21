@@ -90,6 +90,13 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
   const [error, setError] = useState('')
   const [added, setAdded] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState<Map<string, Recommendation>>(new Map())
+  // The trip idea the map is zoomed in on (null: all of them).
+  const [focus, setFocus] = useState<string | null>(null)
+  // Running down one idea with the AI: an answer about a single idea brings that idea into focus.
+  const answeredOptions = (() => { const last = turns.findLast(turn => turn.role === 'assistant'); return last && last.role === 'assistant' ? [...new Set(last.recommendations.map(optionOf))] : [] })()
+  const answeredKey = answeredOptions.join('|')
+  const [lastAnswered, setLastAnswered] = useState(answeredKey)
+  if (answeredKey !== lastAnswered) { setLastAnswered(answeredKey); if (answeredOptions.length === 1) setFocus(answeredOptions[0]) }
   const [addingSelected, setAddingSelected] = useState(false)
   // Where the selected places go: '' means the chat's trip (or a new one when it has none), 'new', or a plan's id.
   const [target, setTarget] = useState('')
@@ -216,10 +223,12 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
   // Every suggestion from the conversation that isn't in the trip yet, once per place.
   const suggestions = [...new Map(allRecommendations.filter(rec => !inTrip(rec)).map(rec => [`${rec.name}|${rec.destination}`.toLowerCase(), rec])).values()]
   const legend = options.filter(option => suggestions.some(rec => optionOf(rec) === option))
+  // One trip idea in focus (opened, or the only one in the latest answer): the map shows just its places, zoomed in.
+  const focused = focus && legend.includes(focus) && legend.length > 1 ? focus : null
   const mapPlaces: MapPlace[] = [
     ...places.filter(place => place.type !== 'transport' || place.placeId || validMapLocation(place)).map(place => ({ id: place.id, name: place.name, city: place.destination, type: place.type as MapPlace['type'], day: place.day, placeId: place.placeId ?? undefined, lat: place.lat, lng: place.lng })),
     // The plain name is what gets located on the map; "Suggested" only belongs in the pin's label.
-    ...suggestions.map(rec => ({ id: rec.key, name: rec.name, city: [rec.destination, rec.country].filter(Boolean).join(', '), type: rec.type, day: null, placeId: rec.placeId ?? undefined, lat: rec.lat, lng: rec.lng, color: colorOf(rec), label: `Suggested · ${optionOf(rec)}` })),
+    ...suggestions.filter(rec => !focused || optionOf(rec) === focused).map(rec => ({ id: rec.key, name: rec.name, city: [rec.destination, rec.country].filter(Boolean).join(', '), type: rec.type, day: null, placeId: rec.placeId ?? undefined, lat: rec.lat, lng: rec.lng, color: colorOf(rec), label: `Suggested · ${optionOf(rec)}` })),
   ]
 
   // Already on a blank chat (past chats listed above it on phones): close the list and go to the message box.
@@ -397,7 +406,7 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
               {/* The latest question's answers to tap (choices, dates, who's going) instead of typing. */}
               {turn.ask && index === shownTurns.length - 1 && <AskPicker key={index} ask={turn.ask} disabled={false} waiting={thinking} onAnswer={text => { if (answering.current) queued.current = text; else void send(text) }} />}
               {/* Each option folds up to its name, places and counts; tap to see its cards. A short single answer starts open. */}
-              {groupByOption(turn.recommendations).map(([option, recs], _i, options) => <details key={option} open={options.length === 1 && recs.length <= 4} className="group rounded-xl border-l-4 bg-cream py-3 pl-3 pr-2" style={{ borderColor: colorOf(recs[0]) }}>
+              {groupByOption(turn.recommendations).map(([option, recs], _i, options) => <details key={option} open={options.length === 1 && recs.length <= 4} onToggle={event => { const open = event.currentTarget.open; setFocus(current => open ? option : current === option ? null : current) }} className="group rounded-xl border-l-4 bg-cream py-3 pl-3 pr-2" style={{ borderColor: colorOf(recs[0]) }}>
                 <summary className="flex cursor-pointer list-none items-start gap-2 [&::-webkit-details-marker]:hidden">
                   <ChevronRight size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-muted transition-transform group-open:rotate-90" />
                   <span className="min-w-0 flex-1">
@@ -432,7 +441,8 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
       </div>
       <TripMap places={mapPlaces} />
       {legend.length > 0 && <div aria-label="Trip ideas on the map" className="absolute bottom-3 left-3 z-[1000] max-w-[70%] space-y-1 rounded-xl bg-card/95 px-3 py-2 text-xs shadow-card">
-        {legend.map(option => <p key={option} className="flex items-center gap-2"><span aria-hidden="true" className="size-3 shrink-0 rounded-full border-2 border-white shadow-card" style={{ background: optionColors[options.indexOf(option) % optionColors.length] }} /><span className="truncate">{option}</span></p>)}
+        {focused && <button type="button" onClick={() => setFocus(null)} className="chip !min-h-6 mb-1">Show all {legend.length} ideas</button>}
+        {legend.filter(option => !focused || option === focused).map(option => <p key={option} className="flex items-center gap-2"><span aria-hidden="true" className="size-3 shrink-0 rounded-full border-2 border-white shadow-card" style={{ background: optionColors[options.indexOf(option) % optionColors.length] }} /><span className="truncate">{option}</span></p>)}
       </div>}
     </section>}
 
