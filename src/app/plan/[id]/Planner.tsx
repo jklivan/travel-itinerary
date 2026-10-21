@@ -34,6 +34,7 @@ import { TAGS, tagMeta } from '@/lib/tags'
 import TagChip from '@/components/ui/TagChip'
 import { samePlanDestination } from '@/lib/planPlaceIdentity'
 import { stayLookAlikes } from '@/lib/planDestinationMatch'
+import { X as XIcon } from 'lucide-react'
 import { PRIVATE_TAG } from '@/lib/privateTransport'
 import { getRecommendation } from '@/lib/placeRecommendation'
 import { PostStamp } from '@/components/PostcardLogo'
@@ -100,6 +101,8 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   // After Post trip: offer to rate places without a rating (not transport or alternatives) before posting.
   // The places listed when the prompt opened; they stay listed (showing their new stars) as they're rated.
   const [unratedPrompt, setUnratedPrompt] = useState<string[] | null>(null)
+  // After Post trip: offer to add photos first when some places have none (then ratings, then it posts).
+  const [photosPrompt, setPhotosPrompt] = useState(false)
   const places = trip.destinations.flatMap(d => d.items.map(item => ({ ...item, destinationId: d.id, destinationName: d.name, destination: [d.name, d.country].filter(Boolean).join(', ') })))
   // Trips with more than one destination split their places under a heading for each.
   const destinations = trip.destinations.filter(d => d.items.length || d.name !== 'Destination to decide')
@@ -122,6 +125,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const maxDay = Math.max(trip.durationDays ?? 0, ...scheduled, totalDays(trip.destinations), 1)
   // "Keep transport private": every transport place in the trip carries the hidden tag (they're switched together).
   const transportPrivate = places.some(place => place.type === 'transport' && place.tags.includes(PRIVATE_TAG))
+  const withoutPhotos = places.filter(place => place.type !== 'transport' && !place.photos.length && getRecommendation(place.tags) !== 'option')
   const unrated = places.filter(place => place.type !== 'transport' && !place.rating && getRecommendation(place.tags) !== 'option')
   function renderPlace(place: Place & { destination: string; destinationName: string; destinationId: string }) { return <PlaceRow key={place.id} tripId={trip.id} tripStart={trip.start} place={place} maxDay={maxDay} destinationChoices={destinations.map(d => ({ id: d.id, name: d.name }))} /> }
   // Day by day: the same card with a quick Time setting under it.
@@ -147,6 +151,11 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     } catch { setPostError('Could not post your trip. Please try again.') }
     finally { posting.current = false; setPublishing(false) }
   }
+  // After the photos step: ratings when some places have none, otherwise post.
+  async function afterPhotos() {
+    setPhotosPrompt(false)
+    if (unrated.length) setUnratedPrompt(unrated.map(place => place.id)); else await postNow()
+  }
   // Continue saves these details on the still-private plan, then shows the trip exactly as it will be posted.
   async function continueToPost(format: 'guide' | 'day-trip' | 'itinerary') {
     if (publishing) return
@@ -158,7 +167,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       }
       const result = await savePublishDetails(trip.id, format, { budget: publishBudget, tripRating: publishRating, tags: publishTags, bestMonths: publishMonths })
       if (result.error) setPublishMessage(result.error)
-      else { postFormat.current = format; setPublishFormat(null); if (unrated.length) setUnratedPrompt(unrated.map(place => place.id)); else await postNow() }
+      else { postFormat.current = format; setPublishFormat(null); if (withoutPhotos.length) setPhotosPrompt(true); else await afterPhotos() }
     } catch { setPublishMessage('Could not save these details. Please try again.') }
     finally { setPublishing(false) }
   }
@@ -225,6 +234,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     <div className="mt-8 border-t border-line pt-5"><div className="flex flex-wrap items-center justify-between gap-3">{/* Post on the left, delete on the right (also when there's nothing to post). */}{trip.visibility === 'draft' && <button type="button" disabled={publishing} onClick={() => setPublishFormat(trip.postType === 'guide' ? 'guide' : trip.postType === 'day-trip' ? 'day-trip' : 'itinerary')} aria-label="Post trip" title="Post trip" className="pointer-events-auto relative inline-flex size-20 items-center justify-center transition-transform hover:-rotate-6 hover:scale-105 disabled:opacity-60"><PostStamp size={80} /><span className="sr-only">Post</span></button>}<div className="pointer-events-auto ml-auto"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div></div></div>
     {trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="panel w-full max-w-md p-5 shadow-pop"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="type-title">A few more details</h2><p className="mt-1 text-sm text-muted">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-title leading-none text-muted" aria-label="Close">×</button></div><div className="mt-5 space-y-5">{allPhotos.length > 0 && <fieldset><legend className="mb-1 text-sm font-semibold text-link">Choose cover photo</legend><p className="mb-1 text-xs text-muted">The photo people see first. Scroll sideways to see them all.</p><CoverPhotoPicker photos={allPhotos} value={publishCover} onChange={setPublishCover} /></fieldset>}<fieldset><legend className="mb-2 text-sm font-semibold text-link">Trip type</legend><div className="grid grid-cols-3 gap-2">{([['guide', 'Guide'], ['day-trip', 'Day trip'], ['itinerary', 'Multi-day']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={publishFormat === value} onClick={() => setPublishFormat(value)} className="chip justify-center">{label}</button>)}</div></fieldset><TripExtras budget={publishBudget} onBudget={setPublishBudget} rating={publishRating} onRating={setPublishRating} tags={publishTags} onTags={setPublishTags} legendClass="mb-2 text-sm font-semibold text-link" months={<MonthPicker value={publishMonths} onChange={setPublishMonths} legendClass="mb-1 text-sm font-semibold text-link" />} /><button type="button" disabled={publishing} onClick={() => void continueToPost(publishFormat)} className="btn btn-primary w-full">{publishing ? 'Posting…' : 'Post trip'}</button></div></div></div>}
     {publishMessage && <p role="status" className="mt-2 text-right text-sm text-link">{publishMessage}</p>}
+    {photosPrompt && <PhotosPrompt places={places} missing={withoutPhotos.length} onClose={() => setPhotosPrompt(false)} onNext={() => void afterPhotos()} posting={publishing} last={!unrated.length} />}
     {unratedPrompt && <UnratedPrompt places={places.filter(place => unratedPrompt.includes(place.id))} onClose={() => setUnratedPrompt(null)} onPost={() => void postNow()} posting={publishing} />}
     {postError && <p role="alert" className="panel-hint fixed inset-x-4 bottom-[calc(var(--app-bottom-clearance)+0.5rem)] z-[75] mx-auto max-w-md p-3 text-sm text-danger">{postError}</p>}
   </div></TripDates.Provider></DayNames.Provider>
@@ -308,6 +318,19 @@ function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, init
 }
 
 // After "A few more details" → Continue: rate places that have no rating, right here. Each tap saves.
+// Before posting: places without photos. The trip's photos go in all at once (in the iPhone app, straight from the
+// trip's dates), then tap them into places. Then ratings, or straight to posting.
+function PhotosPrompt({ places, missing, onClose, onNext, posting, last }: { places: Parameters<typeof PhotoSorter>[0]['places']; missing: number; onClose: () => void; onNext: () => void; posting: boolean; last: boolean }) {
+  return <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="photos-heading">
+    <div className="panel w-full max-w-md min-w-0 p-5 shadow-pop">
+      <div className="flex items-start justify-between gap-4"><div className="min-w-0"><h2 id="photos-heading" className="type-title">Add your photos?</h2><p className="mt-1 text-sm text-muted">{missing === 0 ? 'Every place has photos. Thanks!' : missing === 1 ? 'One place doesn’t have photos yet.' : `${missing} places don’t have photos yet.`} Trips with photos are the ones friends open.</p></div>
+        <button type="button" onClick={onClose} aria-label="Close" className="btn-icon shrink-0"><XIcon size={18} /></button></div>
+      <div className="mt-4 max-h-[55dvh] overflow-y-auto"><PhotoSorter places={places} prompt="Choose all your trip photos at once, then tap them into places." /></div>
+      <button type="button" onClick={onNext} disabled={posting} className="btn btn-primary mt-4 w-full">{posting ? 'Posting…' : missing === 0 ? (last ? 'Post trip' : 'Next') : (last ? 'Skip and post' : 'Skip')}</button>
+    </div>
+  </div>
+}
+
 function UnratedPrompt({ places, onClose, onPost, posting }: { places: (Place & { destination: string })[]; onClose: () => void; onPost: () => void; posting: boolean }) {
   const router = useRouter()
   const [ratings, setRatings] = useState<Record<string, number>>({})
