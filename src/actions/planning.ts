@@ -354,14 +354,8 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
       let dest: { id: string } | null | undefined = pickPlanDestination(destinations, { id: destinationId, name: destinationName })
       if (!dest && location) dest = planDestinationFor(destinations, { type, lat: location.lat, lng: location.lng, address: location.address, destination: { name: destinationName } })
       if (!dest) dest = await tx.destination.create({ data: { itineraryId: id, name: destinationName, order: await tx.destination.count({ where: { itineraryId: id } }) } })
-      // Transport follows the trip's "Keep transport private" choice: the toggle on the form when it's sent (which
-      // applies to all the trip's transport), otherwise whatever its other transport already does.
-      let privateTransport = false
-      if (type === 'transport') {
-        const others = await tx.destItem.findMany({ where: { type: 'transport', destination: { itineraryId: id } }, select: { id: true, tags: true } })
-        privateTransport = form.has('privateTransport') ? form.get('privateTransport') === '1' : others.some(item => item.tags.includes(PRIVATE_TAG))
-        for (const other of others) if (other.tags.includes(PRIVATE_TAG) !== privateTransport) await tx.destItem.update({ where: { id: other.id }, data: { tags: privateTransport ? [...other.tags, PRIVATE_TAG] : other.tags.filter(tag => tag !== PRIVATE_TAG) } })
-      }
+      // Transport can be kept private on its own (the form's "Keep private" box); other places are always shown.
+      const privateTransport = type === 'transport' && form.get('privateTransport') === '1'
       const last = await tx.destItem.aggregate({ where: { destinationId: dest.id }, _max: { order: true, groupIndex: true } })
       const zeroBased = await tx.destItem.count({ where: { destinationId: dest.id, dayIndex: 0, type: { not: 'hotel' } } })
       if (zeroBased) await tx.destItem.updateMany({ where: { destinationId: dest.id, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
@@ -648,18 +642,17 @@ export async function copyPlaceToPlan(sourceId: string, planId: string, clientId
   } catch (error) { return message(error) }
 }
 
-// "Keep transport private" for a whole trip: every flight, train and transfer in it is hidden from everyone else
-// (or shown again). New transport added to the trip follows the same choice.
-export async function setTransportPrivate(tripId: string, on: boolean): Promise<Result> {
+// "Keep private" on one transport place (a flight, a transfer): only its owner sees it; it isn't shown when the trip
+// is posted. Each one is set on its own, so some can be shown while others stay private.
+export async function setPlacePrivate(itemId: string, on: boolean): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
-  if (typeof tripId !== 'string' || typeof on !== 'boolean') return { error: 'Please try again.' }
+  if (typeof itemId !== 'string' || typeof on !== 'boolean') return { error: 'Please try again.' }
   try {
-    const trip = await prisma.itinerary.findFirst({ where: { id: tripId, userId }, select: { id: true } })
-    if (!trip) return { error: unavailable }
-    const items = await prisma.destItem.findMany({ where: { type: 'transport', destination: { itineraryId: tripId } }, select: { id: true, tags: true } })
-    await prisma.$transaction(items.filter(item => item.tags.includes(PRIVATE_TAG) !== on).map(item => prisma.destItem.update({ where: { id: item.id }, data: { tags: on ? [...item.tags, PRIVATE_TAG] : item.tags.filter(tag => tag !== PRIVATE_TAG) } })))
-    refresh(tripId, userId)
+    const item = await prisma.destItem.findFirst({ where: { id: itemId, type: 'transport', destination: { itinerary: { userId } } }, select: { tags: true, destination: { select: { itineraryId: true } } } })
+    if (!item) return { error: unavailable }
+    await prisma.destItem.update({ where: { id: itemId }, data: { tags: on ? [...new Set([...item.tags, PRIVATE_TAG])] : item.tags.filter(tag => tag !== PRIVATE_TAG) } })
+    refresh(item.destination.itineraryId, userId)
     return { success: true }
   } catch { return { error: 'Could not save. Please try again.' } }
 }
