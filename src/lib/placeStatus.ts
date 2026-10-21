@@ -56,7 +56,7 @@ export async function placeStatus(query: { placeId?: string | null; name: string
       const status = statusOf(only)
       // Sharing a real word ("Cuevas del Drach" / "Coves del Drach", "Es Molí d'en Bou" / "Es Molí Restaurant") is
       // the same place under another spelling, not a new name.
-      const shared = nameWords(query.name).some(word => word.length >= 4 && nameWords(only.displayName.text).includes(word))
+      const shared = nameWords(query.name).some(word => word.length >= 4 && nameWords(only.displayName?.text ?? "").includes(word))
       return status === 'operating' && !shared ? { renamed: only.displayName.text, placeId: only.id } : status
     }
     return 'unknown'

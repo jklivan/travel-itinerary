@@ -247,9 +247,12 @@ export async function POST(request: Request) {
       // Picks Google lists as closed are left out, and the reply says so.
       const statuses = await Promise.all(parsed.recommendations.map(rec => check(rec)))
       const closed = parsed.recommendations.filter((_, index) => statuses[index] === 'closed').map(rec => rec.name)
-      const renamed = parsed.recommendations.flatMap((rec, index) => { const status = statuses[index]; return typeof status === 'object' ? [`${rec.name} is now called ${status.renamed}`] : [] })
-      const notes = [closed.length ? `I left out ${closed.join(', ')}: Google lists ${closed.length === 1 ? 'it' : 'them'} as closed.` : '', ...renamed.map(line => `${line}.`)].filter(Boolean)
-      if (notes.length) parsed.reply = `${parsed.reply}\n\n(${notes.join(' ')})`
+      // Renamed places go by their new name in the reply too (the card says what they used to be called).
+      for (const [index, rec] of parsed.recommendations.entries()) {
+        const status = statuses[index]
+        if (typeof status === 'object') parsed.reply = parsed.reply.replace(new RegExp(rec.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), status.renamed)
+      }
+      if (closed.length) parsed.reply = `${parsed.reply}\n\n(I left out ${closed.join(', ')}: Google lists ${closed.length === 1 ? 'it' : 'them'} as closed.)`
       const recommendations = parsed.recommendations.map((rec, index) => { const status = statuses[index]; return { ...card(current(rec, status), index, response.id), ...(typeof status === 'object' ? { placeId: status.placeId } : {}) } }).filter((_, index) => statuses[index] !== 'closed')
       const nextHistory = [...history, ...turns, { role: 'assistant', content: response.content }] as unknown as Prisma.InputJsonValue
       const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, ...(ask ? { ask } : {}), title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160), notes: (parsed.notes ?? '').trim().slice(0, 600), ...(tripDates ? { tripDates } : {}), ...(closed.length ? { closed } : {}) }]
