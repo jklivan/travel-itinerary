@@ -382,7 +382,7 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     if (rating !== undefined && (!Number.isInteger(rating) || rating < 0 || rating > 5)) throw new InputError('Choose a rating from 1 to 5, or leave it blank.')
     const day = text(form, 'day', 4)
     // The rest match the trip editor's fields; each is only changed when the form sends it.
-    const extra: { date?: Date | null; endDate?: Date | null; time?: string | null; endTime?: string | null; nights?: number | null; type?: string; groupIndex?: number; mealType?: string | null; tags?: string[]; alternative?: string | null; description?: string | null; link?: string | null; address?: string | null; photoUrls?: string[]; photoUrl?: string | null } = {}
+    const extra: { bookingDetails?: string | null; date?: Date | null; endDate?: Date | null; time?: string | null; endTime?: string | null; nights?: number | null; type?: string; groupIndex?: number; mealType?: string | null; tags?: string[]; alternative?: string | null; description?: string | null; link?: string | null; address?: string | null; photoUrls?: string[]; photoUrl?: string | null } = {}
     // Hotels: nights booked from the hotel's day. Only changed when the form sends it.
     if (form.has('nights')) { const nights = Number(form.get('nights')); extra.nights = Number.isInteger(nights) && nights >= 1 && nights <= 60 ? nights : null }
     // Category can be corrected (e.g. a restaurant posted as an activity from a snapshot).
@@ -399,6 +399,7 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     if (form.has('alternative')) extra.alternative = text(form, 'alternative', 240) || null
     if (form.has('description')) extra.description = text(form, 'description', 8000) || null
     if (form.has('address')) extra.address = text(form, 'address', 500) || null
+    if (form.has('bookingDetails')) extra.bookingDetails = text(form, 'bookingDetails', 2000) || null
     if (form.has('link')) {
       const link = text(form, 'link', 2048)
       if (link && !/^https?:\/\//i.test(link)) throw new InputError('Enter a website link starting with http:// or https://.')

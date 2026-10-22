@@ -182,6 +182,10 @@ model DestItem {
   time          String?
   endDate       DateTime?   @db.Date
   endTime       String?
+  // Private to the trip's owner, never shown to anyone else or on a posted trip: confirmation numbers, seats,
+  // booking references. Hidden from every query by default (lib/prisma); only the owner's planner, edit form and
+  // itinerary PDF read it.
+  bookingDetails String?
   order         Int         @default(0)
   tags          String[]    @default([])
   alternative   String?

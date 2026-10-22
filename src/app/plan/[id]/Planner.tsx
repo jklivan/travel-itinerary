@@ -1,6 +1,7 @@
 'use client'
 
 import { inTimeOrder } from '@/lib/timeOrder'
+import ItineraryPdf from '@/components/ItineraryPdf'
 import RatingStars from '@/components/RatingStars'
 import { destinationRanges, stayOn, totalDays, type DayRange } from '@/lib/tripStays'
 
@@ -41,7 +42,7 @@ import { getRecommendation } from '@/lib/placeRecommendation'
 import { PostStamp } from '@/components/PostcardLogo'
 
 type PlaceSource = { kind: string; person: string | null; trip: { id: string; title: string } | null }
-type Place = { date?: string | null; time?: string | null; endDate?: string | null; endTime?: string | null; source?: PlaceSource | null; order: number; nights?: number | null; tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[]; mealType: string | null; alternative: string | null; description: string | null; link: string | null; address: string | null }
+type Place = { bookingDetails?: string | null; date?: string | null; time?: string | null; endDate?: string | null; endTime?: string | null; source?: PlaceSource | null; order: number; nights?: number | null; tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[]; mealType: string | null; alternative: string | null; description: string | null; link: string | null; address: string | null }
 type Trip = { coverPhoto?: string | null; tripPhotos?: string[]; notes?: string | null; bestMonths?: string[]; budget?: number | null; tripRating?: number | null; tags?: string[]; postType: string; durationDays?: number | null; id: string; title: string; audience: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; days?: number | null; items: Place[] }[] }
 const categories = [{ value: 'hotel', label: 'Accommodation', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
 
@@ -181,6 +182,8 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   return <DayNames.Provider value={dayName}><TripDates.Provider value={trip.start && trip.end ? { start: trip.start, end: trip.end } : null}><div className="mx-auto max-w-2xl px-4 py-6 text-ink">
     <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
     <h1 className="trip-title mt-2 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
+    {/* The whole itinerary as a PDF, with private transport and booking details. */}
+    <div className="mt-3"><ItineraryPdf tripId={trip.id} title={trip.title} /></div>
     {<details id="trip-details" open={initialDetails || undefined} className="mt-3 scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-2 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details>}
     {/* One row of compact actions, so the places start higher up the screen. */}
     <div className="sticky top-[var(--app-header-height,0px)] z-20 -mx-1 mt-3 grid grid-cols-4 items-start gap-2 bg-paper px-1 py-3">
@@ -405,6 +408,8 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
   const [destinationId, setDestinationId] = useState<string | null>(place.destinationId)
   const [uploading, setUploading] = useState(false)
   const [foundAddress, setFoundAddress] = useState<string | null>(null)
+  // Private booking details (confirmation numbers, seats): only you see them; they're in your itinerary PDF.
+  const [booking, setBooking] = useState(place.bookingDetails ?? '')
   const category = categories.find(category => category.value === place.type) ?? categories[2]
   function openEditor() { setWhen({ date: place.date ?? '', time: place.time ?? '', endDate: place.endDate ?? '', endTime: place.endTime ?? '' }); setType(place.type); setDestination(place.destinationName); setDestinationId(place.destinationId); setPlaceId(place.placeId ?? ''); setPhotos(place.photos); setDay(place.day === null ? '' : String(place.day)); setNights(place.nights ? String(place.nights) : ''); setEditing(true); setError(''); setSaved(false) }
   async function save(values: PlaceEditValues) {
@@ -412,7 +417,7 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
     saving.current = true; setBusy(true); setError('')
     const data = new FormData()
     for (const [key, value] of Object.entries({ name: values.name, category: type, destination, destinationId: destinationId ?? '', placeId, status: place.status, notes: values.notes, day, ...(type === 'hotel' ? { nights } : {}), mealType: values.mealType,
-      tags: JSON.stringify(values.tags), alternative: values.alternative, description: values.description, link: values.link, address: values.address, photos: JSON.stringify(photos), ...when })) data.set(key, value)
+      tags: JSON.stringify(values.tags), alternative: values.alternative, description: values.description, link: values.link, address: values.address, photos: JSON.stringify(photos), bookingDetails: booking, ...when })) data.set(key, value)
     try { const result = await editPlanPlace(place.id, data); if (result.error) setError(result.error); else { setEditing(false); setSaved(true); router.refresh() } }
     catch { setError('Could not save. Your changes are still here; try again.') }
     finally { saving.current = false; setBusy(false) }
@@ -471,6 +476,7 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
               <label className="block text-xs text-muted">Time<input type="time" value={when.endTime} onChange={event => changeWhen({ endTime: event.target.value })} className={inputClass} /></label>
             </>}
           </div>
+          <label className="block text-xs text-muted">Booking details (private)<textarea value={booking} onChange={event => setBooking(event.target.value)} maxLength={2000} rows={2} placeholder="Confirmation number, seats, who booked it…" className={inputClass} /><span className="mt-1 block">Only you see these. They’re never shown on a posted trip, and they’re in your itinerary PDF.</span></label>
           {/* Hotels: how many nights, from the check-in day. The itinerary shows the stay on those days. */}
           {type === 'hotel' && <label className="block text-xs text-muted">Nights (optional)<select value={nights} onChange={event => setNights(event.target.value)} className={inputClass}><option value="">Not set</option>{Array.from({ length: 30 }, (_, index) => index + 1).map(value => <option key={value} value={value}>{value} {value === 1 ? 'night' : 'nights'}</option>)}</select></label>}
         </PlaceEditForm>

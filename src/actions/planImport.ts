@@ -21,7 +21,7 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
   if (typeof requestId !== 'string' || !/^[a-f0-9-]{36}$/.test(requestId) || !Array.isArray(places) || !places.length || places.length > 200) return { error: 'Choose between 1 and 200 places to import.' }
   if (places.some(p => !p || typeof p.name !== 'string' || !p.name.trim() || p.name.length > 240 || typeof p.destination !== 'string' || !p.destination.trim() || p.destination.length > 160 || typeof p.country !== 'string' || p.country.length > 160 || typeof p.notes !== 'string' || p.notes.length > 8000 || typeof p.mealType !== 'string' || p.mealType.length > 100 || !['hotel', 'food_drink', 'activity', 'transport'].includes(p.type) || (p.day !== null && (!Number.isInteger(p.day) || p.day < 1 || p.day > 365)) || (p.rating !== null && (!Number.isInteger(p.rating) || p.rating < 1 || p.rating > 5))
     || [p.date, p.endDate].some(value => value !== null && value !== undefined && !isDate(value)) || [p.time, p.endTime].some(value => value !== null && value !== undefined && !isTime(value))
-    || (p.near !== undefined && (!p.near || typeof p.near.name !== 'string' || p.near.name.length > 160 || typeof p.near.country !== 'string' || p.near.country.length > 160)))) return { error: 'Some imported details are invalid. Please shorten the notes or import fewer places.' }
+    || (p.booking !== undefined && (typeof p.booking !== 'string' || p.booking.length > 2000)) || (p.near !== undefined && (!p.near || typeof p.near.name !== 'string' || p.near.name.length > 160 || typeof p.near.country !== 'string' || p.near.country.length > 160)))) return { error: 'Some imported details are invalid. Please shorten the notes or import fewer places.' }
   if (!matches || typeof matches !== 'object' || Object.entries(matches).some(([key, value]) => !/^\d+$/.test(key) || typeof value !== 'string' || value.length > 100)) return { error: 'Please try again.' }
   try {
     await prisma.$transaction(async tx => {
@@ -62,8 +62,8 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
       }
       // Places already in the trip (or earlier in this file) aren't added twice: the import fills in what it knows
       // that the existing place doesn't have yet (dates, times, nights, its day, notes) instead.
-      const existing: { id: string; name: string; type: string; notes: string | null; date: Date | null; time: string | null; endDate: Date | null; endTime: string | null; nights: number | null; dayIndex: number | null }[] =
-        await tx.destItem.findMany({ where: { destination: { itineraryId: planId } }, select: { id: true, name: true, type: true, notes: true, date: true, time: true, endDate: true, endTime: true, nights: true, dayIndex: true } })
+      const existing: { id: string; name: string; type: string; notes: string | null; bookingDetails: string | null; date: Date | null; time: string | null; endDate: Date | null; endTime: string | null; nights: number | null; dayIndex: number | null }[] =
+        await tx.destItem.findMany({ where: { destination: { itineraryId: planId } }, select: { id: true, name: true, type: true, notes: true, bookingDetails: true, date: true, time: true, endDate: true, endTime: true, nights: true, dayIndex: true } })
       for (const [index, place] of places.entries()) {
         const answer = matches?.[index]
         const auto = answer ? null : importMatch(existing.map(item => ({ id: item.id, name: item.name, type: item.type, date: item.date?.toISOString().slice(0, 10) ?? null, day: item.dayIndex })), { name: place.name, type: place.type, date: place.date, day: dayOf(place) })
@@ -76,6 +76,7 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
             ...(!same.nights && place.type === 'hotel' && place.nights && place.nights >= 1 && place.nights <= 60 ? { nights: place.nights } : {}),
             ...(same.dayIndex === null && dayOf(place) !== null ? { dayIndex: dayOf(place) } : {}),
             ...(notes && !(same.notes ?? '').includes(notes) ? { notes: same.notes ? `${same.notes}\n\n${notes}` : notes } : {}),
+            ...(place.booking?.trim() && !(same.bookingDetails ?? '').includes(place.booking.trim()) ? { bookingDetails: same.bookingDetails ? `${same.bookingDetails}\n${place.booking.trim()}` : place.booking.trim() } : {}),
           }
           if (Object.keys(fill).length) { await tx.destItem.update({ where: { id: same.id }, data: fill }); Object.assign(same, fill) }
           continue
@@ -83,8 +84,8 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
         let destination = await tx.destination.findFirst({ where: { itineraryId: planId, name: { equals: place.destination.trim(), mode: 'insensitive' }, ...(place.country ? { country: { equals: place.country, mode: 'insensitive' } } : {}) } })
         if (!destination) destination = await tx.destination.create({ data: { itineraryId: planId, name: place.destination.trim(), country: place.country || null, order: await tx.destination.count({ where: { itineraryId: planId } }) } })
         const last = await tx.destItem.aggregate({ where: { destinationId: destination.id }, _max: { order: true, groupIndex: true } })
-        existing.push({ id: `${requestId}:${index}`, name: place.name.trim(), type: place.type, notes: place.notes || null, date: place.date ? new Date(`${place.date}T00:00:00Z`) : null, time: place.time || null, endDate: place.endDate ? new Date(`${place.endDate}T00:00:00Z`) : null, endTime: place.endTime || null, nights: place.nights ?? null, dayIndex: dayOf(place) })
-        await tx.destItem.create({ data: { id: `${requestId}:${index}`, destinationId: destination.id, name: place.name.trim(), type: place.type, notes: place.notes || null, rating: place.rating, mealType: place.type === 'food_drink' ? place.mealType || null : null, dayIndex: dayOf(place),
+        existing.push({ id: `${requestId}:${index}`, name: place.name.trim(), type: place.type, notes: place.notes || null, bookingDetails: place.booking?.trim() || null, date: place.date ? new Date(`${place.date}T00:00:00Z`) : null, time: place.time || null, endDate: place.endDate ? new Date(`${place.endDate}T00:00:00Z`) : null, endTime: place.endTime || null, nights: place.nights ?? null, dayIndex: dayOf(place) })
+        await tx.destItem.create({ data: { id: `${requestId}:${index}`, destinationId: destination.id, name: place.name.trim(), type: place.type, notes: place.notes || null, bookingDetails: place.booking?.trim() || null, rating: place.rating, mealType: place.type === 'food_drink' ? place.mealType || null : null, dayIndex: dayOf(place),
           date: place.date ? new Date(`${place.date}T00:00:00Z`) : null, time: place.time || null, endDate: place.endDate ? new Date(`${place.endDate}T00:00:00Z`) : null, endTime: place.endTime || null,
           nights: place.type === 'hotel' && place.nights && place.nights >= 1 && place.nights <= 60 ? place.nights : null, order: (last._max.order ?? -1) + 1, groupIndex: place.type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0 } })
       }
