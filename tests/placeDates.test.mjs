@@ -55,15 +55,22 @@ test('dates outside the trip and double-booked nights are flagged', () => {
   assert.equal(dates.dateProblems([{ type: 'hotel', name: 'A', date: '2026-04-01', endDate: '2026-04-04' }, { type: 'hotel', name: 'C', date: '2026-04-04', endDate: '2026-04-07' }], trip).every(flag => flag === null), true)
 })
 
-test('trip dates stretch to give an overnight flight the evening before its own day', () => {
+test('the trip starts when you land: an overnight flight the evening before goes on Day 1, not a day of its own', () => {
   const flight = { type: 'transport', name: 'JFK to Baltra', date: '2026-08-12', endDate: '2026-08-13' }
   const hotel = { type: 'hotel', name: 'Finch Bay', date: '2026-08-13', endDate: '2026-08-16' }
+  const home = { type: 'transport', name: 'Baltra to JFK', date: '2026-08-17', endDate: null }
   const farAway = { type: 'activity', name: 'Wrong year', date: '2025-08-13', endDate: null }
-  // No dates yet: earliest to latest booking.
-  assert.deepEqual({ ...dates.datesCovering([flight, hotel], null) }, { start: '2026-08-12', end: '2026-08-16' })
-  // Dated Aug 13–21: stretched back a day for the flight; a booking a year out is left for dateProblems to flag.
-  assert.deepEqual({ ...dates.datesCovering([flight, hotel, farAway], { start: '2026-08-13', end: '2026-08-21' }) }, { start: '2026-08-12', end: '2026-08-21' })
-  // Everything already fits: nothing to change.
+  // No dates yet: from where you are, not the flights.
+  assert.deepEqual({ ...dates.datesCovering([flight, hotel, home], null) }, { start: '2026-08-13', end: '2026-08-16' })
+  // Dated Aug 13–21: the flight doesn't stretch it; a booking a year out is left for dateProblems to flag.
+  assert.equal(dates.datesCovering([flight, hotel, farAway], { start: '2026-08-13', end: '2026-08-21' }), null)
   assert.equal(dates.datesCovering([hotel], { start: '2026-08-13', end: '2026-08-21' }), null)
   assert.equal(dates.datesCovering([{ ...hotel, date: null, endDate: null }], null), null)
+  // Only flights in the documents: their dates are all there is.
+  assert.deepEqual({ ...dates.datesCovering([flight], null) }, { start: '2026-08-12', end: '2026-08-13' })
+  // Days: the outbound flight on Day 1, the flight home on the last day; neither is flagged.
+  const trip = { start: '2026-08-13', end: '2026-08-16' }
+  assert.equal(dates.dayOnTrip(flight, trip), 1); assert.equal(dates.dayOnTrip(home, trip), 4); assert.equal(dates.dayOnTrip(hotel, trip), 1)
+  assert.equal(dates.dayOnTrip({ type: 'activity', date: '2026-08-12' }, trip), 0)
+  assert.deepEqual(dates.dateProblems([flight, home], trip).map(Boolean), [false, false])
 })

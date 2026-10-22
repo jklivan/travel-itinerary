@@ -8,7 +8,7 @@ import { importedPlaces, type ImportedPlace } from '@/lib/planImport'
 import { importIntoPlan, importMatches } from '@/actions/planImport'
 import type { ImportMatch } from '@/lib/importMatch'
 import PlacesAutocomplete from './PlacesAutocomplete'
-import { dateProblems, datesCovering, formatDate, tripDay, whenLabel } from '@/lib/placeDates'
+import { dateProblems, datesCovering, dayOnTrip, formatDate, tripDay, whenLabel } from '@/lib/placeDates'
 
 // trip: the trip's dates, when it has them, for putting each booking on its day and spotting dates outside the trip.
 export default function PlanImport({ tripId, destinations = [], trip = null, onClose }: { tripId: string; destinations?: { name: string; country: string | null }[]; trip?: { start: string; end: string } | null; onClose: () => void }) {
@@ -84,7 +84,7 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
   // A dated trip is offered a stretch to take in bookings just outside it (an overnight flight the day before).
   const suggested = datesCovering(places, trip)
   const daysFrom = useDates && suggested ? suggested : trip
-  const dayOf = (place: ImportedPlace) => daysFrom && place.date ? tripDay(place.date, daysFrom.start) : place.day
+  const dayOf = (place: ImportedPlace) => daysFrom && place.date ? dayOnTrip(place, daysFrom) : place.day
   const problems = dateProblems(places, daysFrom)
   // Unclear matches still to answer (only for places being added).
   const unanswered = [...selected].filter(index => matches[index] && !matches[index].sure && !answers[index])

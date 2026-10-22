@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { locateTripPlaces } from '@/lib/locatePlaces'
 import type { ImportedPlace } from '@/lib/planImport'
-import { isDate, isTime, tripDay, daysBetween } from '@/lib/placeDates'
+import { isDate, isTime, tripDay, daysBetween, dayOnTrip } from '@/lib/placeDates'
 import { importMatch, type ImportMatch } from '@/lib/importMatch'
 
 // tripDates: the trip's dates, when the trip had none and the import suggested them (earliest to latest date in the documents).
@@ -47,8 +47,11 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
         const length = daysBetween(tripDates.start, tripDates.end) + 1
         await tx.itinerary.update({ where: { id: planId }, data: { startDate: new Date(`${tripDates.start}T00:00:00Z`), endDate: new Date(`${tripDates.end}T00:00:00Z`), datesFlexible: false, durationDays: Math.max(plan.durationDays ?? 0, length) } })
       }
+      // The trip's last day as it ends up (stretched, set from the bookings, or as it was).
+      const finish = tripDates && start === tripDates.start && isDate(tripDates.end) ? tripDates.end : end
+      // Flights just before or after the trip go on its first or last day (see dayOnTrip).
       const dayOf = (place: ImportedPlace) => {
-        const day = start && place.date ? tripDay(place.date, start) : place.day
+        const day = start && place.date ? dayOnTrip(place, { start, end: finish > start ? finish : start }) : place.day
         return day && day >= 1 && day <= 365 ? day : null
       }
       // A transaction commits the complete batch; its first item also identifies a retry.

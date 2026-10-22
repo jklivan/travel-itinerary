@@ -122,3 +122,14 @@ test('an unclear match is added as new unless the person says it is the same pla
   assert.equal(h2.items().filter(item => item.name === 'Cafe Roma').length, 1)
   assert.equal(h2.items().find(item => item.id === 'roma').notes, 'Cooking class')
 })
+
+test('a flight out of JFK goes under the trip destination, never a New York destination of its own', () => {
+  const found = importedPlaces({ destinations: [
+    { name: 'New York', country: 'United States', items: [{ type: 'transport', name: 'JetBlue 2328 JFK to MBJ', date: '2026-12-19' }] },
+    { name: 'Montego Bay', country: 'Jamaica', items: [{ type: 'hotel', name: 'Round Hill', date: '2026-12-20', endDate: '2026-12-23' }, { type: 'transport', name: 'JetBlue 2329 MBJ to JFK', date: '2026-12-23' }] },
+  ] })
+  assert.deepEqual(found.map(place => [place.name, place.destination]), [['JetBlue 2328 JFK to MBJ', 'Montego Bay'], ['Round Hill', 'Montego Bay'], ['JetBlue 2329 MBJ to JFK', 'Montego Bay']])
+  assert.equal(found[0].near.name, 'New York')
+  // A document with only transport keeps its own cities.
+  assert.equal(importedPlaces({ destinations: [{ name: 'New York', country: '', items: [{ type: 'transport', name: 'Train' }] }] })[0].destination, 'New York')
+})
