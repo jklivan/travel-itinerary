@@ -61,7 +61,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   })
   const start = trip.datesFlexible ? null : trip.startDate.toISOString().slice(0, 10)
   const lastDay = Math.max(trip.durationDays ?? 0, ...items.map(item => item.dayIndex ?? 0))
-  const days = Array.from({ length: lastDay }, (_, index) => index + 1).map(day => ({ day, items: inTimeOrder(items.filter(item => item.dayIndex === day)) })).filter(day => day.items.length)
+  // Every day of the trip, including quiet ones: the hotel you're staying at, or a free day.
+  const stayingAt = (day: number) => items.find(item => item.type === 'hotel' && item.dayIndex !== null && item.dayIndex < day && day < item.dayIndex + (item.nights ?? 1))?.name
+  const days = Array.from({ length: lastDay }, (_, index) => index + 1).map(day => ({ day, items: inTimeOrder(items.filter(item => item.dayIndex === day)), staying: stayingAt(day) }))
   const unscheduled = items.filter(item => item.dayIndex === null)
   const where = [...new Set(trip.destinations.filter(d => d.name !== 'Destination to decide').map(d => d.name))].join(' · ')
   const dates = start ? `${formatDate(start)} – ${formatDate(trip.endDate.toISOString().slice(0, 10))}` : trip.durationDays ? `${trip.durationDays} days` : ''
@@ -71,8 +73,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       <Text style={styles.brand}>POSTCARD · YOUR ITINERARY</Text>
       <Text style={styles.title}>{trip.title}</Text>
       <Text style={styles.subtitle}>{[where, dates].filter(Boolean).join(' · ')}</Text>
-      {days.map(({ day, items: dayItems }) => <View key={day}>
+      {days.map(({ day, items: dayItems, staying }) => <View key={day}>
         <Text style={styles.day} minPresenceAhead={60}>Day {day}{start ? ` · ${formatDate(addDays(start, day - 1))}` : ''}</Text>
+        {!!staying && <Text style={styles.detail}>Staying at {staying}</Text>}
+        {!dayItems.length && !staying && <Text style={styles.detail}>Free day</Text>}
         {dayItems.map(item => <PlaceBlock key={item.id} item={item} />)}
       </View>)}
       {unscheduled.length > 0 && <View>
