@@ -8,13 +8,14 @@ import PostcardLogo from '@/components/PostcardLogo'
 import type { TravelPreferences } from '@/lib/travelPreferences'
 
 // What the start page loads besides the past chats: how many trips are in Saved (its row under the chats).
-export type Landing = { savedCount: number }
+export type Landing = { savedCount: number; plans: { id: string; title: string; places: number }[] }
 
 // Plan with Postcard's start page (the bottom bar's Plan button): ask where to go, or reopen a past chat. Who's going,
 // budget and the kind of trip aren't asked here: the planner asks a new traveler for them in the chat.
 export default function PlanLanding({ landing, history, busy, onSend }: { landing: Landing; history: { id: string; topic: string }[]; busy: boolean; onSend: (text: string, preferences?: TravelPreferences) => void }) {
   const [text, setText] = useState('')
   const [allChats, setAllChats] = useState(false)
+  const [allPlans, setAllPlans] = useState(false)
   function submit() {
     const message = text.trim()
     if (message && !busy) onSend(message)
@@ -63,6 +64,16 @@ export default function PlanLanding({ landing, history, busy, onSend }: { landin
         {history.length > 3 && <button type="button" onClick={() => setAllChats(open => !open)} className="inline-flex shrink-0 items-center text-sm text-link">{allChats ? 'Show fewer' : 'See all'}<ChevronRight size={16} /></button>}</div>
       <div className="space-y-2">{chats.map(chat => <Link key={chat.id} href={`/testplan?chat=${chat.id}`} className="panel flex items-center gap-3 px-4 py-3 text-sm text-ink transition-colors hover:bg-cream">
         <span className="min-w-0 flex-1 truncate">{chat.topic}</span><ChevronRight size={18} className="shrink-0 text-link" /></Link>)}</div>
+    </section>}
+
+    {/* Your private plans, so tapping Plan leads back to a trip you're working on: open it, or ask AI about it. */}
+    {landing.plans.length > 0 && <section className="mt-8" aria-labelledby="plans-heading">
+      <div className="mb-3 flex items-baseline justify-between gap-3"><h2 id="plans-heading" className="type-title">Your plans</h2>
+        {landing.plans.length > 3 && <button type="button" onClick={() => setAllPlans(open => !open)} className="inline-flex shrink-0 items-center text-sm text-link">{allPlans ? 'Show fewer' : 'See all'}<ChevronRight size={16} /></button>}</div>
+      <div className="space-y-2">{(allPlans ? landing.plans : landing.plans.slice(0, 3)).map(plan => <div key={plan.id} className="panel flex items-center gap-3 px-4 py-3 text-sm text-ink">
+        <Link href={`/plan/${plan.id}`} className="min-w-0 flex-1"><span className="block truncate font-semibold">{plan.title}</span><span className="block text-xs text-muted">{plan.places} {plan.places === 1 ? 'place' : 'places'} · Private plan</span></Link>
+        <Link href={`/testplan?trip=${plan.id}&from=planner&new=1`} className="chip shrink-0"><Sparkles size={14} />Ask AI</Link>
+      </div>)}</div>
     </section>}
 
     {/* Saved (no longer in the bottom bar): trips saved from others, for ideas while planning. */}

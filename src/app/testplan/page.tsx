@@ -47,7 +47,12 @@ export default async function TestPlanPage({ searchParams }: { searchParams: Pro
   const askPlace = ask ? trip?.destinations.flatMap(d => d.items.map(item => ({ item, d }))).find(({ item }) => item.id === ask) : undefined
   const initialDraft = askPlace ? `Tell me more about ${askPlace.item.name} (${[askPlace.d.name, askPlace.d.country].filter(Boolean).join(', ')}): ` : ''
   // A new chat that isn't about a trip opens on the Plan with Postcard start page.
-  const landing: Landing | null = !chat && !trip ? { savedCount: await prisma.bucketListItem.count({ where: { userId, itinerary: { visibility: { not: 'draft' } } } }) } : null
+  // The start page also lists the private plans you're working on, so Plan leads back to them.
+  const landing: Landing | null = !chat && !trip ? await Promise.all([
+    prisma.bucketListItem.count({ where: { userId, itinerary: { visibility: { not: 'draft' } } } }),
+    prisma.itinerary.findMany({ where: { userId, isPlan: true, visibility: 'draft' }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 20,
+      select: { id: true, title: true, destinations: { select: { _count: { select: { items: true } } } } } }),
+  ]).then(([savedCount, plans]) => ({ savedCount, plans: plans.map(plan => ({ id: plan.id, title: plan.title || 'Untitled trip', places: plan.destinations.reduce((sum, d) => sum + d._count.items, 0) })) })) : null
   return <TestPlanner key={`${chat?.id ?? `new:${tripId ?? ''}`}:${ask ?? ''}`} landing={landing} initialDraft={initialDraft} fromPlanner={from === 'planner'} history={history} chat={chat && { id: chat.id, turns: chat.turns as unknown as Turn[] }} trip={trip && plannerTripProps(trip)} />
 }
 
