@@ -2,11 +2,14 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { usePathname } from 'next/navigation'
+import { Bell } from 'lucide-react'
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core'
 import { PushNotifications } from '@capacitor/push-notifications'
 import { notificationStatus, registerPushDevice, unregisterPushDevice, openNotification, sendTestPush } from '@/actions/notifications'
 
-type PushState = { native: boolean; available: boolean; ready: boolean; enabled: boolean; busy: boolean; message: string; toggle: () => Promise<void> }
+// canAsk: iOS hasn't asked this iPhone about notifications yet (its one-time prompt is still unused).
+type PushState = { native: boolean; available: boolean; ready: boolean; enabled: boolean; busy: boolean; message: string; canAsk: boolean; toggle: () => Promise<void> }
 const PushContext = createContext<PushState | null>(null)
 
 export default function NativeNotifications({ children }: { children: React.ReactNode }) {
@@ -18,6 +21,7 @@ export default function NativeNotifications({ children }: { children: React.Reac
   const [enabled, setEnabled] = useState(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  const [canAsk, setCanAsk] = useState(false)
   const registrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -67,6 +71,7 @@ export default function NativeNotifications({ children }: { children: React.Reac
       if (!active) return
       setReady(status.pushReady)
       const permission = await PushNotifications.checkPermissions()
+      if (active) setCanAsk(permission.receive === 'prompt' || permission.receive === 'prompt-with-rationale')
       if (active && status.pushReady && permission.receive === 'granted' && localStorage.getItem(`push-disabled:${userId}`) !== 'true') await PushNotifications.register()
     }
     void setup().catch(() => { if (active) setMessage('Could not check iPhone notifications. Please try again.') })
@@ -92,6 +97,7 @@ export default function NativeNotifications({ children }: { children: React.Reac
         return
       }
       const permission = await PushNotifications.requestPermissions()
+      setCanAsk(false)
       if (permission.receive !== 'granted') {
         setMessage('To allow alerts, turn on notifications for Postcard in iPhone Settings.')
         setBusy(false)
@@ -106,7 +112,42 @@ export default function NativeNotifications({ children }: { children: React.Reac
     }
   }
 
-  return <PushContext.Provider value={{ native, available, ready, enabled, busy, message, toggle }}>{children}</PushContext.Provider>
+  return <PushContext.Provider value={{ native, available, ready, enabled, busy, message, canAsk, toggle }}>{children}<NotificationPrompt /></PushContext.Provider>
+}
+
+// After signing up (or any time iOS hasn't asked yet), in the iPhone app: a short card asking to turn notifications on.
+// Turn on shows Apple's prompt; Not now waits a few days, because Apple's prompt can only be shown once.
+const SNOOZE_MS = 3 * 24 * 60 * 60 * 1000
+function NotificationPrompt() {
+  const push = useContext(PushContext)
+  const { data: session } = useSession()
+  const pathname = usePathname()
+  const userId = session?.user?.id
+  const [show, setShow] = useState(false)
+  const wanted = !!push && push.available && push.ready && push.canAsk && !push.enabled && !!userId && !['/login', '/register'].includes(pathname)
+  useEffect(() => {
+    if (!wanted) return
+    const snoozed = Number(localStorage.getItem(`push-prompt-snoozed:${userId}`) ?? 0)
+    if (Date.now() - snoozed < SNOOZE_MS) return
+    // A moment after the page settles, so it doesn't land on top of the welcome.
+    const timer = setTimeout(() => setShow(true), 2500)
+    return () => clearTimeout(timer)
+  }, [wanted, userId])
+  if (!show || !wanted || !push) return null
+  const dismiss = () => { localStorage.setItem(`push-prompt-snoozed:${userId}`, String(Date.now())); setShow(false) }
+  return <div role="dialog" aria-modal="false" aria-labelledby="push-prompt-title" className="fixed inset-x-3 bottom-[calc(var(--app-bottom-clearance)+0.5rem)] z-[80] mx-auto max-w-md">
+    <div className="panel flex gap-3 p-4 shadow-xl">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Bell size={18} /></span>
+      <div className="min-w-0 flex-1">
+        <h2 id="push-prompt-title" className="text-sm font-semibold normal-case text-ink">Turn on notifications?</h2>
+        <p className="mt-0.5 text-sm text-muted">Hear when friends post a trip, message you or reply to you.</p>
+        <div className="mt-3 flex gap-2">
+          <button type="button" disabled={push.busy} onClick={async () => { setShow(false); await push.toggle() }} className="btn btn-primary btn-sm">Turn on</button>
+          <button type="button" onClick={dismiss} className="btn btn-outline btn-sm">Not now</button>
+        </div>
+      </div>
+    </div>
+  </div>
 }
 
 export function NotificationPreferences() {
