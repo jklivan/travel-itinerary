@@ -12,9 +12,9 @@ const ink = '#1f3354', muted = '#6b7285', line = '#d7cebc', brown = '#8b6f4e', c
 const styles = StyleSheet.create({
   page: { paddingTop: 40, paddingBottom: 48, paddingHorizontal: 44, fontFamily: 'Helvetica', fontSize: 10, color: ink, lineHeight: 1.4 },
   brand: { fontFamily: 'Playfair', fontSize: 9, letterSpacing: 3, color: brown, marginBottom: 6 },
-  title: { fontFamily: 'Playfair', fontSize: 24, marginBottom: 4 },
+  title: { fontFamily: 'Playfair', fontSize: 24, lineHeight: 1.25, marginBottom: 6 },
   subtitle: { fontSize: 10, color: muted, marginBottom: 18 },
-  day: { fontFamily: 'Playfair', fontSize: 14, marginTop: 14, marginBottom: 6, paddingBottom: 3, borderBottomWidth: 1, borderBottomColor: line },
+  day: { fontFamily: 'Playfair', fontSize: 14, lineHeight: 1.3, marginTop: 14, marginBottom: 6, paddingBottom: 3, borderBottomWidth: 1, borderBottomColor: line },
   place: { marginBottom: 8, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: line },
   when: { fontSize: 9, color: brown, fontFamily: 'Helvetica-Bold' },
   name: { fontSize: 11, fontFamily: 'Helvetica-Bold' },

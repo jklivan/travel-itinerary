@@ -446,6 +446,8 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
         <p className={planningStyles.location}>{place.address || foundAddress ? placeTown(place.address || foundAddress!) : place.destination}</p>
         {!!place.rating && <p className="mt-1"><RatingStars value={place.rating} label={`Your rating: ${place.rating} out of 5`} /></p>}
         {place.notes && <p className={styles.note}>{place.notes}</p>}
+        {/* Private booking details: only you see these (and they're in your itinerary PDF). */}
+        {place.bookingDetails && <p className="mt-1 flex items-start gap-1 text-xs text-muted [overflow-wrap:anywhere]"><LockKeyhole size={12} className="mt-0.5 shrink-0" />{place.bookingDetails}</p>}
         {place.source && <IdeaFrom source={place.source} />}
         {/* Opens this trip's AI chat with a question about this place ready to finish. */}
         <Link href={`/testplan?trip=${tripId}&ask=${place.id}&from=planner&new=1`} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} className="relative z-[2] mt-2 inline-flex items-center gap-1 text-xs font-semibold text-link underline-offset-2 hover:underline"><Sparkles size={12} />Ask AI about this place</Link>
