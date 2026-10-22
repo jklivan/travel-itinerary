@@ -136,10 +136,10 @@ function NotificationPrompt() {
   if (!show || !wanted || !push) return null
   const dismiss = () => { localStorage.setItem(`push-prompt-snoozed:${userId}`, String(Date.now())); setShow(false) }
   return <div role="dialog" aria-modal="false" aria-labelledby="push-prompt-title" className="fixed inset-x-3 bottom-[calc(var(--app-bottom-clearance)+0.5rem)] z-[80] mx-auto max-w-md">
-    <div className="panel flex gap-3 p-4 shadow-xl">
+    <div className="panel flex gap-3 p-4 shadow-pop">
       <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Bell size={18} /></span>
       <div className="min-w-0 flex-1">
-        <h2 id="push-prompt-title" className="text-sm font-semibold normal-case text-ink">Turn on notifications?</h2>
+        <h2 id="push-prompt-title" className="type-body text-sm font-semibold">Turn on notifications?</h2>
         <p className="mt-0.5 text-sm text-muted">Hear when friends post a trip, message you or reply to you.</p>
         <div className="mt-3 flex gap-2">
           <button type="button" disabled={push.busy} onClick={async () => { setShow(false); await push.toggle() }} className="btn btn-primary btn-sm">Turn on</button>
