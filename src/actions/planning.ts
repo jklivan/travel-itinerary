@@ -12,6 +12,7 @@ import { pickPlanDestination } from '@/lib/planPlaceIdentity'
 import { planDestinationFor } from '@/lib/planDestinationMatch'
 import { findPlaceLocation } from '@/lib/placePhoto'
 import { PRIVATE_TAG } from '@/lib/privateTransport'
+import { insertIntoDay } from '@/lib/dayOrder'
 import type { Prisma } from '@/generated/prisma/client'
 import { fileUnderDestination, type DestinationQuestion } from '@/lib/fileUnderDestination'
 import { locateDestinations } from '@/lib/locateDestinations'
@@ -65,6 +66,16 @@ function stringList(form: FormData, key: string, limit: number, maxLength: numbe
   try { values = JSON.parse(text(form, key, 100000)) } catch { throw new InputError(`Please check ${key}.`) }
   if (!Array.isArray(values) || values.length > limit || values.some(value => typeof value !== 'string' || value.length > maxLength)) throw new InputError(`Please check ${key}.`)
   return values as string[]
+}
+// New places on a day go where they make sense (flights, then the car or transfer, the hotel, then meals; see
+// lib/dayOrder) without moving the day's other places, which may have been put in order by hand.
+async function slotIntoDay(tx: Prisma.TransactionClient, tripId: string, day: number, addedIds: string[]) {
+  if (!addedIds.length) return
+  const trip = await tx.itinerary.findUnique({ where: { id: tripId }, select: { durationDays: true } })
+  const items = await tx.destItem.findMany({ where: { destination: { itineraryId: tripId }, dayIndex: day }, orderBy: { order: 'asc' }, select: { id: true, name: true, type: true, time: true, mealType: true } })
+  const added = new Set(addedIds)
+  const ordered = insertIntoDay(items.filter(item => !added.has(item.id)), items.filter(item => added.has(item.id)), { day, lastDay: Math.max(trip?.durationDays ?? day, day) })
+  await Promise.all(ordered.map((item, order) => tx.destItem.update({ where: { id: item.id }, data: { order } })))
 }
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery']
 function message(error: unknown) {
@@ -230,6 +241,7 @@ export async function setPlaceDay(itemId: string, day: number | null): Promise<R
       const zeroBased = await tx.destItem.count({ where: { destinationId: item.destinationId, dayIndex: 0, type: { not: 'hotel' } } })
       if (zeroBased) await tx.destItem.updateMany({ where: { destinationId: item.destinationId, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
       await tx.destItem.updateMany({ where: owned, data: { dayIndex: day } })
+      if (day !== null) await slotIntoDay(tx, trip.id, day, [itemId])
       if (day !== null && trip.durationDays && day > trip.durationDays) await tx.itinerary.updateMany({ where: { id: trip.id, userId }, data: { durationDays: day, postType: 'itinerary', tags: trip.tags.filter(tag => tag !== 'day-trip') } })
     })
     refresh(trip.id, userId)
@@ -293,6 +305,8 @@ export async function applyDayPlan(tripId: string, assignments: { id: string; da
         if (destination.items.some(item => item.type !== 'hotel' && item.dayIndex === 0)) await tx.destItem.updateMany({ where: { destinationId: destination.id, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
         for (const a of moving) await tx.destItem.updateMany({ where: { id: a.id, destinationId: destination.id, ...(replan ? {} : { dayIndex: null }) }, data: { dayIndex: a.day } })
       }
+      // Each day the plan filled, in a sensible order (a re-plan sorts the whole day).
+      for (const day of new Set(assignments.map(a => a.day))) await slotIntoDay(tx, tripId, day, assignments.filter(a => a.day === day).map(a => a.id))
     })
     refresh(tripId, userId)
     return { success: true }
@@ -364,6 +378,7 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
         dayIndex: day ? Number(day) : null, nights: type === 'hotel' ? nightsFrom(form) : null,
         order: (last._max.order ?? -1) + 1, groupIndex: type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0,
       } })
+      if (day) await slotIntoDay(tx, id, Number(day), [clientId])
     })
     refresh(id, userId)
     return { success: true }

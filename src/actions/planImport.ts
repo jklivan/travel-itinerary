@@ -9,6 +9,7 @@ import { locateTripPlaces } from '@/lib/locatePlaces'
 import type { ImportedPlace } from '@/lib/planImport'
 import { isDate, isTime, tripDay, daysBetween, dayOnTrip } from '@/lib/placeDates'
 import { importMatch, type ImportMatch } from '@/lib/importMatch'
+import { insertIntoDay } from '@/lib/dayOrder'
 
 // tripDates: the trip's dates, when the trip had none and the import suggested them (earliest to latest date in the documents).
 // splitFrom: the destination picked for the import when the document's own stops were used instead (France → Loire Valley,
@@ -97,6 +98,18 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
         durationDays: lastDay, postType: lastDay === 1 ? 'day-trip' : 'itinerary',
         tags: lastDay === 1 ? [...new Set([...trip.tags, 'day-trip'])] : trip.tags.filter(tag => tag !== 'day-trip'),
       } })
+      // Each day the import added to, in a sensible order (flights, the car, the hotel, then meals).
+      const touched = new Map<number, string[]>()
+      for (const [index, place] of places.entries()) { const day = dayOf(place); if (day !== null && !matches?.[index]) touched.set(day, [...(touched.get(day) ?? []), `${requestId}:${index}`]) }
+      if (touched.size) {
+        const trip = await tx.itinerary.findUnique({ where: { id: planId }, select: { durationDays: true } })
+        for (const [day, ids] of touched) {
+          const items = await tx.destItem.findMany({ where: { destination: { itineraryId: planId }, dayIndex: day }, orderBy: { order: 'asc' }, select: { id: true, name: true, type: true, time: true, mealType: true } })
+          const added = new Set(ids)
+          const ordered = insertIntoDay(items.filter(item => !added.has(item.id)), items.filter(item => added.has(item.id)), { day, lastDay: Math.max(trip?.durationDays ?? day, day) })
+          await Promise.all(ordered.map((item, order) => tx.destItem.update({ where: { id: item.id }, data: { order } })))
+        }
+      }
       if (typeof splitFrom === 'string' && splitFrom.trim()) await tx.destination.deleteMany({ where: { itineraryId: planId, name: { equals: splitFrom.trim(), mode: 'insensitive' }, notes: null, items: { none: {} } } })
     }, { timeout: 60000 })
     after(() => enrichPlaceIds(places.map((_, index) => `${requestId}:${index}`), new Map(places.flatMap((place, index) => place.near?.name.trim() ? [[`${requestId}:${index}`, place.near] as const] : []))).catch(() => undefined))

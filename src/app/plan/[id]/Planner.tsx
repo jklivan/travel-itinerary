@@ -1,6 +1,8 @@
 'use client'
 
 import { inTimeOrder } from '@/lib/timeOrder'
+import { sortDay } from '@/lib/dayOrder'
+import { ArrowDownUp } from 'lucide-react'
 import ItineraryPdf from '@/components/ItineraryPdf'
 import RatingStars from '@/components/RatingStars'
 import { destinationRanges, stayOn, totalDays, type DayRange } from '@/lib/tripStays'
@@ -12,7 +14,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CalendarDays, Clock, Plus, MapPin, Trash2, LockKeyhole, Check, Hotel, Utensils, Camera, Plane, Upload, Pencil, Sparkles, Users, EyeOff } from 'lucide-react'
 import { daysBetween, isDate, tripDay, whenLabel } from '@/lib/placeDates'
-import { addPlanPlace, setPlanStartDate, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, sharePlan, removePlanDestination, renamePlanDestination, mergePlanDestination, setPlanDays, deletePlanDay, setPlaceDay, setPlaceTime, applyDayPlan, setTripCover, setPlacePrivate } from '@/actions/planning'
+import { addPlanPlace, setPlanStartDate, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, sharePlan, removePlanDestination, renamePlanDestination, mergePlanDestination, setPlanDays, deletePlanDay, setPlaceDay, setPlaceTime, applyDayPlan, setTripCover, setPlacePrivate, setDayOrder } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
 import PlaceEntryForm from '@/components/PlaceEntryForm'
 import PlaceEditForm, { type PlaceEditValues, type PlaceType } from '@/components/PlaceEditForm'
@@ -234,7 +236,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
         {places.length > 0 && <OrganizeWithAI tripId={trip.id} places={places} canFill={places.some(p => p.day === null)} canReplan={places.some(p => p.day !== null)}
           hasDays={!!trip.durationDays} autoStart={aiAfterDays && !!trip.durationDays} onStarted={() => setAiAfterDays(false)}
           onNeedDays={() => { setAiAfterDays(true); requestAnimationFrame(() => { const input = document.getElementById(`trip-days-${trip.id}`); input?.scrollIntoView({ block: 'center', behavior: 'smooth' }); input?.focus() }) }} />}
-        {Array.from({ length: maxDay }, (_, index) => index + 1).filter(day => trip.durationDays || scheduled.includes(day)).map(day => { const dayPlaces = inTimeOrder(places.filter(p => p.day === day).sort((a, b) => a.order - b.order)); const stay = stayOn(day, trip.destinations, ranges); const dayLocation = stay.destination ?? [...new Set(dayPlaces.map(p => p.destinationName))].filter(name => name !== 'Destination to decide').join(' · '); return <section key={day} className="mb-6"><h2 className={styles.dayHeading}>{dayName(day)}{showDates && <span className="font-sans text-sm text-muted">Day {day}</span>}{dayLocation && <span className="font-sans text-sm text-muted">{dayLocation}</span>}</h2>{stay.hotel && <p className="mb-3 flex items-center gap-1.5 text-sm text-link"><Hotel size={16} />Staying at {stay.hotel}</p>}{/* Add a place stays at the bottom of each day, also once the day has places. */}{dayPlaces.length > 0 && <div className="mb-3"><SortableDay tripId={trip.id} places={dayPlaces} render={renderDayPlace} /></div>}{adding?.at !== `day:${day}` && <button type="button" onClick={() => { setImporting(false); setAdding({ at: `day:${day}`, day, destination: dayDestination(day) }) }} className="flex w-full items-center gap-1.5 rounded-xl border border-dashed border-line px-4 py-3 text-sm font-semibold text-link hover:bg-mist"><Plus size={16} />Add a place</button>}
+        {Array.from({ length: maxDay }, (_, index) => index + 1).filter(day => trip.durationDays || scheduled.includes(day)).map(day => { const dayPlaces = inTimeOrder(places.filter(p => p.day === day).sort((a, b) => a.order - b.order)); const stay = stayOn(day, trip.destinations, ranges); const dayLocation = stay.destination ?? [...new Set(dayPlaces.map(p => p.destinationName))].filter(name => name !== 'Destination to decide').join(' · '); return <section key={day} className="mb-6"><h2 className={styles.dayHeading}>{dayName(day)}{showDates && <span className="font-sans text-sm text-muted">Day {day}</span>}{dayLocation && <span className="font-sans text-sm text-muted">{dayLocation}</span>}</h2>{stay.hotel && <p className="mb-3 flex items-center gap-1.5 text-sm text-link"><Hotel size={16} />Staying at {stay.hotel}</p>}<SortDay tripId={trip.id} places={dayPlaces} day={day} lastDay={maxDay} />{/* Add a place stays at the bottom of each day, also once the day has places. */}{dayPlaces.length > 0 && <div className="mb-3"><SortableDay tripId={trip.id} places={dayPlaces} render={renderDayPlace} /></div>}{adding?.at !== `day:${day}` && <button type="button" onClick={() => { setImporting(false); setAdding({ at: `day:${day}`, day, destination: dayDestination(day) }) }} className="flex w-full items-center gap-1.5 rounded-xl border border-dashed border-line px-4 py-3 text-sm font-semibold text-link hover:bg-mist"><Plus size={16} />Add a place</button>}
           {addForm(`day:${day}`)}
           {!!trip.durationDays && trip.durationDays > 1 && <DeleteDay tripId={trip.id} day={day} places={dayPlaces.length} />}</section> })}
         {!!trip.durationDays && <AddDay tripId={trip.id} days={trip.durationDays} />}
@@ -825,4 +827,17 @@ function PlacePrivacy({ itemId, on }: { itemId: string; on: boolean }) {
     </label>
     {error && <p role="alert" className="mt-1 text-xs text-danger">{error}</p>}
   </div>
+}
+
+// "Sort this day": flights, then the car or transfer, the hotel, then meals in order (lib/dayOrder). Only shown when
+// the day isn't in that order already, so it never sits there doing nothing.
+function SortDay({ tripId, places, day, lastDay }: { tripId: string; places: (Place & { destination: string })[]; day: number; lastDay: number }) {
+  const router = useRouter()
+  const [busy, setBusy] = useState(false)
+  const sorted = sortDay(places, { day, lastDay })
+  if (places.length < 2 || sorted.every((place, index) => place.id === places[index].id)) return null
+  return <button type="button" disabled={busy} onClick={async () => {
+    setBusy(true)
+    try { const result = await setDayOrder(tripId, sorted.map(place => place.id)); if (!result.error) router.refresh() } finally { setBusy(false) }
+  }} className="chip mb-3"><ArrowDownUp size={14} />{busy ? 'Sorting…' : 'Sort this day'}</button>
 }

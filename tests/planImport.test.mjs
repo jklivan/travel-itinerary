@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import * as dayOrder from '../src/lib/dayOrder.ts'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
@@ -30,7 +31,7 @@ function harness(user = 'owner', fail = false, trip = { datesFlexible: true }) {
     },
   }
   const prisma = { $transaction: async callback => { const previous = structuredClone(items); try { return await callback(tx) } catch (error) { items = previous; throw error } } }
-  const action = load('../src/actions/planImport.ts', { '@/lib/importMatch': importMatchLib, 'next/server': { after() {} }, '@/lib/enrichPlaceIds': { enrichPlaceIds: async () => {} }, '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} } }).importIntoPlan
+  const action = load('../src/actions/planImport.ts', { '@/lib/importMatch': importMatchLib, '@/lib/dayOrder': dayOrder, 'next/server': { after() {} }, '@/lib/enrichPlaceIds': { enrichPlaceIds: async () => {} }, '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} } }).importIntoPlan
   return { action, items: () => items, updates }
 }
 test('import keeps explicit days (hotels too, on their check-in day) and leaves undated places unscheduled', () => {
