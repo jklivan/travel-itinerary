@@ -30,8 +30,12 @@ export function tripDuration(trip: Trip): number | null {
     ? Math.round((Date.parse(end.toISOString().slice(0, 10)) - Date.parse(start.toISOString().slice(0, 10))) / 86400000) + 1
     : 0
   const days = Math.max(schedule, datedDays, trip.durationDays ?? 0)
+  const dayTrip = trip.postType === 'day-trip' || !!trip.tags?.includes(DAY_TRIP_TAG)
+  // "1 day" only for a day trip: a trip without a real day-by-day plan (everything on Day 1, or a leftover single
+  // date) shows as a list of places instead of claiming one day.
+  if (days === 1 && !dayTrip) return null
   if (days > 0) return days
-  return trip.tags?.includes(DAY_TRIP_TAG) ? 1 : null
+  return dayTrip ? 1 : null
 }
 
 export function isDayTrip(trip: Trip) {
