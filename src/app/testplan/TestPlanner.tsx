@@ -13,7 +13,7 @@ import detailStyles from '@/components/PlaceDetailsCard.module.css'
 import ItineraryMap from '@/components/ItineraryMap'
 import type { ItemPin } from '@/components/ItineraryMapInner'
 import PlacePhoto from '@/components/PlacePhoto'
-import { addPlanPlace, plansForSaving, setPlanDatesIfMissing, startPlan } from '@/actions/planning'
+import { addPlanPlace, plansForSaving, setPlanDatesIfMissing, startPlan, tidyAiPlaces } from '@/actions/planning'
 import { plannerTrip } from './actions'
 import { linkPlanChat } from '@/actions/planChat'
 import { tripMapLookupKey, validMapLocation, type TripMapPlace } from '@/lib/tripMapPlaces'
@@ -340,7 +340,8 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
       // A chat with no trip yet now fills this one.
       if (!tripId.current) { tripId.current = planId; if (chatId.current) await linkPlanChat(chatId.current, planId) }
       const done: string[] = []
-      for (const [index, rec] of recs.entries()) {
+      // Hotels first, so the restaurants and sights that follow join the stay around them.
+      for (const [index, rec] of [...recs.entries()].sort(([, a], [, b]) => Number(b.type === 'hotel') - Number(a.type === 'hotel'))) {
         const form = new FormData()
         for (const [key, value] of Object.entries({ name: rec.name, type: rec.type, destination: [rec.destination, rec.country].filter(Boolean).join(', '), notes: `${rec.why}${rec.friendName ? ` — via ${rec.friendName}` : ''}`, clientId: crypto.randomUUID(), day: '', source: 'ai' })) form.set(key, value)
         if (placeIds[index]) form.set('placeId', placeIds[index]!)
@@ -348,6 +349,8 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
         if (result.error) { setError(`${rec.name}: ${result.error}`); break }
         done.push(rec.key)
       }
+      // Stops the AI made on its own fold into the trip, instead of the planner asking about each one.
+      if (done.length) await tidyAiPlaces(planId).catch(() => null)
       setAdded(current => new Set([...current, ...done]))
       setSelected(current => { const next = new Map(current); for (const key of done) next.delete(key); return next })
       if (planId === tripId.current) { const fresh = await plannerTrip(planId); if (fresh) { setTrip(fresh); title = fresh.title || title } }
