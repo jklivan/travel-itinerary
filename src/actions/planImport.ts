@@ -3,6 +3,7 @@
 import { after } from 'next/server'
 import { enrichPlaceIds } from '@/lib/enrichPlaceIds'
 import { auth } from '@/auth'
+import { actingUserId } from '@/lib/actingUser'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { locateTripPlaces } from '@/lib/locatePlaces'
@@ -17,7 +18,7 @@ import { insertIntoDay } from '@/lib/dayOrder'
 // matches: the person's answers from the review, by index in places: an existing place's id ("same place") or 'new'.
 // Places without an answer merge only when the match is sure (see lib/importMatch); unsure ones are added as new.
 export async function importIntoPlan(planId: string, requestId: string, places: ImportedPlace[], tripDates?: { start: string; end: string } | null, splitFrom?: string, matches: Record<number, string> = {}) {
-  const userId = (await auth())?.user?.id
+  const userId = actingUserId() ?? (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
   if (typeof requestId !== 'string' || !/^[a-f0-9-]{36}$/.test(requestId) || !Array.isArray(places) || !places.length || places.length > 200) return { error: 'Choose between 1 and 200 places to import.' }
   if (places.some(p => !p || typeof p.name !== 'string' || !p.name.trim() || p.name.length > 240 || typeof p.destination !== 'string' || !p.destination.trim() || p.destination.length > 160 || typeof p.country !== 'string' || p.country.length > 160 || typeof p.notes !== 'string' || p.notes.length > 8000 || typeof p.mealType !== 'string' || p.mealType.length > 100 || !['hotel', 'food_drink', 'activity', 'transport'].includes(p.type) || (p.day !== null && (!Number.isInteger(p.day) || p.day < 1 || p.day > 365)) || (p.rating !== null && (!Number.isInteger(p.rating) || p.rating < 1 || p.rating > 5))

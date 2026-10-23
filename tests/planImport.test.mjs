@@ -31,7 +31,7 @@ function harness(user = 'owner', fail = false, trip = { datesFlexible: true }) {
     },
   }
   const prisma = { $transaction: async callback => { const previous = structuredClone(items); try { return await callback(tx) } catch (error) { items = previous; throw error } } }
-  const action = load('../src/actions/planImport.ts', { '@/lib/importMatch': importMatchLib, '@/lib/dayOrder': dayOrder, 'next/server': { after() {} }, '@/lib/enrichPlaceIds': { enrichPlaceIds: async () => {} }, '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} } }).importIntoPlan
+  const action = load('../src/actions/planImport.ts', { '@/lib/importMatch': importMatchLib, '@/lib/dayOrder': dayOrder, 'next/server': { after() {} }, '@/lib/enrichPlaceIds': { enrichPlaceIds: async () => {} }, '@/lib/actingUser': { actingUserId: () => undefined }, '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} } }).importIntoPlan
   return { action, items: () => items, updates }
 }
 test('import keeps explicit days (hotels too, on their check-in day) and leaves undated places unscheduled', () => {

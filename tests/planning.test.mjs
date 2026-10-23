@@ -52,7 +52,7 @@ function harness({ user = 'owner', fail = false, zeroBased = false, empty = fals
   }
   prisma.$transaction = async callback => callback(prisma)
   const exports = {}
-  vm.runInNewContext(code, { exports, process: { env: {} }, require: name => ({ '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath: path => paths.push(path) }, '@/lib/tripPublishedNotifications': { scheduleTripPublishedNotifications: id => notifications.push(id) }, '@/lib/planPlaceIdentity': placeIdentity, ...filingStubs, '@/lib/planDestinationMatch': destinationMatch, '@/lib/placePhoto': { findPlaceLocation: async () => null }, '@/lib/privateTransport': privateTransport, '@/lib/dayOrder': dayOrder, '@/lib/aiTidy': { nextAiFold: () => null } })[name] })
+  vm.runInNewContext(code, { exports, process: { env: {} }, require: name => ({ '@/lib/actingUser': { actingUserId: () => undefined }, '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath: path => paths.push(path) }, '@/lib/tripPublishedNotifications': { scheduleTripPublishedNotifications: id => notifications.push(id) }, '@/lib/planPlaceIdentity': placeIdentity, ...filingStubs, '@/lib/planDestinationMatch': destinationMatch, '@/lib/placePhoto': { findPlaceLocation: async () => null }, '@/lib/privateTransport': privateTransport, '@/lib/dayOrder': dayOrder, '@/lib/aiTidy': { nextAiFold: () => null } })[name] })
   return { actions: exports, trips, items, writes, paths, notifications }
 }
 test('new plans are private, dates optional, and retry returns the same trip', async () => {

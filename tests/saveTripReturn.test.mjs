@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
-import { saveTripId } from '../src/lib/saveTripReturn.ts'
+import { oauthReturn, saveTripId } from '../src/lib/saveTripReturn.ts'
 
 test('save return rejects external URLs and path manipulation', () => {
   for (const value of [null, '//evil.test', 'https://evil.test', '../settings', 'trip?next=bad', 'a\\b', '%2f%2fevil', 'x'.repeat(129)]) assert.equal(saveTripId(value), '')
@@ -20,7 +20,12 @@ test('successful sign-in returns to the selected trip, otherwise home', async ()
     formData.set('saveTrip', id)
     if (registered) formData.set('registered', '1')
     let destination
-    await vm.runInNewContext(code, { formData, saveTripId, AuthError: class extends Error {}, signIn: async (_, options) => { destination = options.redirectTo } })
+    await vm.runInNewContext(code, { formData, saveTripId, oauthReturn, AuthError: class extends Error {}, signIn: async (_, options) => { destination = options.redirectTo } })
     assert.equal(destination, expected)
   }
+})
+
+test('signing in to connect an assistant returns only to its Allow page', () => {
+  assert.equal(oauthReturn('/oauth/authorize?client_id=a&state=b'), '/oauth/authorize?client_id=a&state=b')
+  for (const value of ['https://evil.test/oauth/authorize?x', '//evil.test', '/oauth/authorize', '/itinerary/1', '/oauth/authorize?a=\\evil', null]) assert.equal(oauthReturn(value), '')
 })

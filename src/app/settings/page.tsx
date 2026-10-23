@@ -7,10 +7,13 @@ import DeleteAccount from '@/components/DeleteAccount'
 import SignOutButton from '@/components/SignOutButton'
 import BlockButton from '@/components/BlockButton'
 import UserAvatar from '@/components/UserAvatar'
+import DisconnectAssistant from '@/components/DisconnectAssistant'
 
 export default async function SettingsPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
+  // AI assistants connected to this account (their keys still work): Muse, ChatGPT, Claude…
+  const connected = await prisma.oAuthClient.findMany({ where: { tokens: { some: { userId: session.user.id, kind: 'refresh', revokedAt: null, expiresAt: { gt: new Date() } } } }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true } })
   const blocked = await prisma.block.findMany({ where: { blockerId: session.user.id }, orderBy: { createdAt: 'desc' }, select: { blocked: { select: { id: true, name: true, image: true } } } })
 
   return (
@@ -26,6 +29,14 @@ export default async function SettingsPage() {
           </p>
         </div>
       </section>
+      {connected.length > 0 && <section className="panel mt-6 p-5" aria-labelledby="assistants-heading">
+        <h2 id="assistants-heading" className="type-label text-ink">Connected assistants</h2>
+        <p className="mt-0.5 text-sm text-brown">These can see your trips and add private plans.</p>
+        <ul className="mt-3 divide-y divide-line-soft">{connected.map(client => <li key={client.id} className="flex items-center justify-between gap-3 py-2.5">
+          <span className="truncate text-sm">{client.name}</span>
+          <DisconnectAssistant clientId={client.id} name={client.name} />
+        </li>)}</ul>
+      </section>}
       <div className="mt-6"><SignOutButton /></div>
       {/* People you've blocked, with Unblock. */}
       {blocked.length > 0 && <section className="panel mt-6 p-5" aria-labelledby="blocked-heading">

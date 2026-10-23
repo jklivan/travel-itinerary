@@ -5,7 +5,7 @@ import { login } from '@/actions/auth'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
-import { saveTripId } from '@/lib/saveTripReturn'
+import { oauthReturn, saveTripId } from '@/lib/saveTripReturn'
 
 function LoginForm() {
   const [state, action, pending] = useActionState(login, undefined)
@@ -18,12 +18,14 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="type-display">Welcome back</h1>
-          <p className="text-sm text-brown mt-1">{tripId ? 'Sign in to save this trip. We’ll bring you back so you can add it to your saved trips.' : 'Sign in to Postcard. Your places are waiting.'}</p>
+          <p className="text-sm text-brown mt-1">{tripId ? 'Sign in to save this trip. We’ll bring you back so you can add it to your saved trips.' : oauthReturn(searchParams.get('next')) ? 'Sign in to connect your AI assistant to Postcard.' : 'Sign in to Postcard. Your places are waiting.'}</p>
         </div>
 
         <div className="panel p-6">
           <form action={action} className="space-y-4">
             <input type="hidden" name="saveTrip" value={tripId} />
+            {/* Connecting an AI assistant: back to its "Connect … to Postcard?" page after signing in. */}
+            {oauthReturn(searchParams.get('next')) && <input type="hidden" name="next" value={oauthReturn(searchParams.get('next'))} />}
             {registered && <input type="hidden" name="registered" value="1" />}
             {registered && (
               <p className="panel-hint text-sm text-link px-4 py-3">

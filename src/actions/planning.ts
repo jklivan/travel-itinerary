@@ -3,6 +3,7 @@
 import { TAGS } from '@/lib/tags'
 
 import { auth } from '@/auth'
+import { actingUserId } from '@/lib/actingUser'
 import { prisma } from '@/lib/prisma'
 import { isDate, isTime } from '@/lib/placeDates'
 import { fetchStockPhoto } from '@/lib/stockPhoto'
@@ -84,7 +85,7 @@ function message(error: unknown) {
 }
 
 export async function startPlan(form: FormData): Promise<Result> {
-  const userId = (await auth())?.user?.id
+  const userId = actingUserId() ?? (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in to start planning.' }
   try {
     const title = text(form, 'title', 160)

@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs'
 import { signIn } from '@/auth'
 import { redirect } from 'next/navigation'
 import { AuthError } from 'next-auth'
-import { saveTripId } from '@/lib/saveTripReturn'
+import { oauthReturn, saveTripId } from '@/lib/saveTripReturn'
 import { followSuggestedPeople } from '@/lib/suggestedPeople'
 
 type FieldErrors = { name?: string[]; email?: string[]; password?: string[] }
@@ -53,7 +53,7 @@ export async function login(state: LoginState, formData: FormData): Promise<Logi
     await signIn('credentials', {
       email: formData.get('email'),
       password: formData.get('password'),
-      redirectTo: loginDestination(saveTripId(formData.get('saveTrip')), formData.get('registered') === '1'),
+      redirectTo: oauthReturn(formData.get('next')) || loginDestination(saveTripId(formData.get('saveTrip')), formData.get('registered') === '1'),
     })
   } catch (e) {
     if (e instanceof AuthError) {
