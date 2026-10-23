@@ -64,8 +64,8 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
       }
       // Places already in the trip (or earlier in this file) aren't added twice: the import fills in what it knows
       // that the existing place doesn't have yet (dates, times, nights, its day, notes) instead.
-      const existing: { id: string; name: string; type: string; notes: string | null; bookingDetails: string | null; date: Date | null; time: string | null; endDate: Date | null; endTime: string | null; nights: number | null; dayIndex: number | null }[] =
-        await tx.destItem.findMany({ where: { destination: { itineraryId: planId } }, select: { id: true, name: true, type: true, notes: true, bookingDetails: true, date: true, time: true, endDate: true, endTime: true, nights: true, dayIndex: true } })
+      const existing: { id: string; name: string; type: string; notes: string | null; bookingDetails: string | null; date: Date | null; time: string | null; endDate: Date | null; endTime: string | null; nights: number | null; dayIndex: number | null; rating?: number | null }[] =
+        await tx.destItem.findMany({ where: { destination: { itineraryId: planId } }, select: { id: true, name: true, type: true, notes: true, bookingDetails: true, date: true, time: true, endDate: true, endTime: true, nights: true, dayIndex: true, rating: true } })
       for (const [index, place] of places.entries()) {
         const answer = matches?.[index]
         const auto = answer ? null : importMatch(existing.map(item => ({ id: item.id, name: item.name, type: item.type, date: item.date?.toISOString().slice(0, 10) ?? null, day: item.dayIndex })), { name: place.name, type: place.type, date: place.date, day: dayOf(place) })
@@ -77,6 +77,8 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
             ...(!same.endDate && place.endDate ? { endDate: new Date(`${place.endDate}T00:00:00Z`) } : {}), ...(!same.endTime && place.endTime ? { endTime: place.endTime } : {}),
             ...(!same.nights && place.type === 'hotel' && place.nights && place.nights >= 1 && place.nights <= 60 ? { nights: place.nights } : {}),
             ...(same.dayIndex === null && dayOf(place) !== null ? { dayIndex: dayOf(place) } : {}),
+            // A rating only comes from the traveller (the assistant connector); documents never set one.
+            ...(!same.rating && place.rating ? { rating: place.rating } : {}),
             ...(notes && !(same.notes ?? '').includes(notes) ? { notes: same.notes ? `${same.notes}\n\n${notes}` : notes } : {}),
             ...(place.booking?.trim() && !(same.bookingDetails ?? '').includes(place.booking.trim()) ? { bookingDetails: same.bookingDetails ? `${same.bookingDetails}\n${place.booking.trim()}` : place.booking.trim() } : {}),
           }

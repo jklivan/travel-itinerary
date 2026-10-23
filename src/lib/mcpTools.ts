@@ -42,7 +42,7 @@ export const TOOLS = [
   {
     name: 'add_places',
     title: 'Add places to a plan',
-    description: 'Adds places to one of the person’s private plans (not to posted trips). Places already in the plan aren’t added twice.',
+    description: 'Adds places to one of the person’s private plans (not to posted trips). Before adding, check the plan with get_trip. If it has days, ask the person which day each place is for (unless they already said) and send day; places without one go to Unscheduled. If they’ve already been there (a past trip, or they say so), ask how they’d rate it from 1 to 5 and send rating. A place already in the plan isn’t added twice: send it again with a day or rating to fill those in.',
     inputSchema: { type: 'object', properties: {
       trip_id: { type: 'string' },
       places: { type: 'array', minItems: 1, maxItems: 50, items: { type: 'object', properties: {
@@ -51,7 +51,8 @@ export const TOOLS = [
         city: { type: 'string', description: 'The town or city it’s in', maxLength: 160 },
         country: { type: 'string', maxLength: 160 },
         notes: { type: 'string', maxLength: 4000 },
-        day: { type: 'integer', minimum: 1, maximum: 365, description: 'Day of the trip, if known' },
+        day: { type: 'integer', minimum: 1, maximum: 365, description: 'Day of the trip it’s on. Ask the person when the plan has days.' },
+        rating: { type: 'integer', minimum: 1, maximum: 5, description: 'The person’s own rating, only if they’ve been. Ask; never guess.' },
       }, required: ['name', 'type', 'city'], additionalProperties: false } },
     }, required: ['trip_id', 'places'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
@@ -105,23 +106,27 @@ export async function callTool(name: string, args: Args, userId: string, origin:
     const imported = await actAs(userId, () => importIntoPlan(started.id!, randomUUID(), places))
     if (imported.error) return { text: imported.error, error: true }
     return { text: JSON.stringify({ trip_id: started.id, title, places: places.length, status: 'private plan', url: `${origin}/plan/${started.id}`,
-      message: `Created the private plan “${title}” with ${places.length} ${places.length === 1 ? 'place' : 'places'}.` }) }
+      message: `Created the private plan “${title}” with ${places.length} ${places.length === 1 ? 'place' : 'places'}.`,
+      next_step: 'If this trip has already happened, offer to rate the places: ask the person for 1 to 5 stars and send them with add_places (same names, with rating).' }) }
   }
 
   if (name === 'add_places') {
     const tripId = str(args.trip_id, 60)
-    const plan = await prisma.itinerary.findFirst({ where: { id: tripId, userId }, select: { visibility: true } })
+    const plan = await prisma.itinerary.findFirst({ where: { id: tripId, userId }, select: { visibility: true, durationDays: true } })
     if (!plan) return { text: 'No trip with that id in this account. Use list_trips to find it.', error: true }
     if (plan.visibility !== 'draft') return { text: 'That trip is posted. Places can only be added to private plans; edit posted trips in the app.', error: true }
     const list = Array.isArray(args.places) ? args.places.slice(0, 50) as Args[] : []
     const places: ImportedPlace[] = list.filter(place => str(place.name, 240) && TYPES.includes(String(place.type)) && str(place.city, 160)).map(place => ({
       name: str(place.name, 240), type: String(place.type), destination: str(place.city, 160), country: str(place.country, 160), notes: str(place.notes, 4000),
       day: Number.isInteger(place.day) && Number(place.day) >= 1 && Number(place.day) <= 365 ? Number(place.day) : null,
-      rating: null, mealType: '', date: null, time: null, endDate: null, endTime: null, nights: null }))
+      rating: Number.isInteger(place.rating) && Number(place.rating) >= 1 && Number(place.rating) <= 5 ? Number(place.rating) : null, mealType: '', date: null, time: null, endDate: null, endTime: null, nights: null }))
     if (!places.length) return { text: 'Each place needs a name, a type (hotel, food_drink, activity or transport) and its city.', error: true }
     const result = await actAs(userId, () => importIntoPlan(tripId, randomUUID(), places))
     if (result.error) return { text: result.error, error: true }
-    return { text: JSON.stringify({ trip_id: tripId, added: places.length, url: `${origin}/plan/${tripId}`, message: `Added ${places.length} ${places.length === 1 ? 'place' : 'places'} (any already in the plan were merged, not repeated).` }) }
+    // A plan with days: say which places are still unscheduled, so the assistant asks which day.
+    const unscheduled = plan.durationDays ? (await prisma.destItem.findMany({ where: { destination: { itineraryId: tripId }, dayIndex: null, name: { in: places.map(place => place.name) } }, select: { name: true } })).map(item => item.name) : []
+    return { text: JSON.stringify({ trip_id: tripId, added: places.length, url: `${origin}/plan/${tripId}`, message: `Added ${places.length} ${places.length === 1 ? 'place' : 'places'} (any already in the plan were merged, not repeated).`,
+      ...(unscheduled.length ? { unscheduled, next_step: `This plan has ${plan.durationDays} days and these places aren’t on one yet. Ask the person which day each is for, then send them again with day.` } : {}) }) }
   }
 
   return { text: `Unknown tool: ${name}`, error: true }
