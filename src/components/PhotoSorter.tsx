@@ -63,11 +63,11 @@ export default function PhotoSorter({ places, prompt }: { places: SortPlace[]; p
       <div><h2 className="type-title">Add your trip photos</h2><p className="type-meta mt-1">Choose all the photos from this trip at once, then select some and tap the place they belong to.</p></div>
       <button type="button" aria-label="Close" disabled={!!progress} onClick={() => setOpen(false)} className="flex size-10 shrink-0 items-center justify-center rounded-full"><X size={18} /></button>
     </div>
-    <label onClick={event => { if (event.target !== fileInput.current && tripDates && canPickTripPhotos() && !progress) { event.preventDefault(); setPickingTrip(true) } }} className={`btn btn-outline btn-sm ${progress ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}>
+    <label onClick={event => { if (event.target !== fileInput.current && canPickTripPhotos() && !progress) { event.preventDefault(); setPickingTrip(true) } }} className={`btn btn-outline btn-sm ${progress ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}>
       <ImagePlus size={16} />{pile.length ? 'Add more photos' : 'Choose photos'}
       <input ref={fileInput} type="file" multiple accept="image/*" className="sr-only" disabled={!!progress} onChange={event => { const files = Array.from(event.target.files ?? []); event.target.value = ''; void choose(files) }} />
     </label>
-    {pickingTrip && tripDates && <TripPhotoPicker start={tripDates.start} end={tripDates.end} name="this trip" onPick={files => void choose(files)} onFallback={() => fileInput.current?.click()} onClose={() => setPickingTrip(false)} />}
+    {pickingTrip && <TripPhotoPicker start={tripDates?.start} end={tripDates?.end} name="this trip" onPick={files => void choose(files)} onFallback={() => fileInput.current?.click()} onClose={() => setPickingTrip(false)} />}
     {progress && <p role="status" className="type-body text-link">{progress}</p>}
     {message && <p role="status" className="flex items-center gap-1.5 text-sm text-link"><Check size={16} />{message}</p>}
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}

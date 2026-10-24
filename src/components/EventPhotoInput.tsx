@@ -20,7 +20,7 @@ export default function EventPhotoInput({ photos, name, onChange, onBusyChange, 
   const [busy, setBusy] = useState(false)
   const uploading = useRef(false)
   const [error, setError] = useState('')
-  // In the iPhone app on a dated trip, "Add photos" opens that trip's photos; the usual picker is one tap away.
+  // In the iPhone app, "Add photos" opens your photos by date (the trip's dates when it has them); the usual picker is one tap away.
   const tripDates = useContext(TripDates)
   const [pickingTrip, setPickingTrip] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -50,7 +50,7 @@ export default function EventPhotoInput({ photos, name, onChange, onBusyChange, 
         <button type="button" disabled={busy} onClick={() => onChange(photos.filter(photo => photo !== url))} aria-label={`Remove photo ${index + 1} for ${name}`} className="absolute -top-1 -right-1 rounded-full bg-ink p-1 text-white disabled:opacity-50"><X size={12} /></button>
       </div>)}
     </div>}
-    <label onClick={event => { if (event.target !== fileInput.current && tripDates && canPickTripPhotos() && !busy) { event.preventDefault(); setPickingTrip(true) } }} className={large ? `panel-dashed flex min-h-40 w-full flex-col items-center justify-center gap-2 text-base font-semibold text-link ${busy ? 'opacity-50' : 'cursor-pointer hover:bg-cream'}` : `inline-flex items-center gap-1.5 text-xs font-medium text-link ${busy ? 'opacity-50' : 'cursor-pointer'}`}>
+    <label onClick={event => { if (event.target !== fileInput.current && canPickTripPhotos() && !busy) { event.preventDefault(); setPickingTrip(true) } }} className={large ? `panel-dashed flex min-h-40 w-full flex-col items-center justify-center gap-2 text-base font-semibold text-link ${busy ? 'opacity-50' : 'cursor-pointer hover:bg-cream'}` : `inline-flex items-center gap-1.5 text-xs font-medium text-link ${busy ? 'opacity-50' : 'cursor-pointer'}`}>
       {large ? <ImageIcon size={28} /> : <ImageIcon size={14} />}{busy ? 'Uploading…' : photos.length ? 'Add more photos' : 'Add photos'}
       <input ref={fileInput} type="file" multiple accept="image/*" className="sr-only" disabled={busy} aria-label={`Add photos for ${name}`} onChange={event => {
         const files = Array.from(event.target.files ?? [])
@@ -59,6 +59,6 @@ export default function EventPhotoInput({ photos, name, onChange, onBusyChange, 
       }} />
     </label>
     {error && <p role="alert" className="text-xs text-danger">{error}</p>}
-    {pickingTrip && tripDates && <TripPhotoPicker start={tripDates.start} end={tripDates.end} name={name} onPick={files => void addPhotos(files)} onFallback={openLibrary} onClose={closeTripPicker} />}
+    {pickingTrip && <TripPhotoPicker start={tripDates?.start} end={tripDates?.end} name={name} onPick={files => void addPhotos(files)} onFallback={openLibrary} onClose={closeTripPicker} />}
   </div>
 }
