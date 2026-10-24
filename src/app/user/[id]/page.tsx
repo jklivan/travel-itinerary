@@ -222,7 +222,7 @@ export default async function UserProfilePage({
                   authorImage={user.image}
                   authorId={user.id}
                   destinations={it.destinations}
-                  coverPhoto={it.coverPhoto ?? it.photos[0]?.url ?? null}
+                  coverFocus={it.coverFocus} coverPhoto={it.coverPhoto ?? it.photos[0]?.url ?? null}
                   photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items), it.coverPhoto)}
                   currentUserId={viewerId}
                   isOwn={isOwn}
@@ -268,7 +268,7 @@ export default async function UserProfilePage({
                     authorImage={item.itinerary.user.image}
                     authorId={item.itinerary.user.id}
                     destinations={item.itinerary.destinations}
-                    coverPhoto={item.itinerary.coverPhoto ?? item.itinerary.photos[0]?.url ?? null}
+                    coverFocus={item.itinerary.coverFocus} coverPhoto={item.itinerary.coverPhoto ?? item.itinerary.photos[0]?.url ?? null}
                     photos={tripPhotoGallery(item.itinerary.photos, item.itinerary.destinations.flatMap(destination => destination.items), item.itinerary.coverPhoto)}
                     currentUserId={viewerId}
                     isOwn={item.itinerary.user.id === viewerId}

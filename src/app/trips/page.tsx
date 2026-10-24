@@ -10,7 +10,7 @@ import { SwipeToDeleteTrip } from '@/components/SwipeToDelete'
 export const metadata: Metadata = { title: 'My Trips — Postcard' }
 
 const tripSelect = {
-  id: true, title: true, isPlan: true, publishedAt: true, coverPhoto: true,
+  id: true, title: true, isPlan: true, publishedAt: true, coverPhoto: true, coverFocus: true,
   photos: { orderBy: { isStock: 'asc' as const }, select: { url: true, isStock: true } },
   destinations: { orderBy: { order: 'asc' as const }, select: { name: true, country: true, items: { orderBy: { order: 'asc' as const }, select: { id: true, type: true, photoUrl: true, photoUrls: true } } } },
 }
@@ -36,7 +36,7 @@ export default async function MyTripsPage() {
     if (savedCover(trip) || !destination) return [trip.id, null] as const
     return [trip.id, await fetchStockPhoto(`${trip.title} ${destination.name} ${destination.country ?? ''} travel`).catch(() => null)] as const
   })))
-  const cover = (trip: Trip) => ({ saved: savedCover(trip), itemId: trip.destinations.flatMap(d => d.items).find(item => item.type !== 'transport')?.id ?? null, stock: stock.get(trip.id) ?? null })
+  const cover = (trip: Trip) => ({ saved: savedCover(trip), focus: trip.coverPhoto ? trip.coverFocus : null, itemId: trip.destinations.flatMap(d => d.items).find(item => item.type !== 'transport')?.id ?? null, stock: stock.get(trip.id) ?? null })
 
   return <div className="page-wrap">
     <header className="page-header">
@@ -60,7 +60,7 @@ function TripSection({ title, description, empty, children }: { title: string; d
   </section>
 }
 
-function TripRow({ id, href, title, photo, detail, cta }: { id: string; href: string; title: string; photo: { saved: string | null; itemId: string | null; stock: string | null }; detail: string; cta: string }) {
+function TripRow({ id, href, title, photo, detail, cta }: { id: string; href: string; title: string; photo: { saved: string | null; itemId: string | null; stock: string | null; focus?: string | null }; detail: string; cta: string }) {
   return <SwipeToDeleteTrip id={id} title={title}><Link href={href} draggable={false} className="panel flex items-center gap-4 p-3 shadow-card transition-colors hover:bg-chip">
     <span className="photo-polaroid w-24 shrink-0"><span className="photo-polaroid-image"><TripCover {...photo} /></span></span>
     <span className="min-w-0 flex-1"><span className="block break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-ink">{title}</span><span className="mt-2 block text-label font-semibold uppercase tracking-widest text-muted">{detail}</span><span className="mt-1 block text-sm text-link">{cta}</span></span>

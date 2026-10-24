@@ -93,6 +93,8 @@ model Itinerary {
   photos           Photo[]
   // The photo chosen as the trip's cover (one of its trip or place photos); empty = first photo.
   coverPhoto       String?
+  // How the cover is framed in the feed's 4:3 frame: "x,y,zoom" (centre in %, zoom 1–3); empty = centred.
+  coverFocus       String?          @db.VarChar(20)
   bucketedBy       BucketListItem[]
   likes            TripLike[]
   comments         Comment[]

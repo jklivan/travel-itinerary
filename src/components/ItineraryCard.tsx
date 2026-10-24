@@ -4,6 +4,7 @@ import { Heart, MapPin } from 'lucide-react'
 import CommentsSheetButton from './CommentsSheet'
 import LikeButton from './LikeButton'
 import { tripLocationLabel } from '@/lib/tripLocation'
+import { coverStyle } from '@/lib/coverFocus'
 import LikesSheetButton from './LikesSheet'
 import { hasTripDates, tripDuration } from '@/lib/dayTrips'
 import { tripSeason } from '@/lib/tripSeason'
@@ -34,6 +35,8 @@ type Props = {
   authorImage?: string | null
   destinations: Destination[]
   coverPhoto: string | null
+  // How the owner framed the cover (lib/coverFocus).
+  coverFocus?: string | null
   photos?: { id: string; url: string; caption: string | null }[]
   currentUserId?: string | null
   isOwn?: boolean
@@ -63,7 +66,7 @@ function hashPick(str: string, arr: string[]) {
 
 
 export default function ItineraryCard({
-  id, postType, title, startDate, endDate, budget, tripRating, authorName, authorImage, authorId, destinations, coverPhoto, photos = [],
+  id, postType, title, startDate, endDate, budget, tripRating, authorName, authorImage, authorId, destinations, coverPhoto, coverFocus, photos = [],
   currentUserId, isOwn, isBucketed = false, likeCount, isLiked = false, fullWidth = false, datesFlexible = false, bestMonths = [], tags = [], durationDays,
   // Budget shows on the trip page, not on cards.
   commentCount = 0, showBudget = false, social,
@@ -86,13 +89,13 @@ export default function ItineraryCard({
     <article className={`block ${fullWidth ? 'w-full' : 'w-[clamp(200px,44vw,320px)]'} relative`}>
       <div className="rounded-lg border border-line-soft bg-card p-2.5 shadow-card sm:p-3">
         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg" style={{ backgroundColor: coverColor }}>
-          {fullWidth && photos.length > 0 ? <PhotoStrip href={`/itinerary/${id}`} photos={photos.map(photo => ({ ...photo, caption: null }))} title={title} fillContainer counterPosition="left" /> : <Link href={`/itinerary/${id}`} aria-label={`Open ${title}`} className="absolute inset-0">
+          {fullWidth && photos.length > 0 ? <PhotoStrip href={`/itinerary/${id}`} photos={photos.map(photo => ({ ...photo, caption: null }))} title={title} fillContainer counterPosition="left" coverFocus={photos[0]?.url === cover ? coverFocus : null} /> : <Link href={`/itinerary/${id}`} aria-label={`Open ${title}`} className="absolute inset-0">
             {!cover && <CardPlacePhoto tripId={id} itemIds={placeIds} />}
             {/* Photos from other sites (e.g. a place photo saved from Google) can't go through image resizing. */}
             {cover && (sizedPhoto(cover, 640) !== cover
-              ? <Image src={cover} alt="" fill sizes={fullWidth ? '(max-width: 575px) calc(100vw - 44px), 516px' : '(max-width: 727px) 44vw, 320px'} className="object-cover" />
+              ? <Image src={cover} alt="" fill sizes={fullWidth ? '(max-width: 575px) calc(100vw - 44px), 516px' : '(max-width: 727px) 44vw, 320px'} className="object-cover" style={coverStyle(coverFocus)} />
               // eslint-disable-next-line @next/next/no-img-element
-              : <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />)}
+              : <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" style={coverStyle(coverFocus)} />)}
           </Link>}
 
         </div>

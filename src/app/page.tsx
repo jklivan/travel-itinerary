@@ -133,7 +133,7 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
               authorImage={it.user.image}
               authorId={it.user.id}
               destinations={it.destinations}
-              coverPhoto={it.coverPhoto ?? it.photos[0]?.url ?? null}
+              coverFocus={it.coverFocus} coverPhoto={it.coverPhoto ?? it.photos[0]?.url ?? null}
               photos={tripPhotoGallery(it.photos, it.destinations.flatMap(destination => destination.items), it.coverPhoto)}
               currentUserId={userId}
               isOwn={it.user.id === userId}

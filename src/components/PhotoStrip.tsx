@@ -4,10 +4,12 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { coverStyle } from '@/lib/coverFocus'
 
 type Photo = { id: string; url: string; caption: string | null }
 
-export default function PhotoStrip({ photos, title, contain = false, fillContainer = false, counterPosition = 'right', href, gallery = false }: { gallery?: boolean; href?: string; photos: Photo[]; title: string; contain?: boolean; fillContainer?: boolean; counterPosition?: 'left' | 'right' }) {
+// coverFocus: how the first photo (a trip's cover) is framed by its owner (see lib/coverFocus).
+export default function PhotoStrip({ photos, title, contain = false, fillContainer = false, counterPosition = 'right', href, gallery = false, coverFocus }: { coverFocus?: string | null; gallery?: boolean; href?: string; photos: Photo[]; title: string; contain?: boolean; fillContainer?: boolean; counterPosition?: 'left' | 'right' }) {
   const ref = useRef<HTMLDivElement>(null)
   const pointerStart = useRef<{ x: number; y: number } | null>(null)
   const dragged = useRef(false)
@@ -48,9 +50,9 @@ export default function PhotoStrip({ photos, title, contain = false, fillContain
         }
       }} className={`flex overflow-x-auto snap-x snap-mandatory scrollbar-hide ${heightClass}`} style={{ overscrollBehaviorX: 'contain' }}>
         {photos.map((photo, index) => (
-          <div key={photo.id} className={`relative flex-none w-full snap-center ${heightClass}`}>
+          <div key={photo.id} className={`relative flex-none w-full snap-center overflow-hidden ${heightClass}`}>
             {index > revealed ? null : failed.has(photo.id) ? <p className="flex h-full items-center justify-center p-4 text-sm text-muted">This photo could not be loaded.</p> :
-              <Image src={photo.url} alt={photo.caption ?? title} fill sizes="(max-width: 768px) 100vw, 900px" className={contain || gallery ? 'object-contain' : 'object-cover'} loading={index === 0 ? 'eager' : 'lazy'} onError={() => setFailed(previous => new Set([...previous, photo.id]))} />}
+              <Image src={photo.url} alt={photo.caption ?? title} fill sizes="(max-width: 768px) 100vw, 900px" className={contain || gallery ? 'object-contain' : 'object-cover'} style={index === 0 && !contain && !gallery ? coverStyle(coverFocus) : undefined} loading={index === 0 ? 'eager' : 'lazy'} onError={() => setFailed(previous => new Set([...previous, photo.id]))} />}
             {href && <Link href={href} aria-label={`Open ${title}`} className="absolute inset-0 focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white" draggable={false}
               onPointerDown={event => { pointerStart.current = { x: event.clientX, y: event.clientY }; dragged.current = false }}
               onPointerMove={event => {

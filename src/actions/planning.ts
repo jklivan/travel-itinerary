@@ -16,6 +16,7 @@ import { PRIVATE_TAG } from '@/lib/privateTransport'
 import { insertIntoDay } from '@/lib/dayOrder'
 import { nextAiFold } from '@/lib/aiTidy'
 import { moveDestinationInto } from '@/lib/moveDestination'
+import { formatCoverFocus, parseCoverFocus } from '@/lib/coverFocus'
 import type { Prisma } from '@/generated/prisma/client'
 import { fileUnderDestination, type DestinationQuestion } from '@/lib/fileUnderDestination'
 import { locateDestinations } from '@/lib/locateDestinations'
@@ -317,7 +318,8 @@ export async function applyDayPlan(tripId: string, assignments: { id: string; da
 }
 
 // Choose a trip's cover photo: one of its own trip or place photos (null goes back to the first photo).
-export async function setTripCover(id: string, url: string | null): Promise<Result> {
+// focus: how the cover is framed (lib/coverFocus). Choosing a different photo without one starts it centred again.
+export async function setTripCover(id: string, url: string | null, focus?: string | null): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
   try {
@@ -325,7 +327,9 @@ export async function setTripCover(id: string, url: string | null): Promise<Resu
     if (!trip) return { error: unavailable }
     const own = new Set([...trip.photos.map(photo => photo.url), ...trip.destinations.flatMap(d => d.items.flatMap(item => [...item.photoUrls, ...(item.photoUrl ? [item.photoUrl] : [])]))])
     if (url !== null && (typeof url !== 'string' || !own.has(url))) return { error: 'Choose one of this trip’s photos.' }
-    await prisma.itinerary.updateMany({ where: { id, userId }, data: { coverPhoto: url } })
+    const framing = typeof focus === 'string' ? formatCoverFocus(parseCoverFocus(focus)) : null
+    if (focus !== undefined && focus !== null && typeof focus !== 'string') return { error: 'Please try again.' }
+    await prisma.itinerary.updateMany({ where: { id, userId }, data: { coverPhoto: url, coverFocus: url ? framing : null } })
     refresh(id, userId)
     return { success: true }
   } catch { return { error: 'Could not save the cover photo. Please try again.' } }
