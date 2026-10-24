@@ -11,6 +11,7 @@ import { after } from 'next/server'
 import { eventPhotos } from '@/lib/eventPhotos'
 import { getRecommendation, recommendationTags, type PlaceRecommendation } from '@/lib/placeRecommendation'
 import { STORY_LIFETIME_MS, visibleStoriesWhere, type StoryCard } from '@/lib/stories'
+import { realStops } from '@/lib/tripLocation'
 
 type Result = { error?: string; success?: boolean; chooseDestination?: DestinationQuestion }
 export async function activeStories(following = false): Promise<StoryCard[]> {
@@ -39,7 +40,8 @@ export async function storySources() {
   ])
   return { isPrivate: user?.isPrivate ?? true, trips: trips.map(trip => ({ id: trip.id, title: trip.title, isPlan: trip.isPlan, photos: trip.photos.map(photo => photo.url),
     // Name and country kept apart so a new place lands in the existing destination rather than a near-duplicate.
-    destinations: trip.destinations.filter(destination => destination.name !== 'Destination to decide').map(destination => ({ name: destination.name, country: destination.country })),
+    // Flights-only stops (an outbound flight saved as "New York") aren't offered: the trip's real stops come first.
+    destinations: realStops(trip.destinations).filter(destination => destination.name !== 'Destination to decide').map(destination => ({ name: destination.name, country: destination.country })),
     places: trip.destinations.flatMap(destination => destination.items.map(item => ({ id: item.id, name: item.name, type: item.type,
       destination: [destination.name, destination.country].filter(Boolean).join(', '), photos: eventPhotos(item.photoUrls, item.photoUrl),
       rating: item.rating ?? 0, recommendation: getRecommendation(item.tags),

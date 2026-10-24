@@ -6,7 +6,7 @@ import ts from 'typescript'
 import * as placeIdentity from '../src/lib/planPlaceIdentity.ts'
 const exports = {}
 vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/lib/tripLocation.ts', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, { exports, require: () => placeIdentity })
-const { tripLocationLabel } = exports
+const { realStops, tripLocationLabel } = exports
 
 test('one place is written out; more show the first place and "& more…"', () => {
   assert.equal(tripLocationLabel([{ name: 'Nantucket', country: 'United States' }]), 'Nantucket, United States')
@@ -32,4 +32,13 @@ test('a venue saved as a destination shows as its town', () => {
   // Two restaurants in the same town are one place.
   assert.equal(tripLocationLabel([{ name: 'Gettó Gulyás, Budapest, Wesselényi Street', country: 'Hungary' }, { name: 'Róma Ételbár, Budapest, Csalogány utca, Hungary', country: null }]), 'Budapest, Hungary')
   assert.equal(tripLocationLabel([{ name: 'Los Olivos, CA, USA' }, { name: 'Story of Soil', country: 'San Marcos Avenue, Los Olivos, CA, USA' }, { name: 'Brave & Maiden Estate', country: 'North Refugio Road, Santa Ynez, CA, USA' }]), 'Los Olivos, CA, USA & more…')
+})
+
+test('a stop that only holds flights is not where the trip is', () => {
+  const nyc = { name: 'New York', country: 'United States', items: [{ type: 'transport' }] }
+  const courchevel = { name: 'Courchevel', country: 'France', items: [{ type: 'hotel' }, { type: 'transport' }] }
+  assert.equal(tripLocationLabel([nyc, courchevel]), 'Courchevel, France')
+  assert.deepEqual(realStops([nyc, courchevel]).map(stop => stop.name), ['Courchevel'])
+  // A trip of nothing but flights keeps them.
+  assert.equal(tripLocationLabel([nyc]), 'New York, United States')
 })

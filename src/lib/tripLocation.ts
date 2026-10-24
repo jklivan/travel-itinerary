@@ -1,6 +1,6 @@
 import { samePlanDestination } from './planPlaceIdentity'
 
-type Destination = { name: string; country?: string | null }
+type Destination = { name: string; country?: string | null; items?: readonly { type: string }[] }
 
 // Street names in addresses, so a venue saved as a destination ("Gettó Gulyás, Budapest, Wesselényi Street" in Hungary,
 // or "Story of Soil" at "San Marcos Avenue, Los Olivos, CA, USA") can be shown as its town instead.
@@ -20,12 +20,20 @@ export function destinationTown(destination: Destination): string {
   return town.length ? town.join(', ') : name
 }
 
+// A stop that only holds flights or transfers (flying out of JFK made "New York" a stop on older trips) isn't
+// where the trip is, as long as the trip has a real stop.
+export function realStops<T extends Destination>(destinations: readonly T[]): T[] {
+  const transportOnly = (destination: T) => !!destination.items?.length && destination.items.every(item => item.type === 'transport')
+  const real = destinations.filter(destination => !transportOnly(destination))
+  return real.some(destination => destination.items?.length) ? real : [...destinations]
+}
+
 // A trip's location line (trip page header, trip cards): its first town, then "& more…" if it has others.
 // The same town saved twice (e.g. "Antibes" and "Antibes, France", or two restaurants in Budapest) counts once,
-// and the planner's placeholder is skipped.
+// and the planner's placeholder and flights-only stops are skipped.
 export function tripLocationLabel(destinations: Destination[]): string | null {
   const towns: string[] = []
-  for (const destination of destinations) {
+  for (const destination of realStops(destinations)) {
     if (!destination.name.trim() || destination.name === 'Destination to decide') continue
     const town = destinationTown(destination)
     if (!towns.some(existing => samePlanDestination({ name: existing }, { name: town }))) towns.push(town)

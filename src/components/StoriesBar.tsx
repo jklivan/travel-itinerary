@@ -49,8 +49,8 @@ export default function StoriesBar({ stories, userId, following, serverTime }: {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={sizedPhoto(latest.photoUrl, 256)} alt="" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/postcard-stamp-clear.png" alt="" className={styles.stamp} /><i>{loading === group.authorId ? '…' : group.items.length > 1 ? group.items.length : ''}</i>
-      </span><span className={styles.author}>{group.authorId === userId ? 'You' : latest.authorName.split(' ')[0]}</span></button> })}
+        <img src="/brand/postcard-stamp-clear.png" alt="" className={styles.stamp} />
+      </span><span className={styles.author}>{group.authorId === userId ? 'You' : latest.authorName.split(' ')[0]}{loading === group.authorId ? ' …' : ''}</span></button> })}
       {!groups.length && <p className={styles.trayHint}>A hotel you loved.<br />A meal to remember.<br />Send a postcard.</p>}
     </div>
     {message && <p role="status" className={styles.message}>{message}</p>}
