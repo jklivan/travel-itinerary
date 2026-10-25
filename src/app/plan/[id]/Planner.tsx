@@ -470,13 +470,14 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
     {!editing ? <PlaceQuickEdit compact row itemId={place.id} name={place.name} type={category.value as PlaceType} tags={place.tags} rating={place.rating} photos={place.photos}
         leading={<button onClick={openEditor} type="button" className="inline-flex min-h-11 items-center justify-center gap-1.5 px-2 text-xs text-link sm:text-sm"><Pencil size={16} />Edit details</button>} />
       : <div className="w-full">
+        {/* What kind of place it is comes first, so a restaurant saved as a stay is easy to fix. */}
+        <fieldset className="mb-3"><legend className="mb-1 text-xs text-muted">What is it?</legend><div className="flex flex-wrap gap-1.5">{categories.map(option => <button key={option.value} type="button" aria-pressed={type === option.value} onClick={() => setType(option.value)} className="chip"><option.Icon size={14} />{option.label}</button>)}</div></fieldset>
         {/* Same fields as the trip editor, plus photos and the day for this plan. */}
         <PlaceEditForm key={type} type={type as PlaceType} city={place.destination} busy={busy || uploading} saveLabel="Save changes" showRating={false} onPlaceIdChange={setPlaceId} onClose={() => setEditing(false)} onSave={values => void save(values)}
           initial={{ name: place.name, mealType: place.mealType ?? '', rating: place.rating ?? 0, notes: place.notes ?? '', tags: place.tags, isHighlight: false, alternative: place.alternative ?? '', description: place.description ?? '', link: place.link ?? '', address: place.address ?? '' }}>
           <div className="space-y-1"><p className="text-xs text-muted">Photos</p><EventPhotoInput photos={photos} name={place.name} onChange={setPhotos} onBusyChange={setUploading} /></div>
           {/* Moving a place to another destination puts it under that destination's heading. */}
           <DestinationPicker destinations={destinationChoices} value={destination} selectedId={destinationId} onChange={(name, id) => { setDestination(name); setDestinationId(id) }} labelClass="mb-1 text-xs text-muted" />
-          <fieldset><legend className="mb-1 text-xs text-muted">Category</legend><div className="flex flex-wrap gap-1.5">{categories.map(option => <button key={option.value} type="button" aria-pressed={type === option.value} onClick={() => setType(option.value)} className="chip"><option.Icon size={14} />{option.label}</button>)}</div></fieldset>
           <label className="block text-xs text-muted">{type === 'hotel' ? 'Check-in day (optional)' : 'Day (optional)'}<select value={day} onChange={event => setDay(event.target.value)} className={inputClass}><option value="">Unscheduled</option>{Array.from({ length: maxDay }, (_, index) => index + 1).map(value => <option key={value} value={value}>{dayName(value)}</option>)}</select></label>
           {/* The booking's date and time (from a confirmation, say). Hotels: check-in and check-out; transport: departure and arrival. */}
           <div className="grid grid-cols-2 gap-2">
@@ -566,6 +567,25 @@ function MergeLookAlikes({ tripId, keep, others, nearHotel = false, transportOnl
 
 // A destination heading's Edit panel: change the destination, move all its places into another one (which
 // removes it), or remove it. Removing one that has places asks first and says how many go with it.
+// The trip's Edit form → Where: change a destination's name (a trip started from a hospital or a hotel's address
+// instead of its town). Its places stay with it; if the trip already has that destination, they join it.
+function StopName({ tripId, destination, label }: { tripId: string; destination: { id: string; name: string }; label?: string }) {
+  const router = useRouter()
+  const [name, setName] = useState(destination.name)
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState('')
+  const changed = !!name.trim() && name.trim() !== destination.name
+  return <div className="space-y-2">
+    <PlacesAutocomplete maxLength={160} value={name} onChange={value => { setName(value); setMessage('') }} onSelect={(main, secondary) => setName(cleanDestination([main, secondary].filter(Boolean).join(', ')))} type="destination" placeholder="City or area" aria-label={label ?? `Rename ${cleanDestination(destination.name)}`} className={inputClass} />
+    {changed && <button type="button" disabled={busy} onClick={async () => {
+      setBusy(true); setMessage('')
+      try { const result = await renamePlanDestination(tripId, destination.id, name); if (result.error) setMessage(result.error); else router.refresh() }
+      catch { setMessage('Could not save. Please try again.') } finally { setBusy(false) }
+    }} className="btn btn-primary btn-sm">{busy ? 'Saving…' : 'Save destination'}</button>}
+    {message && <p role="alert" className="text-sm text-danger">{message}</p>}
+  </div>
+}
+
 function DestinationEditor({ tripId, destination, places, others, onClose }: { tripId: string; destination: { id: string; name: string }; places: number; others: { id: string; name: string }[]; onClose: () => void }) {
   const router = useRouter()
   const [name, setName] = useState(destination.name)
@@ -584,7 +604,8 @@ function DestinationEditor({ tripId, destination, places, others, onClose }: { t
       <div className="space-y-2"><p className="text-sm font-semibold text-ink">Change destination</p>
         <PlacesAutocomplete maxLength={160} value={name} onChange={setName} onSelect={(main, secondary) => setName(cleanDestination([main, secondary].filter(Boolean).join(', ')))} type="destination" placeholder="City or area" aria-label="Destination" className={inputClass} />
         <button type="button" disabled={!name.trim() || name.trim() === destination.name} onClick={() => void run(() => renamePlanDestination(tripId, destination.id, name))} className="btn btn-primary btn-sm">Save</button>
-        {places > 0 && <p className="text-xs text-muted">Its {placesLabel} stay with it.</p>}</div>
+        {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+        {places > 0 && <p className="text-xs text-muted">Its {placesLabel} stay with it{others.length ? '. If the trip already has that destination, they join it' : ''}.</p>}</div>
       {places > 0 && others.length > 0 && <div className="space-y-2"><p className="text-sm font-semibold text-ink">Move its places to…</p>
         <div className="flex flex-wrap gap-1.5">{others.map(other => <button key={other.id} type="button" aria-pressed={moveTo?.id === other.id} onClick={() => setMoveTo(current => current?.id === other.id ? null : other)} className="chip">{cleanDestination(other.name)}</button>)}</div>
         {moveTo && <button type="button" onClick={() => void run(() => mergePlanDestination(tripId, destination.id, moveTo.id))} className="btn btn-primary btn-sm">Move {placesLabel} to {cleanDestination(moveTo.name)} and remove {cleanDestination(destination.name)}</button>}</div>}
@@ -594,7 +615,6 @@ function DestinationEditor({ tripId, destination, places, others, onClose }: { t
           <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void run(() => removePlanDestination(tripId, destination.id, true))} className="btn btn-danger btn-sm">Remove destination and {placesLabel}</button><button type="button" onClick={() => setConfirmRemove(false)} className="btn btn-outline btn-sm">Keep it</button></div></>}
       </div>}
     </fieldset>
-    {error && <p role="alert" className="text-sm text-danger">{error}</p>}
     <button type="button" onClick={onClose} className="text-sm text-link">Done</button>
   </div>
 }
@@ -641,7 +661,10 @@ function DetailsForm({ trip }: { trip: Trip }) {
   const [tags, setTags] = useState<string[]>([...new Set((trip.tags ?? []).map(tag => tagMeta(tag)?.id ?? tag).filter(tag => tag !== 'day-trip'))])
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
-  return <><form className="panel space-y-3 p-4" onSubmit={async event => {
+  return <>{stops.length > 0 && <section className="panel mb-3 space-y-3 p-4" aria-labelledby="trip-where-heading">
+    <h3 id="trip-where-heading" className="type-label text-ink">Where</h3>
+    {stops.map(stop => <StopName key={`${stop.id}:${stop.name}`} tripId={trip.id} destination={stop} label={stops.length > 1 ? undefined : 'Destination'} />)}
+  </section>}<form className="panel space-y-3 p-4" onSubmit={async event => {
     event.preventDefault(); if (busy) return
     setBusy(true); setMessage('')
     const data = new FormData(event.currentTarget)

@@ -9,7 +9,7 @@ import { isDate, isTime } from '@/lib/placeDates'
 import { fetchStockPhoto } from '@/lib/stockPhoto'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
-import { pickPlanDestination } from '@/lib/planPlaceIdentity'
+import { pickPlanDestination, samePlanDestination } from '@/lib/planPlaceIdentity'
 import { planDestinationFor } from '@/lib/planDestinationMatch'
 import { findPlaceLocation } from '@/lib/placePhoto'
 import { PRIVATE_TAG } from '@/lib/privateTransport'
@@ -83,6 +83,8 @@ async function slotIntoDay(tx: Prisma.TransactionClient, tripId: string, day: nu
 }
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'drinks', 'coffee', 'dessert', 'bakery']
 function message(error: unknown) {
+  // Logged so a "it won't save" report can be traced (the reason, never the person's content).
+  console.warn('[planning] refused:', error instanceof InputError ? error.message : error instanceof Error ? error.message : 'unknown error')
   return { error: error instanceof InputError ? error.message : 'Could not save. Your changes are still here; please try again.' }
 }
 
@@ -417,13 +419,15 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
       if (mealType && mealType.split(',').some(value => !MEAL_TYPES.includes(value))) throw new InputError('Choose a meal type from the available tags.')
       extra.mealType = mealType || null
     }
-    if (form.has('tags')) extra.tags = stringList(form, 'tags', 40, 100)
+    if (form.has('tags')) extra.tags = stringList(form, 'tags', 200, 100).slice(0, 40)
     if (form.has('alternative')) extra.alternative = text(form, 'alternative', 240) || null
     if (form.has('description')) extra.description = text(form, 'description', 8000) || null
     if (form.has('address')) extra.address = text(form, 'address', 500) || null
     if (form.has('bookingDetails')) extra.bookingDetails = text(form, 'bookingDetails', 2000) || null
     if (form.has('link')) {
-      const link = text(form, 'link', 2048)
+      // A link saved without its https:// (www.example.com) gets one rather than blocking the save.
+      const raw = text(form, 'link', 2048)
+      const link = raw && !/^[a-z][a-z0-9+.-]*:/i.test(raw) ? `https://${raw}` : raw
       if (link && !/^https?:\/\//i.test(link)) throw new InputError('Enter a website link starting with http:// or https://.')
       extra.link = link || null
     }
@@ -439,7 +443,7 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
       extra[key] = value || null
     }
     if (form.has('photos')) {
-      const photoUrls = stringList(form, 'photos', 20, 4096)
+      const photoUrls = stringList(form, 'photos', 200, 4096).slice(0, 40)
       if (photoUrls.some(url => !/^(https:\/\/|\/(?!\/))/.test(url))) throw new InputError('Please choose valid photos.')
       extra.photoUrls = photoUrls; extra.photoUrl = photoUrls[0] ?? null
     }
@@ -549,12 +553,17 @@ export async function renamePlanDestination(tripId: string, destinationId: strin
   if (!next || next.length > 160) return { error: 'Enter a destination.' }
   try {
     await prisma.$transaction(async tx => {
-      await ownedDestination(tx, userId, tripId, destinationId)
-      const clash = await tx.destination.findFirst({ where: { itineraryId: tripId, id: { not: destinationId }, name: { equals: next, mode: 'insensitive' } }, select: { id: true } })
-      if (clash) throw new InputError(`This trip already has ${next}. Use “Move its places to” instead.`)
+      const from = await ownedDestination(tx, userId, tripId, destinationId)
+      // A trip still called by its first destination ("Trip to University of Michigan main hospital, …") follows the new name.
+      const current = await tx.destination.findUnique({ where: { id: destinationId }, select: { name: true } })
+      if (current) await tx.itinerary.updateMany({ where: { id: tripId, userId, title: `Trip to ${current.name}` }, data: { title: `Trip to ${next}` } })
+      // The trip already has this destination ("Ann Arbor" and "Ann Arbor, MI, USA"): its places join that one.
+      const others = await tx.destination.findMany({ where: { itineraryId: tripId, id: { not: destinationId } }, select: { id: true, name: true, country: true, days: true } })
+      const same = others.find(other => other.name.trim().toLowerCase() === next.toLowerCase()) ?? others.find(other => other.name !== 'Destination to decide' && samePlanDestination(other, { name: next }))
+      if (same) { await moveDestinationInto(tx, from, same); return }
       // The new name carries its own region and country, so the old country goes.
       await tx.destination.update({ where: { id: destinationId }, data: { name: next, country: null, lat: null, lng: null } })
-    })
+    }, { timeout: 30000 })
     refresh(tripId, userId)
     return { success: true }
   } catch (error) { return message(error) }
