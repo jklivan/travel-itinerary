@@ -195,15 +195,18 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     <h1 className="trip-title mt-2 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
     <div className="mt-3"><details id="trip-details" open={initialDetails || undefined} className="scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-2 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details></div>
     {/* One row of compact actions, so the places start higher up the screen. */}
-    <div className="sticky top-[var(--app-header-height,0px)] z-20 -mx-1 mt-3 grid grid-cols-5 items-start gap-1 bg-paper px-1 py-3">
-      <button type="button" onClick={() => { setImporting(false); setSortingPhotos(false); setAdding({ at: 'top' }) }} className={action}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={22} /></span>Add a place</button>
+    <div className="sticky top-[var(--app-header-height,0px)] z-20 -mx-1 mt-3 grid grid-cols-4 items-start gap-2 bg-paper px-1 py-3">
       {/* The whole trip's photos at once, then tap them into places. */}
-      <button type="button" aria-expanded={sortingPhotos} onClick={() => { setAdding(null); setImporting(false); setSortingPhotos(value => !value) }} className={action}><span className={`${actionIcon} border-line bg-card text-ink`}><ImagePlus size={22} strokeWidth={1.75} /></span>Add photos</button>
+      <button type="button" aria-expanded={sortingPhotos} onClick={() => { setAdding(null); setImporting(false); setSortingPhotos(value => !value) }} className={action}><span className={`${actionIcon} border-ink bg-ink text-white`}><ImagePlus size={22} /></span>Add photos</button>
       <Link href={`/plan/${trip.id}/friends`} className={action}><span className={`${actionIcon} border-line bg-card text-ink`}><Users size={22} strokeWidth={1.75} /></span>Browse friends’ places</Link>
       <button type="button" onClick={() => { setAdding(null); setSortingPhotos(false); setImporting(true) }} aria-expanded={importing} aria-controls="plan-import-panel" className={action}><span className={`${actionIcon} border-line bg-card text-ink`}><Upload size={22} strokeWidth={1.75} /></span>Import notes or files</button>
       {/* This trip's AI chat: it sees the trip's places and can add its picks here. */}
       <Link href={`/testplan?trip=${trip.id}&from=planner`} className={action}><span className={`${actionIcon} border-mist-line bg-mist text-ink`}><Sparkles size={22} strokeWidth={1.75} /></span>Plan with AI</Link>
     </div>
+    {/* Adding a place: a full-width row right under the circles. */}
+    <button type="button" aria-expanded={adding?.at === 'top'} onClick={() => { setImporting(false); setSortingPhotos(false); setAdding(current => current?.at === 'top' ? null : { at: 'top' }) }} className="mb-3 flex w-full items-center gap-3 rounded-xl border border-dashed border-link p-3 text-left text-sm text-link hover:bg-mist">
+      <Plus size={18} className="shrink-0" /><span><span className="font-semibold">Add a place</span><span className="block text-xs text-muted">A hotel, restaurant or something to do</span></span>
+    </button>
     {needsPlace && !places.length && <p role="alert" className="panel-hint mb-3 p-3 text-sm text-ink">Add at least one place before you post this trip: a place you stayed, ate or visited.</p>}
     {addForm('top')}
     {sortingPhotos && (places.length ? <PhotoSorter places={places} startOpen onClose={() => setSortingPhotos(false)} />
