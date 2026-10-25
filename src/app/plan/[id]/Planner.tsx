@@ -203,16 +203,16 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       {/* This trip's AI chat: it sees the trip's places and can add its picks here. */}
       <Link href={`/testplan?trip=${trip.id}&from=planner`} className={action}><span className={`${actionIcon} border-mist-line bg-mist text-ink`}><Sparkles size={22} strokeWidth={1.75} /></span>Plan with AI</Link>
     </div>
-    {/* Adding a place: a full-width row right under the circles. */}
-    <button type="button" aria-expanded={adding?.at === 'top'} onClick={() => { setImporting(false); setSortingPhotos(false); setAdding(current => current?.at === 'top' ? null : { at: 'top' }) }} className="mb-3 flex w-full items-center gap-3 rounded-xl border border-dashed border-link p-3 text-left text-sm text-link hover:bg-mist">
-      <Plus size={18} className="shrink-0" /><span><span className="font-semibold">Add a place</span><span className="block text-xs text-muted">A hotel, restaurant or something to do</span></span>
-    </button>
     {needsPlace && !places.length && <p role="alert" className="panel-hint mb-3 p-3 text-sm text-ink">Add at least one place before you post this trip: a place you stayed, ate or visited.</p>}
-    {addForm('top')}
     {sortingPhotos && (places.length ? <PhotoSorter places={places} startOpen onClose={() => setSortingPhotos(false)} />
       : <p className="panel-hint mb-4 p-3 text-sm text-ink">Add your places first, then choose the trip’s photos and tap them into each place.</p>)}
     {importing && <div id="plan-import-panel"><PlanImport tripId={trip.id} trip={trip.start && trip.end ? { start: trip.start, end: trip.end } : null} destinations={destinations.filter(d => d.name !== 'Destination to decide').map(d => ({ name: d.name, country: d.country }))} onClose={() => setImporting(false)} /></div>}
     <div role="tablist" aria-label="Trip view" className="tabs mb-5 mt-3">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className="tab">{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
+    {/* Adding a place: a full-width row right under the tabs (not on the map). */}
+    {tab !== 'map' && <button type="button" aria-expanded={adding?.at === 'top'} onClick={() => { setImporting(false); setSortingPhotos(false); setAdding(current => current?.at === 'top' ? null : { at: 'top' }) }} className="mb-3 flex w-full items-center gap-3 rounded-xl border border-dashed border-link p-3 text-left text-sm text-link hover:bg-mist">
+      <Plus size={18} className="shrink-0" /><span><span className="font-semibold">Add a place</span><span className="block text-xs text-muted">A hotel, restaurant or something to do</span></span>
+    </button>}
+    {addForm('top')}
     <section role="tabpanel" id="trip-panel" aria-labelledby={`${tab}-tab`}>
       {mapOpened && <div hidden={tab !== 'map'}><PlanningMap places={places.filter(place => place.type !== 'transport' || place.placeId || (place.lat !== null && place.lng !== null)).map(place => ({ id: place.id, name: place.name, city: place.destination, type: place.type === 'hotel' ? 'hotel' : place.type === 'food_drink' ? 'food_drink' : place.type === 'transport' ? 'transport' : 'activity', day: place.day, placeId: place.placeId ?? undefined, lat: place.lat, lng: place.lng }))} /></div>}
       {tab === 'itinerary' && !places.length && (trip.durationDays ? <p className="mb-4 text-sm text-muted">Your {trip.durationDays}-day trip. Add places and choose a day for each.</p> : <TripDaysPrompt tripId={trip.id} />)}
