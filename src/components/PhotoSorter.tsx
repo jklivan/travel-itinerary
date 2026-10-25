@@ -15,9 +15,11 @@ const CATEGORY: Record<string, string> = { hotel: 'Accommodation', food_drink: '
 
 // Add a whole trip's photos at once (one trip to the album), then tap them into places: select photos, tap the place,
 // and they leave the pile. In the iPhone app, a dated trip's photos come straight from the trip's dates.
-export default function PhotoSorter({ places, prompt }: { places: SortPlace[]; prompt: string }) {
+// startOpen/onClose: opened from a link elsewhere (the planner's "Add trip photos" beside Edit), closed by its own X.
+export default function PhotoSorter({ places, prompt = '', startOpen = false, onClose }: { places: SortPlace[]; prompt?: string; startOpen?: boolean; onClose?: () => void }) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [open, setOpenState] = useState(startOpen)
+  const setOpen = (value: boolean) => { setOpenState(value); if (!value) onClose?.() }
   const [pile, setPile] = useState<string[]>([])
   const [selected, setSelected] = useState<string[]>([])
   const [progress, setProgress] = useState('')
