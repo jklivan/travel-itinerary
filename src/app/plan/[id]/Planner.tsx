@@ -193,19 +193,21 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   return <DayNames.Provider value={dayName}><TripDates.Provider value={photoDates}><div className="mx-auto max-w-2xl px-4 py-6 text-ink">
     <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
     <h1 className="trip-title mt-2 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
-    {/* Edit, with Add trip photos in the space beside it. */}
-    <div className="relative mt-3">{places.length > 0 && <button type="button" aria-expanded={sortingPhotos} onClick={() => setSortingPhotos(value => !value)} className="absolute right-0 top-0 flex items-center gap-1.5 py-2 text-sm text-link"><ImagePlus size={14} />Add trip photos</button>}<details id="trip-details" open={initialDetails || undefined} className="scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-2 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details></div>
-    {sortingPhotos && places.length > 0 && <div className="mt-3"><PhotoSorter places={places} startOpen onClose={() => setSortingPhotos(false)} /></div>}
+    <div className="mt-3"><details id="trip-details" open={initialDetails || undefined} className="scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-2 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details></div>
     {/* One row of compact actions, so the places start higher up the screen. */}
-    <div className="sticky top-[var(--app-header-height,0px)] z-20 -mx-1 mt-3 grid grid-cols-4 items-start gap-2 bg-paper px-1 py-3">
-      <button type="button" onClick={() => { setImporting(false); setAdding({ at: 'top' }) }} className={action}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={22} /></span>Add a place</button>
+    <div className="sticky top-[var(--app-header-height,0px)] z-20 -mx-1 mt-3 grid grid-cols-5 items-start gap-1 bg-paper px-1 py-3">
+      <button type="button" onClick={() => { setImporting(false); setSortingPhotos(false); setAdding({ at: 'top' }) }} className={action}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={22} /></span>Add a place</button>
+      {/* The whole trip's photos at once, then tap them into places. */}
+      <button type="button" aria-expanded={sortingPhotos} onClick={() => { setAdding(null); setImporting(false); setSortingPhotos(value => !value) }} className={action}><span className={`${actionIcon} border-line bg-card text-ink`}><ImagePlus size={22} strokeWidth={1.75} /></span>Add photos</button>
       <Link href={`/plan/${trip.id}/friends`} className={action}><span className={`${actionIcon} border-line bg-card text-ink`}><Users size={22} strokeWidth={1.75} /></span>Browse friends’ places</Link>
-      <button type="button" onClick={() => { setAdding(null); setImporting(true) }} aria-expanded={importing} aria-controls="plan-import-panel" className={action}><span className={`${actionIcon} border-line bg-card text-ink`}><Upload size={22} strokeWidth={1.75} /></span>Import notes or files</button>
+      <button type="button" onClick={() => { setAdding(null); setSortingPhotos(false); setImporting(true) }} aria-expanded={importing} aria-controls="plan-import-panel" className={action}><span className={`${actionIcon} border-line bg-card text-ink`}><Upload size={22} strokeWidth={1.75} /></span>Import notes or files</button>
       {/* This trip's AI chat: it sees the trip's places and can add its picks here. */}
       <Link href={`/testplan?trip=${trip.id}&from=planner`} className={action}><span className={`${actionIcon} border-mist-line bg-mist text-ink`}><Sparkles size={22} strokeWidth={1.75} /></span>Plan with AI</Link>
     </div>
     {needsPlace && !places.length && <p role="alert" className="panel-hint mb-3 p-3 text-sm text-ink">Add at least one place before you post this trip: a place you stayed, ate or visited.</p>}
     {addForm('top')}
+    {sortingPhotos && (places.length ? <PhotoSorter places={places} startOpen onClose={() => setSortingPhotos(false)} />
+      : <p className="panel-hint mb-4 p-3 text-sm text-ink">Add your places first, then choose the trip’s photos and tap them into each place.</p>)}
     {importing && <div id="plan-import-panel"><PlanImport tripId={trip.id} trip={trip.start && trip.end ? { start: trip.start, end: trip.end } : null} destinations={destinations.filter(d => d.name !== 'Destination to decide').map(d => ({ name: d.name, country: d.country }))} onClose={() => setImporting(false)} /></div>}
     <div role="tablist" aria-label="Trip view" className="tabs mb-5 mt-3">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className="tab">{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
     <section role="tabpanel" id="trip-panel" aria-labelledby={`${tab}-tab`}>
