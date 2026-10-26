@@ -26,14 +26,21 @@ async function resend<T>(path: string): Promise<T> {
   return response.json() as Promise<T>
 }
 
-// The receiving server's Authentication-Results: from the headers Resend gives, else from the start of the raw email.
+// The receiving server's verdicts on who really sent it: Authentication-Results (and ARC-Authentication-Results,
+// which some servers write instead), from the headers Resend gives, else from the start of the raw email.
+const VERDICT = /^(arc-)?authentication-results$/i
 async function authenticationResults(email: Received) {
-  const fromHeaders = Object.entries(email.headers ?? {}).filter(([name]) => name.toLowerCase() === 'authentication-results').flatMap(([, value]) => [value].flat())
+  const headers = Object.entries(email.headers ?? {})
+  const fromHeaders = headers.filter(([name]) => VERDICT.test(name)).flatMap(([, value]) => [value].flat())
+  // What Resend gave, without any content: which security headers exist (to trace a refusal).
+  log('security headers', headers.map(([name]) => name).filter(name => /auth|dkim|spf|dmarc|arc|received-spf|x-ses/i.test(name)).join(', ') || 'none')
   if (fromHeaders.length || !email.raw?.download_url) return fromHeaders
   const raw = await fetch(email.raw.download_url, { signal: AbortSignal.timeout(20_000) }).then(response => response.ok ? response.text() : '').catch(() => '')
   const end = raw.search(/\r?\n\r?\n/)
   const head = raw.slice(0, end > 0 ? end : 65536).replace(/\r?\n[ \t]+/g, ' ')
-  return head.split(/\r?\n/).filter(line => /^authentication-results:/i.test(line)).map(line => line.replace(/^authentication-results:\s*/i, ''))
+  const lines = head.split(/\r?\n/)
+  log('raw email', raw ? 'read' : 'unreadable', '· security headers', lines.map(line => line.split(':')[0]).filter(name => /auth|dkim|spf|dmarc|arc|x-ses/i.test(name)).join(', ') || 'none')
+  return lines.filter(line => /^(arc-)?authentication-results:/i.test(line)).map(line => line.replace(/^(arc-)?authentication-results:\s*/i, ''))
 }
 
 const plainText = (html: string) => html.replace(/<(style|script)[\s\S]*?<\/\1>/gi, ' ').replace(/<br\s*\/?>|<\/(p|div|tr|li|h\d)>/gi, '\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n\n').trim()
