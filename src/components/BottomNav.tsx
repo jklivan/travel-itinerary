@@ -22,17 +22,17 @@ export default function BottomNav({ userId }: { pendingCount: number; userId: st
   const isPlanner = pathname === '/plan' || pathname === '/testplan'
 
   function cls(active: boolean) {
-    return `flex min-w-0 flex-col items-center gap-1 px-1 py-2 transition-colors ${active ? 'text-ink' : 'text-brown hover:text-ink'}`
+    return `flex min-w-0 flex-col items-center gap-0.5 px-1 py-1 transition-colors ${active ? 'text-ink' : 'text-brown hover:text-ink'}`
   }
-  // Every icon sits in the same 44px square, so the labels line up. The current tab is just darker.
+  // Every icon sits in the same square, so the labels line up (each whole item is the tap target). The current tab is just darker.
   function iconClass(active: boolean) {
-    return `flex size-11 items-center justify-center ${active ? 'text-ink' : ''}`
+    return `flex size-8 items-center justify-center ${active ? 'text-ink' : ''}`
   }
   const label = 'text-label font-medium uppercase tracking-widest'
 
   return (
     <div ref={toolbarRef} aria-label="Main navigation" className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl border-t border-line-soft bg-cream shadow-nav">
-      <div className="max-w-2xl mx-auto grid grid-cols-5 items-center py-2">
+      <div className="max-w-2xl mx-auto grid grid-cols-5 items-center py-1">
         <Link href="/" aria-current={isFeed ? 'page' : undefined} className={cls(isFeed)}>
           <span className={iconClass(isFeed)}><Home size={22} /></span>
           <span className={label}>Feed</span>

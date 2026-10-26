@@ -213,9 +213,9 @@ input[type="date"], input[type="time"], input[type="datetime-local"] {
 }
 input[type="date"]::-webkit-date-and-time-value { text-align: left; }
 
-/* Includes the raised center stamp and iPhone home-indicator safe area. */
+/* The bottom bar's height plus the iPhone home-indicator safe area, so pages scroll clear of it. */
 :root {
-  --app-bottom-clearance: calc(7rem + env(safe-area-inset-bottom, 0px));
+  --app-bottom-clearance: calc(4.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* Keep navigation clear of the iPhone status bar and home indicator. */

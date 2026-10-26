@@ -190,12 +190,12 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   // Where the iPhone photo picker opens: the trip's dates, else the dates of its bookings (a dated flight or hotel).
   const bookedDates = places.flatMap(place => [place.date, place.endDate].filter((date): date is string => !!date)).sort()
   const photoDates = trip.start && trip.end ? { start: trip.start, end: trip.end } : bookedDates.length ? { start: bookedDates[0], end: bookedDates[bookedDates.length - 1] } : null
-  return <DayNames.Provider value={dayName}><TripDates.Provider value={photoDates}><div className="mx-auto max-w-2xl px-4 py-6 text-ink">
-    <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
-    <h1 className="trip-title mt-2 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
-    <div className="mt-3"><details id="trip-details" open={initialDetails || undefined} className="scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-2 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details></div>
+  return <DayNames.Provider value={dayName}><TripDates.Provider value={photoDates}><div className="mx-auto max-w-2xl px-4 pb-6 pt-2 text-ink">
+    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
+    <h1 className="trip-title mt-1 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
+    <div className="mt-1"><details id="trip-details" open={initialDetails || undefined} className="scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-1 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details></div>
     {/* One row of compact actions, so the places start higher up the screen. */}
-    <div className="sticky top-[var(--app-header-height,0px)] z-20 -mx-1 mt-3 grid grid-cols-4 items-start gap-2 bg-paper px-1 py-3">
+    <div className="sticky top-[var(--app-header-height,0px)] z-20 -mx-1 mt-1 grid grid-cols-4 items-start gap-2 bg-paper px-1 py-2">
       {/* The whole trip's photos at once, then tap them into places. */}
       <button type="button" aria-expanded={sortingPhotos} onClick={() => { setAdding(null); setImporting(false); setSortingPhotos(value => !value) }} className={action}><span className={`${actionIcon} border-ink bg-ink text-white`}><ImagePlus size={22} /></span>Add photos</button>
       <Link href={`/plan/${trip.id}/friends`} className={action}><span className={`${actionIcon} border-line bg-card text-ink`}><Users size={22} strokeWidth={1.75} /></span>Browse friends’ places</Link>
@@ -207,7 +207,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     {sortingPhotos && (places.length ? <PhotoSorter places={places} startOpen onClose={() => setSortingPhotos(false)} />
       : <p className="panel-hint mb-4 p-3 text-sm text-ink">Add your places first, then choose the trip’s photos and tap them into each place.</p>)}
     {importing && <div id="plan-import-panel"><PlanImport tripId={trip.id} trip={trip.start && trip.end ? { start: trip.start, end: trip.end } : null} destinations={destinations.filter(d => d.name !== 'Destination to decide').map(d => ({ name: d.name, country: d.country }))} onClose={() => setImporting(false)} /></div>}
-    <div role="tablist" aria-label="Trip view" className="tabs mb-5 mt-3">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className="tab">{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
+    <div role="tablist" aria-label="Trip view" className="tabs mb-4 mt-1">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className="tab">{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
     {/* Adding a place: a full-width row right under the tabs (not on the map). */}
     {tab !== 'map' && <button type="button" aria-expanded={adding?.at === 'top'} onClick={() => { setImporting(false); setSortingPhotos(false); setAdding(current => current?.at === 'top' ? null : { at: 'top' }) }} className="mb-3 flex w-full items-center gap-3 rounded-xl border border-dashed border-link p-3 text-left text-sm text-link hover:bg-mist">
       <Plus size={18} className="shrink-0" /><span><span className="font-semibold">Add a place</span><span className="block text-xs text-muted">A hotel, restaurant or something to do</span></span>

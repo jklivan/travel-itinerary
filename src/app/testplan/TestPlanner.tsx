@@ -429,7 +429,7 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
         {error && <p role="alert" className="px-4 pb-2 text-sm text-danger">{error}</p>}
         <div ref={endOfChat} aria-hidden="true" style={{ scrollMarginBottom: 'calc(var(--app-bottom-clearance) + 4.5rem)' }} />
         {/* On phones the composer sticks just above the bottom navigation so it is always reachable. */}
-        <form ref={form} style={pinnedTop === null ? undefined : { position: 'fixed', top: pinnedTop, left: 12, right: 12, bottom: 'auto', zIndex: 60 }} className={`sticky bottom-[calc(var(--app-bottom-clearance)-2rem)] z-10 flex items-end gap-2 border-t border-line-soft bg-card p-3 lg:static ${pinnedTop === null ? 'rounded-b-2xl' : 'rounded-2xl border shadow-pop'}`} onSubmit={event => { event.preventDefault(); void send(draft) }}>
+        <form ref={form} style={pinnedTop === null ? undefined : { position: 'fixed', top: pinnedTop, left: 12, right: 12, bottom: 'auto', zIndex: 60 }} className={`sticky bottom-[calc(var(--app-bottom-clearance)-1.5rem)] z-10 flex items-end gap-2 border-t border-line-soft bg-card p-3 pb-[calc(0.75rem+1.5rem)] lg:static lg:pb-3 ${pinnedTop === null ? 'rounded-b-2xl' : 'rounded-2xl border shadow-pop'}`} onSubmit={event => { event.preventDefault(); void send(draft) }}>
           <textarea ref={composer} autoFocus={!!initialDraft} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(draft) } }} rows={1} maxLength={4000} placeholder={tripChat ? 'Ask about this trip…' : 'Ask about a place or a trip…'} aria-label="Message Postcard" className="field max-h-40 flex-1 resize-none overflow-y-auto" />
           <button type="submit" disabled={thinking || !draft.trim()} aria-label="Send" className="btn btn-primary w-11 shrink-0 !px-0"><ArrowUp size={18} /></button>
         </form>
@@ -451,7 +451,7 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
 
     {/* Picked suggestions: one bar to add them all, to this chat's trip, a new trip or another plan. It stays put
         while you keep scrolling and picking. After adding, a short note with a link to the trip. */}
-    {(selected.size > 0 || notice) && <div role="region" aria-label="Add selected places" className="fixed inset-x-0 bottom-[calc(var(--app-bottom-clearance)-1.25rem)] z-40 px-4">
+    {(selected.size > 0 || notice) && <div role="region" aria-label="Add selected places" className="fixed inset-x-0 bottom-[calc(var(--app-bottom-clearance)-0.5rem)] z-40 px-4">
       <div className="panel mx-auto flex max-w-2xl flex-wrap items-center gap-2 p-3 shadow-pop">
         {selected.size > 0 ? <>
           <span className="text-sm font-semibold text-ink">{selected.size} selected</span>
