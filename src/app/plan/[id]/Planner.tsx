@@ -197,22 +197,18 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     {/* One row of compact actions, so the places start higher up the screen. */}
     <div className="sticky top-[var(--app-header-height,0px)] z-20 -mx-1 mt-1 grid grid-cols-4 items-start gap-2 bg-paper px-1 py-2">
       {/* The whole trip's photos at once, then tap them into places. */}
-      <button type="button" aria-expanded={sortingPhotos} onClick={() => { setAdding(null); setImporting(false); setSortingPhotos(value => !value) }} className={action}><span className={`${actionIcon} border-ink bg-ink text-white`}><ImagePlus size={22} /></span>Add photos</button>
-      <Link href={`/plan/${trip.id}/friends`} className={action}><span className={`${actionIcon} border-line bg-card text-ink`}><Users size={22} strokeWidth={1.75} /></span>Browse friends’ places</Link>
+      <button type="button" onClick={() => { setImporting(false); setSortingPhotos(false); setAdding(current => current?.at === 'top' ? null : { at: 'top' }) }} aria-expanded={adding?.at === 'top'} className={action}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={22} /></span>Add a place</button>
+      <button type="button" aria-expanded={sortingPhotos} onClick={() => { setAdding(null); setImporting(false); setSortingPhotos(value => !value) }} className={action}><span className={`${actionIcon} border-line bg-card text-ink`}><ImagePlus size={22} strokeWidth={1.75} /></span>Add photos</button>
       <button type="button" onClick={() => { setAdding(null); setSortingPhotos(false); setImporting(true) }} aria-expanded={importing} aria-controls="plan-import-panel" className={action}><span className={`${actionIcon} border-line bg-card text-ink`}><Upload size={22} strokeWidth={1.75} /></span>Import notes or files</button>
       {/* This trip's AI chat: it sees the trip's places and can add its picks here. */}
       <Link href={`/testplan?trip=${trip.id}&from=planner`} className={action}><span className={`${actionIcon} border-mist-line bg-mist text-ink`}><Sparkles size={22} strokeWidth={1.75} /></span>Plan with AI</Link>
     </div>
     {needsPlace && !places.length && <p role="alert" className="panel-hint mb-3 p-3 text-sm text-ink">Add at least one place before you post this trip: a place you stayed, ate or visited.</p>}
+    {addForm('top')}
     {sortingPhotos && (places.length ? <PhotoSorter places={places} startOpen onClose={() => setSortingPhotos(false)} />
       : <p className="panel-hint mb-4 p-3 text-sm text-ink">Add your places first, then choose the trip’s photos and tap them into each place.</p>)}
     {importing && <div id="plan-import-panel"><PlanImport tripId={trip.id} trip={trip.start && trip.end ? { start: trip.start, end: trip.end } : null} destinations={destinations.filter(d => d.name !== 'Destination to decide').map(d => ({ name: d.name, country: d.country }))} onClose={() => setImporting(false)} /></div>}
     <div role="tablist" aria-label="Trip view" className="tabs mb-4 mt-1">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className="tab">{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
-    {/* Adding a place: a full-width row right under the tabs (not on the map). */}
-    {tab !== 'map' && <button type="button" aria-expanded={adding?.at === 'top'} onClick={() => { setImporting(false); setSortingPhotos(false); setAdding(current => current?.at === 'top' ? null : { at: 'top' }) }} className="mb-3 flex w-full items-center gap-3 rounded-xl border border-dashed border-link p-3 text-left text-sm text-link hover:bg-mist">
-      <Plus size={18} className="shrink-0" /><span><span className="font-semibold">Add a place</span><span className="block text-xs text-muted">A hotel, restaurant or something to do</span></span>
-    </button>}
-    {addForm('top')}
     <section role="tabpanel" id="trip-panel" aria-labelledby={`${tab}-tab`}>
       {mapOpened && <div hidden={tab !== 'map'}><PlanningMap places={places.filter(place => place.type !== 'transport' || place.placeId || (place.lat !== null && place.lng !== null)).map(place => ({ id: place.id, name: place.name, city: place.destination, type: place.type === 'hotel' ? 'hotel' : place.type === 'food_drink' ? 'food_drink' : place.type === 'transport' ? 'transport' : 'activity', day: place.day, placeId: place.placeId ?? undefined, lat: place.lat, lng: place.lng }))} /></div>}
       {tab === 'itinerary' && !places.length && (trip.durationDays ? <p className="mb-4 text-sm text-muted">Your {trip.durationDays}-day trip. Add places and choose a day for each.</p> : <TripDaysPrompt tripId={trip.id} />)}
@@ -298,7 +294,7 @@ function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, init
   }
 
   const nightsSelect = <label className="block text-xs uppercase tracking-wide text-link">How many nights?<select value={nights} onChange={event => setNights(event.target.value)} className={inputClass}><option value="">Not sure yet</option>{Array.from({ length: 30 }, (_, index) => index + 1).map(value => <option key={value} value={value}>{value} {value === 1 ? 'night' : 'nights'}</option>)}</select></label>
-  return <section className="panel mb-4 space-y-3 p-4" aria-label="Add a place"><button type="button" onClick={onClose} className="text-sm text-link">← Back</button><h2 className="type-title">Add a place</h2><p className="text-sm text-muted">Save places to your trip. Add notes now. If you’ve already been, add a rating too.</p><fieldset disabled={busy || uploading} className="space-y-3">
+  return <section className="panel mb-4 space-y-3 p-4" aria-label="Add a place"><div className="flex items-center justify-between gap-3"><button type="button" onClick={onClose} className="text-sm text-link">← Back</button><Link href={`/plan/${trip.id}/friends`} className="flex items-center gap-1.5 text-sm font-semibold text-link"><Users size={16} />Browse friends’ places</Link></div><h2 className="type-title">Add a place</h2><fieldset disabled={busy || uploading} className="space-y-3">
     <DestinationPicker destinations={trip.destinations.map(d => ({ id: d.id, name: d.name }))} value={destination} selectedId={destinationId} onChange={changeDestination} labelClass="mb-1 text-sm" />
     <fieldset><legend className="mb-2 text-sm">Category</legend><div className="flex flex-wrap gap-2">
       {[
