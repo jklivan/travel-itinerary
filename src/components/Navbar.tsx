@@ -10,32 +10,26 @@ export default async function Navbar() {
 
   return (
     <header className="app-header postcard-header bg-paper text-ink sticky top-0 z-40">
-      {/* Signed in: + on Feed, Back elsewhere · centered logo · messages and profile. Signed out: logo left, sign-in right. */}
-      <div className={`max-w-5xl mx-auto px-4 py-3 items-center gap-2 ${session?.user ? 'grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'flex flex-wrap justify-between gap-3'}`}>
-        {session?.user && <div className="flex justify-start"><HeaderLeft /></div>}
+      {/* Signed in: + on Feed, Back elsewhere · centered logo · messages and profile. Signed out: just the logo, centered
+          (the sign-in and welcome pages are where people sign in, and Post, Plan and My Trips lead there). */}
+      {session?.user ? <div className="max-w-5xl mx-auto grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-4 py-3">
+        <div className="flex justify-start"><HeaderLeft /></div>
         <Link href="/" aria-label="Postcard home" className="shrink-0">
           <PostcardBrand />
         </Link>
-
         <div className="flex items-center justify-end gap-0.5 shrink-0">
-          {session?.user ? (
-            <>
-              <HeaderMessagesLink />
-              <Link href="/settings"
-                className="text-xs text-ink/80 hover:text-ink px-3 py-1.5 rounded-lg transition-colors hidden sm:block">
-                Settings
-              </Link>
-              <HeaderProfileLink />
-            </>
-          ) : (
-            // Just Sign in: the welcome screen already asks new visitors to sign up.
-            <Link href="/login"
-              className="text-xs text-ink/80 hover:text-ink transition-colors">
-              Sign in
-            </Link>
-          )}
+          <HeaderMessagesLink />
+          <Link href="/settings"
+            className="text-xs text-ink/80 hover:text-ink px-3 py-1.5 rounded-lg transition-colors hidden sm:block">
+            Settings
+          </Link>
+          <HeaderProfileLink />
         </div>
-      </div>
+      </div> : <div className="max-w-5xl mx-auto flex justify-center px-4 py-3">
+        <Link href="/" aria-label="Postcard home" className="shrink-0">
+          <PostcardBrand />
+        </Link>
+      </div>}
     </header>
   )
 }
