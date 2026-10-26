@@ -3,29 +3,46 @@
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
-import { emailOf, inboxAddress, newInboxToken, validEmail } from '@/lib/inbox'
+import { cleanInboxName, emailOf, inboxAddress, suggestedInboxName, validEmail } from '@/lib/inbox'
 
-// Settings → Send trips to Postcard: turn on (or reset) your private address, and choose who besides your account
-// email may send to it.
+// Settings → Send trips to Postcard: turn on or change your address, and choose who besides your account email may
+// send to it.
 type Result = { address?: string; senders?: string[]; error?: string }
 
 async function signedIn() { return (await auth())?.user?.id ?? null }
 
-export async function createInbox(reset = false): Promise<Result> {
+// Turn the address on: a name from the person's own (jen.rosenthal), with a number added if it's taken.
+export async function createInbox(): Promise<Result> {
   const userId = await signedIn()
   if (!userId) return { error: 'Please sign in.' }
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { inboxToken: true, inboxSenders: true } })
-  if (user?.inboxToken && !reset) return { address: inboxAddress(user.inboxToken), senders: user.inboxSenders }
-  // A fresh address; the old one stops working straight away.
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const token = newInboxToken()
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true, inboxToken: true, inboxSenders: true } })
+  if (!user) return { error: 'Please sign in.' }
+  if (user.inboxToken) return { address: inboxAddress(user.inboxToken), senders: user.inboxSenders }
+  const base = suggestedInboxName(user.name, user.email)
+  for (let attempt = 1; attempt <= 50; attempt++) {
+    const name = attempt === 1 ? base : `${base}${attempt}`
     try {
-      const saved = await prisma.user.update({ where: { id: userId }, data: { inboxToken: token }, select: { inboxSenders: true } })
+      await prisma.user.update({ where: { id: userId }, data: { inboxToken: name } })
       revalidatePath('/settings')
-      return { address: inboxAddress(token), senders: saved.inboxSenders }
-    } catch { /* taken by someone else: try another */ }
+      return { address: inboxAddress(name), senders: user.inboxSenders }
+    } catch { /* taken: try the next number */ }
   }
-  return { error: 'Couldn’t make an address. Please try again.' }
+  return { error: 'Couldn’t make an address. Choose one yourself below.' }
+}
+
+// Change it to a name they pick. The old address stops working straight away.
+export async function renameInbox(value: string): Promise<Result> {
+  const userId = await signedIn()
+  if (!userId) return { error: 'Please sign in.' }
+  const cleaned = cleanInboxName(typeof value === 'string' ? value : '')
+  if ('error' in cleaned) return { error: cleaned.error }
+  const taken = await prisma.user.findFirst({ where: { inboxToken: cleaned.name, id: { not: userId } }, select: { id: true } })
+  if (taken) return { error: `${inboxAddress(cleaned.name)} is taken. Try another, like adding a number.` }
+  try {
+    const user = await prisma.user.update({ where: { id: userId }, data: { inboxToken: cleaned.name }, select: { inboxSenders: true } })
+    revalidatePath('/settings')
+    return { address: inboxAddress(cleaned.name), senders: user.inboxSenders }
+  } catch { return { error: `${inboxAddress(cleaned.name)} is taken. Try another.` } }
 }
 
 export async function setInboxSender(address: string, allowed: boolean): Promise<Result> {

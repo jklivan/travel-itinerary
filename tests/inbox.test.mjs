@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createHmac } from 'node:crypto'
-import { verifyWebhook, authenticatedFrom, tokenFrom, emailOf, newInboxToken, stableId } from '../src/lib/inbox.ts'
+import { verifyWebhook, authenticatedFrom, tokenFrom, emailOf, cleanInboxName, suggestedInboxName, stableId } from '../src/lib/inbox.ts'
 
 const secret = 'whsec_' + Buffer.from('a test signing secret').toString('base64')
 const sign = (id, ts, body) => 'v1,' + createHmac('sha256', Buffer.from('a test signing secret')).update(`${id}.${ts}.${body}`).digest('base64')
@@ -22,11 +22,21 @@ test('a sender counts only when their own domain signed the message', () => {
   assert.equal(authenticatedFrom(['dkim=pass header.d=attacker.com; dmarc=fail header.from=gmail.com'], 'jen@gmail.com'), false)
   assert.equal(authenticatedFrom([], 'jen@gmail.com'), false)
 })
-test('addresses: the private token, and the sender behind a display name', () => {
-  assert.equal(tokenFrom(['Postcard <trips-k7x2m9abcd@in.postcardtravel.app>']), 'k7x2m9abcd')
-  assert.equal(tokenFrom(['trips-k7x2m9abcd@evil.example']), null)
+test('addresses: the name before the @, and the sender behind a display name', () => {
+  assert.equal(tokenFrom(['Postcard <Jen.Rosenthal@in.postcardtravel.app>']), 'jen.rosenthal')
+  assert.equal(tokenFrom(['trips-abm942ehm3@in.postcardtravel.app']), 'trips-abm942ehm3')
+  assert.equal(tokenFrom(['jen@evil.example']), null)
   assert.equal(emailOf('Jen Rosenthal <Jen@Example.com>'), 'jen@example.com')
-  assert.match(newInboxToken(), /^[a-z2-9]{10}$/)
   assert.equal(stableId('email-1', 'x'), stableId('email-1', 'x'))
-  assert.match(stableId('email-1', 'x'), /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
+})
+test('memorable addresses: suggested from the name, chosen ones cleaned and checked', () => {
+  assert.equal(suggestedInboxName('Jen Rosenthal', 'jenp@gmail.com'), 'jen.rosenthal')
+  assert.equal(suggestedInboxName('José  Núñez-Díaz', 'x@y.com'), 'jose.nunez.diaz')
+  assert.equal(suggestedInboxName('', 'jk@oberdere.com'), 'traveler.jk')
+  assert.deepEqual(cleanInboxName(' Rosenthal Family5 '), { name: 'rosenthal.family5' })
+  assert.deepEqual(cleanInboxName('rosenthals@in.postcardtravel.app'), { name: 'rosenthals' })
+  assert.ok('error' in cleanInboxName('support'))
+  assert.ok('error' in cleanInboxName('trips-abc123defg'))
+  assert.ok('error' in cleanInboxName('a'))
+  assert.ok('error' in cleanInboxName('jen..r'))
 })
