@@ -1,4 +1,5 @@
 import mammoth from 'mammoth'
+import { dkimVerify } from 'mailauth'
 import { prisma } from '@/lib/prisma'
 import { actAs } from '@/lib/actingUser'
 import { extractFromImageBase64, extractFromPdfBuffer, extractFromText, extractPrompt, type ExtractedItinerary } from '@/lib/extractItinerary'
@@ -26,21 +27,18 @@ async function resend<T>(path: string): Promise<T> {
   return response.json() as Promise<T>
 }
 
-// The receiving server's verdicts on who really sent it: Authentication-Results (and ARC-Authentication-Results,
-// which some servers write instead), from the headers Resend gives, else from the start of the raw email.
-const VERDICT = /^(arc-)?authentication-results$/i
+// Who really sent it. Resend's receiving server doesn't stamp its own verdict on the email, so Postcard checks the
+// sender's DKIM signature itself: the raw email's signature against the key the sender's domain publishes in DNS
+// (as mail servers do). Any Authentication-Results already on the email are read too.
 async function authenticationResults(email: Received) {
-  const headers = Object.entries(email.headers ?? {})
-  const fromHeaders = headers.filter(([name]) => VERDICT.test(name)).flatMap(([, value]) => [value].flat())
-  // What Resend gave, without any content: which security headers exist (to trace a refusal).
-  log('security headers', headers.map(([name]) => name).filter(name => /auth|dkim|spf|dmarc|arc|received-spf|x-ses/i.test(name)).join(', ') || 'none')
-  if (fromHeaders.length || !email.raw?.download_url) return fromHeaders
-  const raw = await fetch(email.raw.download_url, { signal: AbortSignal.timeout(20_000) }).then(response => response.ok ? response.text() : '').catch(() => '')
-  const end = raw.search(/\r?\n\r?\n/)
-  const head = raw.slice(0, end > 0 ? end : 65536).replace(/\r?\n[ \t]+/g, ' ')
-  const lines = head.split(/\r?\n/)
-  log('raw email', raw ? 'read' : 'unreadable', '· security headers', lines.map(line => line.split(':')[0]).filter(name => /auth|dkim|spf|dmarc|arc|x-ses/i.test(name)).join(', ') || 'none')
-  return lines.filter(line => /^(arc-)?authentication-results:/i.test(line)).map(line => line.replace(/^(arc-)?authentication-results:\s*/i, ''))
+  const stamped = Object.entries(email.headers ?? {}).filter(([name]) => name.toLowerCase() === 'authentication-results').flatMap(([, value]) => [value].flat())
+  if (!email.raw?.download_url) return stamped
+  const raw = await fetch(email.raw.download_url, { signal: AbortSignal.timeout(20_000) }).then(response => response.ok ? response.arrayBuffer() : null).catch(() => null)
+  if (!raw) { log('raw email unreadable'); return stamped }
+  const verified = await dkimVerify(Buffer.from(raw)).catch(error => { log('dkim check failed', error instanceof Error ? error.message : error); return null })
+  const results = (verified?.results ?? []).map(result => String(result.info ?? ''))
+  log('dkim', results.map(result => result.split(' ').slice(0, 2).join(' ')).join(' · ') || 'no signatures')
+  return [...stamped, ...results]
 }
 
 const plainText = (html: string) => html.replace(/<(style|script)[\s\S]*?<\/\1>/gi, ' ').replace(/<br\s*\/?>|<\/(p|div|tr|li|h\d)>/gi, '\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n\n').trim()
