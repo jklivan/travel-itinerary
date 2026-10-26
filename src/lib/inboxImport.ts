@@ -5,7 +5,7 @@ import { extractFromImageBase64, extractFromPdfBuffer, extractFromText, extractP
 import { importedPlaces, type ImportedPlace } from '@/lib/planImport'
 import { isDate, daysBetween } from '@/lib/placeDates'
 import { samePlanDestination } from '@/lib/planPlaceIdentity'
-import { authenticatedFrom, emailOf, stableId, tokenFrom } from '@/lib/inbox'
+import { authenticatedFrom, emailOf, inboxRefs, stableId, tokenFrom } from '@/lib/inbox'
 import { sendEmail } from '@/lib/email'
 import { startPlan } from '@/actions/planning'
 import { importIntoPlan } from '@/actions/planImport'
@@ -79,9 +79,9 @@ async function matchingPlan(userId: string, dates: { start: string; end: string 
   return plans.find(overlaps) ?? plans.find(plan => sameWhere(plan) && (plan.datesFlexible || !dates || overlaps(plan))) ?? null
 }
 
-function reply(to: string, subject: string, lines: string[], link?: { href: string; label: string }) {
-  const text = [...lines, link ? `${link.label}: ${link.href}` : ''].filter(Boolean).join('\n\n')
-  const html = `<div style="font-family:Georgia,serif;color:#1f3354;line-height:1.5">${lines.map(line => `<p>${line.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`).join('')}${link ? `<p><a href="${link.href}" style="color:#1f3354">${link.label}</a></p>` : ''}<p style="color:#6b7285;font-size:13px">Postcard · Send trips to Postcard</p></div>`
+function reply(to: string, subject: string, lines: string[], links: { href: string; label: string }[] = []) {
+  const text = [...lines, ...links.map(link => `${link.label}: ${link.href}`)].join('\n\n')
+  const html = `<div style="font-family:Georgia,serif;color:#1f3354;line-height:1.5">${lines.map(line => `<p>${line.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`).join('')}${links.map(link => `<p><a href="${link.href}" style="color:#1f3354">${link.label}</a></p>`).join('')}<p style="color:#6b7285;font-size:13px">Postcard · Send trips to Postcard</p></div>`
   return sendEmail({ to, subject, text, html })
 }
 
@@ -104,19 +104,21 @@ export async function processInboundEmail(emailId: string, origin: string) {
   if (!places.length) { await reply(sender, subject, ['Postcard couldn’t find any hotels, restaurants or things to do in that email. Send a booking confirmation or a trip summary that names the places and their towns.']); return }
 
   const dates = datesOf(parts, places)
+  // This email's own ids: its import and any plan it starts, both found again from one reference in the reply's links.
+  const refs = inboxRefs(stableId(emailId, 'inbox'))
   let plan: { id: string; title: string } | null = await matchingPlan(user.id, dates, places)
   const created = !plan
   if (!plan) {
     const title = parts.map(part => part.title?.trim()).find(Boolean)?.slice(0, 160) || `Trip to ${places[0].destination}`
     const form = new FormData()
-    for (const [key, value] of Object.entries({ clientId: stableId(emailId, 'inbox-plan'), title, destination: '', audience: 'family', format: 'auto', startDate: dates?.start ?? '', endDate: dates?.end ?? '' })) form.set(key, value)
+    for (const [key, value] of Object.entries({ clientId: refs.plan, title, destination: '', audience: 'family', format: 'auto', startDate: dates?.start ?? '', endDate: dates?.end ?? '' })) form.set(key, value)
     const started = await actAs(user.id, () => startPlan(form))
     if (!started.id) { log('could not start plan', started.error); return }
     plan = { id: started.id, title }
   }
-  const result = await actAs(user.id, () => importIntoPlan(plan.id, stableId(emailId, 'inbox-import'), places, dates))
+  const result = await actAs(user.id, () => importIntoPlan(plan.id, refs.import, places, dates))
   if (result.error) { log('import failed', result.error); return }
   log('imported', places.length, 'places')
   await reply(sender, subject, [`Added ${places.length} ${places.length === 1 ? 'place' : 'places'} to ${created ? 'a new private plan, ' : ''}“${plan.title}”. Places already in the trip were updated, not repeated.`,
-    'Wrong trip? Open it and move the places, or delete them. Plans stay private until you post them.'], { href: `${origin}/plan/${plan.id}`, label: 'Open the trip' })
+    'Plans stay private until you post them.'], [{ href: `${origin}/plan/${plan.id}`, label: 'Open the trip' }, { href: `${origin}/inbox/${refs.ref}`, label: 'Wrong trip? Move these places, make them their own trip, or undo' }])
 }

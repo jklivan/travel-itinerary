@@ -81,3 +81,7 @@ export function stableId(value: string, salt: string) {
   const hex = createHmac('sha256', salt).update(value).digest('hex')
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
 }
+
+// One emailed import's ids, all from the reference in its reply's links: the places it added (ids "<import>:<n>")
+// and the plan it started, if it started one.
+export const inboxRefs = (ref: string) => ({ ref, import: stableId(ref, 'import'), plan: stableId(ref, 'plan') })
