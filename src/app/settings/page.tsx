@@ -8,12 +8,15 @@ import SignOutButton from '@/components/SignOutButton'
 import BlockButton from '@/components/BlockButton'
 import UserAvatar from '@/components/UserAvatar'
 import DisconnectAssistant from '@/components/DisconnectAssistant'
+import TripInbox from '@/components/TripInbox'
+import { inboxAddress } from '@/lib/inbox'
 
 export default async function SettingsPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
   // AI assistants connected to this account (their keys still work): Muse, ChatGPT, Claude…
   const connected = await prisma.oAuthClient.findMany({ where: { tokens: { some: { userId: session.user.id, kind: 'refresh', revokedAt: null, expiresAt: { gt: new Date() } } } }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true } })
+  const me = await prisma.user.findUnique({ where: { id: session.user.id }, select: { email: true, inboxToken: true, inboxSenders: true } })
   const blocked = await prisma.block.findMany({ where: { blockerId: session.user.id }, orderBy: { createdAt: 'desc' }, select: { blocked: { select: { id: true, name: true, image: true } } } })
 
   return (
@@ -29,6 +32,7 @@ export default async function SettingsPage() {
           </p>
         </div>
       </section>
+      {me && <TripInbox initialAddress={me.inboxToken ? inboxAddress(me.inboxToken) : null} initialSenders={me.inboxSenders} accountEmail={me.email} />}
       {connected.length > 0 && <section className="panel mt-6 p-5" aria-labelledby="assistants-heading">
         <h2 id="assistants-heading" className="type-label text-ink">Connected assistants</h2>
         <p className="mt-0.5 text-sm text-brown">These can see your trips and add private plans.</p>

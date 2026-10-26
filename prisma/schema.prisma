@@ -40,6 +40,10 @@ model User {
   reportsAbout      Report[]              @relation("ReportSubject")
   blocking          Block[]               @relation("BlockBlocker")
   blockedBy         Block[]               @relation("BlockBlocked")
+  // "Send trips to Postcard": the private part of this person's address (trips-<inboxToken>@in.postcardtravel.app),
+  // and other addresses besides their account email that may send to it (their assistant's, a work email).
+  inboxToken        String?               @unique @db.VarChar(40)
+  inboxSenders      String[]              @default([])
   oauthCodes        OAuthCode[]
   oauthTokens       OAuthToken[]
   createdAt         DateTime              @default(now())

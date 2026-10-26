@@ -1,10 +1,8 @@
-import { toFile } from 'openai'
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
-import { pdfText } from '@/lib/pdfText'
 import mammoth from 'mammoth'
 import { get } from '@vercel/blob'
-import { client, EXTRACT_FUNCTION, PDF_JSON_INSTRUCTION, extractPrompt, parseResult, fetchBlob, extractFromText, type ExtractedItinerary } from '@/lib/extractItinerary'
+import { client, EXTRACT_FUNCTION, extractPrompt, parseResult, fetchBlob, extractFromText, extractFromPdfBuffer, extractFromImageBase64, type ExtractedItinerary } from '@/lib/extractItinerary'
 
 export const maxDuration = 300
 
@@ -16,34 +14,7 @@ async function extractFromPrivatePdf(url: string, filename: string, prompt: stri
     throw new Error('Could not read the uploaded PDF.')
   }
   const buffer = Buffer.from(await new Response(result.stream).arrayBuffer())
-  // The AI takes PDFs up to 50 MB. Bigger ones (usually full of photos) send just their text.
-  if (buffer.length > 45 * 1024 * 1024) {
-    const text = await pdfText(new Uint8Array(buffer))
-    if (text.replace(/Page \d+:|\s/g, '').length < 200) throw new Error('This PDF is too big to read and has no text in it (it may be scanned pages). Try a smaller copy, or paste the itinerary as notes.')
-    return extractFromText(text, prompt)
-  }
-  const file = await client.files.create({
-    file: await toFile(buffer, filename, { type: 'application/pdf' }),
-    purpose: 'user_data',
-  })
-  try {
-    const response = await client.responses.create({
-      model: 'gpt-5.6-terra',
-      input: [{
-        role: 'user',
-        content: [
-          { type: 'input_file', file_id: file.id },
-          { type: 'input_text', text: `${prompt}\n\n${PDF_JSON_INSTRUCTION}` },
-        ],
-      }],
-      text: {
-        format: { type: 'json_object' },
-      },
-    })
-    return JSON.parse(response.output_text) as ExtractedItinerary
-  } finally {
-    await client.files.delete(file.id).catch(() => undefined)
-  }
+  return extractFromPdfBuffer(buffer, filename, prompt)
 }
 
 async function extractFromImageUrl(url: string, contentType: string, prompt: string): Promise<ExtractedItinerary> {
@@ -51,23 +22,6 @@ async function extractFromImageUrl(url: string, contentType: string, prompt: str
   // OpenAI's remote-URL fetch and its PDF-only file-input restriction.
   const res = await fetchBlob(url)
   const base64 = Buffer.from(await res.arrayBuffer()).toString('base64')
-  const completion = await client.chat.completions.create({
-    model: 'gpt-5.6-terra',
-    reasoning_effort: 'none',
-    tools: [EXTRACT_FUNCTION],
-    tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
-    messages: [{
-      role: 'user',
-      content: [
-        { type: 'image_url', image_url: { url: `data:${contentType};base64,${base64}` } },
-        { type: 'text', text: prompt },
-      ],
-    }],
-  })
-  return parseResult(completion)
-}
-
-async function extractFromImageBase64(base64: string, contentType: string, prompt: string): Promise<ExtractedItinerary> {
   const completion = await client.chat.completions.create({
     model: 'gpt-5.6-terra',
     reasoning_effort: 'none',

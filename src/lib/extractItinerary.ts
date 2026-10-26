@@ -1,4 +1,5 @@
-import OpenAI from 'openai'
+import OpenAI, { toFile } from 'openai'
+import { pdfText } from '@/lib/pdfText'
 
 // Turning travel notes and documents into an itinerary (places, days, dates). Used by the import (api/extract-pdf)
 // and by the assistant connector's "import a trip" (api/mcp).
@@ -134,6 +135,55 @@ export async function extractFromText(text: string, prompt: string): Promise<Ext
     tools: [EXTRACT_FUNCTION],
     tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
     messages: [{ role: 'user', content: `${prompt}\n\nDOCUMENT:\n${text}` }],
+  })
+  return parseResult(completion)
+}
+
+// A PDF's itinerary: the file itself goes to the AI (up to 50 MB); bigger ones (usually full of photos) send their text.
+export async function extractFromPdfBuffer(buffer: Buffer, filename: string, prompt: string): Promise<ExtractedItinerary> {
+  // The AI takes PDFs up to 50 MB. Bigger ones (usually full of photos) send just their text.
+  if (buffer.length > 45 * 1024 * 1024) {
+    const text = await pdfText(new Uint8Array(buffer))
+    if (text.replace(/Page \d+:|\s/g, '').length < 200) throw new Error('This PDF is too big to read and has no text in it (it may be scanned pages). Try a smaller copy, or paste the itinerary as notes.')
+    return extractFromText(text, prompt)
+  }
+  const file = await client.files.create({
+    file: await toFile(buffer, filename, { type: 'application/pdf' }),
+    purpose: 'user_data',
+  })
+  try {
+    const response = await client.responses.create({
+      model: 'gpt-5.6-terra',
+      input: [{
+        role: 'user',
+        content: [
+          { type: 'input_file', file_id: file.id },
+          { type: 'input_text', text: `${prompt}\n\n${PDF_JSON_INSTRUCTION}` },
+        ],
+      }],
+      text: {
+        format: { type: 'json_object' },
+      },
+    })
+    return JSON.parse(response.output_text) as ExtractedItinerary
+  } finally {
+    await client.files.delete(file.id).catch(() => undefined)
+  }
+}
+
+export async function extractFromImageBase64(base64: string, contentType: string, prompt: string): Promise<ExtractedItinerary> {
+  const completion = await client.chat.completions.create({
+    model: 'gpt-5.6-terra',
+    reasoning_effort: 'none',
+    tools: [EXTRACT_FUNCTION],
+    tool_choice: { type: 'function', function: { name: 'extract_itinerary' } },
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image_url', image_url: { url: `data:${contentType};base64,${base64}` } },
+        { type: 'text', text: prompt },
+      ],
+    }],
   })
   return parseResult(completion)
 }
