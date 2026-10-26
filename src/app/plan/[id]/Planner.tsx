@@ -294,7 +294,7 @@ function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, init
   }
 
   const nightsSelect = <label className="block text-xs uppercase tracking-wide text-link">How many nights?<select value={nights} onChange={event => setNights(event.target.value)} className={inputClass}><option value="">Not sure yet</option>{Array.from({ length: 30 }, (_, index) => index + 1).map(value => <option key={value} value={value}>{value} {value === 1 ? 'night' : 'nights'}</option>)}</select></label>
-  return <section className="panel mb-4 space-y-3 p-4" aria-label="Add a place"><div className="flex items-center justify-between gap-3"><button type="button" onClick={onClose} className="text-sm text-link">← Back</button><Link href={`/plan/${trip.id}/friends`} className="flex items-center gap-1.5 text-sm font-semibold text-link"><Users size={16} />Browse friends’ places</Link></div><h2 className="type-title">Add a place</h2><fieldset disabled={busy || uploading} className="space-y-3">
+  return <section className="panel mb-4 space-y-3 p-4" aria-label="Add a place"><button type="button" onClick={onClose} className="text-sm text-link">← Back</button><div><h2 className="type-title">Add a place</h2><Link href={`/plan/${trip.id}/friends`} className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-link"><Users size={16} />Browse friends’ places</Link></div><fieldset disabled={busy || uploading} className="space-y-3">
     <DestinationPicker destinations={trip.destinations.map(d => ({ id: d.id, name: d.name }))} value={destination} selectedId={destinationId} onChange={changeDestination} labelClass="mb-1 text-sm" />
     <fieldset><legend className="mb-2 text-sm">Category</legend><div className="flex flex-wrap gap-2">
       {[
