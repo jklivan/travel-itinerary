@@ -6,7 +6,7 @@ import { eventPhotos } from '@/lib/eventPhotos'
 import { revalidatePath } from 'next/cache'
 import { recommendationTags, type PlaceRecommendation } from '@/lib/placeRecommendation'
 
-type Edit = { kind: 'rating'; rating: number; recommendation?: PlaceRecommendation } | { kind: 'photos'; photos: string[]; expectedPhotos: string[] }
+type Edit = { kind: 'rating'; rating: number; recommendation?: PlaceRecommendation; notes?: string } | { kind: 'photos'; photos: string[]; expectedPhotos: string[] }
 
 export async function updatePlace(itemId: string, edit: Edit) {
   const session = await auth()
@@ -15,6 +15,7 @@ export async function updatePlace(itemId: string, edit: Edit) {
   if (edit.kind === 'rating') {
     if (!Number.isInteger(edit.rating) || edit.rating < 0 || edit.rating > 5) return { error: 'Choose a rating from 1 to 5, or clear the rating.' }
     if (edit.recommendation !== undefined && !['none', 'must', 'avoid', 'option'].includes(edit.recommendation)) return { error: 'Invalid place update.' }
+    if (edit.notes !== undefined && (typeof edit.notes !== 'string' || edit.notes.length > 8000)) return { error: 'Keep your notes under 8,000 characters.' }
   } else if (edit.kind === 'photos') {
     if (!Array.isArray(edit.photos) || !Array.isArray(edit.expectedPhotos)
       || ![...edit.photos, ...edit.expectedPhotos].every(url => typeof url === 'string' && url.length <= 4096 && (/^https?:\/\//i.test(url) || /^\/(?!\/)/.test(url)))) {
@@ -31,7 +32,7 @@ export async function updatePlace(itemId: string, edit: Edit) {
     const photos = edit.kind === 'photos' ? eventPhotos(edit.photos) : []
     const result = await prisma.destItem.updateMany({
       where: { ...owned, ...(edit.kind === 'photos' ? { photoUrls: { equals: item.photoUrls }, photoUrl: item.photoUrl } : {}) },
-      data: edit.kind === 'rating' ? { rating: edit.rating || null, ...(edit.recommendation === undefined ? {} : { tags: recommendationTags(item.tags, edit.recommendation) }) } : { photoUrls: photos, photoUrl: photos[0] ?? null },
+      data: edit.kind === 'rating' ? { rating: edit.rating || null, ...(edit.recommendation === undefined ? {} : { tags: recommendationTags(item.tags, edit.recommendation) }), ...(edit.notes === undefined ? {} : { notes: edit.notes.trim() || null }) } : { photoUrls: photos, photoUrl: photos[0] ?? null },
     })
     if (result.count !== 1) return { error: 'This place changed while saving. Reload and try again.' }
     revalidatePath(`/plan/${item.destination.itineraryId}`)

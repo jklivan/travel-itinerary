@@ -9,7 +9,8 @@ const REVEAL = 88
 
 // Swipe a card left to show a Delete button; tapping it asks once more before deleting.
 // Swiping right, or tapping the card while it's open, closes it again. On a computer, hovering shows a trash button instead.
-// Drag handles (data-no-swipe) and form fields don't start a swipe.
+// Drag handles (data-no-swipe) and form fields don't start a swipe. `children` can be a function given `askDelete`,
+// for a Delete button of its own that opens the same confirmation.
 export default function SwipeToDelete({ title, message, confirmLabel, keepLabel, onDelete, disabled = false, hoverButton = true, className = 'rounded-2xl', children }: {
   title: string
   message: ReactNode
@@ -20,7 +21,7 @@ export default function SwipeToDelete({ title, message, confirmLabel, keepLabel,
   disabled?: boolean
   hoverButton?: boolean
   className?: string
-  children: ReactNode
+  children: ReactNode | ((askDelete: () => void) => ReactNode)
 }) {
   const start = useRef<{ x: number; y: number; offset: number } | null>(null)
   const moved = useRef(false)
@@ -32,6 +33,7 @@ export default function SwipeToDelete({ title, message, confirmLabel, keepLabel,
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const open = offset <= -REVEAL / 2
+  const content = typeof children === 'function' ? children(() => setConfirming(true)) : children
 
   async function remove() {
     setBusy(true); setError('')
@@ -50,7 +52,7 @@ export default function SwipeToDelete({ title, message, confirmLabel, keepLabel,
     </div>
   </div>
 
-  if (disabled) return <>{children}</>
+  if (disabled) return <>{content}</>
 
   return <div className={`group relative overflow-hidden ${className}`}>
     <button type="button" aria-label={`Delete ${title}`} tabIndex={open ? 0 : -1} onClick={() => setConfirming(true)}
@@ -73,7 +75,7 @@ export default function SwipeToDelete({ title, message, confirmLabel, keepLabel,
       onPointerUp={() => { if (start.current && moved.current) setOffset(latest.current < -REVEAL / 2 ? -REVEAL : 0); start.current = null; setDragging(false) }}
       onPointerCancel={() => { start.current = null; setDragging(false); setOffset(open ? -REVEAL : 0) }}
       onClickCapture={event => { if (moved.current || open) { event.preventDefault(); event.stopPropagation(); moved.current = false; if (open) setOffset(0) } }}>
-      {children}
+      {content}
     </div>
     {/* Computers: no swipe, so a trash button shows when you hover over the card. */}
     {hoverButton && !open && <button type="button" aria-label={`Delete ${title}`} onClick={() => setConfirming(true)}

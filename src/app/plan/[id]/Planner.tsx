@@ -20,6 +20,7 @@ import PlaceEntryForm from '@/components/PlaceEntryForm'
 import PlaceEditForm, { type PlaceEditValues, type PlaceType } from '@/components/PlaceEditForm'
 import EventPhotoInput from '@/components/EventPhotoInput'
 import PlaceQuickEdit from '@/components/PlaceQuickEdit'
+import PlaceCardRating from '@/components/PlaceCardRating'
 import CoverPhotoPicker from '@/components/CoverPhotoPicker'
 import CoverFramer from '@/components/CoverFramer'
 import { StarPicker } from '@/components/ui/Stars'
@@ -447,7 +448,7 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
     if (saving.current || uploading) return
     saving.current = true; setBusy(true); setError('')
     const data = new FormData()
-    for (const [key, value] of Object.entries({ name: values.name, category: type, destination, destinationId: destinationId ?? '', placeId, status: place.status, notes: values.notes, day, ...(type === 'hotel' ? { nights } : {}), mealType: values.mealType,
+    for (const [key, value] of Object.entries({ name: values.name, category: type, destination, destinationId: destinationId ?? '', placeId, status: place.status, notes: values.notes, ...(type === 'transport' ? {} : { rating: String(values.rating) }), day, ...(type === 'hotel' ? { nights } : {}), mealType: values.mealType,
       tags: JSON.stringify(values.tags), alternative: values.alternative, description: values.description, link: values.link, address: values.address, photos: JSON.stringify(photos), bookingDetails: booking, ...when })) data.set(key, value)
     try { const result = await editPlanPlace(place.id, data); if (result.error) setError(result.error); else { setEditing(false); setSaved(true); router.refresh() } }
     catch { setError('Could not save. Your changes are still here; try again.') }
@@ -460,8 +461,9 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
     router.refresh()
   }
   // Swipe left (or hover on a computer) to delete; off while the place's edit form is open.
-  return <SwipeToDelete title={place.name} disabled={editing} className="" confirmLabel="Delete place" keepLabel="Keep place" onDelete={remove}
-    message={<>Delete <span className="font-semibold">{place.name}</span> and its notes? The rest of your trip will stay.</>}>
+  // Swipe left, or the Delete button under the card; both ask first.
+  return <SwipeToDelete title={place.name} disabled={editing} hoverButton={false} className="" confirmLabel="Delete place" keepLabel="Keep place" onDelete={remove}
+    message={<>Delete <span className="font-semibold">{place.name}</span> and its notes? The rest of your trip will stay.</>}>{askDelete => <>
   <article id={`place-${place.id}`} className={`${planningStyles.place} ${styles[category.value]} scroll-mt-40`}>
       {/* Tapping the photo or text opens the place with its full notes and details. */}
       <div role="button" tabIndex={0} aria-label={`Open ${place.name}`} onClick={() => { if (!editing) openEditor() }} onKeyDown={event => { if (!editing && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); openEditor() } }} className={`${styles.card} ${planningStyles.card} cursor-pointer`}>
@@ -475,7 +477,10 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
         {whenLabel(place) && <p className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-link"><Clock size={12} />{whenLabel(place)}</p>}
         {/* The place's own town once Google has it; until then, the destination it's filed under. */}
         <p className={planningStyles.location}>{place.address || foundAddress ? placeTown(place.address || foundAddress!) : place.destination}</p>
-        {!!place.rating && <p className="mt-1"><RatingStars value={place.rating} label={`Your rating: ${place.rating} out of 5`} /></p>}
+        {/* Tap the stars to rate it right here (not transport or a backup option; while Edit details is open,
+            the stars are in the form). */}
+        {editing || place.type === 'transport' || getRecommendation(place.tags) === 'option' ? !!place.rating && <p className="mt-1"><RatingStars value={place.rating} label={`Your rating: ${place.rating} out of 5`} /></p>
+          : <PlaceCardRating itemId={place.id} name={place.name} rating={place.rating} notes={place.notes} />}
         {place.notes && <p className={styles.note}>{place.notes}</p>}
         {/* Private booking details: only you see these (and they're in your itinerary PDF). */}
         {place.bookingDetails && <p className="mt-1 flex items-start gap-1 text-xs text-muted [overflow-wrap:anywhere]"><LockKeyhole size={12} className="mt-0.5 shrink-0" />{place.bookingDetails}</p>}
@@ -489,13 +494,14 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
     {dayTime && !editing && <DayTime itemId={place.id} name={place.name} time={place.time ?? ''} />}
     {place.type !== 'transport' && <PlacePeople key={`${place.placeId}:${place.name}:${place.destination}`} compact placeId={place.placeId ?? ''} name={place.name} location={place.destination} itemId={place.id} />}
     <div className={planningStyles.controls}>
-    {!editing ? <PlaceQuickEdit compact row itemId={place.id} name={place.name} type={category.value as PlaceType} tags={place.tags} rating={place.rating} photos={place.photos}
-        leading={<button onClick={openEditor} type="button" className="inline-flex min-h-11 items-center justify-center gap-1.5 px-2 text-xs text-link sm:text-sm"><Pencil size={16} />Edit details</button>} />
+    {!editing ? <PlaceQuickEdit compact row itemId={place.id} name={place.name} photos={place.photos}
+        leading={<button onClick={openEditor} type="button" className="inline-flex min-h-11 items-center justify-center gap-1.5 px-2 text-xs text-link sm:text-sm"><Pencil size={16} />Edit details</button>}
+        trailing={<button onClick={askDelete} type="button" aria-label={`Delete ${place.name}`} className="inline-flex min-h-11 items-center justify-center gap-1.5 px-2 text-xs text-danger sm:text-sm"><Trash2 size={16} />Delete</button>} />
       : <div className="w-full">
         {/* What kind of place it is comes first, so a restaurant saved as a stay is easy to fix. */}
         <fieldset className="mb-3"><legend className="mb-1 text-xs text-muted">What is it?</legend><div className="flex flex-wrap gap-1.5">{categories.map(option => <button key={option.value} type="button" aria-pressed={type === option.value} onClick={() => setType(option.value)} className="chip"><option.Icon size={14} />{option.label}</button>)}</div></fieldset>
         {/* Same fields as the trip editor, plus photos and the day for this plan. */}
-        <PlaceEditForm key={type} type={type as PlaceType} city={place.destination} busy={busy || uploading} saveLabel="Save changes" showRating={false} onPlaceIdChange={setPlaceId} onClose={() => setEditing(false)} onSave={values => void save(values)}
+        <PlaceEditForm key={type} type={type as PlaceType} city={place.destination} busy={busy || uploading} saveLabel="Save changes" showRating={type !== 'transport'} onPlaceIdChange={setPlaceId} onClose={() => setEditing(false)} onSave={values => void save(values)}
           initial={{ name: place.name, mealType: place.mealType ?? '', rating: place.rating ?? 0, notes: place.notes ?? '', tags: place.tags, isHighlight: false, alternative: place.alternative ?? '', description: place.description ?? '', link: place.link ?? '', address: place.address ?? '' }}>
           <div className="space-y-1"><p className="text-xs text-muted">Photos</p><EventPhotoInput photos={photos} name={place.name} onChange={setPhotos} onBusyChange={setUploading} /></div>
           {/* Moving a place to another destination puts it under that destination's heading. */}
@@ -525,7 +531,7 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
     }}>{busy ? 'Deleting…' : 'Delete this place'}</button><button type="button" disabled={busy} className="min-h-11" onClick={() => setRemoving(false)}>Keep place</button></div>}{error && <p role="alert" className="text-sm text-danger">{error}</p>}</div>}
     </div>
   </article>
-  </SwipeToDelete>
+  </>}</SwipeToDelete>
 }
 // Planner action row: a round icon button with its label underneath.
 const action = 'group flex flex-col items-center gap-1.5 text-center text-xs leading-tight text-ink'
