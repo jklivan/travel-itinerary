@@ -92,7 +92,12 @@ export const toursTool: PlannerTool = {
     const response = await fetch(`${base}/search/freetext`, { method: 'POST', signal: signal ?? AbortSignal.timeout(10_000),
       headers: { 'exp-api-key': key, 'Accept-Language': 'en-US', Accept: 'application/json;version=2.0', 'Content-Type': 'application/json' },
       body: JSON.stringify({ searchTerm: query, currency: 'USD', searchTypes: [{ searchType: 'PRODUCTS', pagination: { start: 1, count: Math.min(10, Number(input.limit) || 6) } }] }) })
-    if (!response.ok) return fail(`Tours search failed (${response.status}).`)
+    if (!response.ok) {
+      // What Viator said, which server, and the key's shape (never the key), so a refusal can be traced.
+      const said = await response.text().then(body => body.slice(0, 200)).catch(() => '')
+      console.warn('[tours] Viator refused', response.status, new URL(base).host, `key ${key.trim().length} chars, ${/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key.trim()) ? 'uuid-shaped' : 'not uuid-shaped'}${key !== key.trim() ? ', has spaces' : ''}`, said)
+      return fail(`Tours search failed (${response.status}).`)
+    }
     type Product = { title?: string; productUrl?: string; pricing?: { summary?: { fromPrice?: number } }; reviews?: { combinedAverageRating?: number; totalReviews?: number }; duration?: { fixedDurationInMinutes?: number } }
     const products = ((await response.json()) as { products?: { results?: Product[] } }).products?.results ?? []
     return ok(products.map(product => ({ title: product.title, from_price_usd: product.pricing?.summary?.fromPrice, rating: product.reviews?.combinedAverageRating, reviews: product.reviews?.totalReviews, minutes: product.duration?.fixedDurationInMinutes, url: product.productUrl })))
