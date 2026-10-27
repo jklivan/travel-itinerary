@@ -67,11 +67,14 @@ export const localEventsTool: PlannerTool = {
     if (!start || !end || end < start) return fail('Give start and end dates as YYYY-MM-DD.')
     const spot = await locate(text(input.place, 120), signal)
     if (!spot) return fail('Couldn’t find that place.')
-    const params = new URLSearchParams({ apikey: key, latlong: `${spot.lat},${spot.lng}`, radius: '40', unit: 'km', startDateTime: `${start}T00:00:00Z`, endDateTime: `${end}T23:59:59Z`, size: '20', sort: 'date,asc', ...(text(input.keyword, 60) ? { keyword: text(input.keyword, 60) } : {}) })
+    const params = new URLSearchParams({ apikey: key, latlong: `${spot.lat},${spot.lng}`, radius: '40', unit: 'km', localStartDateTime: `${start}T00:00:00,${end}T23:59:59`, size: '50', sort: 'date,asc', ...(text(input.keyword, 60) ? { keyword: text(input.keyword, 60) } : {}) })
     const response = await fetch(`https://app.ticketmaster.com/discovery/v2/events.json?${params}`, { signal: signal ?? AbortSignal.timeout(10_000) })
     if (!response.ok) return fail(`Events search failed (${response.status}).`)
     type Event = { name: string; url?: string; dates?: { start?: { localDate?: string; localTime?: string } }; classifications?: { segment?: { name?: string }; genre?: { name?: string } }[]; _embedded?: { venues?: { name?: string }[] } }
-    const events = ((await response.json()) as { _embedded?: { events?: Event[] } })._embedded?.events ?? []
+    // Events starting on the trip's dates, in the place's own time. Year-round "flexible entry" tickets that started
+    // long before can still slip in, so those are dropped too.
+    const events = (((await response.json()) as { _embedded?: { events?: Event[] } })._embedded?.events ?? [])
+      .filter(event => { const day = event.dates?.start?.localDate; return !day || (day >= start && day <= end) }).slice(0, 20)
     return ok(events.length ? events.map(event => ({ name: event.name, date: event.dates?.start?.localDate, time: event.dates?.start?.localTime?.slice(0, 5), venue: event._embedded?.venues?.[0]?.name, kind: [event.classifications?.[0]?.segment?.name, event.classifications?.[0]?.genre?.name].filter(name => name && name !== 'Undefined').join(' · '), url: event.url })) : `No ticketed events found near ${spot.name} on those dates.`)
   },
 }

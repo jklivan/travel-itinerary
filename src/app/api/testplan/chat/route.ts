@@ -6,13 +6,25 @@ import { prisma } from '@/lib/prisma'
 import { loadPlanningContext } from '@/lib/testplanContext'
 import { cleanPreferences, describePreferences } from '@/lib/travelPreferences'
 import type { Prisma } from '@/generated/prisma/client'
-import { hotelPricesTool, runHotelPrices } from '@/lib/hotelPrices'
+import { anthropicTools, runPlannerTool } from '@/lib/planner/registry'
 import { finishedJsonItems, finishedJsonObject, partialJsonString } from '@/lib/partialJson'
 import type { Ask } from '@/app/testplan/AskPicker'
 
 export const maxDuration = 300
 
 const client = new Anthropic()
+
+// The planner's lookups in the chat (lib/planner). Friends' places and the traveler's own trips are already in the
+// travel data.
+const CHAT_TOOLS = ['search_places', 'place_details', 'opening_hours', 'travel_time', 'weather', 'hotel_prices', 'local_events', 'tours']
+const STATUS: Record<string, string> = {
+  search_places: 'Searching for places…', place_details: 'Checking place details…', opening_hours: 'Checking opening hours…',
+  travel_time: 'Working out travel times…', weather: 'Checking the weather…', hotel_prices: 'Checking live hotel prices…',
+  local_events: 'Looking for events…', tours: 'Finding tours and tickets…',
+}
+// Limits for one answer: rounds of lookups, lookups in all, and time spent on them. Past any of them, it answers
+// with what it found.
+const MAX_ROUNDS = 6, MAX_LOOKUPS = 24, LOOKUP_SECONDS = 150
 
 const INSTRUCTIONS = `You are Postcard's trip planner, inside Postcard, a travel app where friends share the places they've been. If you refer to yourself, you are Postcard, not Claude.
 You're helping the user plan a new trip. Below is everything they and their friends have logged: trips, places, star ratings (1-5) and personal notes.
@@ -30,6 +42,14 @@ How to help:
 - When a next step needs their travel dates or who's going (for example, before you can look up hotel prices), don't just mention it or offer it for later ("once you have dates"): end your reply by asking for it, e.g. "When are you looking to go?" (and who's coming, if you don't know), and set ask to "dates" or "dates_and_guests" so they can pick on a calendar.
 - ask = something to tap instead of typing, for the question your reply ends with: kind "choose" with 2-8 short options (multiple true when several can apply) for any question with a small set of answers; kind "dates" when you need their travel dates; kind "guests" when you need how many adults and children (and children's ages) are going; kind "dates_and_guests" when you need both (e.g. before looking up hotel prices). question = a 2-5 word label for it. Otherwise kind "none", question "", options [], multiple false. Ask one thing at a time.
 - Recommendations are optional: return an empty list when the user is just chatting or asking a question that doesn't call for places.
+- Look things up instead of guessing. You have tools for real places (search_places, place_details), opening_hours on a date and time, travel_time between places, the weather for a place and dates (a forecast up to two weeks out, otherwise what it's typically like then), and hotel_prices. Use them when they change the answer:
+  - Places you suggest yourself (source "claude"): when you aren't sure one is right for this traveler, search for it or for a better match ("family-friendly seafood in Cascais") and prefer well-rated places that are operating.
+  - When the trip has dates and you suggest a day's plan, a specific day or a time, check opening_hours for that date (many places close one day a week) and travel_time between places you put together, and adjust.
+  - local_events finds concerts, sports, theatre and festivals near a place on given dates (Ticketmaster). Use it when they ask what's on or about events, or when the dates are known and a night is free. Far-off dates often have few events listed yet: say so, and don't present festivals or events you know of as confirmed for those dates.
+  - tours finds bookable tours, activities and attraction tickets (Viator), with prices and a link. Use it for guided tours, day trips and tickets; give the price as "from $X" and link it. If a tool says it isn't connected or fails, answer without it and don't mention the tool.
+  - When the dates are known and the plan depends on the weather (beach, hiking, skiing, outdoor dining), check the weather and mention it in a sentence.
+  - Put what you checked in the place's "why" when it helps, briefly: "Open Tuesdays from 7pm", "12 min walk from the Alfama", "Typically 24°C and dry in June".
+  - Make independent lookups together in one turn, and don't look up what you won't use: most answers need a few lookups or none. Never invent hours, travel times, weather or prices.
 - Prices: when the user asks what hotels cost, about their budget, or for cheaper or better-value places to stay, look up live prices with the hotel_prices tool instead of estimating, and recommend hotels it returned. It needs dates and guests: use the trip's dates and travelers when you have them; otherwise ask for them in one short question before searching. Price the rooms the group needs: unless they say how they'll sleep, put up to 2 adults (plus up to 2 young children) in each room, say how you split them (e.g. "priced as 2 rooms"), and offer to check a family room or another split. Give prices as "from $X/night" for the dates you searched (for all the rooms, saying how many) and mention they're live rates that can change. Never make up a price. The tool's status says what happened: "no_availability" means the price source has the hotel (or city) but no rooms for those dates, likely sold out; "not_listed" means it isn't on the price source at all, so say you couldn't get a price, not that it's sold out; "priced_elsewhere" means the prices come from Google Hotels for reference (say so, and that they're for the whole group with the number of rooms unknown). Search only upcoming dates (today's date is given below): a month with no year means its next one, and never search or mention dates that have passed. Don't talk about how you look prices up ("my usual source", "my rate source"): say "live rates" or "a reference price from Google Hotels". Postcard doesn't book hotels: never offer to book, hold or reserve a room, and don't say whether a price can or can't be booked here. If they're ready to book, tell them to book on the hotel's own website or a booking site.
 
 For each recommendation:
@@ -133,6 +153,7 @@ export async function POST(request: Request) {
   // checking prices, then "done" with the saved chat and the place cards (or "error").
   const encoder = new TextEncoder()
   const owner = userId
+  const origin = new URL(request.url).origin
   // Leaving the app (switching to another) drops the connection. The answer is still worked out and saved, so the
   // page picks it up when you come back (GET below); sending to a dropped connection is just skipped.
   let controller: ReadableStreamDefaultController<Uint8Array> | null = null
@@ -179,6 +200,8 @@ export async function POST(request: Request) {
       const current = (rec: RawRecommendation, status: PlaceStatus): RawRecommendation => typeof status === 'object'
         ? { ...rec, name: status.renamed, why: `Now ${status.renamed} (formerly ${rec.name}). ${rec.why}` } : rec
       let liveRound = 0
+      const started = Date.now()
+      let lookups = 0, enough = false
       for (let round = 0; ; round++) {
         liveRound = round
         const stream = client.messages.stream({
@@ -192,7 +215,9 @@ export async function POST(request: Request) {
             // After the cached blocks, so the date changing each day doesn't undo the cache.
             { type: 'text', text: `Today is ${new Date().toISOString().slice(0, 10)}.` },
           ],
-          tools: [hotelPricesTool],
+          tools: anthropicTools({ only: CHAT_TOOLS }),
+          // Out of rounds, lookups or time: answer with what's been found.
+          ...(enough ? { tool_choice: { type: 'none' as const } } : {}),
           messages: [...history, ...turns],
         })
         // The reply as it's written: send what's new each time (the whole reply again if it ever changes).
@@ -220,17 +245,22 @@ export async function POST(request: Request) {
         response = await stream.finalMessage()
         const calls = response.content.filter((block): block is Anthropic.ToolUseBlock => block.type === 'tool_use')
         if (response.stop_reason !== 'tool_use' || !calls.length) break
-        if (round >= 3) return emit({ type: 'error', error: 'Postcard took too long looking up prices. Please try again.' })
-        // Looking up prices: anything shown so far starts over with the next round.
+        if (round > MAX_ROUNDS + 1) return emit({ type: 'error', error: 'Postcard took too long looking things up. Please try again.' })
+        // Looking things up: anything shown so far starts over with the next round.
         if (shown) emit({ type: 'reply', text: '' })
         emit({ type: 'reset' })
-        emit({ type: 'status', text: 'Checking live hotel prices…' })
+        // Every kind of lookup in this round, e.g. "Checking opening hours… Working out travel times…".
+        emit({ type: 'status', text: [...new Set(calls.map(call => STATUS[call.name] ?? 'Looking things up…'))].join(' ') })
         turns.push({ role: 'assistant', content: response.content })
         const results = await Promise.all(calls.map(async call => {
-          const result = call.name === 'hotel_prices' ? await runHotelPrices(call.input) : { content: `Unknown tool ${call.name}.`, isError: true }
-          if (result.isError) console.warn('[hotel_prices] error for the planner', result.content.slice(0, 300))
+          lookups++
+          const result = lookups > MAX_LOOKUPS ? { content: 'That’s enough lookups for this answer. Answer with what you have.', isError: true }
+            : await runPlannerTool(call.name, call.input, { userId: owner, tripId: trip ? tripId : null, origin })
+          if (result.isError) console.warn('[planner] tool error', call.name, result.content.slice(0, 300))
           return { type: 'tool_result' as const, tool_use_id: call.id, content: result.content, ...(result.isError ? { is_error: true } : {}) }
         }))
+        console.info('[planner] lookups', JSON.stringify({ round, tools: calls.map(call => call.name), total: lookups, seconds: Math.round((Date.now() - started) / 1000) }))
+        enough = round + 1 >= MAX_ROUNDS || lookups >= MAX_LOOKUPS || Date.now() - started > LOOKUP_SECONDS * 1000
         turns.push({ role: 'user', content: results })
       }
 
