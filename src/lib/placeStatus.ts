@@ -1,17 +1,18 @@
 import { matchesPlace } from '@/lib/placePhoto'
 
-// Whether a place is open for business, from Google Places. Plan with AI never shows a place that isn't operating
-// (closed permanently or for now). "unknown" (no key, not found, a different place came back, or the lookup failed)
+// Whether a place is open for business, from Google Places. Plan with AI never shows a place that's closed for good.
+// "paused" (Google says closed for now) is kept: it may only be shut for the season (a summer toboggan in October), and
+// the planner checks its website. "unknown" (no key, not found, a different place came back, or the lookup failed)
 // keeps the place: a failed check shouldn't hide a good suggestion.
 // renamed: Google knows the place only under a new name (Park Hyatt Mallorca is now Cap Vermell Grand Hotel).
-export type PlaceStatus = 'operating' | 'closed' | 'unknown' | { renamed: string; placeId: string }
+export type PlaceStatus = 'operating' | 'closed' | 'paused' | 'unknown' | { renamed: string; placeId: string }
 type Found = { id?: string; displayName?: { text?: string }; formattedAddress?: string; businessStatus?: string; types?: string[] }
 
 const key = () => process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_PLACES_API
 
 const statusOf = (place: Found | null): PlaceStatus => !place?.businessStatus ? 'unknown'
   : place.businessStatus === 'OPERATIONAL' ? 'operating'
-  : place.businessStatus === 'CLOSED_PERMANENTLY' || place.businessStatus === 'CLOSED_TEMPORARILY' ? 'closed' : 'unknown'
+  : place.businessStatus === 'CLOSED_PERMANENTLY' ? 'closed' : place.businessStatus === 'CLOSED_TEMPORARILY' ? 'paused' : 'unknown'
 
 // The same kind of place, from Google's types: a hotel for a hotel, somewhere to eat or drink for a restaurant.
 function sameKind(type: string | undefined, types: string[] = []) {

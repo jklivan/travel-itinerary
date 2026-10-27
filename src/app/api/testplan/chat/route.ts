@@ -25,6 +25,11 @@ const STATUS: Record<string, string> = {
 // Limits for one answer: rounds of lookups, lookups in all, and time spent on them. Past any of them, it answers
 // with what it found.
 const MAX_ROUNDS = 6, MAX_LOOKUPS = 24, LOOKUP_SECONDS = 150
+// The web, searched and read on Anthropic's side: a place's own site for its season or opening dates, an event's dates.
+const WEB_TOOLS: Anthropic.ToolUnion[] = [
+  { type: 'web_search_20260209', name: 'web_search', max_uses: 4 },
+  { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 4 },
+]
 
 const INSTRUCTIONS = `You are Postcard's trip planner, inside Postcard, a travel app where friends share the places they've been. If you refer to yourself, you are Postcard, not Claude.
 You're helping the user plan a new trip. Below is everything they and their friends have logged: trips, places, star ratings (1-5) and personal notes.
@@ -47,6 +52,8 @@ How to help:
   - When the trip has dates and you suggest a day's plan, a specific day or a time, check opening_hours for that date (many places close one day a week) and travel_time between places you put together, and adjust.
   - local_events finds concerts, sports, theatre and festivals near a place on given dates (Ticketmaster). Use it when they ask what's on or about events, or when the dates are known and a night is free. Far-off dates often have few events listed yet: say so, and don't present festivals or events you know of as confirmed for those dates.
   - tours finds bookable tours, activities and attraction tickets (Viator), with prices and a link. Use it for guided tours, day trips and tickets; give the price as "from $X" and link it. If a tool says it isn't connected or fails, answer without it and don't mention the tool.
+  - web_search and web_fetch: for what the other tools can't answer, such as a seasonal place's dates (a summer toboggan or mountain lift that Google lists as closed in the off-season), whether a festival or event is on for their dates, or a place's own site. Prefer the place's official website. Say what the site says and when it was published or updated if that matters ("their site lists the 2026 season as May–October"); if it doesn't say, say so.
+  - A place Google calls "closed for now" may only be shut for the season: for mountain lifts, toboggans, beach clubs and other seasonal places, check their website before treating it as closed for the traveler's dates.
   - When the dates are known and the plan depends on the weather (beach, hiking, skiing, outdoor dining), check the weather and mention it in a sentence.
   - Put what you checked in the place's "why" when it helps, briefly: "Open Tuesdays from 7pm", "12 min walk from the Alfama", "Typically 24°C and dry in June".
   - Make independent lookups together in one turn, and don't look up what you won't use: most answers need a few lookups or none. Never invent hours, travel times, weather or prices.
@@ -215,7 +222,7 @@ export async function POST(request: Request) {
             // After the cached blocks, so the date changing each day doesn't undo the cache.
             { type: 'text', text: `Today is ${new Date().toISOString().slice(0, 10)}.` },
           ],
-          tools: anthropicTools({ only: CHAT_TOOLS }),
+          tools: [...anthropicTools({ only: CHAT_TOOLS }), ...WEB_TOOLS],
           // Out of rounds, lookups or time: answer with what's been found.
           ...(enough ? { tool_choice: { type: 'none' as const } } : {}),
           messages: [...history, ...turns],
@@ -224,7 +231,11 @@ export async function POST(request: Request) {
         let shown = ''
         // Then the question's picker and each card, as soon as each is completely written.
         let messageId = '', askSent = false, cardsSent = 0
-        stream.on('streamEvent', event => { if (event.type === 'message_start') messageId = event.message.id })
+        stream.on('streamEvent', event => {
+          if (event.type === 'message_start') messageId = event.message.id
+          // Searching or reading the web happens inside the answer (on Anthropic's side): say so while it does.
+          if (event.type === 'content_block_start' && event.content_block.type === 'server_tool_use') emit({ type: 'status', text: event.content_block.name === 'web_fetch' ? 'Reading their website…' : 'Checking the web…' })
+        })
         stream.on('text', (_delta, snapshot) => {
           const reply = partialJsonString(snapshot, 'reply')
           if (reply !== null && reply !== shown) {
@@ -244,6 +255,8 @@ export async function POST(request: Request) {
         })
         response = await stream.finalMessage()
         const calls = response.content.filter((block): block is Anthropic.ToolUseBlock => block.type === 'tool_use')
+        // A long web search can pause the answer: send it back as it is to carry on.
+        if (response.stop_reason === 'pause_turn' && round <= MAX_ROUNDS) { turns.push({ role: 'assistant', content: response.content }); continue }
         if (response.stop_reason !== 'tool_use' || !calls.length) break
         if (round > MAX_ROUNDS + 1) return emit({ type: 'error', error: 'Postcard took too long looking things up. Please try again.' })
         // Looking things up: anything shown so far starts over with the next round.
@@ -265,7 +278,8 @@ export async function POST(request: Request) {
       }
 
       if (response.stop_reason === 'refusal') return emit({ type: 'error', error: 'Postcard couldn’t answer that one. Try rephrasing.' })
-      const text = response.content.find(block => block.type === 'text')?.text
+      // The answer's text (web results can split it into several pieces).
+      const text = response.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('')
       let parsed: { reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string; notes?: string; tripDates?: { start: string; end: string }; ask?: Ask }
       try { parsed = JSON.parse(text ?? '') } catch { return emit({ type: 'error', error: 'The answer was cut off. Please try again.' }) }
 
