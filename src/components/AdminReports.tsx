@@ -13,8 +13,8 @@ export default async function AdminReports() {
     prisma.itinerary.findMany({ where: { id: { in: ids('trip') } }, select: { id: true, title: true } }),
   ])
   function what(kind: string, targetId: string) {
-    if (kind === 'trip') { const trip = trips.find(t => t.id === targetId); return { text: trip?.title ?? '(deleted trip)', href: trip ? `/itinerary/${trip.id}` : null } }
-    if (kind === 'comment') { const comment = comments.find(c => c.id === targetId); return { text: comment?.content ?? '(deleted comment)', href: comment ? `/itinerary/${comment.itineraryId}#comments` : null } }
+    if (kind === 'trip') { const trip = trips.find(t => t.id === targetId); return { text: trip?.title ?? '(deleted trip)', href: trip ? `/itinerary/${trip.id}?as=guest` : null } }
+    if (kind === 'comment') { const comment = comments.find(c => c.id === targetId); return { text: comment?.content ?? '(deleted comment)', href: comment ? `/itinerary/${comment.itineraryId}?as=guest#comments` : null } }
     if (kind === 'message') return { text: messages.find(m => m.id === targetId)?.content ?? '(deleted message)', href: null }
     if (kind === 'snapshot') { const story = stories.find(s => s.id === targetId); return { text: story ? `${story.placeName}${story.caption ? `: ${story.caption}` : ''}` : '(expired or deleted snapshot)', href: null } }
     if (kind === 'question') return { text: 'Ask your friends question', href: `/explore/questions/${targetId}` }

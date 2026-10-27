@@ -14,7 +14,10 @@ export function notificationPath(itineraryId: string | null, kind: string, actor
   if (kind === 'message') return actorId ? messageThreadHref(actorId, itineraryId) : '/messages'
   if (kind === 'follow') return actorId ? `/user/${encodeURIComponent(actorId)}` : '/friends'
   if (!itineraryId) return '/notifications'
-  return `/itinerary/${encodeURIComponent(itineraryId)}${kind === 'comment' ? '#comments' : ''}`
+  // Someone reacting to your trip: open it as others see it (with its comments and likes). Your own trips otherwise
+  // open in the planner; people's other trips ignore ?as=guest.
+  const guest = ['comment', 'like', 'save'].includes(kind) ? '?as=guest' : ''
+  return `/itinerary/${encodeURIComponent(itineraryId)}${guest}${kind === 'comment' ? '#comments' : ''}`
 }
 
 export function forumNotificationWhere(userId: string) {

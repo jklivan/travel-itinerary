@@ -199,10 +199,10 @@ export default async function ItineraryPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ view?: string; preview?: string }>
+  searchParams: Promise<{ view?: string; preview?: string; as?: string }>
 }) {
   const { id } = await params
-  const { view, preview: previewParam } = await searchParams
+  const { view, preview: previewParam, as } = await searchParams
   const session = await auth()
 
   const it = await prisma.itinerary.findUnique({
@@ -246,6 +246,8 @@ export default async function ItineraryPage({
   // ?preview=1: a private plan shown as it will look once posted (from "A few more details" → Continue).
   const previewing = previewParam === '1' && it.visibility === 'draft' && isOwn && it.isPlan
   if (it.visibility === 'draft' && isOwn && it.isPlan && !previewing) redirect(`/plan/${it.id}`)
+  // Your own posted trip opens where you can change it (the planner); ?as=guest shows it as everyone else sees it.
+  if (it.visibility !== 'draft' && isOwn && as !== 'guest') redirect(`/plan/${it.id}`)
   // Plan-based trips are edited in the planner. Link there directly: the editor's server redirect
   // to /plan fails during in-app navigation and leaves a blank page.
   const editHref = `/plan/${it.id}`
