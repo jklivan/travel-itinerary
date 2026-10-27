@@ -17,6 +17,7 @@ import { insertIntoDay } from '@/lib/dayOrder'
 import { nextAiFold } from '@/lib/aiTidy'
 import { moveDestinationInto } from '@/lib/moveDestination'
 import { formatCoverFocus, parseCoverFocus } from '@/lib/coverFocus'
+import { eventPhotos } from '@/lib/eventPhotos'
 import type { Prisma } from '@/generated/prisma/client'
 import { fileUnderDestination, type DestinationQuestion } from '@/lib/fileUnderDestination'
 import { locateDestinations } from '@/lib/locateDestinations'
@@ -335,6 +336,29 @@ export async function setTripCover(id: string, url: string | null, focus?: strin
     refresh(id, userId)
     return { success: true }
   } catch { return { error: 'Could not save the cover photo. Please try again.' } }
+}
+
+// Takes a photo off the whole trip: its trip photos, every place it's on, and the cover if it was the cover (the trip
+// then shows its next photo). The file itself stays, in case a postcard or another trip uses it.
+export async function removeTripPhoto(id: string, url: string): Promise<Result> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  if (typeof url !== 'string' || !url) return { error: 'Choose a photo to remove.' }
+  try {
+    const trip = await prisma.itinerary.findFirst({ where: { id, userId }, select: { coverPhoto: true, destinations: { select: { items: { where: { OR: [{ photoUrl: url }, { photoUrls: { has: url } }] }, select: { id: true, photoUrl: true, photoUrls: true } } } } } })
+    if (!trip) return { error: unavailable }
+    const items = trip.destinations.flatMap(d => d.items)
+    await prisma.$transaction([
+      prisma.photo.deleteMany({ where: { itineraryId: id, url } }),
+      ...items.map(item => {
+        const photos = eventPhotos(item.photoUrls, item.photoUrl).filter(photo => photo !== url)
+        return prisma.destItem.update({ where: { id: item.id }, data: { photoUrls: photos, photoUrl: photos[0] ?? null } })
+      }),
+      ...(trip.coverPhoto === url ? [prisma.itinerary.updateMany({ where: { id, userId }, data: { coverPhoto: null, coverFocus: null } })] : []),
+    ])
+    refresh(id, userId)
+    return { success: true }
+  } catch { return { error: 'Could not remove that photo. Please try again.' } }
 }
 
 export async function addPlanPlace(id: string, form: FormData): Promise<Result> {

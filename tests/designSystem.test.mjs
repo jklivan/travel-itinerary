@@ -19,6 +19,7 @@ const css = files(root, ['.module.css'])
 const BUTTON_EXCEPTIONS = [
   ['components/WelcomeScreen', ''], // sign-in buttons over the harbour photo
   ['components/EventPhotoInput', 'absolute -top-1'], // tiny remove-x on a photo thumbnail
+  ['components/CoverPhotoPicker', 'absolute -top-1'], // the same tiny remove-x on a cover choice
   ['components/SwipeToDelete', 'absolute inset-y-0'], // the red panel revealed by swiping
   ['components/ui/TagChip', 'TAG_PILL'], // the shared tag pill itself
 ]
