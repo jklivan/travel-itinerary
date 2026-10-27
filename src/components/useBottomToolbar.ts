@@ -18,8 +18,13 @@ export default function useBottomToolbar() {
     const viewport = window.visualViewport
     let frame = 0
     let settleTimer: ReturnType<typeof setTimeout> | undefined
+    // In the iPhone app the page itself shrinks above the keyboard, so the viewport can't tell whether it's open;
+    // the keyboard plugin's own open and close events decide instead.
+    const native = Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('Keyboard')
+    let keyboardOpen = false
     function update() {
       if (!bar) return
+      if (native) { bar.style.visibility = keyboardOpen ? 'hidden' : 'visible'; return }
       const active = document.activeElement
       const editing = active instanceof HTMLElement && (active.isContentEditable
         || active.matches('textarea, select, input:not([type="button"]):not([type="submit"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"])'))
@@ -45,10 +50,10 @@ export default function useBottomToolbar() {
     }
     // In the iPhone app (build 6 on), the keyboard plugin says exactly when the keyboard opens and closes.
     const keyboardListeners: Promise<PluginListenerHandle>[] = []
-    if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('Keyboard')) {
+    if (native) {
       keyboardListeners.push(
-        Keyboard.addListener('keyboardWillShow', () => { bar.style.visibility = 'hidden' }),
-        Keyboard.addListener('keyboardDidHide', () => { bar.style.visibility = 'visible'; window.scrollBy(0, 1); window.scrollBy(0, -1) }),
+        Keyboard.addListener('keyboardWillShow', () => { keyboardOpen = true; bar.style.visibility = 'hidden' }),
+        Keyboard.addListener('keyboardDidHide', () => { keyboardOpen = false; bar.style.visibility = 'visible'; window.scrollBy(0, 1); window.scrollBy(0, -1) }),
       )
     }
     window.addEventListener('resize', settle)
