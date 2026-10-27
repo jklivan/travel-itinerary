@@ -75,7 +75,11 @@ export default function PhotoSorter({ places, prompt = '', startOpen = false, on
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}
     {pile.length > 0 && <>
       <div className="flex items-center justify-between gap-2"><p className="type-label">{pile.length} to sort{selected.length ? ` · ${selected.length} selected` : ''}</p>
-        <button type="button" onClick={() => setSelected(selected.length === pile.length ? [] : pile)} className="text-xs font-semibold text-link">{selected.length === pile.length ? 'Clear' : 'Select all'}</button></div>
+        <div className="flex items-center gap-4">
+          {/* Added one by mistake: take the selected ones out of the pile (they aren't saved anywhere yet). */}
+          {selected.length > 0 && <button type="button" disabled={!!progress} onClick={() => { setPile(current => current.filter(url => !selected.includes(url))); setMessage(`Removed ${selected.length} photo${selected.length === 1 ? '' : 's'}.`); setSelected([]) }} className="text-xs font-semibold text-danger">Remove</button>}
+          <button type="button" onClick={() => setSelected(selected.length === pile.length ? [] : pile)} className="text-xs font-semibold text-link">{selected.length === pile.length ? 'Clear' : 'Select all'}</button>
+        </div></div>
       <div className="grid grid-cols-4 gap-1">{pile.map((url, index) => { const on = selected.includes(url); return <button key={url} type="button" aria-pressed={on} aria-label={`Photo ${index + 1}`} onClick={() => setSelected(current => on ? current.filter(item => item !== url) : [...current, url])} className="relative aspect-square overflow-hidden bg-chip">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={sizedPhoto(url, 256)} alt="" className={`size-full object-cover ${on ? 'opacity-80' : ''}`} />
