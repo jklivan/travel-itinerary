@@ -55,11 +55,14 @@ export async function travelTime(from: Stop, to: Stop, mode: Mode, departure?: s
   if (!key()) throw new Error('Google is not set up.')
   const response = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
     method: 'POST', signal: signal ?? AbortSignal.timeout(10_000),
-    headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key(), 'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.localizedValues' },
+    headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key(), 'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters' },
     body: JSON.stringify({ origin: waypoint(from), destination: waypoint(to), travelMode: mode, ...(mode === 'DRIVE' ? { routingPreference: 'TRAFFIC_AWARE' } : {}), ...(departure ? { departureTime: departure } : {}) }),
   })
   if (!response.ok) throw new Error(`Google Routes failed (${response.status}).`)
-  const route = ((await response.json()) as { routes?: { duration?: string; distanceMeters?: number; localizedValues?: { duration?: { text?: string }; distance?: { text?: string } } }[] }).routes?.[0]
+  const route = ((await response.json()) as { routes?: { duration?: string; distanceMeters?: number }[] }).routes?.[0]
   if (!route) return null
-  return { minutes: Math.round(Number((route.duration ?? '0s').replace('s', '')) / 60), km: route.distanceMeters ? Math.round(route.distanceMeters / 100) / 10 : null, text: route.localizedValues?.duration?.text }
+  const minutes = Math.round(Number((route.duration ?? '0s').replace('s', '')) / 60)
+  // Our own wording: Google's follows the place's language ("15 minutos" in Lisbon) whatever is asked for.
+  const text = minutes >= 60 ? `${Math.floor(minutes / 60)} hr${minutes % 60 ? ` ${minutes % 60} min` : ''}` : `${minutes} min`
+  return { minutes, km: route.distanceMeters ? Math.round(route.distanceMeters / 100) / 10 : null, text }
 }
