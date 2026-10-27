@@ -118,6 +118,17 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   // so the planner can offer to merge them. Each group keeps its shortest name.
   // Adding the whole trip's photos: a small link beside Edit opens the sorter at the top.
   const [sortingPhotos, setSortingPhotos] = useState(false)
+  // The circles stay pinned while you scroll, but what they open sits under them at the top of the page. Scrolled
+  // down, it would open out of sight (and on iPhone push the page down), so bring it up just under the circles.
+  const actionsRef = useRef<HTMLDivElement>(null)
+  const panelsRef = useRef<HTMLDivElement>(null)
+  const topPanelOpen = adding?.at === 'top' || sortingPhotos || importing
+  useEffect(() => {
+    if (!topPanelOpen || !panelsRef.current) return
+    const below = actionsRef.current?.getBoundingClientRect().bottom ?? 0
+    const top = panelsRef.current.getBoundingClientRect().top
+    if (top < below - 4 || top > window.innerHeight * 0.6) window.scrollBy({ top: top - below, behavior: 'smooth' })
+  }, [topPanelOpen, adding?.at, sortingPhotos, importing])
   const lookAlikes = destinations.reduce<{ keep: typeof destinations[number]; others: typeof destinations }[]>((groups, destination) => {
     const group = groups.find(g => samePlanDestination(g.keep, destination))
     if (!group) return [...groups, { keep: destination, others: [] }]
@@ -203,7 +214,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     <h1 className="trip-title mt-1 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
     <div className="mt-1"><details id="trip-details" open={initialDetails || undefined} className="scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-1 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details></div>
     {/* One row of compact actions, so the places start higher up the screen. */}
-    <div className="sticky top-[var(--app-header-height,0px)] z-20 -mx-1 mt-1 grid grid-cols-4 items-start gap-2 bg-paper px-1 py-2">
+    <div ref={actionsRef} className="sticky top-[var(--app-header-height,0px)] z-20 -mx-1 mt-1 grid grid-cols-4 items-start gap-2 bg-paper px-1 py-2">
       {/* The whole trip's photos at once, then tap them into places. */}
       <button type="button" onClick={() => { setImporting(false); setSortingPhotos(false); setAdding(current => current?.at === 'top' ? null : { at: 'top' }) }} aria-expanded={adding?.at === 'top'} className={action}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={22} /></span>Add a place</button>
       <button type="button" aria-expanded={sortingPhotos} onClick={() => { setAdding(null); setImporting(false); setSortingPhotos(value => !value) }} className={action}><span className={`${actionIcon} border-line bg-card text-ink`}><ImagePlus size={22} strokeWidth={1.75} /></span>Add photos</button>
@@ -212,10 +223,12 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       <Link href={`/testplan?trip=${trip.id}&from=planner`} className={action}><span className={`${actionIcon} border-mist-line bg-mist text-ink`}><Sparkles size={22} strokeWidth={1.75} /></span>Plan with AI</Link>
     </div>
     {needsPlace && !places.length && <p role="alert" className="panel-hint mb-3 p-3 text-sm text-ink">Add at least one place before you post this trip: a place you stayed, ate or visited.</p>}
+    <div ref={panelsRef}>
     {addForm('top')}
     {sortingPhotos && (places.length ? <PhotoSorter places={places} startOpen onClose={() => setSortingPhotos(false)} />
       : <p className="panel-hint mb-4 p-3 text-sm text-ink">Add your places first, then choose the trip’s photos and tap them into each place.</p>)}
     {importing && <div id="plan-import-panel"><PlanImport tripId={trip.id} trip={trip.start && trip.end ? { start: trip.start, end: trip.end } : null} destinations={destinations.filter(d => d.name !== 'Destination to decide').map(d => ({ name: d.name, country: d.country }))} onClose={() => setImporting(false)} /></div>}
+    </div>
     <div role="tablist" aria-label="Trip view" className="tabs mb-4 mt-1">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className="tab">{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
     <section role="tabpanel" id="trip-panel" aria-labelledby={`${tab}-tab`}>
       {mapOpened && <div hidden={tab !== 'map'}><PlanningMap places={places.filter(place => place.type !== 'transport' || place.placeId || (place.lat !== null && place.lng !== null)).map(place => ({ id: place.id, name: place.name, city: place.destination, type: place.type === 'hotel' ? 'hotel' : place.type === 'food_drink' ? 'food_drink' : place.type === 'transport' ? 'transport' : 'activity', day: place.day, placeId: place.placeId ?? undefined, lat: place.lat, lng: place.lng }))} /></div>}
