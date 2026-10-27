@@ -483,7 +483,7 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
         {/* Tap the stars to rate it right here (not transport or a backup option; while Edit details is open,
             the stars are in the form). */}
         {editing || place.type === 'transport' || getRecommendation(place.tags) === 'option' ? !!place.rating && <p className="mt-1"><RatingStars value={place.rating} label={`Your rating: ${place.rating} out of 5`} /></p>
-          : <PlaceCardRating itemId={place.id} name={place.name} rating={place.rating} notes={place.notes} />}
+          : <PlaceCardRating itemId={place.id} name={place.name} rating={place.rating} />}
         {place.notes && <p className={styles.note}>{place.notes}</p>}
         {/* Private booking details: only you see these (and they're in your itinerary PDF). */}
         {place.bookingDetails && <p className="mt-1 flex items-start gap-1 text-xs text-muted [overflow-wrap:anywhere]"><LockKeyhole size={12} className="mt-0.5 shrink-0" />{place.bookingDetails}</p>}
