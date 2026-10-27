@@ -15,15 +15,14 @@ import Link from 'next/link'
 import { withoutPrivateTransport } from '@/lib/privateTransport'
 import { notFound, redirect } from 'next/navigation'
 import FollowButton from '@/components/FollowButton'
-import { Plane, Hotel, Utensils, Camera, MapPin, Check, Ban, Star, Users, Pencil, Clock } from 'lucide-react'
+import { Plane, Hotel, Utensils, Camera, MapPin, Check, Ban, Pencil, Clock } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import LikeButton from '@/components/LikeButton'
 import { eventPhotos, pickEventPhoto, tripPhotoGallery } from '@/lib/eventPhotos'
 import DeleteButton from '@/components/DeleteButton'
-import { TRIP_STAMPS, STAMP_COLORS } from '@/lib/tripStamps'
-import { tripLocationLabel } from '@/lib/tripLocation'
+import { STAMP_COLORS } from '@/lib/tripStamps'
 import { locateTripPlaces, needsLocating } from '@/lib/locatePlaces'
-import TagChip, { TAG_PILL } from '@/components/ui/TagChip'
+import TripDescriptors from '@/components/TripDescriptors'
 import LikesSheetButton from '@/components/LikesSheet'
 import Stamp from '@/components/ui/Stamp'
 import ItineraryMap from '@/components/ItineraryMap'
@@ -86,7 +85,6 @@ function RatingsDetails({ itemId, authorName, authorRating, friends, avg, total,
   )
 }
 
-const MONTH_ORDER = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 type DestItemRow = { id: string; type: string; mealType?: string | null; name: string; description?: string | null; notes?: string | null; address?: string | null; rating?: number | null; priceLevel?: number | null; familyFriendly?: boolean | null; link?: string | null; groupIndex?: number; dayIndex?: number | null; tags?: string[]; alternative?: string | null; photoUrl?: string | null; photoUrls?: string[]; lat?: number | null; lng?: number | null; placeId?: string | null }
 
@@ -405,8 +403,6 @@ export default async function ItineraryPage({
   // friends who saved this itinerary
   const itineraryFriendBucketers = itineraryBucketersRows.map(r => r.friend_name)
 
-  const audienceLabel = ({ family: 'Family', friends: 'Friends', romantic: 'Couples', adult: 'Adults' } as Record<string, string>)[it.audience]
-  const displayTags = it.tags
 
   // Build map pins from geocoded items
   // Posted trips with places that have no saved map spot (e.g. built in the planner before it saved them), or a pin
@@ -464,7 +460,6 @@ export default async function ItineraryPage({
     destination.items.map(item => [item.id, [destination.name, destination.country].filter(Boolean).join(', ')] as const)
   ))
 
-  const stamp = it.tripRating ? TRIP_STAMPS.find(s => s.value === it.tripRating) : null
   // Card label for the poster's own rating: their first name, or "You" on your own trip.
   const authorFirst = isOwn ? 'You' : it.user.name.split(' ')[0]
 
@@ -550,23 +545,12 @@ export default async function ItineraryPage({
             {it.title}
           </h1>
 
-          {tripLocationLabel(it.destinations) && <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-brown">{tripLocationLabel(it.destinations)}</p>}
-
-          <div aria-label="Trip tags" className="flex flex-wrap gap-2 items-center mb-4">
-            {/* Like (public heart, with its count) and Save (private, to your folders). */}
-            {/* Not on your own trip: you can't like it (its likes show in Liked by below). */}
-            {!isOwn && <LikeButton variant="pill" itineraryId={it.id} initialLiked={!!viewerLike} initialCount={likeCount} isLoggedIn={!!session?.user} />}
-            {!isOwn && <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />}
-            {/* One chip style for everything here; the verdict uses its stamp colour, as on the trip cards. */}
-            {stamp && <span className={`${TAG_PILL} text-white`} style={{ backgroundColor: STAMP_COLORS[stamp.value] }}><Star size={14} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />{stamp.label}</span>}
-            {!!it.budget && it.budget > 0 && <span aria-label={`Budget ${it.budget} out of 5`} className={`${TAG_PILL} gap-1 bg-chip`}>{[1, 2, 3, 4, 5].map(n => <span key={n} className={n <= it.budget! ? 'text-ink' : 'text-gold-faint'}>$</span>)}</span>}
-            {audienceLabel && <span className={`${TAG_PILL} bg-chip text-ink`}><Users size={16} strokeWidth={1.5} aria-hidden="true" />{audienceLabel}</span>}
-            {displayTags.map(tag => <TagChip key={tag} id={tag} />)}
-          </div>
-          {/* When to go: on its own line, in calendar order, in the same beige as Family. */}
-          {it.bestMonths && it.bestMonths.length > 0 && <div aria-label="When to go" className="-mt-2 mb-4 flex flex-wrap items-center gap-2">
-            {[...it.bestMonths].sort((a, b) => MONTH_ORDER.indexOf(a) - MONTH_ORDER.indexOf(b)).map(m => <span key={m} className={`${TAG_PILL} bg-chip text-ink`}>{m}</span>)}
-          </div>}
+          <TripDescriptors trip={it} leading={!isOwn && <>
+            {/* Like (public heart, with its count) and Save (private, to your folders). Not on your own trip: you can't
+                like it (its likes show in Liked by below). */}
+            <LikeButton variant="pill" itineraryId={it.id} initialLiked={!!viewerLike} initialCount={likeCount} isLoggedIn={!!session?.user} />
+            <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />
+          </>} />
 
           {/* Italic description */}
           {it.description && (
