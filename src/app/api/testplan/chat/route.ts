@@ -51,7 +51,7 @@ How to help:
   - Places you suggest yourself (source "claude"): when you aren't sure one is right for this traveler, search for it or for a better match ("family-friendly seafood in Cascais") and prefer well-rated places that are operating.
   - When the trip has dates and you suggest a day's plan, a specific day or a time, check opening_hours for that date (many places close one day a week) and travel_time between places you put together, and adjust.
   - local_events finds concerts, sports, theatre and festivals near a place on given dates (Ticketmaster). Use it when they ask what's on or about events, or when the dates are known and a night is free. Far-off dates often have few events listed yet: say so, and don't present festivals or events you know of as confirmed for those dates.
-  - tours finds bookable tours, activities and attraction tickets (Viator), with prices and a link. Use it for guided tours, day trips and tickets; give the price as "from $X" and link it. If a tool says it isn't connected or fails, answer without it and don't mention the tool.
+  - tours finds bookable tours, activities and attraction tickets (Viator), with prices and a link. Use it for guided tours, day trips and tickets; give the price as "from $X" and put the tour's url in its recommendation's "link" (never write a URL in "why" or the reply). If a tool says it isn't connected or fails, answer without it and don't mention the tool.
   - web_search and web_fetch: for what the other tools can't answer, such as a seasonal place's dates (a summer toboggan or mountain lift that Google lists as closed in the off-season), whether a festival or event is on for their dates, or a place's own site. Prefer the place's official website. Say what the site says and when it was published or updated if that matters ("their site lists the 2026 season as May–October"); if it doesn't say, say so.
   - A place Google calls "closed for now" may only be shut for the season: for mountain lifts, toboggans, beach clubs and other seasonal places, check their website before treating it as closed for the traveler's dates.
   - When the dates are known and the plan depends on the weather (beach, hiking, skiing, outdoor dining), check the weather and mention it in a sentence.
@@ -64,6 +64,7 @@ For each recommendation:
 - sourceItemId = the bracketed id of the place in the data below when source is "friend" or "you"; otherwise "".
 - friendName = the friend's name when source is "friend"; otherwise "".
 - destination = the city or area; country = the country.
+- link = for a tour or ticket from the tours tool, its url exactly as the tool gave it; otherwise "".
 - price = for a hotel you priced with hotel_prices, e.g. "from $420/night · Jun 3–7", or "from $780/night · 2 rooms · Jun 3–7" for more than one room; otherwise "".
 - tripOption = a short name (2-4 words) for the trip idea this place belongs to, e.g. "Amalfi Coast" or "Greek islands". When you suggest alternative trips, give each its own name and use exactly the same name for every place in it. Reuse a name from earlier in the conversation when adding to that idea.
 Also return, for the conversation list:
@@ -92,7 +93,7 @@ const schema = {
     recommendations: { type: 'array', items: {
       type: 'object',
       additionalProperties: false,
-      required: ['name', 'type', 'destination', 'country', 'tripOption', 'why', 'price', 'source', 'sourceItemId', 'friendName'],
+      required: ['name', 'type', 'destination', 'country', 'tripOption', 'why', 'price', 'link', 'source', 'sourceItemId', 'friendName'],
       properties: {
         name: { type: 'string' },
         type: { type: 'string', enum: ['hotel', 'food_drink', 'activity'] },
@@ -101,6 +102,7 @@ const schema = {
         tripOption: { type: 'string' },
         why: { type: 'string' },
         price: { type: 'string' },
+        link: { type: 'string' },
         source: { type: 'string', enum: ['friend', 'you', 'claude'] },
         sourceItemId: { type: 'string' },
         friendName: { type: 'string' },
@@ -109,7 +111,12 @@ const schema = {
   },
 }
 
-type RawRecommendation = { name: string; type: 'hotel' | 'food_drink' | 'activity'; destination: string; country: string; tripOption: string; why: string; price?: string; source: 'friend' | 'you' | 'claude'; sourceItemId: string; friendName: string }
+// A tour's booking link: only Viator's own pages (from the tours tool), never any other address the AI writes.
+const tourLink = (value: string | undefined) => {
+  try { const url = new URL(value ?? ''); return url.protocol === 'https:' && /(^|\.)viator\.com$/.test(url.hostname) ? url.toString() : '' } catch { return '' }
+}
+
+type RawRecommendation = { name: string; type: 'hotel' | 'food_drink' | 'activity'; destination: string; country: string; tripOption: string; why: string; price?: string; link?: string; source: 'friend' | 'you' | 'claude'; sourceItemId: string; friendName: string }
 
 export async function POST(request: Request) {
   const userId = (await auth())?.user?.id
@@ -181,7 +188,7 @@ export async function POST(request: Request) {
       const card = (rec: RawRecommendation, index: number, messageId: string) => {
         const source = context.items.get(rec.sourceItemId)
         return {
-          key: `${messageId}:${index}`, name: rec.name, type: rec.type, why: rec.why, price: rec.price?.trim() || '', tripOption: rec.tripOption.trim(), description: '',
+          key: `${messageId}:${index}`, name: rec.name, type: rec.type, why: rec.why, price: rec.price?.trim() || '', link: tourLink(rec.link), tripOption: rec.tripOption.trim(), description: '',
           destination: source?.destination ?? rec.destination, country: source?.country ?? (rec.country || null),
           source: source ? (source.mine ? 'you' : 'friend') : 'claude' as const,
           friendName: source && !source.mine ? source.owner : '',

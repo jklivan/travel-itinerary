@@ -24,7 +24,7 @@ import { formatDate } from '@/lib/placeDates'
 
 type Place = { id: string; name: string; type: string; notes: string | null; placeId: string | null; lat: number | null; lng: number | null; day: number | null; photos: string[]; destination: string }
 type Trip = { id: string; title: string; places: Place[] }
-type Recommendation = { key: string; name: string; type: 'hotel' | 'food_drink' | 'activity'; why: string; price?: string; destination: string; country: string | null; tripOption?: string; description?: string; source: 'friend' | 'you' | 'claude'; friendName: string; sourceItemId: string; placeId: string | null; lat: number | null; lng: number | null }
+type Recommendation = { key: string; name: string; type: 'hotel' | 'food_drink' | 'activity'; why: string; price?: string; link?: string; destination: string; country: string | null; tripOption?: string; description?: string; source: 'friend' | 'you' | 'claude'; friendName: string; sourceItemId: string; placeId: string | null; lat: number | null; lng: number | null }
 export type Turn = { role: 'user'; text: string } | { role: 'assistant'; text: string; recommendations: Recommendation[]; title?: string; summary?: string; ask?: Ask; tripDates?: { start: string; end: string } } | { role: 'preferences'; preferences: TravelPreferences }
 type MapPlace = TripMapPlace & { lat: number | null; lng: number | null; color?: string; label?: string }
 
@@ -489,6 +489,8 @@ function RecommendationCard({ rec, color, grouped = false, added, selected, disa
       <p className="mt-2 flex-1 text-sm">{rec.why}</p>
       <span className="mt-2 text-xs font-semibold text-link">{rec.source === 'claude' ? 'Photos & details →' : rec.source === 'you' ? 'Your notes & photos →' : `${rec.friendName}’s notes & photos →`}</span>
     </button>
+    {/* A tour or ticket: book it on Viator (opens their page). */}
+    {rec.link && <a href={rec.link} target="_blank" rel="noopener noreferrer sponsored" className="mt-2 inline-flex items-center gap-1 self-start text-xs font-semibold text-link underline-offset-2 hover:underline">Book on Viator<ArrowUpRight size={12} /></a>}
     <div className="mt-3 flex items-center justify-between gap-2">
       <SourceBadge rec={rec} />
       {addButton}
