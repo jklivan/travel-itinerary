@@ -50,13 +50,13 @@ export const searchPlacesTool: PlannerTool = {
 
 export const placeDetailsTool: PlannerTool = {
   name: 'place_details',
-  description: 'Everything about one place: address, website, phone, rating, price level, a short description, its weekly opening hours, and whether it is still operating.',
+  description: 'Everything about one place: address, website, phone, rating, price level, a short description, its weekly opening hours, whether it is still operating, and a few recent Google reviews.',
   inputSchema: { type: 'object', additionalProperties: false, required: ['place_id'], properties: { place_id: { type: 'string', description: 'From search_places or friends_places.' } } },
   async run(input, { signal }) {
     const id = text(input.place_id, 300)
     if (!id) return fail('Give a place_id.')
-    const place = await placeDetails(id, signal)
-    return ok({ name: place.name, address: place.address, website: place.website, phone: place.phone, rating: place.rating, ratings: place.ratings, price: place.priceLevel, status: place.status, about: place.summary, hours: place.weekdayHours, maps: place.mapsUrl })
+    const place = await placeDetails(id, signal, { reviews: true })
+    return ok({ name: place.name, address: place.address, website: place.website, phone: place.phone, rating: place.rating, ratings: place.ratings, price: place.priceLevel, status: place.status, about: place.summary, hours: place.weekdayHours, maps: place.mapsUrl, recent_reviews: place.reviews })
   },
 }
 

@@ -10,11 +10,13 @@ export type FoundPlace = {
 export type PlaceDetails = FoundPlace & {
   website?: string; phone?: string; summary?: string; utcOffsetMinutes?: number; weekdayHours?: string[]
   periods?: Period[]; specialDays?: { date: string }[]; currentPeriods?: Period[]
+  reviews?: { rating?: number; when?: string; says: string }[]
 }
 
 type Raw = { id: string; displayName?: { text?: string }; formattedAddress?: string; types?: string[]; location?: { latitude: number; longitude: number }; rating?: number; userRatingCount?: number; priceLevel?: string; businessStatus?: string; googleMapsUri?: string
   websiteUri?: string; nationalPhoneNumber?: string; editorialSummary?: { text?: string }; utcOffsetMinutes?: number
-  regularOpeningHours?: { periods?: Period[]; weekdayDescriptions?: string[] }; currentOpeningHours?: { periods?: Period[]; specialDays?: { date: { year: number; month: number; day: number } }[] } }
+  regularOpeningHours?: { periods?: Period[]; weekdayDescriptions?: string[] }; currentOpeningHours?: { periods?: Period[]; specialDays?: { date: { year: number; month: number; day: number } }[] }
+  reviews?: { rating?: number; relativePublishTimeDescription?: string; text?: { text?: string }; originalText?: { text?: string } }[] }
 
 const simplify = (place: Raw): FoundPlace => ({ id: place.id, name: place.displayName?.text ?? '', address: place.formattedAddress, types: place.types?.slice(0, 5),
   location: place.location ? { lat: place.location.latitude, lng: place.location.longitude } : undefined, rating: place.rating, ratings: place.userRatingCount,
@@ -35,15 +37,17 @@ export async function searchPlaces(query: string, near?: { lat: number; lng: num
 
 const DETAIL_FIELDS = 'id,displayName,formattedAddress,types,location,rating,userRatingCount,priceLevel,businessStatus,googleMapsUri,websiteUri,nationalPhoneNumber,editorialSummary,utcOffsetMinutes,regularOpeningHours,currentOpeningHours'
 
-export async function placeDetails(placeId: string, signal?: AbortSignal): Promise<PlaceDetails> {
+// With { reviews: true }, also a few recent Google reviews (a pricier lookup, so only when they're wanted).
+export async function placeDetails(placeId: string, signal?: AbortSignal, options: { reviews?: boolean } = {}): Promise<PlaceDetails> {
   if (!key()) throw new Error('Google Places is not set up.')
-  const response = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, { signal: signal ?? AbortSignal.timeout(10_000), headers: { 'X-Goog-Api-Key': key(), 'X-Goog-FieldMask': DETAIL_FIELDS } })
+  const response = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, { signal: signal ?? AbortSignal.timeout(10_000), headers: { 'X-Goog-Api-Key': key(), 'X-Goog-FieldMask': options.reviews ? `${DETAIL_FIELDS},reviews` : DETAIL_FIELDS } })
   if (!response.ok) throw new Error(`Google Places details failed (${response.status}).`)
   const place = await response.json() as Raw
   const pad = (n: number) => String(n).padStart(2, '0')
   return { ...simplify(place), website: place.websiteUri, phone: place.nationalPhoneNumber, summary: place.editorialSummary?.text, utcOffsetMinutes: place.utcOffsetMinutes,
     weekdayHours: place.regularOpeningHours?.weekdayDescriptions, periods: place.regularOpeningHours?.periods, currentPeriods: place.currentOpeningHours?.periods,
-    specialDays: place.currentOpeningHours?.specialDays?.map(day => ({ date: `${day.date.year}-${pad(day.date.month)}-${pad(day.date.day)}` })) }
+    specialDays: place.currentOpeningHours?.specialDays?.map(day => ({ date: `${day.date.year}-${pad(day.date.month)}-${pad(day.date.day)}` })),
+    reviews: place.reviews?.slice(0, 5).map(review => ({ rating: review.rating, when: review.relativePublishTimeDescription, says: (review.text?.text ?? review.originalText?.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 300) })).filter(review => review.says) }
 }
 
 // A place to route from or to: a Google place id, or a written address/name, or coordinates.
