@@ -11,6 +11,7 @@ import { importIntoPlan } from '@/actions/planImport'
 import { datesCovering, isDate } from '@/lib/placeDates'
 import { readFileForUpload, fetchExtraction } from '@/lib/importFiles'
 import { importedPlaces } from '@/lib/planImport'
+import AiAgentTip, { markAiAgentTipSeen } from '@/components/AiAgentTip'
 
 export const inputClass = 'field mt-1.5'
 // The shared dark button (see .btn in globals.css).
@@ -54,6 +55,7 @@ export default function NewPlanForm({ savePlace, saveStory, past = false }: { sa
     busy.current = true; setSaving(true); setError('')
     if (!clientId.current) clientId.current = crypto.randomUUID()
     const importing = (event.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'import'
+    if (importing) markAiAgentTipSeen()
     const data = new FormData(event.currentTarget)
     data.set('clientId', clientId.current)
     try {
@@ -108,6 +110,8 @@ export default function NewPlanForm({ savePlace, saveStory, past = false }: { sa
         <ArrowRight size={22} className={`shrink-0 text-link transition-transform ${importOpen ? 'rotate-90' : ''}`} />
       </button>
     </div>
+    {/* A one-time tip: an AI assistant can send you an itinerary to import. */}
+    <AiAgentTip hidden={importOpen} />
     {importOpen && <fieldset disabled={saving} id="new-plan-import" className="panel space-y-4 p-4">
         <p className="text-sm text-muted">{destination.trim() ? <>Places go under <strong className="text-ink">{destination}</strong>. Each one shows its own town once it’s found on Google.</> : `Each place goes under the town or city your file gives for it. Add where you${past ? ' went' : '’re going'} above to put them all in one place.`}</p>
         {/* Choosing a file is the main way in, so it's a big tile first; pasting notes is the alternative. */}
