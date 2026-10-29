@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core'
 import { Keyboard } from '@capacitor/keyboard'
 import { useRouter } from 'next/navigation'
+import { isMarriottHotel, marriottLink } from '@/lib/marriott'
 import { ArrowUp, ArrowUpRight, Camera, Check, ChevronRight, EyeOff, History, Hotel, Map as MapIcon, Maximize2, Minimize2, Plane, Plus, Sparkles, Users, Utensils, MapPin, SquarePen, X } from 'lucide-react'
 import styles from '../itinerary/[id]/places.module.css'
 import planningStyles from '../plan/[id]/Planner.module.css'
@@ -214,6 +215,8 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
 
   const lastQuestionIndex = turns.findLastIndex(turn => turn.role === 'user')
   // While an answer is being written, it shows as a reply in progress: its text, cards and picker so far.
+  // The trip's dates as last given in this chat, for booking links on cards from turns before them.
+  const latestDates = [...turns].reverse().find((turn): turn is Extract<Turn, { role: 'assistant' }> => turn.role === 'assistant' && !!turn.tripDates)?.tripDates ?? null
   const shownTurns: Turn[] = thinking && streaming ? [...turns, { role: 'assistant', text: streaming, recommendations: streamingCards, ...(streamingAsk ? { ask: streamingAsk } : {}) }] : turns
   const places = trip?.places ?? []
   const inTrip = (rec: Recommendation) => added.has(rec.key) || places.some(place => place.name.trim().toLowerCase() === rec.name.trim().toLowerCase())
@@ -420,7 +423,7 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
                 </summary>
                 {sectionOrder.map(({ type, label, Icon }) => { const items = recs.filter(rec => rec.type === type); return items.length > 0 && <div key={type} className="mt-3">
                   <h4 className="type-label mb-1.5 flex items-center gap-1.5"><Icon size={12} />{label}</h4>
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-2">{items.map(rec => <RecommendationCard key={rec.key} rec={rec} color={colorOf(rec)} grouped added={inTrip(rec)} selected={selected.has(rec.key)} disabled={addingSelected} onToggle={() => toggle(rec)} />)}</div>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-2">{items.map(rec => <RecommendationCard key={rec.key} rec={rec} color={colorOf(rec)} stay={turn.tripDates ?? latestDates} grouped added={inTrip(rec)} selected={selected.has(rec.key)} disabled={addingSelected} onToggle={() => toggle(rec)} />)}</div>
                 </div> })}
               </details>)}
             </div>)}
@@ -474,8 +477,10 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
   </div>
 }
 
-function RecommendationCard({ rec, color, grouped = false, added, selected, disabled, onToggle }: { rec: Recommendation; color: string; grouped?: boolean; added: boolean; selected: boolean; disabled: boolean; onToggle: () => void }) {
+function RecommendationCard({ rec, color, stay, grouped = false, added, selected, disabled, onToggle }: { rec: Recommendation; color: string; stay?: { start: string; end: string } | null; grouped?: boolean; added: boolean; selected: boolean; disabled: boolean; onToggle: () => void }) {
   const category = categories.find(category => category.value === rec.type) ?? categories[2]
+  // A Marriott Bonvoy hotel: book it direct on Marriott (points, member rates), not through us.
+  const marriott = rec.type === 'hotel' && isMarriottHotel(rec.name)
   const [open, setOpen] = useState(false)
   // Tap to pick it (several at once), then add them together from the bar at the bottom.
   const addButton = <button type="button" onClick={onToggle} aria-pressed={selected} disabled={added || disabled} className="chip">{added ? <><Check size={14} />Added</> : selected ? <><Check size={14} />Selected</> : <><Plus size={14} />Select</>}</button>
@@ -486,10 +491,15 @@ function RecommendationCard({ rec, color, grouped = false, added, selected, disa
       <h3 className="type-card">{rec.name}</h3>
       <p className="text-xs text-muted">{[rec.destination, rec.country].filter(Boolean).join(', ')}</p>
       {rec.price && <p className="mt-2 text-sm font-semibold text-ink">{rec.price}</p>}
+      {rec.price && marriott && <p className="text-xs text-muted">Bonvoy members often pay less on Marriott</p>}
       <p className="mt-2 flex-1 text-sm">{rec.why}</p>
       <span className="mt-2 text-xs font-semibold text-link">{rec.source === 'claude' ? 'Photos & details →' : rec.source === 'you' ? 'Your notes & photos →' : `${rec.friendName}’s notes & photos →`}</span>
     </button>
     {/* A tour or ticket: book it on Viator (opens their page). */}
+    {marriott && <div className="mt-3">
+      <a href={marriottLink(rec, stay)} target="_blank" rel="noopener noreferrer sponsored" className="btn btn-outline btn-sm">Book on Marriott<ArrowUpRight size={14} /><span className="sr-only"> (opens in a new tab)</span></a>
+      <p className="mt-1 text-xs text-muted">Earn Bonvoy points · pay with points</p>
+    </div>}
     {rec.link && <a href={rec.link} target="_blank" rel="noopener noreferrer sponsored" className="mt-2 inline-flex items-center gap-1 self-start text-xs font-semibold text-link underline-offset-2 hover:underline">Book on Viator<ArrowUpRight size={12} /></a>}
     <div className="mt-3 flex items-center justify-between gap-2">
       <SourceBadge rec={rec} />
