@@ -81,13 +81,13 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
   const [recommendation, setRecommendation] = useState(originalRecommendation)
   function changeRecommendation(value: PlaceRecommendation) { setRecommendation(value); onRecommendationChange?.(value) }
   function cancel() { onDraftChange?.(original); onRecommendationChange?.(originalRecommendation); onClose() }
-  const [tags, setTags]           = useDraftField('tags', initial.tags)
+  const [tags]                    = useDraftField('tags', initial.tags)
   // No description box: Notes is the one place for the poster's own words. The description (written
   // automatically for places found on Google) is kept as is.
   const description = initial.description
-  const [link, setLink]           = useDraftField('link', initial.link)
+  // No link box either: the website comes from Google; a link the place already has is kept.
+  const link = initial.link
   const [address, setAddress]     = useDraftField('address', initial.address)
-  const [showMore, setShowMore]   = useState(initial.tags.length > 0 || !!initial.link || !!initial.address)
 
   const cfg = {
     hotel:     { color: 'bg-mist border-mist-line',     label: 'Accommodation', placeholder: 'Hotel, house, Airbnb…',           placeType: 'hotel' as const,      notesPh: 'e.g. Book early, ask for a room upgrade, free breakfast…' },
@@ -96,16 +96,10 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
     transport: { color: 'bg-mist border-mist-line', label: 'Transportation', placeholder: 'e.g. Ferry to Nantucket, car rental, Uber tips…', placeType: 'activity' as const, notesPh: 'Flight or ferry details, routes, times, booking tips, car rentals, or taxi / Uber availability…' },
   }[type]
 
-  function toggleTag(tag: string) {
-    setTags(t => t.includes(tag) ? t.filter(x => x !== tag) : [...t, tag])
-  }
-
   function submit() {
     if (!name.trim()) return
     onSave({ name: name.trim(), mealType, rating, notes: notes.trim(), tags: recommendationTags(tags, recommendation), isHighlight: recommendation === 'must', alternative: alternative.trim(), description: description.trim(), link: link.trim(), address: address.trim() })
   }
-
-  const moreCount = tags.length + (link ? 1 : 0) + (address ? 1 : 0)
 
   return (
     <div className={`rounded-xl border ${cfg.color} p-4 space-y-3`}>
@@ -150,31 +144,11 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
           <input type="checkbox" checked={recommendation === 'option'} onChange={event => changeRecommendation(event.target.checked ? 'option' : 'none')} className="h-4 w-4 accent-link" />
           Save as alternative <span className="text-xs text-muted">(a backup you’re considering)</span>
         </label>}
-      <button type="button" onClick={() => setShowMore(s => !s)}
-        className="text-xs text-link hover:text-ink font-medium flex items-center gap-1 transition-colors">
-        {showMore ? '▲ Hide details' : '▼ More details'}
-        {moreCount > 0 && !showMore && (
-          <span className="ml-1 bg-mist text-link rounded-full px-1.5 py-0.5 text-label font-semibold">{moreCount}</span>
-        )}
-      </button>
-      {showMore && (
-        <div className="space-y-2 pt-1">
-          <p className="text-xs text-muted font-medium uppercase tracking-wide">Tags</p>
-          <div className="flex flex-wrap gap-1.5">
-            {ITEM_TAGS[type].map(tag => (
-              <button key={tag} type="button" aria-pressed={tags.includes(tag)} onClick={() => toggleTag(tag)}
-                className="chip">
-                {tag}
-              </button>
-            ))}
-          </div>
-          {type === 'hotel' && (
-            <input type="text" value={address} onChange={e => setAddress(e.target.value)}
-              placeholder="📍 Address (for Airbnbs, apartments…)" className={subInputCls} />
-          )}
-          <input type="url" value={link} onChange={e => setLink(e.target.value)}
-            placeholder="🔗 Website link (optional)" className={subInputCls} />
-        </div>
+      {/* Places aren't tagged any more, and the website comes from Google; a hotel can still have its own address
+          (Airbnbs, apartments). Tags and links a place already has are kept. */}
+      {type === 'hotel' && (
+        <input type="text" value={address} onChange={e => setAddress(e.target.value)}
+          placeholder="📍 Address (for Airbnbs, apartments…)" className={subInputCls} />
       )}
       {children}
       <div className="flex gap-2">
