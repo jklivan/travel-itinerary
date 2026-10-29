@@ -120,6 +120,8 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   // so the planner can offer to merge them. Each group keeps its shortest name.
   // Adding the whole trip's photos: a small link beside Edit opens the sorter at the top.
   const [sortingPhotos, setSortingPhotos] = useState(false)
+  // An empty plan, with nothing open yet: point at Import.
+  const nudgeImport = !places.length && !importing && !adding && !sortingPhotos
   // The circles stay pinned while you scroll, but what they open sits under them at the top of the page. Scrolled
   // down, it would open out of sight (and on iPhone push the page down), so bring it up just under the circles.
   const actionsRef = useRef<HTMLDivElement>(null)
@@ -222,7 +224,11 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       {/* The whole trip's photos at once, then tap them into places. */}
       <button type="button" onClick={() => { setImporting(false); setSortingPhotos(false); setAdding(current => current?.at === 'top' ? null : { at: 'top' }) }} aria-expanded={adding?.at === 'top'} className={action}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={22} /></span>Add a place</button>
       <button type="button" aria-expanded={sortingPhotos} onClick={() => { setAdding(null); setImporting(false); setSortingPhotos(value => !value) }} className={action}><span className={`${actionIcon} border-line bg-card text-ink`}><ImagePlus size={22} strokeWidth={1.75} /></span>Add photos</button>
-      <button type="button" onClick={() => { setAdding(null); setSortingPhotos(false); setImporting(true) }} aria-expanded={importing} aria-controls="plan-import-panel" className={action}><span className={`${actionIcon} border-line bg-card text-ink`}><Upload size={22} strokeWidth={1.75} /></span>Import notes or files</button>
+      {/* A new, empty plan points at Import: an itinerary or notes you already have become its places. */}
+      <button type="button" onClick={() => { setAdding(null); setSortingPhotos(false); setImporting(true) }} aria-expanded={importing} aria-controls="plan-import-panel" className={`${action} relative`}>
+        {nudgeImport && <><span aria-hidden="true" className="absolute -inset-x-2 -top-2 bottom-[-0.5rem] -z-10 rounded-full bg-mist" />
+          <span className="absolute bottom-full left-1/2 z-10 mb-0 w-44 -translate-x-1/2 rounded-2xl bg-mist px-3 py-1.5 text-center text-xs font-medium leading-snug text-link shadow-card after:absolute after:left-1/2 after:top-full after:-translate-x-1/2 after:border-x-[7px] after:border-t-[7px] after:border-x-transparent after:border-t-mist">Have an itinerary or notes? Import them here.</span></>}
+        <span className={`${actionIcon} ${nudgeImport ? 'border-mist-line bg-mist text-link' : 'border-line bg-card text-ink'}`}><Upload size={22} strokeWidth={1.75} /></span>Import notes or files</button>
       {/* This trip's AI chat: it sees the trip's places and can add its picks here. */}
       <Link href={`/testplan?trip=${trip.id}&from=planner`} className={action}><span className={`${actionIcon} border-mist-line bg-mist text-ink`}><Sparkles size={22} strokeWidth={1.75} /></span>Plan with AI</Link>
     </div>

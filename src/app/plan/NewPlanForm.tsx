@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import Link from 'next/link'
-import { Compass, CalendarDays, ChevronDown, Plus, Upload, X } from 'lucide-react'
+import { ArrowRight, Compass, CalendarDays, ChevronDown, FileText, Plus, Upload, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { copyStoryToPlan } from '@/actions/stories'
 import PlacesAutocomplete from '@/components/PlacesAutocomplete'
@@ -98,7 +98,29 @@ export default function NewPlanForm({ savePlace, saveStory, past = false }: { sa
       }
     } catch (caught) { setError(importing && caught instanceof Error && caught.message ? caught.message : 'Could not save. Your details are still here; please try again.') }
     finally { busy.current = false; setSaving(false); setStage('') }
-  }} className="panel space-y-5 p-4 sm:p-6">
+  }} className="space-y-5">
+    {/* Importing first: an itinerary, notes or a screenshot become the trip's places. Opens its panel right below. */}
+    <div className="relative pt-5">
+      <span aria-hidden="true" className="absolute right-6 top-0 z-[1] rounded-full bg-mist px-3 py-1 text-xs font-medium text-ink shadow-card after:absolute after:left-1/2 after:top-full after:-translate-x-1/2 after:border-x-[6px] after:border-t-[6px] after:border-x-transparent after:border-t-mist">Have an itinerary already?</span>
+      <button type="button" aria-expanded={importOpen} aria-controls="new-plan-import" disabled={saving} onClick={() => setImportOpen(open => !open)} className="flex w-full items-center gap-4 rounded-2xl border border-mist-line bg-mist p-4 text-left text-ink transition-colors hover:bg-mist-strong disabled:opacity-60">
+        <FileText size={28} strokeWidth={1.5} className="shrink-0 text-link" />
+        <span className="min-w-0 flex-1"><span className="block text-base font-medium sm:text-lg">Import an itinerary or notes</span><span className="mt-0.5 block text-label font-medium uppercase tracking-caps text-muted">PDF, doc, text or screenshot</span></span>
+        <ArrowRight size={22} className={`shrink-0 text-link transition-transform ${importOpen ? 'rotate-90' : ''}`} />
+      </button>
+    </div>
+    {importOpen && <fieldset disabled={saving} id="new-plan-import" className="panel space-y-4 p-4">
+        <p className="text-sm text-muted">{destination.trim() ? <>Places go under <strong className="text-ink">{destination}</strong>. Each one shows its own town once it’s found on Google.</> : `Each place goes under the town or city your file gives for it. Add where you${past ? ' went' : '’re going'} above to put them all in one place.`}</p>
+        {/* Choosing a file is the main way in, so it's a big tile first; pasting notes is the alternative. */}
+        <label className={`panel-dashed flex min-h-28 cursor-pointer flex-col items-center justify-center gap-1.5 p-4 text-center hover:bg-cream ${file ? 'border-link' : ''}`}>
+          <Upload size={22} className="text-link" />
+          <span className="text-base font-semibold text-link">{file ? file.name : 'Choose a file'}</span>
+          <span className="text-xs text-muted">{file ? 'Tap to choose a different file' : 'PDF, Word, Excel, screenshot or email'}</span>
+          <input key={file?.name ?? 'empty'} type="file" accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.html,.htm,image/jpeg,image/png,image/gif,image/webp" onChange={event => setFile(event.target.files?.[0] ?? null)} className="sr-only" />
+        </label>
+        <label className="block text-sm">Or paste notes<textarea value={notes} onChange={event => { setNotes(event.target.value); setFile(null) }} maxLength={200000} rows={5} placeholder="Hotels, restaurants, activities…" className="field mt-2" /></label>
+        <button type="submit" value="import" disabled={!file && !notes.trim()} className={`${buttonClass} w-full`}>{stage || 'Import and start planning →'}</button>
+      </fieldset>}
+    <div className="panel space-y-5 p-4 sm:p-6">
     {(savePlace || saveStory) && <p className="text-sm text-link">We’ll add the place you selected to this new plan.</p>}
     <fieldset disabled={saving} className="space-y-5">
       {/* No days or dates: a list of ideas. A number of days or dates: day by day (one day: a day trip). */}
@@ -120,20 +142,8 @@ export default function NewPlanForm({ savePlace, saveStory, past = false }: { sa
       </details>
       <p className="flex items-start gap-3 rounded-xl bg-paper p-4 text-sm leading-relaxed text-link"><Compass size={28} className="mt-1 shrink-0" /><span>{past ? 'Add the hotels, restaurants and things you did. It stays private until you post it.' : 'Start with an idea. Save hotels, restaurants, and things to do as you find them. Your plan stays private until you share it.'}</span></p>
       <button type="submit" value="plan" className={`${buttonClass} w-full`}>{saving && !stage ? (past ? 'Saving your trip…' : 'Saving your plan…') : past ? 'Start filling it in →' : 'Start planning →'}</button>
-      <button type="button" aria-expanded={importOpen} aria-controls="new-plan-import" onClick={() => setImportOpen(open => !open)} className="btn btn-outline w-full">Import notes or a file</button>
-      {importOpen && <div id="new-plan-import" className="space-y-4 rounded-xl border border-line p-4">
-        <p className="text-sm text-muted">{destination.trim() ? <>Places go under <strong className="text-ink">{destination}</strong>. Each one shows its own town once it’s found on Google.</> : `Each place goes under the town or city your file gives for it. Add where you${past ? ' went' : '’re going'} above to put them all in one place.`}</p>
-        {/* Choosing a file is the main way in, so it's a big tile first; pasting notes is the alternative. */}
-        <label className={`panel-dashed flex min-h-28 cursor-pointer flex-col items-center justify-center gap-1.5 p-4 text-center hover:bg-cream ${file ? 'border-link' : ''}`}>
-          <Upload size={22} className="text-link" />
-          <span className="text-base font-semibold text-link">{file ? file.name : 'Choose a file'}</span>
-          <span className="text-xs text-muted">{file ? 'Tap to choose a different file' : 'PDF, Word, Excel, screenshot or email'}</span>
-          <input key={file?.name ?? 'empty'} type="file" accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.html,.htm,image/jpeg,image/png,image/gif,image/webp" onChange={event => setFile(event.target.files?.[0] ?? null)} className="sr-only" />
-        </label>
-        <label className="block text-sm">Or paste notes<textarea value={notes} onChange={event => { setNotes(event.target.value); setFile(null) }} maxLength={200000} rows={5} placeholder="Hotels, restaurants, activities…" className="field mt-2" /></label>
-        <button type="submit" value="import" disabled={!file && !notes.trim()} className={`${buttonClass} w-full`}>{stage || 'Import and start planning →'}</button>
-      </div>}
     </fieldset>
+    </div>
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}
     {error && createdPlan && <Link href={`/plan/${createdPlan}`} className="block text-sm text-link underline">Open your saved plan →</Link>}
   </form>
