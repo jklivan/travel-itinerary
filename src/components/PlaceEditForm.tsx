@@ -43,7 +43,7 @@ export { StarRating }
 
 // ── Item edit form ─────────────────────────────────────────────────────────────
 
-export default function PlaceEditForm({ type, initial, onDraftChange, onSave, onClose, onRecommendationChange, onPlaceIdChange, city, busy = false, saveLabel = 'Save', showRating = true, showNotes = true, children }: {
+export default function PlaceEditForm({ type, initial, onDraftChange, onSave, onClose, onRecommendationChange, onPlaceIdChange, city, busy = false, saveLabel = 'Save', showRating = true, showStars = true, showNotes = true, children }: {
   type: PlaceType
   initial: PlaceEditValues
   onDraftChange?: (updated: Partial<PlaceEditValues>) => void
@@ -57,7 +57,8 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
   saveLabel?: string
   // false where rating and Must do / Avoid have their own button (the planner's Change rating).
   showRating?: boolean
-  // Off in the planner's Edit details, where notes are typed on the card itself.
+  // Off in the planner's Edit details, where stars and notes are set on the card itself (Must do / Avoid stays).
+  showStars?: boolean
   showNotes?: boolean
   // Extra fields (photos, day…) shown above the Save and Cancel buttons.
   children?: React.ReactNode
@@ -126,7 +127,7 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
           })}
         </div>
       )}
-      {showRating && <div className="space-y-1">
+      {showRating && showStars && <div className="space-y-1">
         <p className="text-xs text-muted">Rate it</p>
         <StarRating value={rating} onChange={setRating} />
       </div>}
