@@ -47,7 +47,7 @@ import { getRecommendation } from '@/lib/placeRecommendation'
 import { PostStamp } from '@/components/PostcardLogo'
 import TripPeople from '@/components/TripPeople'
 import DeletedPlaces from '@/components/DeletedPlaces'
-import { copyForPosting } from '@/actions/tripMembers'
+import { copyForPosting, tripFingerprint } from '@/actions/tripMembers'
 import TripChat from '@/components/TripChat'
 
 type PlaceSource = { kind: string; person: string | null; trip: { id: string; title: string } | null }
@@ -72,6 +72,25 @@ const DAY_MODE_KEY = 'postcard-day-names'
 
 export default function Planner({ trip, initialImport = false, initialDetails = false, initialPost = false }: { trip: Trip; initialImport?: boolean; initialDetails?: boolean; initialPost?: boolean }) {
   const router = useRouter()
+  // A shared plan keeps itself up to date: every few seconds (while on screen) it checks whether anyone changed the
+  // trip and, if so, refreshes in place (not while you're typing in a box, so nothing you're writing is lost).
+  const shared = !!trip.people?.some(person => person.status === 'joined')
+  useEffect(() => {
+    if (!shared) return
+    let known: string | null = null, active = true
+    void tripFingerprint(trip.id).then(value => { known = value })
+    const timer = setInterval(async () => {
+      if (!active || document.visibilityState !== 'visible') return
+      // (The chat's box keeps its text through a refresh, so it doesn't count.)
+      const typing = document.activeElement instanceof HTMLElement && document.activeElement.matches('input, textarea, select, [contenteditable="true"]') && !document.activeElement.closest('#trip-chat')
+      if (typing) return
+      const now = await tripFingerprint(trip.id).catch(() => null)
+      if (!active || !now) return
+      if (known && now !== known) router.refresh()
+      known = now
+    }, 8000)
+    return () => { active = false; clearInterval(timer) }
+  }, [shared, trip.id, router])
   // Day-by-day plans open on their days; idea lists on Places.
   // "Plan my days with AI" tapped before the trip had a length: plan as soon as the days are set.
   const [aiAfterDays, setAiAfterDays] = useState(false)

@@ -143,3 +143,17 @@ export async function copyForPosting(tripId: string): Promise<Result> {
   for (const path of ['/plan', `/plan/${id}`, '/trips']) revalidatePath(path)
   return { success: true, tripId: id }
 }
+
+// A shared plan's fingerprint: changes whenever anyone changes the trip (its details, destinations, places and their
+// days, order and notes, people, or deleted places), so open copies of it know to refresh. Cheap: one query, hashed.
+export async function tripFingerprint(tripId: string): Promise<string | null> {
+  const userId = await me()
+  if (!userId) return null
+  const trip = await prisma.itinerary.findFirst({
+    where: { id: tripId, OR: [{ userId }, { members: { some: { userId, status: 'joined' } } }] },
+    select: { title: true, startDate: true, endDate: true, datesFlexible: true, durationDays: true, postType: true, audience: true, budget: true, tags: true, notes: true, coverPhoto: true, visibility: true,
+      members: { select: { userId: true, status: true } }, _count: { select: { deletedPlaces: true } },
+      destinations: { orderBy: { order: 'asc' }, select: { id: true, name: true, days: true, order: true, items: { orderBy: { order: 'asc' }, select: { id: true, name: true, type: true, dayIndex: true, order: true, notes: true, tags: true, time: true, date: true, nights: true, placeId: true, photoUrls: true, rating: true } } } } },
+  })
+  return trip ? createHash('sha1').update(JSON.stringify(trip)).digest('hex') : null
+}
