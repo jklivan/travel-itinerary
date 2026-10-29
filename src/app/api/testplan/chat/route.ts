@@ -9,6 +9,7 @@ import type { Prisma } from '@/generated/prisma/client'
 import { hotelPricesTool, runHotelPrices } from '@/lib/hotelPrices'
 import { finishedJsonItems, finishedJsonObject, partialJsonString } from '@/lib/partialJson'
 import type { Ask } from '@/app/testplan/AskPicker'
+import { canEdit } from '@/lib/tripAccess'
 
 export const maxDuration = 300
 
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
 
   const [context, trip] = await Promise.all([
     loadPlanningContext(userId, tripId),
-    tripId ? prisma.itinerary.findFirst({ where: { id: tripId, userId }, select: { title: true, startDate: true, endDate: true, datesFlexible: true, destinations: { select: { name: true, items: { select: { name: true, type: true, dayIndex: true } } } } } }) : null,
+    tripId ? prisma.itinerary.findFirst({ where: { id: tripId, ...canEdit(userId) }, select: { title: true, startDate: true, endDate: true, datesFlexible: true, destinations: { select: { name: true, items: { select: { name: true, type: true, dayIndex: true } } } } } }) : null,
   ])
   const current = trip
     ? `<current_trip title="${trip.title}"${trip.datesFlexible ? '' : ` dates="${trip.startDate.toISOString().slice(0, 10)} to ${trip.endDate.toISOString().slice(0, 10)}"`}>\n${trip.destinations.flatMap(d => d.items.map(item => `- ${item.name} (${item.type}, ${d.name}${item.dayIndex === null ? '' : `, day ${item.dayIndex}`})`)).join('\n') || '(empty so far)'}\n</current_trip>`

@@ -6,6 +6,7 @@ import type { Prisma } from '@/generated/prisma/client'
 import { getRecommendation } from '@/lib/placeRecommendation'
 import { genericPlaceName, metresApart, sameAddress } from '@/lib/placeMatching'
 import { hiddenAccountsFor } from '@/lib/hiddenAccounts'
+import { canEdit } from '@/lib/tripAccess'
 
 // itemId: the place being looked at (planner cards), whose map position and address must agree with a same-name match.
 export async function placePeople(placeId: string, name = '', location = '', itemId = '') {
@@ -26,7 +27,7 @@ export async function placePeople(placeId: string, name = '', location = '', ite
       orderBy: { destination: { itinerary: { createdAt: 'desc' } } },
     })
     // This place's own position, to check same-name matches against (only from the signed-in person's own trips).
-    const own = itemId ? await prisma.destItem.findFirst({ where: { id: itemId, destination: { itinerary: { userId } } }, select: { lat: true, lng: true, address: true } }) : null
+    const own = itemId ? await prisma.destItem.findFirst({ where: { id: itemId, destination: { itinerary: canEdit(userId) } }, select: { lat: true, lng: true, address: true } }) : null
     const generic = genericPlaceName(name)
     const sameSpot = (row: { placeId: string | null; lat: number | null; lng: number | null; address: string | null }) => {
       if (placeId && row.placeId === placeId) return true
