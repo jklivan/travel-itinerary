@@ -226,7 +226,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   const bookedDates = places.flatMap(place => [place.date, place.endDate].filter((date): date is string => !!date)).sort()
   const photoDates = trip.start && trip.end ? { start: trip.start, end: trip.end } : bookedDates.length ? { start: bookedDates[0], end: bookedDates[bookedDates.length - 1] } : null
   return <DayNames.Provider value={dayName}><GroupTrip.Provider value={!!trip.people?.some(person => person.status === 'joined')}><TripDates.Provider value={photoDates}><div className="mx-auto max-w-2xl px-4 pb-6 pt-2 text-ink">
-    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
+    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? ((trip.people?.filter(person => person.status !== 'invited').length ?? 0) > 1 ? `Private plan · ${trip.people!.filter(person => person.status !== 'invited').length} of you` : 'Private plan · Only you') : 'Shared trip'}</div>
     <h1 className="trip-title mt-1 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
     {/* Group trips: who's planning it, and Invite (the creator) or Leave. */}
     {trip.viewerId && (trip.visibility === 'draft' || (trip.people?.length ?? 0) > 1) && <TripPeople tripId={trip.id} people={trip.people ?? []} isOwner={trip.isOwner !== false} viewerId={trip.viewerId} />}
