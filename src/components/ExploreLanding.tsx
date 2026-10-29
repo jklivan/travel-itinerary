@@ -4,7 +4,7 @@ import PolaroidTile from '@/components/ui/PolaroidTile'
 import styles from './ExploreLanding.module.css'
 
 const cards = [
-  { href: '/explore?tag=day-trip', title: 'Day Trips', position: '0% 0%' },
+  { href: '/explore?view=local', title: 'Local Trips', position: '0% 0%' },
   { href: '/explore?view=tags', title: 'Trip Types', position: '0% 100%' },
   { href: '/explore?view=destinations', title: 'Destinations', position: '100% 100%' },
   { href: '/explore/questions', title: 'Ask Your Friends', position: '100% 0%' },

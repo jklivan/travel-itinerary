@@ -13,6 +13,8 @@ import { parseSearchQuery, type ParsedQuery } from '@/lib/parseSearchQuery'
 import { tagMeta, storedTags } from '@/lib/tags'
 import { locationConditions } from '@/lib/locationMatch'
 import { DAY_TRIP_TAG, isDayTrip } from '@/lib/dayTrips'
+import { after } from 'next/server'
+import { locateDestinations } from '@/lib/locateDestinations'
 import { MapPin } from 'lucide-react'
 import ExploreMap from '@/components/ExploreMap'
 import ExploreTripFilters from '@/components/ExploreTripFilters'
@@ -86,12 +88,14 @@ async function fetchItineraries(where: ItineraryWhereInput, userId: string | nul
 }
 
 function ItineraryList({
-  itineraries, bucketSet, userId, nearbyDayTrips = false,
+  itineraries, bucketSet, userId, nearbyDayTrips = false, local = false,
 }: {
   itineraries: Awaited<ReturnType<typeof fetchItineraries>>['itineraries']
   bucketSet: Set<string>
   userId: string | null
   nearbyDayTrips?: boolean
+  // Local trips: every trip, shown once a place is chosen (near you or a typed town), within 50 miles.
+  local?: boolean
 }) {
   if (itineraries.length === 0) {
     return (
@@ -135,8 +139,8 @@ function ItineraryList({
       return [{ lat: locatedItems.reduce((sum, item) => sum + item.lat!, 0) / locatedItems.length, lng: locatedItems.reduce((sum, item) => sum + item.lng!, 0) / locatedItems.length }]
     }), card }
   })
-  return nearbyDayTrips
-    ? <NearbyDayTrips entries={cards} />
+  return nearbyDayTrips || local
+    ? <NearbyDayTrips entries={cards} local={local} />
     : <div className="mx-auto flex w-full max-w-xl flex-col gap-3 sm:gap-5">{cards.map(entry => <div key={entry.id}>{entry.card}</div>)}</div>
 }
 
@@ -311,6 +315,24 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
           {itineraries.length} result{itineraries.length !== 1 ? 's' : ''} for &ldquo;{q}&rdquo;
         </p>
         <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} />
+      </div>
+    )
+  }
+
+  // ── Local trips: any trip within 50 miles of you or a town ─────────────────
+  if (view === 'local') {
+    const { itineraries, bucketSet } = await fetchItineraries({}, userId)
+    // Trips with no map position anywhere can't be placed: give their towns one in the background, so they show
+    // up next time (the same lookup a trip's own page does).
+    const unplaced = itineraries.filter(trip => trip.destinations.every(destination => destination.lat == null && destination.items.every(item => item.lat == null))).map(trip => trip.id)
+    if (unplaced.length) after(() => Promise.all(unplaced.slice(0, 25).map(id => locateDestinations(id).catch(() => {}))).then(() => undefined))
+    return (
+      <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
+        <div className="mb-5">
+          <h1 className="type-display">Local trips</h1>
+          <p className="text-sm text-brown">Trips of any length, within 50 miles</p>
+        </div>
+        <ItineraryList itineraries={itineraries} bucketSet={bucketSet} userId={userId} local />
       </div>
     )
   }
