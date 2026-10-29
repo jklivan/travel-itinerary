@@ -29,7 +29,8 @@ export async function updatePlace(itemId: string, edit: Edit) {
     const item = await prisma.destItem.findFirst({ where: owned, select: { photoUrl: true, photoUrls: true, tags: true, destination: { select: { itineraryId: true, itinerary: { select: { userId: true } } } } } })
     if (!item) return { error: 'This place is unavailable or you don’t own this trip.' }
     // Someone who joined a group trip: their stars and photos are their own (the place keeps the creator's).
-    if (item.destination.itinerary.userId !== userId) {
+    const creator = item.destination.itinerary?.userId
+    if (creator && creator !== userId) {
       const take = await prisma.placeTake.findUnique({ where: { itemId_userId: { itemId, userId } }, select: { photoUrls: true } })
       if (edit.kind === 'photos' && JSON.stringify(eventPhotos(take?.photoUrls ?? [])) !== JSON.stringify(eventPhotos(edit.expectedPhotos))) {
         return { error: 'Photos changed elsewhere. Cancel and reopen the photo editor to load the latest photos.' }

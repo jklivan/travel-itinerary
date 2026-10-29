@@ -490,7 +490,8 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     if (!item) return { error: unavailable }
     // Someone who joined a group trip: their stars and photos go to their own take on the place, and the creator's
     // booking details (which they don't see) are left alone.
-    const member = item.destination.itinerary.userId !== userId
+    const creator = item.destination.itinerary?.userId
+    const member = !!creator && creator !== userId
     const take = member ? { ...(rating === undefined ? {} : { rating: rating || null }), ...(extra.photoUrls ? { photoUrls: extra.photoUrls } : {}) } : null
     if (member) { delete extra.photoUrls; delete extra.photoUrl; delete extra.bookingDetails }
     if (nextType && nextType !== item.type) {

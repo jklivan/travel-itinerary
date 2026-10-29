@@ -1,6 +1,6 @@
 'use server'
 
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { after } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
@@ -104,4 +104,42 @@ export async function removeMember(tripId: string, memberId: string): Promise<Re
   await prisma.tripMember.deleteMany({ where: { itineraryId: tripId, userId: memberId } })
   refresh(tripId)
   return { success: true }
+}
+
+// A member posting the trip: their own private copy of it (shared places, days, times and notes, with their stars
+// and photos; never the creator's booking details), to post like any trip. Asking again opens the same copy.
+export async function copyForPosting(tripId: string): Promise<Result> {
+  const userId = await me()
+  if (!userId) return { error: 'Please sign in.' }
+  const id = `group-post-${createHash('sha256').update(JSON.stringify([userId, tripId])).digest('hex').slice(0, 40)}`
+  if (await prisma.itinerary.findFirst({ where: { id, userId }, select: { id: true } })) return { success: true, tripId: id }
+  const source = await prisma.itinerary.findFirst({
+    where: { id: tripId, members: { some: { userId, status: 'joined' } } },
+    include: { destinations: { orderBy: { order: 'asc' }, include: { items: { orderBy: { order: 'asc' }, include: { takes: { where: { userId }, select: { rating: true, photoUrls: true } } } } } } },
+  })
+  if (!source) return { error: unavailable }
+  try {
+    await prisma.itinerary.create({ data: {
+      id, userId, title: source.title, visibility: 'draft', isPlan: true, postType: source.postType, audience: source.audience,
+      datesFlexible: source.datesFlexible, startDate: source.startDate, endDate: source.endDate, durationDays: source.durationDays, notes: source.notes,
+      destinations: { create: source.destinations.map(destination => ({
+        name: destination.name, country: destination.country, lat: destination.lat, lng: destination.lng, order: destination.order, days: destination.days, notes: destination.notes,
+        items: { create: destination.items.map(item => {
+          const mine = item.takes[0]
+          return {
+            name: item.name, type: item.type, mealType: item.mealType, address: item.address, link: item.link, description: item.description, placeId: item.placeId,
+            lat: item.lat, lng: item.lng, order: item.order, groupIndex: item.groupIndex, dayIndex: item.dayIndex, nights: item.nights,
+            date: item.date, time: item.time, endDate: item.endDate, endTime: item.endTime, notes: item.notes, tags: item.tags, alternative: item.alternative,
+            planningStatus: item.planningStatus, rating: mine?.rating ?? null, photoUrls: mine?.photoUrls ?? [], photoUrl: mine?.photoUrls[0] ?? null,
+            sourceKind: item.sourceKind, sourceItineraryId: item.sourceItineraryId, sourceUserId: item.sourceUserId, addedById: item.addedById,
+          }
+        }) },
+      })) },
+    } })
+  } catch (error) {
+    // A double tap: the first one made it.
+    if (!(error && typeof error === 'object' && 'code' in error && error.code === 'P2002')) return { error: 'Could not make your copy. Please try again.' }
+  }
+  for (const path of ['/plan', `/plan/${id}`, '/trips']) revalidatePath(path)
+  return { success: true, tripId: id }
 }
