@@ -663,12 +663,51 @@ export async function removePlanPlace(itemId: string): Promise<Result> {
   if (!userId) return { error: 'Please sign in.' }
   try {
     const owned = { id: itemId, destination: { itinerary: canEdit(userId) } }
-    const item = await prisma.destItem.findFirst({ where: owned, select: { destination: { select: { itineraryId: true } } } })
+    const item = await prisma.destItem.findFirst({ where: owned, omit: { bookingDetails: false }, include: { takes: { omit: { id: true, itemId: true, updatedAt: true } }, destination: { select: { itineraryId: true, itinerary: { select: { members: { where: { status: 'joined' }, take: 1, select: { id: true } } } } } } } })
     if (!item) return { error: unavailable }
-    await prisma.destItem.deleteMany({ where: owned })
-    refresh(item.destination.itineraryId, userId)
+    const { destination, takes, ...place } = item
+    await prisma.$transaction(async tx => {
+      // A group trip keeps what's deleted (with everyone's own stars and photos on it), so anyone can bring it back.
+      if (destination.itinerary.members.length) await tx.deletedPlace.create({ data: { itineraryId: destination.itineraryId, destinationId: place.destinationId, deletedById: userId, data: JSON.parse(JSON.stringify({ place, takes })) } })
+      await tx.destItem.deleteMany({ where: owned })
+    })
+    refresh(destination.itineraryId, userId)
     return { success: true }
   } catch { return { error: 'Could not remove this place. Please try again.' } }
+}
+
+// A group trip's Deleted folder: places deleted from it, newest first.
+export async function deletedPlaces(tripId: string) {
+  const userId = (await auth())?.user?.id
+  if (!userId) return []
+  const rows = await prisma.deletedPlace.findMany({ where: { itinerary: { id: tripId, ...canEdit(userId) } }, orderBy: { deletedAt: 'desc' }, take: 100, select: { id: true, data: true, deletedAt: true, deletedBy: { select: { id: true, name: true } } } })
+  return rows.map(row => { const place = (row.data as { place?: { name?: string; type?: string } }).place ?? {}; return { id: row.id, name: place.name ?? 'A place', type: place.type ?? 'activity', deletedAt: row.deletedAt.toISOString(), by: row.deletedBy.id === userId ? 'You' : row.deletedBy.name } })
+}
+
+// Bring a deleted place back where it was (or into the trip's first destination if that's gone), with everyone's
+// own stars and photos on it.
+export async function restoreDeletedPlace(deletedId: string): Promise<Result> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  try {
+    const row = await prisma.deletedPlace.findFirst({ where: { id: deletedId, itinerary: canEdit(userId) }, select: { id: true, itineraryId: true, destinationId: true, data: true } })
+    if (!row) return { error: 'That place can’t be restored any more.' }
+    const { place, takes = [] } = row.data as { place: Prisma.DestItemUncheckedCreateInput & { id: string }; takes?: { userId: string; rating: number | null; notes: string | null; photoUrls: string[] }[] }
+    await prisma.$transaction(async tx => {
+      const home = (row.destinationId && await tx.destination.findFirst({ where: { id: row.destinationId, itineraryId: row.itineraryId }, select: { id: true } }))
+        || await tx.destination.findFirst({ where: { itineraryId: row.itineraryId }, orderBy: { order: 'asc' }, select: { id: true } })
+      if (!home) throw new InputError('Add a destination to this trip first.')
+      const taken = await tx.destItem.findUnique({ where: { id: place.id }, select: { id: true } })
+      // Links to a trip or person that's gone since are dropped.
+      if (place.sourceItineraryId && !await tx.itinerary.count({ where: { id: place.sourceItineraryId } })) place.sourceItineraryId = null
+      for (const key of ['sourceUserId', 'addedById'] as const) if (place[key] && !await tx.user.count({ where: { id: place[key] as string } })) place[key] = null
+      const created = await tx.destItem.create({ data: { ...place, id: taken ? undefined : place.id, destinationId: home.id, date: place.date ? new Date(place.date as string) : null, endDate: place.endDate ? new Date(place.endDate as string) : null } })
+      if (takes.length) await tx.placeTake.createMany({ data: takes.map(take => ({ ...take, itemId: created.id })), skipDuplicates: true })
+      await tx.deletedPlace.delete({ where: { id: row.id } })
+    })
+    refresh(row.itineraryId, userId)
+    return { success: true }
+  } catch (error) { return message(error) }
 }
 
 // Private plans offered by the Post button, newest first, with how many places each has.

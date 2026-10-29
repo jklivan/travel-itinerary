@@ -46,6 +46,7 @@ import { PRIVATE_TAG } from '@/lib/privateTransport'
 import { getRecommendation } from '@/lib/placeRecommendation'
 import { PostStamp } from '@/components/PostcardLogo'
 import TripPeople from '@/components/TripPeople'
+import DeletedPlaces from '@/components/DeletedPlaces'
 
 type PlaceSource = { kind: string; person: string | null; trip: { id: string; title: string } | null }
 type Place = { addedBy?: string | null; bookingDetails?: string | null; date?: string | null; time?: string | null; endDate?: string | null; endTime?: string | null; source?: PlaceSource | null; order: number; nights?: number | null; tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[]; mealType: string | null; alternative: string | null; description: string | null; link: string | null; address: string | null }
@@ -58,6 +59,8 @@ const categories = [{ value: 'hotel', label: 'Accommodation', eyebrow: 'Stay', I
 // Days are still stored as numbers, so a posted trip always shows Day 1, Day 2…
 type DayName = (day: number) => string
 const DayNames = createContext<DayName>(day => `Day ${day}`)
+// Whether someone has joined this trip (a group trip): deletes go to Deleted places.
+const GroupTrip = createContext(false)
 function dateOfDay(start: string, day: number) {
   const date = new Date(`${start}T12:00:00Z`)
   date.setUTCDate(date.getUTCDate() + day - 1)
@@ -214,7 +217,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   // Where the iPhone photo picker opens: the trip's dates, else the dates of its bookings (a dated flight or hotel).
   const bookedDates = places.flatMap(place => [place.date, place.endDate].filter((date): date is string => !!date)).sort()
   const photoDates = trip.start && trip.end ? { start: trip.start, end: trip.end } : bookedDates.length ? { start: bookedDates[0], end: bookedDates[bookedDates.length - 1] } : null
-  return <DayNames.Provider value={dayName}><TripDates.Provider value={photoDates}><div className="mx-auto max-w-2xl px-4 pb-6 pt-2 text-ink">
+  return <DayNames.Provider value={dayName}><GroupTrip.Provider value={!!trip.people?.some(person => person.status === 'joined')}><TripDates.Provider value={photoDates}><div className="mx-auto max-w-2xl px-4 pb-6 pt-2 text-ink">
     <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
     <h1 className="trip-title mt-1 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
     {/* Group trips: who's planning it, and Invite (the creator) or Leave. */}
@@ -281,12 +284,14 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
           <div className="space-y-3">{places.filter(p => p.day === null).map(place => trip.durationDays ? <PlaceRow key={place.id} tripId={trip.id} tripStart={trip.start} place={place} maxDay={maxDay} destinationChoices={destinations.map(d => ({ id: d.id, name: d.name }))} dayChips={trip.durationDays} dayRange={ranges.get(place.destinationId)} /> : renderPlace(place))}</div>{places.length > 0 && places.every(p => p.day !== null) && <p className="text-sm text-muted">All your places have a day.</p>}{!places.length && <p className="text-sm text-muted">Places you haven’t put on a day yet show here.</p>}</section>
       </>}
     </section>
+    {/* Group trips: places someone deleted, to bring back. */}
+    {!!trip.deletedCount && <DeletedPlaces tripId={trip.id} count={trip.deletedCount} />}
     <div className="mt-8 border-t border-line pt-5"><div className="flex flex-wrap items-center justify-between gap-3">{/* Post on the left; the itinerary PDF and Unpublish / Delete on the right (also when there's nothing to post). */}{trip.visibility === 'draft' && trip.isOwner !== false && <button type="button" disabled={publishing} onClick={() => { if (!places.length) { askForPlace(); return } openPostBox() }} aria-label="Post trip" title="Post trip" className="pointer-events-auto relative inline-flex size-20 items-center justify-center transition-transform hover:-rotate-6 hover:scale-105 disabled:opacity-60"><PostStamp size={80} /><span className="sr-only">Post</span></button>}<div className="pointer-events-auto ml-auto flex flex-wrap items-center justify-end gap-2">{/* The whole itinerary as a PDF, with private transport and booking details. */}<ItineraryPdf tripId={trip.id} title={trip.title} />{/* Deleting or unpublishing the whole trip is the creator's. */}{trip.isOwner !== false && <DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" />}</div></div></div>
     {trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="panel w-full max-w-md p-5 shadow-pop"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="type-title">A few more details</h2><p className="mt-1 text-sm text-muted">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-title leading-none text-muted" aria-label="Close">×</button></div><div className="mt-5 space-y-5">{allPhotos.length > 0 && <fieldset><legend className="mb-1 text-sm font-semibold text-link">Choose cover photo</legend><p className="mb-1 text-xs text-muted">The photo people see first. Scroll sideways to see them all.</p><CoverPhotoPicker photos={allPhotos} value={publishCover} onChange={url => { setPublishCover(url); setPublishFocus(null) }} />{publishCover && <div className="mt-2"><CoverFramer url={publishCover} value={publishFocus} onChange={setPublishFocus} /></div>}</fieldset>}<fieldset><legend className="mb-2 text-sm font-semibold text-link">Trip type</legend><div className="grid grid-cols-3 gap-2">{([['guide', 'Guide'], ['day-trip', 'Day trip'], ['itinerary', 'Multi-day']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={publishFormat === value} onClick={() => setPublishFormat(value)} className="chip justify-center">{label}</button>)}</div></fieldset><TripExtras budget={publishBudget} onBudget={setPublishBudget} rating={publishRating} onRating={setPublishRating} tags={publishTags} onTags={setPublishTags} legendClass="mb-2 text-sm font-semibold text-link" months={<MonthPicker value={publishMonths} onChange={setPublishMonths} legendClass="mb-1 text-sm font-semibold text-link" />} />{/* Why posting didn't go through, right above the button (it used to show behind this box). */}{publishMessage && <p role="alert" className="rounded-xl bg-cream p-3 text-sm text-danger">{publishMessage}{!places.length && <> <button type="button" onClick={() => { setPublishFormat(null); setPublishMessage(''); setTab('places'); setImporting(false); setAdding({ at: 'top' }) }} className="font-semibold text-link underline underline-offset-2">Add a place</button></>}</p>}<button type="button" disabled={publishing} onClick={() => void continueToPost(publishFormat)} className="btn btn-primary w-full">{publishing ? 'Posting…' : 'Post trip'}</button></div></div></div>}
     {photosPrompt && <PhotosPrompt places={places} missing={withoutPhotos.length} onClose={() => setPhotosPrompt(false)} onNext={() => void afterPhotos()} posting={publishing} last={!unrated.length} />}
     {unratedPrompt && <UnratedPrompt places={places.filter(place => unratedPrompt.includes(place.id))} onClose={() => setUnratedPrompt(null)} onPost={() => void postNow()} posting={publishing} />}
     {postError && <p role="alert" className="panel-hint fixed inset-x-4 bottom-[calc(var(--app-bottom-clearance)+0.5rem)] z-[75] mx-auto max-w-md p-3 text-sm text-danger">{postError}</p>}
-  </div></TripDates.Provider></DayNames.Provider>
+  </div></TripDates.Provider></GroupTrip.Provider></DayNames.Provider>
 }
 
 function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, initialDay, onClose }: { trip: Trip; maxDay: number; initialDestination?: string; initialDestinationId?: string; initialDay?: number; onClose: () => void }) {
@@ -421,6 +426,7 @@ function IdeaFrom({ source }: { source: PlaceSource }) {
 
 function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChips, dayRange, dayTime = false }: { dayTime?: boolean; tripStart?: string; tripId: string; place: Place & { destination: string; destinationName: string; destinationId: string }; maxDay: number; destinationChoices: { id: string; name: string }[]; dayChips?: number; dayRange?: DayRange }) {
   const dayName = useContext(DayNames)
+  const group = useContext(GroupTrip)
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -469,7 +475,7 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
   // Swipe left (or hover on a computer) to delete; off while the place's edit form is open.
   // Swipe left, or the Delete button under the card; both ask first.
   return <SwipeToDelete title={place.name} disabled={editing} hoverButton={false} className="" confirmLabel="Delete place" keepLabel="Keep place" onDelete={remove}
-    message={<>Delete <span className="font-semibold">{place.name}</span> and its notes? The rest of your trip will stay.</>}>{askDelete => <>
+    message={group ? <>Delete <span className="font-semibold">{place.name}</span>? It goes to Deleted places, where anyone on the trip can bring it back.</> : <>Delete <span className="font-semibold">{place.name}</span> and its notes? The rest of your trip will stay.</>}>{askDelete => <>
   <article id={`place-${place.id}`} className={`${planningStyles.place} ${styles[category.value]} scroll-mt-40`}>
       {/* Tapping the photo or text opens the place with its full notes and details. */}
       <div role="button" tabIndex={0} aria-label={`Open ${place.name}`} onClick={() => { if (!editing) openEditor() }} onKeyDown={event => { if (!editing && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); openEditor() } }} className={`${styles.card} ${planningStyles.card} cursor-pointer`}>
