@@ -88,8 +88,11 @@ export default function TripPhotoPicker({ start, end, name, onPick, onFallback, 
     {/* Browse by month, like scrolling back in the Photos app. */}
     <nav aria-label="Photo dates" className="flex flex-wrap items-center gap-2 border-b border-line-soft px-4 py-2">
       <button type="button" aria-label="Previous month" onClick={() => go({ kind: 'month', month: view.kind === 'month' ? shiftMonth(month, -1) : month })} className="btn-icon"><ChevronLeft size={18} /></button>
-      <label className="min-w-0 flex-1"><span className="sr-only">Month</span>
-        <input type="month" value={view.kind === 'month' ? view.month : ''} max={thisMonth()} placeholder={monthLabel(month)} aria-label={view.kind === 'month' ? monthLabel(view.month) : 'Choose a month'} onChange={event => { if (/^\d{4}-\d{2}$/.test(event.target.value)) go({ kind: 'month', month: event.target.value }) }} className="field !min-h-9 w-full !py-1.5 text-center" />
+      {/* The month as text in a box that fits (iPhone's month field is wider than the space and shows blank when
+          empty); tapping it opens iPhone's own month picker, laid invisibly over it. */}
+      <label className="relative min-w-0 flex-1"><span className="sr-only">Month</span>
+        <span aria-hidden="true" className="field flex !min-h-9 items-center justify-center truncate !py-1.5 text-sm">{monthLabel(month)}</span>
+        <input type="month" value={view.kind === 'month' ? view.month : month} max={thisMonth()} aria-label={`Choose a month (now ${monthLabel(month)})`} onChange={event => { if (/^\d{4}-\d{2}$/.test(event.target.value)) go({ kind: 'month', month: event.target.value }) }} className="field absolute inset-0 h-full w-full min-w-0 cursor-pointer opacity-0" />
       </label>
       <button type="button" aria-label="Next month" disabled={view.kind === 'month' && view.month >= thisMonth()} onClick={() => go({ kind: 'month', month: view.kind === 'month' ? shiftMonth(month, 1) : month })} className="btn-icon"><ChevronRight size={18} /></button>
       {start && end && view.kind === 'month' && <button type="button" onClick={() => go({ kind: 'trip' })} className="chip">Trip dates</button>}
