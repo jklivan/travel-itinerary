@@ -43,11 +43,6 @@ export default function TripPhotoPicker({ start, end, name, onPick, onFallback, 
         const result = await PostcardPhotos.photosBetween({ ...range, limit: LIMIT })
         if (cancelled) return
         setAccess(result.access); setPhotos(result.photos)
-        // Previews in batches, newest batch shown as it arrives.
-        for (let index = 0; index < result.photos.length && !cancelled; index += 60) {
-          const batch = await PostcardPhotos.thumbnails({ ids: result.photos.slice(index, index + 60).map(photo => photo.id), size: 240 })
-          if (!cancelled) setThumbs(current => ({ ...current, ...batch.thumbnails }))
-        }
       } catch (error) {
         // An app build from before trip photos answers "not implemented"; anything else is a problem reading the
         // library. Either way the usual picker has to be opened from a tap, so offer it rather than opening it here.
@@ -56,8 +51,45 @@ export default function TripPhotoPicker({ start, end, name, onPick, onFallback, 
     })()
     return () => { cancelled = true }
   }, [view, start, end])
+  // Previews load as you scroll (a few screens at a time), not all at once: a busy month can have a thousand photos,
+  // and loading every preview used so much memory that iOS restarted the app's page (back to the feed).
+  const PAGE = 60
+  const [wanted, setWanted] = useState(PAGE)
+  const loadedIds = useRef(new Set<string>())
+  const scroller = useRef<HTMLDivElement>(null)
+  const sentinel = useRef<HTMLDivElement>(null)
+  const shown = (photos ?? []).filter(photo => !favoritesOnly || photo.favorite)
+  // The photos that should have previews by now (changes as you scroll, not as previews arrive).
+  const wantedIds = shown.slice(0, wanted).map(photo => photo.id).join(',')
+  useEffect(() => {
+    if (!wantedIds) return
+    const loaded = loadedIds.current
+    const pending = wantedIds.split(',').filter(id => !loaded.has(id))
+    pending.forEach(id => loaded.add(id))
+    let cancelled = false
+    void (async () => {
+      while (pending.length && !cancelled) {
+        const batch = pending.slice(0, 30)
+        try {
+          const result = await PostcardPhotos.thumbnails({ ids: batch, size: 200 })
+          if (!cancelled) setThumbs(current => ({ ...current, ...result.thumbnails }))
+        } catch { /* those tiles stay blank */ }
+        if (!cancelled) pending.splice(0, batch.length)
+      }
+    })()
+    // Interrupted (e.g. scrolled further): what wasn't fetched yet can be asked for again.
+    return () => { cancelled = true; pending.forEach(id => loaded.delete(id)) }
+  }, [wantedIds])
+  // Near the bottom of what's loaded: load the next screens' worth.
+  const more = shown.length > wanted
+  useEffect(() => {
+    if (!more || !sentinel.current) return
+    const observer = new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) setWanted(count => count + PAGE) }, { root: scroller.current, rootMargin: '400px' })
+    observer.observe(sentinel.current)
+    return () => observer.disconnect()
+  }, [more, wanted])
   // Another month (or back to the trip): clear what's shown while it loads.
-  const go = (next: View) => { setPhotos(null); setThumbs({}); setView(next) }
+  const go = (next: View) => { setPhotos(null); setThumbs({}); setWanted(PAGE); loadedIds.current.clear(); setView(next) }
   // The month the arrows step from: the trip's first month while showing the trip.
   const month = view.kind === 'month' ? view.month : (start ?? '').slice(0, 7) || thisMonth()
 
@@ -97,7 +129,7 @@ export default function TripPhotoPicker({ start, end, name, onPick, onFallback, 
       <button type="button" aria-label="Next month" disabled={view.kind === 'month' && view.month >= thisMonth()} onClick={() => go({ kind: 'month', month: view.kind === 'month' ? shiftMonth(month, 1) : month })} className="btn-icon"><ChevronRight size={18} /></button>
       {start && end && view.kind === 'month' && <button type="button" onClick={() => go({ kind: 'trip' })} className="chip">Trip dates</button>}
     </nav>
-    <div className="flex-1 overflow-y-auto p-4">
+    <div ref={scroller} className="flex-1 overflow-y-auto p-4">
       {favorites > 0 && <button type="button" aria-pressed={favoritesOnly} onClick={() => setFavoritesOnly(value => !value)} className="chip mb-4"><Heart size={12} fill={favoritesOnly ? 'currentColor' : 'none'} />Favorites only ({favorites})</button>}
       {photos === null ? <p className="type-body text-muted">{view.kind === 'trip' ? 'Finding your trip’s photos…' : `Finding your photos from ${monthLabel(view.month)}…`}</p>
         : access === 'failed' ? <p className="type-body">Couldn’t read your trip’s photos. Try again, or <button type="button" className="text-link underline" onClick={() => { dialog.current?.close(); onFallback() }}>choose from your library</button>.</p>
@@ -114,6 +146,7 @@ export default function TripPhotoPicker({ start, end, name, onPick, onFallback, 
             {photo.favorite && <Heart size={14} aria-label="Favorite" fill="currentColor" className="absolute bottom-1 left-1 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" />}
           </button> })}</div>
         </section>)}
+      {more && <div ref={sentinel} aria-hidden="true" className="h-px" />}
       {photos?.length === LIMIT && <p className="type-meta mb-3">Showing the first {LIMIT} photos from these dates.</p>}
       {access === 'limited' && !!photos?.length && <p className="type-meta">Showing the photos you’ve shared with Postcard. To see all of this trip’s photos, choose “Full Access” in Settings → Postcard → Photos.</p>}
     </div>
