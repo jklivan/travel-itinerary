@@ -41,6 +41,7 @@ model User {
   placesDeleted     DeletedPlace[]        @relation("DeletedPlaceBy")
   placeTakes        PlaceTake[]           @relation("PlaceTakeUser")
   placesAdded       DestItem[]            @relation("PlaceAddedBy")
+  tripMessages      TripMessage[]         @relation("TripMessageUser")
   reportsMade       Report[]              @relation("ReportReporter")
   reportsAbout      Report[]              @relation("ReportSubject")
   blocking          Block[]               @relation("BlockBlocker")
@@ -114,6 +115,7 @@ model Itinerary {
   // Group trips: people invited to plan it together, and places someone deleted (restorable).
   members          TripMember[]
   deletedPlaces    DeletedPlace[]
+  chatMessages     TripMessage[]
   createdAt        DateTime         @default(now())
   publishedAt      DateTime?
 }
@@ -137,6 +139,19 @@ model TripMember {
 
   @@unique([itineraryId, userId])
   @@index([userId, status])
+}
+
+// A message in a group trip's chat: only the people on the trip see it, and it never shows on a posted trip.
+model TripMessage {
+  id          String    @id @default(cuid())
+  itineraryId String
+  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation("TripMessageUser", fields: [userId], references: [id], onDelete: Cascade)
+  body        String    @db.VarChar(2000)
+  createdAt   DateTime  @default(now())
+
+  @@index([itineraryId, createdAt])
 }
 
 // A place deleted from a group trip, kept whole so anyone on the trip can bring it back.

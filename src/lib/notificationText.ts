@@ -8,6 +8,7 @@ export function notificationText(kind: string, actor: string, trip: string) {
   if (kind === 'published') return `${actor} posted a new trip: “${trip}”.`
   if (kind === 'trip_invite') return `${actor} invited you to plan “${trip}” together.`
   if (kind === 'trip_joined') return `${actor} joined your trip “${trip}”.`
+  if (kind === 'trip_chat') return `${actor} wrote in the chat for “${trip}”.`
   return `${actor} ${kind === 'comment' ? 'commented on' : kind === 'like' ? 'liked' : 'saved'} your trip “${trip}”.`
 }
 
@@ -19,6 +20,7 @@ export function notificationPath(itineraryId: string | null, kind: string, actor
   // Group trips: an invite opens the join page; someone joining opens the plan.
   if (kind === 'trip_invite') return `/join/${encodeURIComponent(itineraryId)}`
   if (kind === 'trip_joined') return `/plan/${encodeURIComponent(itineraryId)}`
+  if (kind === 'trip_chat') return `/plan/${encodeURIComponent(itineraryId)}#trip-chat`
   // Someone reacting to your trip: open it as others see it (with its comments and likes). Your own trips otherwise
   // open in the planner; people's other trips ignore ?as=guest.
   const guest = ['comment', 'like', 'save'].includes(kind) ? '?as=guest' : ''
