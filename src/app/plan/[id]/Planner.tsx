@@ -72,7 +72,6 @@ function postFormatOf(trip: Trip): 'guide' | 'day-trip' | 'itinerary' {
 
 export default function Planner({ trip, initialImport = false, initialDetails = false, initialPost = false }: { trip: Trip; initialImport?: boolean; initialDetails?: boolean; initialPost?: boolean }) {
   const router = useRouter()
-  // Day-by-day plans open on their days; idea lists on Places.
   // "Plan my days with AI" tapped before the trip had a length: plan as soon as the days are set.
   const [aiAfterDays, setAiAfterDays] = useState(false)
   // Trips imported before the import set a length: places are on days but the trip has none, so save it from the
@@ -83,7 +82,8 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     void setPlanDays(trip.id, lastScheduledDay).then(result => { if (!result.error) router.refresh() }).catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trip.id, trip.durationDays, lastScheduledDay])
-  const [tab, setTab] = useState<'places' | 'itinerary' | 'map'>(trip.durationDays ? 'itinerary' : 'places')
+  // A trip you've posted opens on its places; a day-by-day plan you're still working on opens on its days.
+  const [tab, setTab] = useState<'places' | 'itinerary' | 'map'>(trip.durationDays && trip.visibility === 'draft' ? 'itinerary' : 'places')
   const [mapOpened, setMapOpened] = useState(false)
   // Days or dates (remembered on this device). Dates need the plan's start date.
   // Day 1, Day 2… by default; calendar days only when turned on (remembered on this device).
