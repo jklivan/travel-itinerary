@@ -57,7 +57,7 @@ export default async function MyTripsPage() {
         <span className="shrink-0 text-xs font-semibold text-link">Join or decline →</span>
       </Link>)}
     </section>}
-    <TripSection title="Private plans" description="Only you can see these. Keep planning, then post when you’re ready." empty="No private plans yet.">
+    <TripSection title="Private plans" description="Only you, and anyone you’re planning with, can see these. Keep planning, then post when you’re ready." empty="No private plans yet.">
       {/* Plans go straight to /plan: the trip editor's redirect there fails during in-app navigation. */}
       {plans.map(trip => <TripRow key={trip.id} id={trip.id} href={`/plan/${trip.id}`} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={`${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}`} cta="Keep planning →" own={trip.userId === userId}
         people={trip.members.length ? { joined: [trip.user, ...trip.members.filter(member => member.status === 'joined').map(member => member.user!)], invited: trip.members.filter(member => member.status === 'invited').length } : undefined} />)}
