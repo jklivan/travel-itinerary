@@ -15,8 +15,7 @@ import DeleteButton from '@/components/DeleteButton'
 import { tripPhotoGallery } from '@/lib/eventPhotos'
 import { fetchStockPhoto } from '@/lib/stockPhoto'
 import FollowButton from '@/components/FollowButton'
-import { ChevronRight, Settings } from 'lucide-react'
-import { PostStamp } from '@/components/PostcardLogo'
+import { ChevronRight, Plus, Settings } from 'lucide-react'
 
 function destinationStockFallback(destination: string, country: string | null) {
   const query = `${destination} ${country ?? ''}`.toLowerCase()
@@ -172,7 +171,7 @@ export default async function UserProfilePage({
                   <Link href={tripHref} className="min-w-0 pt-2"><h3 className="type-card break-words">{trip.title || 'Untitled trip'}</h3><p className="mt-2 text-label font-semibold uppercase tracking-widest text-muted">{trip.destinations.reduce((sum, destination) => sum + destination.items.length, 0)} places</p><p className="mt-1 text-sm text-muted">Keep planning →</p></Link>
                   <div className="flex min-w-0 flex-wrap items-end justify-between gap-2 self-end">
                     <DeleteButton compact id={trip.id} visibility={trip.visibility} returnTo={`/user/${id}`} label={`Delete ${trip.title}`} />
-                    <Link href={trip.isPlan ? `${tripHref}?post=1` : tripHref} aria-label={`Post ${trip.title}`} title="Post trip" className="inline-flex h-12 w-[66px] shrink-0 items-center justify-center transition-transform hover:-rotate-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"><PostStamp size={52} /></Link>
+                    <Link href={trip.isPlan ? `${tripHref}?post=1` : tripHref} aria-label={`Post ${trip.title}`} title="Post trip" className="flex shrink-0 flex-col items-center gap-1 text-xs text-ink"><span className="flex size-11 items-center justify-center rounded-full border border-ink bg-ink text-white shadow-card"><Plus size={18} /></span>Post</Link>
                   </div>
                 </article>
               })}</div>}
