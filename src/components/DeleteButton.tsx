@@ -44,9 +44,9 @@ export default function DeleteButton({ id, visibility, returnTo = '/', label = '
         <p className="mt-1 text-sm text-muted">Keep all your places, notes, and photos as a private plan. Find it in Profile → In progress, and share it again whenever you’re ready.</p>
         <button type="button" onClick={() => void handleKeepPrivate()} disabled={pending} className="btn btn-primary mt-3"><LockKeyhole size={16} />{keeping ? 'Making private…' : 'Unpublish & keep privately'}</button>
       </div>}
-      {confirming === 'delete' && <p className="max-w-full break-words text-sm text-muted">Delete this entire post and all its places, notes, and photos? This cannot be undone.</p>}
+      {confirming === 'delete' && <p className="max-w-full break-words text-sm text-muted">Delete this trip? This can’t be undone.</p>}
       <div className="flex flex-wrap items-center gap-2">
-        {confirming === 'delete' && <button type="button" onClick={() => void handleDelete()} disabled={pending} className="btn btn-danger">{pending && !keeping ? 'Deleting…' : 'Permanently delete entire post'}</button>}
+        {confirming === 'delete' && <button type="button" onClick={() => void handleDelete()} disabled={pending} className="btn btn-danger">{pending && !keeping ? 'Deleting…' : 'Delete'}</button>}
         <button type="button" onClick={() => { setConfirming(null); setError('') }} disabled={pending} className="btn btn-outline text-muted">Cancel</button>
       </div>
     </div> : <div className="flex flex-wrap items-center gap-2">
