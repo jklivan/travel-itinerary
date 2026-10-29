@@ -36,6 +36,11 @@ model User {
   questionReplies   FriendQuestionReply[]
   planChats         PlanChat[]
   placesSharedFrom  DestItem[]            @relation("PlaceSource")
+  tripMemberships   TripMember[]          @relation("TripMemberUser")
+  tripInvitesSent   TripMember[]          @relation("TripMemberInviter")
+  placesDeleted     DeletedPlace[]        @relation("DeletedPlaceBy")
+  placeTakes        PlaceTake[]           @relation("PlaceTakeUser")
+  placesAdded       DestItem[]            @relation("PlaceAddedBy")
   reportsMade       Report[]              @relation("ReportReporter")
   reportsAbout      Report[]              @relation("ReportSubject")
   blocking          Block[]               @relation("BlockBlocker")
@@ -106,8 +111,62 @@ model Itinerary {
   stories          Story[]
   planChats        PlanChat[]
   placesCopiedFrom DestItem[]       @relation("PlaceSource")
+  // Group trips: people invited to plan it together, and places someone deleted (restorable).
+  members          TripMember[]
+  deletedPlaces    DeletedPlace[]
   createdAt        DateTime         @default(now())
   publishedAt      DateTime?
+}
+
+// Someone invited to plan a trip together (#116). Joined members can change the plan like its creator, except
+// deleting the trip or removing people. An invite is to a person (userId) or by link (token, anyone who opens it).
+model TripMember {
+  id          String    @id @default(cuid())
+  itineraryId String
+  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  // Empty for a link invite until someone accepts it.
+  userId      String?
+  user        User?     @relation("TripMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+  invitedById String
+  invitedBy   User      @relation("TripMemberInviter", fields: [invitedById], references: [id], onDelete: Cascade)
+  // "invited", "joined" or "declined".
+  status      String    @default("invited")
+  token       String?   @unique @db.VarChar(40)
+  createdAt   DateTime  @default(now())
+  joinedAt    DateTime?
+
+  @@unique([itineraryId, userId])
+  @@index([userId, status])
+}
+
+// A place deleted from a group trip, kept whole so anyone on the trip can bring it back.
+model DeletedPlace {
+  id            String    @id @default(cuid())
+  itineraryId   String
+  itinerary     Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  destinationId String?
+  // The place as it was (its fields), restored as a new place with the same details.
+  data          Json
+  deletedById   String
+  deletedBy     User      @relation("DeletedPlaceBy", fields: [deletedById], references: [id], onDelete: Cascade)
+  deletedAt     DateTime  @default(now())
+
+  @@index([itineraryId, deletedAt])
+}
+
+// One person's own stars, notes and photos on a place in a group trip (the creator's stay on the place itself).
+model PlaceTake {
+  id        String   @id @default(cuid())
+  itemId    String
+  item      DestItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("PlaceTakeUser", fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int?
+  notes     String?
+  photoUrls String[] @default([])
+  updatedAt DateTime @updatedAt
+
+  @@unique([itemId, userId])
 }
 
 model BucketListItem {
@@ -212,6 +271,10 @@ model DestItem {
   sourceItinerary      Itinerary?  @relation("PlaceSource", fields: [sourceItineraryId], references: [id], onDelete: SetNull)
   sourceUserId         String?
   sourceUser           User?       @relation("PlaceSource", fields: [sourceUserId], references: [id], onDelete: SetNull)
+  // Group trips: who added it, and each member's own stars, notes and photos.
+  addedById            String?
+  addedBy              User?       @relation("PlaceAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
+  takes                PlaceTake[]
 }
 
 model Photo {
