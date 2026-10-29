@@ -6,6 +6,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { fetchStockPhoto } from '@/lib/stockPhoto'
 import { SwipeToDeleteTrip } from '@/components/SwipeToDelete'
+import { canEdit } from '@/lib/tripAccess'
 
 export const metadata: Metadata = { title: 'My Trips — Postcard' }
 
@@ -15,13 +16,13 @@ const tripSelect = {
   destinations: { orderBy: { order: 'asc' as const }, select: { name: true, country: true, items: { orderBy: { order: 'asc' as const }, select: { id: true, type: true, photoUrl: true, photoUrls: true } } } },
 }
 
-// My Trips: private plans you're still working on, then the trips you've posted.
+// My Trips: private plans you're still working on (yours and group trips you've joined), then the trips you've posted.
 export default async function MyTripsPage() {
   const userId = (await auth())?.user?.id
   if (!userId) redirect('/login?callbackUrl=%2Ftrips')
 
   const [plans, postcards] = await Promise.all([
-    prisma.itinerary.findMany({ where: { userId, visibility: 'draft' }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: tripSelect }),
+    prisma.itinerary.findMany({ where: { visibility: 'draft', ...canEdit(userId) }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: tripSelect }),
     prisma.itinerary.findMany({ where: { userId, visibility: { not: 'draft' } }, orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }], select: tripSelect }),
   ])
   type Trip = typeof plans[number]
