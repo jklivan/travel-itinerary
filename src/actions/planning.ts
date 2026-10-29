@@ -486,8 +486,13 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     if (!name || !['considering', 'booked', 'visited'].includes(status)) return { error: 'Enter a place name and choose a status.' }
     if (day && (!/^\d+$/.test(day) || Number(day) < 1 || Number(day) > 365)) return { error: 'Choose a day from 1 to 365, or leave it unscheduled.' }
     const owned = { id: itemId, destination: { itinerary: canEdit(userId) } }
-    const item = await prisma.destItem.findFirst({ where: owned, select: { name: true, type: true, placeId: true, destinationId: true, destination: { select: { itineraryId: true, name: true, country: true } } } })
+    const item = await prisma.destItem.findFirst({ where: owned, select: { name: true, type: true, placeId: true, destinationId: true, destination: { select: { itineraryId: true, name: true, country: true, itinerary: { select: { userId: true } } } } } })
     if (!item) return { error: unavailable }
+    // Someone who joined a group trip: their stars and photos go to their own take on the place, and the creator's
+    // booking details (which they don't see) are left alone.
+    const member = item.destination.itinerary.userId !== userId
+    const take = member ? { ...(rating === undefined ? {} : { rating: rating || null }), ...(extra.photoUrls ? { photoUrls: extra.photoUrls } : {}) } : null
+    if (member) { delete extra.photoUrls; delete extra.photoUrl; delete extra.bookingDetails }
     if (nextType && nextType !== item.type) {
       extra.type = nextType
       // Hotels each get their own stay group; meal types only apply to restaurants.
@@ -511,8 +516,9 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
         const zeroBased = await tx.destItem.count({ where: { destinationId, dayIndex: 0, type: { not: 'hotel' } } })
         if (zeroBased) await tx.destItem.updateMany({ where: { destinationId, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
       }
-      const result = await tx.destItem.updateMany({ where: owned, data: { name, placeId: nextPlaceId, ...(identityChanged ? { lat: null, lng: null, address: null, link: null, description: null } : {}), ...extra, ...(moveTo ?? {}), notes: notes || null, ...(rating === undefined ? {} : { rating: rating || null }), planningStatus: status, dayIndex: day ? Number(day) : null } })
+      const result = await tx.destItem.updateMany({ where: owned, data: { name, placeId: nextPlaceId, ...(identityChanged ? { lat: null, lng: null, address: null, link: null, description: null } : {}), ...extra, ...(moveTo ?? {}), notes: notes || null, ...(rating === undefined || member ? {} : { rating: rating || null }), planningStatus: status, dayIndex: day ? Number(day) : null } })
       if (!result.count) throw new InputError(unavailable)
+      if (take && Object.keys(take).length) await tx.placeTake.upsert({ where: { itemId_userId: { itemId, userId } }, create: { itemId, userId, ...take }, update: take })
       // Snapshots of this place show its corrected category too.
       if (extra.type) await tx.story.updateMany({ where: { sourceItemId: itemId, userId }, data: { type: extra.type } })
       // The destination it left goes away once it's empty, unless it has its own notes.
