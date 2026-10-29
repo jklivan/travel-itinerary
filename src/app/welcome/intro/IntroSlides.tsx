@@ -15,7 +15,8 @@ const SLIDES: { title: string; text: string; image: string; video?: string }[] =
   { title: 'Look inside any trip.', text: 'See every place they stayed, ate and explored, then follow their trip day by day.', image: '/brand/intro/trip-poster.jpg', video: '/brand/intro/trip.mp4' },
   { title: 'Explore ideas for your next trip.', text: 'Search destinations, browse trip types, and find inspiration for your next adventure.', image: '/brand/intro/explore.jpg' },
   { title: 'Plan with Postcard.', text: 'Get personalized ideas, build an itinerary, and organize your plans with the help of Postcard.', image: '/brand/intro/plan-2.jpg' },
-  { title: 'Create and share your own trips.', text: 'Add the places you went (hotels, restaurants and activities), then post it to share with friends.', image: '/brand/intro/post.jpg' },
+  { title: 'Create and share your own trips.', text: 'Add the places you went (hotels, restaurants and activities), then post it to share with friends.', image: '/brand/intro/post-2.jpg' },
+  { title: 'Bring in trips you’ve already taken.', text: 'Have an itinerary or notes? Import a PDF, doc, email or screenshot and Postcard turns it into a trip.', image: '/brand/intro/import.jpg' },
   { title: 'Stay organized.', text: 'See your posted trips, plan your upcoming adventures, and save places you love, all in one place.', image: '/brand/intro/trips.jpg' },
 ]
 
