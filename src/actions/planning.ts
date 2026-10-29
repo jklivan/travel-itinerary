@@ -418,7 +418,7 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
       const last = await tx.destItem.aggregate({ where: { destinationId: dest.id }, _max: { order: true, groupIndex: true } })
       const zeroBased = await tx.destItem.count({ where: { destinationId: dest.id, dayIndex: 0, type: { not: 'hotel' } } })
       if (zeroBased) await tx.destItem.updateMany({ where: { destinationId: dest.id, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
-      await tx.destItem.create({ data: { id: clientId, destinationId: dest.id, name, type, placeId: placeId ?? null, ...(location ? { lat: location.lat, lng: location.lng, address: location.address } : {}), ...(form.get('source') === 'ai' ? { sourceKind: 'ai' } : {}), notes: notes || null,
+      await tx.destItem.create({ data: { id: clientId, addedById: userId, destinationId: dest.id, name, type, placeId: placeId ?? null, ...(location ? { lat: location.lat, lng: location.lng, address: location.address } : {}), ...(form.get('source') === 'ai' ? { sourceKind: 'ai' } : {}), notes: notes || null,
         rating: rating || null, planningStatus: status, mealType: type === 'food_drink' ? mealType || null : null, tags: privateTransport ? [...tags, PRIVATE_TAG] : tags, photoUrls, photoUrl: photoUrls[0] ?? null,
         dayIndex: day ? Number(day) : null, nights: type === 'hotel' ? nightsFrom(form) : null,
         order: (last._max.order ?? -1) + 1, groupIndex: type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0,
@@ -707,7 +707,7 @@ export async function copyPlaceToPlan(sourceId: string, planId: string, clientId
       const filed = await fileUnderDestination(tx, planId, source, destination)
       if ('ask' in filed) return filed.ask
       const last = await tx.destItem.aggregate({ where: { destinationId: filed.id }, _max: { order: true, groupIndex: true } })
-      await tx.destItem.create({ data: { id: clientId, destinationId: filed.id, name: source.name, type: source.type,
+      await tx.destItem.create({ data: { id: clientId, addedById: userId, destinationId: filed.id, name: source.name, type: source.type,
         address: source.address, link: source.link, placeId: source.placeId, lat: source.lat, lng: source.lng,
         order: (last._max.order ?? -1) + 1, groupIndex: source.type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0,
         sourceKind: 'trip', sourceItineraryId: source.destination.itineraryId, sourceUserId: source.destination.itinerary.userId,

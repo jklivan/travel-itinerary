@@ -36,7 +36,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
       mealType: item.mealType, alternative: item.alternative, description: item.description, link: item.link, address: item.address,
     })) })),
     // Who's planning it: the creator first, then everyone invited or joined.
-    isOwner, deletedCount: trip._count.deletedPlaces,
+    isOwner, viewerId: userId, deletedCount: trip._count.deletedPlaces,
     people: [{ id: trip.user.id, name: trip.user.name, image: trip.user.image, status: 'creator' }, ...trip.members.map(member => ({ id: member.userId!, name: member.user?.name ?? '', image: member.user?.image ?? null, status: member.status }))],
   }} />
 }
