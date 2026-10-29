@@ -180,7 +180,18 @@ export async function savePlanDetails(id: string, form: FormData): Promise<Resul
       extra.tags = [...new Set([...(current?.tags.includes('day-trip') ? ['day-trip'] : []), ...chosen])].slice(0, 20)
     }
     if (form.has('bestMonths')) { try { extra.bestMonths = bestMonths(JSON.parse(String(form.get('bestMonths')))) } catch { extra.bestMonths = [] } }
-    const result = await prisma.itinerary.updateMany({ where: { id, userId }, data: { title, audience, ...dates(form), ...(form.has('durationDays') ? { durationDays: duration(form) } : {}), ...extra } })
+    // Trip type, as when posting: a day trip has the Day trip tag.
+    let kind: { postType?: string; durationDays?: number | null } = form.has('durationDays') ? { durationDays: duration(form) } : {}
+    if (form.has('postType')) {
+      const postType = text(form, 'postType', 20)
+      if (!['guide', 'day-trip', 'itinerary'].includes(postType)) throw new InputError('Choose a trip type.')
+      const length = form.has('durationDays') ? duration(form) : null
+      // A day trip is one day (two if they say so); otherwise the number of days entered stands.
+      kind = { postType, durationDays: postType === 'day-trip' ? (length === 2 ? 2 : 1) : length }
+      const current = extra.tags ?? (await prisma.itinerary.findFirst({ where: { id, userId }, select: { tags: true } }))?.tags ?? []
+      extra.tags = postType === 'day-trip' ? [...new Set(['day-trip', ...current])].slice(0, 20) : current.filter(tag => tag !== 'day-trip')
+    }
+    const result = await prisma.itinerary.updateMany({ where: { id, userId }, data: { title, audience, ...dates(form), ...kind, ...extra } })
     if (!result.count) return { error: unavailable }
     refresh(id, userId)
     return { success: true }
