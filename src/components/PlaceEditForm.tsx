@@ -43,7 +43,7 @@ export { StarRating }
 
 // ── Item edit form ─────────────────────────────────────────────────────────────
 
-export default function PlaceEditForm({ type, initial, onDraftChange, onSave, onClose, onRecommendationChange, onPlaceIdChange, city, busy = false, saveLabel = 'Save', showRating = true, children }: {
+export default function PlaceEditForm({ type, initial, onDraftChange, onSave, onClose, onRecommendationChange, onPlaceIdChange, city, busy = false, saveLabel = 'Save', showRating = true, showNotes = true, children }: {
   type: PlaceType
   initial: PlaceEditValues
   onDraftChange?: (updated: Partial<PlaceEditValues>) => void
@@ -57,6 +57,8 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
   saveLabel?: string
   // false where rating and Must do / Avoid have their own button (the planner's Change rating).
   showRating?: boolean
+  // Off in the planner's Edit details, where notes are typed on the card itself.
+  showNotes?: boolean
   // Extra fields (photos, day…) shown above the Save and Cancel buttons.
   children?: React.ReactNode
 }) {
@@ -128,11 +130,11 @@ export default function PlaceEditForm({ type, initial, onDraftChange, onSave, on
         <p className="text-xs text-muted">Rate it</p>
         <StarRating value={rating} onChange={setRating} />
       </div>}
-      <div className="space-y-1">
+      {showNotes && <div className="space-y-1">
         <p className="text-xs text-muted">Notes</p>
         <textarea aria-label="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)}
           placeholder={cfg.notesPh} className={inputCls} />
-      </div>
+      </div>}
       {/* Alternatives are places of their own ("Save as alternative"). An older typed suggestion stays
           visible here only so it can be cleared. */}
       {!!initial.alternative && <label className="block space-y-1">

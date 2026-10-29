@@ -21,6 +21,7 @@ import PlaceEditForm, { type PlaceEditValues, type PlaceType } from '@/component
 import EventPhotoInput from '@/components/EventPhotoInput'
 import PlaceQuickEdit from '@/components/PlaceQuickEdit'
 import PlaceCardRating from '@/components/PlaceCardRating'
+import PlaceCardNotes from '@/components/PlaceCardNotes'
 import TripDescriptors from '@/components/TripDescriptors'
 import CoverPhotoPicker from '@/components/CoverPhotoPicker'
 import CoverFramer from '@/components/CoverFramer'
@@ -501,7 +502,8 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
             the stars are in the form). */}
         {editing || place.type === 'transport' || getRecommendation(place.tags) === 'option' ? !!place.rating && <p className="mt-1"><RatingStars value={place.rating} label={`Your rating: ${place.rating} out of 5`} /></p>
           : <PlaceCardRating itemId={place.id} name={place.name} rating={place.rating} />}
-        {place.notes && <p className={styles.note}>{place.notes}</p>}
+        {/* Notes, typed right on the card (an empty box says Add details…); read-only while Edit details is open. */}
+        {editing ? place.notes && <p className={styles.note}>{place.notes}</p> : <PlaceCardNotes itemId={place.id} name={place.name} notes={place.notes} />}
         {/* Private booking details: only you see these (and they're in your itinerary PDF). */}
         {place.bookingDetails && <p className="mt-1 flex items-start gap-1 text-xs text-muted [overflow-wrap:anywhere]"><LockKeyhole size={12} className="mt-0.5 shrink-0" />{place.bookingDetails}</p>}
         {place.source && <IdeaFrom source={place.source} />}
@@ -521,7 +523,7 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
         {/* What kind of place it is comes first, so a restaurant saved as a stay is easy to fix. */}
         <fieldset className="mb-3"><legend className="mb-1 text-xs text-muted">What is it?</legend><div className="flex flex-wrap gap-1.5">{categories.map(option => <button key={option.value} type="button" aria-pressed={type === option.value} onClick={() => setType(option.value)} className="chip"><option.Icon size={14} />{option.label}</button>)}</div></fieldset>
         {/* Same fields as the trip editor, plus photos and the day for this plan. */}
-        <PlaceEditForm key={type} type={type as PlaceType} city={place.destination} busy={busy || uploading} saveLabel="Save changes" showRating={type !== 'transport'} onPlaceIdChange={setPlaceId} onClose={() => setEditing(false)} onSave={values => void save(values)}
+        <PlaceEditForm key={type} type={type as PlaceType} city={place.destination} busy={busy || uploading} saveLabel="Save changes" showRating={type !== 'transport'} showNotes={false} onPlaceIdChange={setPlaceId} onClose={() => setEditing(false)} onSave={values => void save(values)}
           initial={{ name: place.name, mealType: place.mealType ?? '', rating: place.rating ?? 0, notes: place.notes ?? '', tags: place.tags, isHighlight: false, alternative: place.alternative ?? '', description: place.description ?? '', link: place.link ?? '', address: place.address ?? '' }}>
           <div className="space-y-1"><p className="text-xs text-muted">Photos</p><EventPhotoInput photos={photos} name={place.name} onChange={setPhotos} onBusyChange={setUploading} /></div>
           {/* Moving a place to another destination puts it under that destination's heading. */}
