@@ -6,6 +6,10 @@ import { extractFromImageBase64, extractFromPdfBuffer, extractFromText, extractP
 import { importedPlaces, type ImportedPlace } from '@/lib/planImport'
 import { isDate, daysBetween } from '@/lib/placeDates'
 import { samePlanDestination } from '@/lib/planPlaceIdentity'
+import { canEdit } from '@/lib/tripAccess'
+import { geocode, geocodePlaceByName } from '@/lib/geocode'
+import { locateDestinations } from '@/lib/locateDestinations'
+import { distanceMiles } from '@/lib/distance'
 import { authenticatedFrom, emailOf, inboxRefs, stableId, tokenFrom } from '@/lib/inbox'
 import { sendEmail } from '@/lib/email'
 import { startPlan } from '@/actions/planning'
@@ -78,15 +82,48 @@ function datesOf(parts: ExtractedItinerary[], places: ImportedPlace[]) {
   return dates.length ? { start: dates[0], end: dates[dates.length - 1] } : null
 }
 
-// Which private plan this belongs to: one whose dates overlap (a day either side), else one already going to the
-// same place with no dates that disagree. The most recently started wins.
-async function matchingPlan(userId: string, dates: { start: string; end: string } | null, places: ImportedPlace[]) {
-  const plans = await prisma.itinerary.findMany({ where: { userId, isPlan: true, visibility: 'draft' }, orderBy: { createdAt: 'desc' }, take: 50,
-    select: { id: true, title: true, datesFlexible: true, startDate: true, endDate: true, destinations: { select: { name: true, country: true } } } })
+// Where the emailed places are: the first hotel, restaurant or activity Google can find (a flight's places are
+// airports, so they come last), else its town.
+async function emailedArea(places: ImportedPlace[]) {
+  const ordered = [...places.filter(place => place.type !== 'transport'), ...places.filter(place => place.type === 'transport')].slice(0, 3)
+  for (const place of ordered) {
+    const town = [place.destination, place.country].filter(Boolean).join(', ')
+    const point = await geocodePlaceByName([place.name, town].filter(Boolean).join(', ')) ?? (town ? await geocode(town) : null)
+    if (point) return point
+  }
+  return null
+}
+
+const NEAR_MILES = 50
+
+// Which private plan this belongs to (yours, or a group plan you've joined), most recently started first:
+// 1) its dates overlap (a day either side) and it's going to the same area (within 50 miles, or the same town name);
+// 2) it's going to the same area and has no fixed dates, or the email has none;
+// 3) its dates overlap and it has no destination yet, or the email's places couldn't be located.
+// A plan whose dates overlap but is somewhere else isn't a match: the places start their own plan.
+export async function matchingPlan(userId: string, dates: { start: string; end: string } | null, places: ImportedPlace[]) {
+  const select = { id: true, title: true, datesFlexible: true, startDate: true, endDate: true,
+    destinations: { select: { name: true, country: true, lat: true, lng: true, items: { where: { lat: { not: null } }, select: { lat: true, lng: true }, take: 1 } } } } as const
+  const find = () => prisma.itinerary.findMany({ where: { ...canEdit(userId), isPlan: true, visibility: 'draft' }, orderBy: { createdAt: 'desc' }, take: 50, select })
+  let plans = await find()
   const day = (value: Date) => value.toISOString().slice(0, 10)
   const overlaps = (plan: (typeof plans)[number]) => !!dates && !plan.datesFlexible && daysBetween(day(plan.endDate), dates.start) <= 1 && daysBetween(dates.end, day(plan.startDate)) <= 1
-  const sameWhere = (plan: (typeof plans)[number]) => plan.destinations.some(stop => stop.name !== 'Destination to decide' && places.some(place => samePlanDestination(stop, { name: place.destination, country: place.country })))
-  return plans.find(overlaps) ?? plans.find(plan => sameWhere(plan) && (plan.datesFlexible || !dates || overlaps(plan))) ?? null
+  const undated = (plan: (typeof plans)[number]) => plan.datesFlexible || !dates
+  const stops = (plan: (typeof plans)[number]) => plan.destinations.filter(stop => stop.name !== 'Destination to decide')
+  const where = (stop: (typeof plans)[number]['destinations'][number]) => stop.lat !== null && stop.lng !== null ? { lat: stop.lat, lng: stop.lng } : stop.items[0]?.lat != null && stop.items[0]?.lng != null ? { lat: stop.items[0].lat, lng: stop.items[0].lng } : null
+  // Plans that could fit by date, with towns not yet on the map: put them on it first (a few at most).
+  const unlocated = plans.filter(plan => (overlaps(plan) || undated(plan)) && stops(plan).some(stop => !where(stop))).slice(0, 5)
+  if (unlocated.length) { await Promise.all(unlocated.map(plan => locateDestinations(plan.id).catch(() => {}))); plans = await find() }
+  const area = await emailedArea(places)
+  const near = (plan: (typeof plans)[number]) => stops(plan).some(stop => {
+    const point = where(stop)
+    if (area && point && distanceMiles(area, point) <= NEAR_MILES) return true
+    return places.some(place => samePlanDestination(stop, { name: place.destination, country: place.country }))
+  })
+  return plans.find(plan => overlaps(plan) && near(plan))
+    ?? plans.find(plan => undated(plan) && near(plan))
+    ?? plans.find(plan => overlaps(plan) && (!stops(plan).length || !area))
+    ?? null
 }
 
 function reply(to: string, subject: string, lines: string[], links: { href: string; label: string }[] = []) {
