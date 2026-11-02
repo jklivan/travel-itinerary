@@ -52,16 +52,20 @@ function harness(userId = 'me') {
   const paths = []
   const contains = (value, search) => (value ?? '').toLowerCase().includes(search.toLowerCase())
   function tripMatches(t, where) {
-    if (where.id && t.id !== where.id) return false
+    if (where.AND && !where.AND.every(part => tripMatches(t, part))) return false
+    if (typeof where.id === 'string' && t.id !== where.id) return false
+    if (where.id?.not && t.id === where.id.not) return false
     if (where.userId && t.userId !== where.userId) return false
     if (where.isPlan && !t.isPlan) return false
     if (where.visibility && t.visibility !== where.visibility) return false
-    if (where.destinations && !destinations.some(d => d.itineraryId === t.id && items.some(i => i.destinationId === d.id))) return false
+    if (where.title && !contains(t.title, where.title.contains)) return false
+    if (where.destinations?.some?.OR && !destinations.some(d => d.itineraryId === t.id && where.destinations.some.OR.some(f => f.name ? contains(d.name, f.name.contains) : contains(d.country, f.country.contains)))) return false
+    if (where.destinations?.some?.items && !destinations.some(d => d.itineraryId === t.id && items.some(i => i.destinationId === d.id))) return false
     if (where.user) {
       const filter = where.user.followers.some
       if (!follows.some(f => f.followingId === t.userId && f.followerId === filter.followerId && f.status === filter.status)) return false
     }
-    if (where.OR) return where.OR.some(filter => filter.title ? contains(t.title, filter.title.contains) : destinations.some(d => d.itineraryId === t.id && filter.destinations.some.OR.some(f => f.name ? contains(d.name, f.name.contains) : contains(d.country, f.country.contains))))
+    if (where.OR) return where.OR.some(filter => tripMatches(t, filter))
     return true
   }
   const enrich = item => { const destination = destinations.find(d => d.id === item.destinationId); return { ...item, destination: destination && { ...destination, itinerary: trips.find(t => t.id === destination.itineraryId) } } }
@@ -82,7 +86,7 @@ function harness(userId = 'me') {
     destItem: {
       findMany: async ({ where }) => items.filter(i => {
         const d = destinations.find(d => d.id === i.destinationId)
-        if (where.id) return where.id.in.includes(i.id) && trips.find(t => t.id === d.itineraryId).visibility === where.destination.itinerary.visibility
+        if (where.id) return where.id.in.includes(i.id) && tripMatches(trips.find(t => t.id === d.itineraryId), where.destination.itinerary)
         return d.itineraryId === where.destination.itineraryId
       }).map(enrich),
       createMany: async ({ data }) => { if (fail) throw Error('database secret'); items.push(...data); return { count: data.length } },
@@ -185,4 +189,18 @@ test('a friend\'s place that is not near any of your destinations asks which des
   const added = await h.copyPlacesToPlan(['paris'], 'plan', { 'Paris, France': target })
   assert.equal(added.added, 1)
   assert.equal(h.copies()[0].destinationId, target)
+})
+
+test('your own trips (posted or still a plan) show first-class with your notes, and their places copy with your notes', async () => {
+  const h = harness()
+  h.trips.push({ id: 'old-mine', userId: 'me', visibility: 'draft', isPlan: true, title: 'Snowy London', createdAt: new Date(6000) })
+  h.destinations.push({ id: 'old-mine-london', itineraryId: 'old-mine', name: 'London', country: 'UK', order: 0 })
+  h.items.push({ id: 'my-pub', destinationId: 'old-mine-london', name: 'The Pub', type: 'food_drink', order: 0, groupIndex: 0, notes: 'Book the snug', rating: 5 })
+  const result = await h.findFriendsPlanPlaces('plan', 'London')
+  assert.deepEqual(Array.from(result.trips, t => t.id), ['old-mine', 'jen', 'sam'])
+  assert.equal(result.trips[0].mine, true); assert.equal(result.trips[1].mine, false)
+  assert.equal(result.trips.some(t => t.id === 'plan'), false)
+  assert.equal((await h.copyPlacesToPlan(['my-pub'], 'plan')).added, 1)
+  const copy = h.copies().find(i => i.name === 'The Pub')
+  assert.equal(copy.notes, 'Book the snug'); assert.equal(copy.rating, undefined)
 })

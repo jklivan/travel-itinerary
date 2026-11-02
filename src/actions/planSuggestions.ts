@@ -28,17 +28,20 @@ export async function findFriendsPlanPlaces(planId: string, query: string, befor
   if (!plan) return { error: unavailable }
   const search = query.trim()
   const destinationWhere = { OR: [{ name: { contains: search, mode: 'insensitive' as const } }, { country: { contains: search, mode: 'insensitive' as const } }] }
+  // Posted trips by people you follow, and your own trips (posted or not, but not this one).
   const where = {
-    visibility: 'public', user: { followers: { some: { followerId: userId, status: 'accepted' } } },
+    AND: [
+      { OR: [{ visibility: 'public', user: { followers: { some: { followerId: userId, status: 'accepted' } } } }, { userId, id: { not: planId } }] },
+      { OR: [{ title: { contains: search, mode: 'insensitive' as const } }, { destinations: { some: destinationWhere } }] },
+    ],
     destinations: { some: { items: { some: {} } } },
-    OR: [{ title: { contains: search, mode: 'insensitive' as const } }, { destinations: { some: destinationWhere } }],
   }
   if (before && !await prisma.itinerary.findFirst({ where: { id: before, ...where }, select: { id: true } })) return { error: 'These results have changed. Search again to see the latest trips.' }
   const [trips, existing] = await Promise.all([
     prisma.itinerary.findMany({
       where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: pageSize + 1,
       ...(before ? { cursor: { id: before }, skip: 1 } : {}),
-      select: { id: true, title: true, user: { select: { name: true } }, destinations: {
+      select: { id: true, title: true, userId: true, visibility: true, user: { select: { name: true } }, destinations: {
         orderBy: { order: 'asc' }, select: { name: true, country: true, items: { orderBy: { order: 'asc' }, select: {
           id: true, name: true, type: true, tags: true, placeId: true, address: true, notes: true, rating: true,
         } } },
@@ -50,7 +53,7 @@ export async function findFriendsPlanPlaces(planId: string, query: string, befor
     trips: trips.slice(0, pageSize).map(trip => {
       const matching = trip.destinations.filter(d => `${d.name} ${d.country ?? ''}`.toLocaleLowerCase().includes(search.toLocaleLowerCase()))
       const destinations = matching.length ? matching : trip.destinations
-      return { id: trip.id, title: trip.title, author: trip.user.name, places: destinations.flatMap(destination => withoutPrivateTransport(destination.items).map(item => {
+      return { id: trip.id, title: trip.title, author: trip.user.name, mine: trip.userId === userId, posted: trip.visibility === 'public', places: destinations.flatMap(destination => withoutPrivateTransport(destination.items).map(item => {
         const place = { ...item, destination: { name: destination.name, country: destination.country } }
         return { ...place, alreadyAdded: existing.some(saved => saved.id === copyId(planId, item.id) || samePlanPlace(saved, place)) }
       })) }
@@ -74,7 +77,7 @@ export async function copyPlacesToPlan(sourceIds: string[], planId: string, choi
       if (!plan) return { error: unavailable }
       // Serialize bulk additions to this plan so concurrent batches cannot duplicate places.
       await tx.$queryRaw`SELECT id FROM "Itinerary" WHERE id = ${planId} FOR UPDATE`
-      const sources = await tx.destItem.findMany({ where: { id: { in: ids }, destination: { itinerary: { visibility: 'public' } } }, include: { destination: { include: { itinerary: { select: { userId: true } } } } } })
+      const sources = await tx.destItem.findMany({ where: { id: { in: ids }, destination: { itinerary: { OR: [{ visibility: 'public' }, { userId }] } } }, include: { destination: { include: { itinerary: { select: { userId: true } } } } } })
       if (sources.length !== ids.length) return { error: 'One or more selected places are no longer available. Nothing was added. Update your selection and try again.' }
       const existing = await tx.destItem.findMany({ where: { destination: { itineraryId: planId } }, include: { destination: true } })
       const data: Prisma.DestItemCreateManyInput[] = []
@@ -101,8 +104,8 @@ export async function copyPlacesToPlan(sourceIds: string[], planId: string, choi
           address: source.address, link: source.link, placeId: source.placeId, lat: source.lat, lng: source.lng,
           order: Math.max(-1, ...siblings.map(item => item.order ?? 0)) + 1,
           groupIndex: source.type === 'hotel' ? Math.max(-1, ...siblings.map(item => item.groupIndex ?? 0)) + 1 : 0,
-          // Friends' personal notes, ratings, photos and schedules stay with their trips.
-          dayIndex: null, planningStatus: 'considering',
+          // Friends' personal notes, ratings, photos and schedules stay with their trips; your own notes come along.
+          ...(source.destination.itinerary.userId === userId ? { notes: source.notes } : {}), dayIndex: null, planningStatus: 'considering',
           sourceKind: 'trip', sourceItineraryId: source.destination.itineraryId, sourceUserId: source.destination.itinerary.userId,
         })
         known.push(source)

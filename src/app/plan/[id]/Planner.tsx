@@ -22,6 +22,7 @@ import EventPhotoInput from '@/components/EventPhotoInput'
 import PlaceQuickEdit from '@/components/PlaceQuickEdit'
 import PlaceCardRating from '@/components/PlaceCardRating'
 import PlaceCardNotes from '@/components/PlaceCardNotes'
+import CopyTripButton from '@/components/CopyTripButton'
 import TripDescriptors from '@/components/TripDescriptors'
 import CoverPhotoPicker from '@/components/CoverPhotoPicker'
 import CoverFramer from '@/components/CoverFramer'
@@ -334,7 +335,8 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
         (the creator's). Someone else on a group trip posts their own version: their stars and photos. */}
     <div className="mt-8 grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-t border-line pt-5">
       {/* The whole itinerary as a PDF, with private transport and booking details. */}
-      <div className="justify-self-start"><ItineraryPdf tripId={trip.id} title={trip.title} /></div>
+      {/* And a copy of the whole trip as a new plan (going back somewhere), for the creator. */}
+      <div className="flex flex-wrap gap-2 justify-self-start"><ItineraryPdf tripId={trip.id} title={trip.title} />{trip.isOwner !== false && <CopyTripButton itineraryId={trip.id} title={trip.title} isOwn small />}</div>
       {trip.visibility !== 'draft' ? <span />
         : trip.isOwner === false ? <button type="button" disabled={publishing} onClick={() => void postMine()} aria-label="Post your version" title="Post your version: your stars and photos" className={`${action} disabled:opacity-60`}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={22} /></span>Post yours</button>
         : <button type="button" disabled={publishing} onClick={() => { if (!places.length) { askForPlace(); return } openPostBox() }} aria-label="Post trip" title="Post trip" className={`${action} disabled:opacity-60`}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={22} /></span>Post</button>}
@@ -380,7 +382,7 @@ function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, init
   }
 
   const nightsSelect = <label className="block text-xs uppercase tracking-wide text-link">How many nights?<select value={nights} onChange={event => setNights(event.target.value)} className={inputClass}><option value="">Not sure yet</option>{Array.from({ length: 30 }, (_, index) => index + 1).map(value => <option key={value} value={value}>{value} {value === 1 ? 'night' : 'nights'}</option>)}</select></label>
-  return <section className="panel mb-4 space-y-3 p-4" aria-label="Add a place"><button type="button" onClick={onClose} className="text-sm text-link">← Back</button><div><h2 className="type-title">Add a place</h2><Link href={`/plan/${trip.id}/friends`} className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-link"><Users size={16} />Browse friends’ places</Link></div><fieldset disabled={busy || uploading} className="space-y-3">
+  return <section className="panel mb-4 space-y-3 p-4" aria-label="Add a place"><button type="button" onClick={onClose} className="text-sm text-link">← Back</button><div><h2 className="type-title">Add a place</h2><Link href={`/plan/${trip.id}/friends`} className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-link"><Users size={16} />Your trips and friends’ places</Link></div><fieldset disabled={busy || uploading} className="space-y-3">
     <DestinationPicker destinations={trip.destinations.map(d => ({ id: d.id, name: d.name }))} value={destination} selectedId={destinationId} onChange={changeDestination} labelClass="mb-1 text-sm" />
     <fieldset><legend className="mb-2 text-sm">Category</legend><div className="flex flex-wrap gap-2">
       {[

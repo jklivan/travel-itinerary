@@ -2,9 +2,10 @@
 
 import { useId, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Copy } from 'lucide-react'
 import { copyTripToPlan } from '@/actions/copyTrip'
 
-export default function CopyTripButton({ itineraryId, title, isOwn }: { itineraryId: string; title: string; isOwn: boolean }) {
+export default function CopyTripButton({ itineraryId, title, isOwn, small = false }: { itineraryId: string; title: string; isOwn: boolean; small?: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const headingId = useId()
   const [name, setName] = useState(`${title.slice(0, 145)} — next trip`)
@@ -17,7 +18,7 @@ export default function CopyTripButton({ itineraryId, title, isOwn }: { itinerar
   const router = useRouter()
 
   return <>
-    <button type="button" onClick={() => { setError(''); dialog.current?.showModal() }} className="btn btn-outline">Copy trip</button>
+    <button type="button" onClick={() => { setError(''); dialog.current?.showModal() }} className={`btn btn-outline ${small ? 'btn-sm' : ''}`}><Copy size={16} />Copy trip</button>
     <dialog ref={dialog} aria-labelledby={headingId} onCancel={event => { if (saving.current) event.preventDefault() }} className="fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl border border-line bg-cream p-5 text-ink shadow-pop backdrop:bg-black/50">
       <h2 id={headingId} className="type-title">Copy into a new plan</h2>
       <p className="mt-2 text-sm leading-relaxed text-muted">Start a private plan with this trip’s places. Set new dates and change places for your next visit.</p>

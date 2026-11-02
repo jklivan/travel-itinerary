@@ -38,7 +38,7 @@ export default function PlanFriendsBrowser({ plan, initialQuery, initialResults 
       if (result.error) { setError(result.error); return }
       setTrips(previous => more ? [...previous, ...(result.trips ?? []).filter(trip => !previous.some(p => p.id === trip.id))] : result.trips ?? [])
       setHasMore(result.hasMore ?? false); setSearchedQuery(value.trim())
-    } catch { setError('Could not load your friends’ trips. Please try again.') }
+    } catch { setError('Could not load these trips. Please try again.') }
     finally { busy.current = false; setLoading(false) }
   }
   function toggle(places: Place[], checked: boolean) {
@@ -73,14 +73,14 @@ export default function PlanFriendsBrowser({ plan, initialQuery, initialResults 
   }
 
   return <div className="mx-auto max-w-2xl px-4 py-6 pb-64 text-ink">
-    <h1 className="type-display mt-5">Browse friends’ places</h1>
-    <p className="mt-2 text-sm leading-relaxed text-muted">Pick places from several trips and add them to {plan.title} together. Keep browsing without leaving your plan.</p>
+    <h1 className="type-display mt-5">Your trips and friends’ places</h1>
+    <p className="mt-2 text-sm leading-relaxed text-muted">Pick places from your own past trips and your friends’ trips, and add them to {plan.title} together. Keep browsing without leaving your plan.</p>
     <form className="mt-5" onSubmit={event => { event.preventDefault(); void search(query) }}>
       <label className="block text-sm font-semibold" htmlFor="friends-destination">City or destination</label>
       <SearchField id="friends-destination" className="mt-2" value={query} maxLength={160} required disabled={loading || saving} onChange={event => setQuery(event.target.value)} placeholder="London" buttonLabel={loading ? 'Searching…' : 'Find trips'} buttonDisabled={loading || saving || !query.trim()} />
     </form>
     {plan.destinations.filter(d => d.name !== 'Destination to decide').length > 1 && <div className="mt-3 flex flex-wrap gap-2">{plan.destinations.filter(d => d.name !== 'Destination to decide').map(d => <button key={d.name} type="button" disabled={loading || saving} onClick={() => { const value = d.name.split(',')[0]; setQuery(value); void search(value) }} className="btn btn-outline">{d.name}</button>)}</div>}
-    {selected.size > 0 && <details className="panel mt-4 p-3"><summary className="cursor-pointer text-sm font-semibold">{selected.size} selected across your friends’ trips</summary><ul className="mt-2 space-y-1">{[...selected.values()].map(place => <li key={place.id} className="flex items-center justify-between gap-3 text-sm"><span className="min-w-0 break-words">{place.name} · {place.destination.name}</span><button type="button" disabled={saving || loading} aria-label={`Remove ${place.name} from selection`} className="min-h-11 shrink-0 text-link underline" onClick={() => toggle([place], false)}>Remove</button></li>)}</ul></details>}
+    {selected.size > 0 && <details className="panel mt-4 p-3"><summary className="cursor-pointer text-sm font-semibold">{selected.size} selected across these trips</summary><ul className="mt-2 space-y-1">{[...selected.values()].map(place => <li key={place.id} className="flex items-center justify-between gap-3 text-sm"><span className="min-w-0 break-words">{place.name} · {place.destination.name}</span><button type="button" disabled={saving || loading} aria-label={`Remove ${place.name} from selection`} className="min-h-11 shrink-0 text-link underline" onClick={() => toggle([place], false)}>Remove</button></li>)}</ul></details>}
     {questions.length > 0 && <div className="mt-4 space-y-3">
       {questions.map(question => <WhichDestination key={question.key} question={question} place={question.places === 1 ? '1 place' : `${question.places} places`} chosen={choices[question.key]} disabled={saving} onChoose={destination => setChoices(current => ({ ...current, [question.key]: destination }))} />)}
       <button type="button" disabled={saving || questions.some(question => !choices[question.key])} onClick={() => void addSelected()} className="btn btn-primary w-full">{saving ? 'Adding…' : `Add ${selected.size} ${selected.size === 1 ? 'place' : 'places'}`}</button>
@@ -88,21 +88,21 @@ export default function PlanFriendsBrowser({ plan, initialQuery, initialResults 
     {error && <p role="alert" className="mt-4 rounded-xl bg-danger/10 p-3 text-sm text-danger">{error}</p>}
     {success && <div role="status" className="panel-hint mt-4 p-4 text-sm"><p>{success}</p><Link href={`/plan/${plan.id}`} className="mt-2 inline-block font-semibold text-link underline">Open your plan →</Link><p className="mt-2 text-xs">New places are unscheduled, ready for your own notes and days.</p></div>}
     <div aria-busy={loading} className="mt-6 space-y-4">
-      <h2 className="type-title">{searchedQuery ? `Friends’ trips for ${searchedQuery}` : 'Find ideas from your friends'}</h2>
-      {!trips.length && !loading && !error && <p className="panel-dashed p-5 text-sm text-muted">{searchedQuery ? 'No matching trips from the people you follow yet. Try another city or a broader destination.' : 'Enter a destination to see trips from the people you follow.'} <Link href="/friends" className="text-link underline">Find friends</Link></p>}
+      <h2 className="type-title">{searchedQuery ? `Trips for ${searchedQuery}` : 'Find ideas from your trips and your friends’'}</h2>
+      {!trips.length && !loading && !error && <p className="panel-dashed p-5 text-sm text-muted">{searchedQuery ? 'No matching trips of yours or from the people you follow yet. Try another city or a broader destination.' : 'Enter a destination to see your trips and trips from the people you follow.'} <Link href="/friends" className="text-link underline">Find friends</Link></p>}
       {trips.map((trip, index) => {
         const available = trip.places.filter(place => !place.alreadyAdded)
         const allSelected = available.length > 0 && available.every(place => selected.has(place.id))
         return <details key={trip.id} open={index === 0 ? true : undefined} className="panel">
-          <summary className="cursor-pointer p-4"><span className="font-semibold text-link">{trip.author}</span><span className="mt-1 block break-words font-[family-name:var(--font-playfair)] text-title">{trip.title}</span><span className="mt-1 block text-xs text-muted">{trip.places.length} places{trip.places.some(place => selected.has(place.id)) ? ` · ${trip.places.filter(place => selected.has(place.id)).length} selected` : ''}</span></summary>
+          <summary className="cursor-pointer p-4"><span className="font-semibold text-link">{trip.mine ? (trip.posted ? 'Your trip' : 'Your plan') : trip.author}</span><span className="mt-1 block break-words font-[family-name:var(--font-playfair)] text-title">{trip.title}</span><span className="mt-1 block text-xs text-muted">{trip.places.length} places{trip.places.some(place => selected.has(place.id)) ? ` · ${trip.places.filter(place => selected.has(place.id)).length} selected` : ''}</span></summary>
           <div className="border-t border-line p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><button type="button" disabled={saving || loading || !available.length} onClick={() => toggle(available, !allSelected)} className="min-h-11 text-sm font-semibold text-link disabled:opacity-50">{allSelected ? 'Deselect all in this trip' : 'Select all in this trip'}</button><Link href={`/itinerary/${trip.id}`} target="_blank" rel="noopener noreferrer" className="text-xs text-muted underline">Open original trip ↗</Link></div>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><button type="button" disabled={saving || loading || !available.length} onClick={() => toggle(available, !allSelected)} className="min-h-11 text-sm font-semibold text-link disabled:opacity-50">{allSelected ? 'Deselect all in this trip' : 'Select all in this trip'}</button><Link href={trip.mine ? `/plan/${trip.id}` : `/itinerary/${trip.id}`} target="_blank" rel="noopener noreferrer" className="text-xs text-muted underline">Open original trip ↗</Link></div>
             <div className="divide-y divide-line-soft">{trip.places.map(place => <div key={place.id} className="py-3">
               <label className={`flex cursor-pointer items-start gap-3 rounded-lg p-2 ${selected.has(place.id) ? 'bg-mist' : ''}`}>
                 <input type="checkbox" checked={place.alreadyAdded || selected.has(place.id)} disabled={place.alreadyAdded || saving || loading} onChange={event => toggle([place], event.target.checked)} className="mt-1 h-5 w-5 shrink-0 accent-link" />
                 <span className="min-w-0"><span className="block break-words text-sm font-semibold">{place.name}</span><span className="mt-1 block text-xs text-muted">{categories[place.type] ?? place.type} · {place.destination.name}{place.rating ? ` · ${place.rating}/5` : ''}</span>{place.address && <span className="mt-1 block break-words text-xs text-muted">{place.address}</span>}{place.alreadyAdded && <span className="mt-1 block text-xs font-semibold text-link">Already in your plan</span>}</span>
               </label>
-              {place.notes && <details className="ml-10 mt-1 text-sm"><summary className="min-h-8 cursor-pointer text-link">Read {trip.author}’s notes</summary><p className="mt-2 whitespace-pre-wrap break-words text-muted">{place.notes}</p></details>}
+              {place.notes && <details className="ml-10 mt-1 text-sm"><summary className="min-h-8 cursor-pointer text-link">{trip.mine ? 'Read your notes' : `Read ${trip.author}’s notes`}</summary><p className="mt-2 whitespace-pre-wrap break-words text-muted">{place.notes}</p></details>}
             </div>)}</div>
           </div>
         </details>
