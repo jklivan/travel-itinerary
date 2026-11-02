@@ -19,6 +19,7 @@ type Attachment = { filename?: string; content_type?: string; content_dispositio
 const RESEND = 'https://api.resend.com'
 const MAX_ATTACHMENTS = 10
 const MAX_BYTES = 20 * 1024 * 1024
+const INLINE_LOGO_BYTES = 100_000
 const log = (...parts: unknown[]) => console.log('[inbox]', ...parts)
 
 async function resend<T>(path: string): Promise<T> {
@@ -52,10 +53,14 @@ async function readEmail(emailId: string, email: Received) {
   const listed = await resend<{ data?: Attachment[] }>(`/emails/receiving/${emailId}/attachments?limit=${MAX_ATTACHMENTS}`).catch(() => ({ data: [] as Attachment[] }))
   for (const file of listed.data ?? []) {
     const type = (file.content_type ?? '').toLowerCase()
-    // Inline pictures are signatures and logos, not travel documents.
-    if (!file.download_url || (file.size ?? 0) > MAX_BYTES || (file.content_disposition === 'inline' && type.startsWith('image/'))) continue
+    log('attachment', type || 'no type', file.content_disposition ?? 'no disposition', file.size ?? 'size unknown')
+    // Small inline pictures are signatures and logos, not travel documents. A screenshot sent from an iPhone's Mail
+    // is inline too (shown in the email's text), but much bigger, so it's read.
+    const logo = (bytes: number) => file.content_disposition === 'inline' && type.startsWith('image/') && bytes < INLINE_LOGO_BYTES
+    if (!file.download_url || (file.size ?? 0) > MAX_BYTES || (file.size !== undefined && logo(file.size))) continue
     try {
       const buffer = Buffer.from(await (await fetch(file.download_url, { signal: AbortSignal.timeout(60_000) })).arrayBuffer())
+      if (logo(buffer.length)) continue
       if (type.includes('pdf')) parts.push(await extractFromPdfBuffer(buffer, file.filename || 'attachment.pdf', prompt))
       else if (/^image\/(jpeg|png|webp|gif)$/.test(type) && buffer.length > 30_000) parts.push(await extractFromImageBase64(buffer.toString('base64'), type, prompt))
       else if (type.includes('wordprocessingml')) parts.push(await extractFromText((await mammoth.extractRawText({ buffer })).value, prompt))
