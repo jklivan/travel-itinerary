@@ -17,7 +17,7 @@ const at = (name, status) => ({ id: 'x', displayName: { text: name }, formattedA
 
 test('a place Google lists as closed (for good or for now) is closed; open is operating', async () => {
   assert.equal(await load([at('Old Hotel', 'CLOSED_PERMANENTLY')])({ name: 'Old Hotel', city: 'Lisbon' }), 'closed')
-  assert.equal(await load([at('Old Hotel', 'CLOSED_TEMPORARILY')])({ name: 'Old Hotel', city: 'Lisbon' }), 'closed')
+  assert.equal(await load([at('Old Hotel', 'CLOSED_TEMPORARILY')])({ name: 'Old Hotel', city: 'Lisbon' }), 'paused')
   assert.equal(await load([at('Belcanto', 'OPERATIONAL')])({ name: 'Belcanto', city: 'Lisbon' }), 'operating')
 })
 test('a different place, no match or no status is unknown, so the pick is kept', async () => {

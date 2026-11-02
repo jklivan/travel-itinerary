@@ -889,7 +889,7 @@ function OrganizeWithAI({ tripId, places, canFill, canReplan, hasDays, autoStart
   const dayName = useContext(DayNames)
   const router = useRouter()
   const [state, setState] = useState<'idle' | 'thinking' | 'review' | 'applying'>('idle')
-  const [plan, setPlan] = useState<{ assignments: { id: string; day: number }[]; days: { day: number; theme: string; why: string }[] } | null>(null)
+  const [plan, setPlan] = useState<{ assignments: { id: string; day: number }[]; days: { day: number; theme: string; why: string }[]; checked?: string[]; fixed?: number } | null>(null)
   const [error, setError] = useState('')
   // Re-plan: every place, from scratch (also moves places already on a day). Otherwise only the unscheduled ones.
   const [replan, setReplan] = useState(false)
@@ -926,6 +926,8 @@ function OrganizeWithAI({ tripId, places, canFill, canReplan, hasDays, autoStart
     : plan && <div className="panel p-4">
       <p className="flex items-center gap-2 text-sm font-semibold text-ink"><Sparkles size={16} />Suggested days</p>
       <p className="mt-1 text-xs text-muted">{replan ? 'A fresh plan for every place. ' : ''}Nothing moves until you apply. You can change any day afterwards.</p>
+      {/* What the plan was checked against (opening hours on each date, distances, busy days), and what that changed. */}
+      {!!plan.checked?.length && <p className="mt-2 flex items-start gap-1.5 text-xs text-link"><Check size={14} className="mt-px shrink-0" />Checked: {plan.checked.join(', ').toLowerCase()}{plan.fixed ? `. Moved places to fix ${plan.fixed} ${plan.fixed === 1 ? 'problem' : 'problems'}.` : '.'}</p>}
       <div className="mt-3 space-y-3">{byDay.map(day => { const theme = plan.days.find(d => d.day === day); return <section key={day} className="rounded-xl bg-paper p-3">
         <h3 className="type-label text-ink normal-case">{dayName(day)}{theme ? ` · ${theme.theme}` : ''}</h3>
         {theme?.why && <p className="mt-0.5 text-xs text-muted">{theme.why}</p>}

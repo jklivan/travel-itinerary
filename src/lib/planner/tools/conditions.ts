@@ -1,7 +1,7 @@
 import { runHotelPrices, hotelPricesTool } from '@/lib/hotelPrices'
 import { fail, isoDate, ok, text, type PlannerTool } from '../types'
 
-// Weather (Open-Meteo, free, no key), local events (Ticketmaster), tours and tickets (Viator), hotel prices (LiteAPI).
+// Weather (Open-Meteo, free, no key), local events (Ticketmaster), hotel prices (LiteAPI). Tours are in ./tours.
 // A tool whose service has no key yet says so, rather than failing the whole answer.
 
 type Spot = { name: string; country?: string; lat: number; lng: number; timezone?: string }
@@ -67,32 +67,15 @@ export const localEventsTool: PlannerTool = {
     if (!start || !end || end < start) return fail('Give start and end dates as YYYY-MM-DD.')
     const spot = await locate(text(input.place, 120), signal)
     if (!spot) return fail('Couldn’t find that place.')
-    const params = new URLSearchParams({ apikey: key, latlong: `${spot.lat},${spot.lng}`, radius: '40', unit: 'km', startDateTime: `${start}T00:00:00Z`, endDateTime: `${end}T23:59:59Z`, size: '20', sort: 'date,asc', ...(text(input.keyword, 60) ? { keyword: text(input.keyword, 60) } : {}) })
+    const params = new URLSearchParams({ apikey: key, latlong: `${spot.lat},${spot.lng}`, radius: '40', unit: 'km', localStartDateTime: `${start}T00:00:00,${end}T23:59:59`, size: '50', sort: 'date,asc', ...(text(input.keyword, 60) ? { keyword: text(input.keyword, 60) } : {}) })
     const response = await fetch(`https://app.ticketmaster.com/discovery/v2/events.json?${params}`, { signal: signal ?? AbortSignal.timeout(10_000) })
     if (!response.ok) return fail(`Events search failed (${response.status}).`)
     type Event = { name: string; url?: string; dates?: { start?: { localDate?: string; localTime?: string } }; classifications?: { segment?: { name?: string }; genre?: { name?: string } }[]; _embedded?: { venues?: { name?: string }[] } }
-    const events = ((await response.json()) as { _embedded?: { events?: Event[] } })._embedded?.events ?? []
+    // Events starting on the trip's dates, in the place's own time. Year-round "flexible entry" tickets that started
+    // long before can still slip in, so those are dropped too.
+    const events = (((await response.json()) as { _embedded?: { events?: Event[] } })._embedded?.events ?? [])
+      .filter(event => { const day = event.dates?.start?.localDate; return !day || (day >= start && day <= end) }).slice(0, 20)
     return ok(events.length ? events.map(event => ({ name: event.name, date: event.dates?.start?.localDate, time: event.dates?.start?.localTime?.slice(0, 5), venue: event._embedded?.venues?.[0]?.name, kind: [event.classifications?.[0]?.segment?.name, event.classifications?.[0]?.genre?.name].filter(name => name && name !== 'Undefined').join(' · '), url: event.url })) : `No ticketed events found near ${spot.name} on those dates.`)
-  },
-}
-
-export const toursTool: PlannerTool = {
-  name: 'tours',
-  description: 'Bookable tours, activities and attraction tickets (from Viator), e.g. "Sintra day trip from Lisbon" or "Grand Teton float trip": title, price from, rating, duration and a link.',
-  inputSchema: { type: 'object', additionalProperties: false, required: ['query'], properties: { query: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 10 } } },
-  async run(input, { signal }) {
-    const key = process.env.VIATOR_API_KEY
-    if (!key) return fail('Tours and tickets aren’t connected yet (no Viator key).')
-    const query = text(input.query, 150)
-    if (!query) return fail('Say what to look for.')
-    const base = process.env.VIATOR_API_URL || 'https://api.viator.com/partner'
-    const response = await fetch(`${base}/search/freetext`, { method: 'POST', signal: signal ?? AbortSignal.timeout(10_000),
-      headers: { 'exp-api-key': key, 'Accept-Language': 'en-US', Accept: 'application/json;version=2.0', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ searchTerm: query, currency: 'USD', searchTypes: [{ searchType: 'PRODUCTS', pagination: { start: 1, count: Math.min(10, Number(input.limit) || 6) } }] }) })
-    if (!response.ok) return fail(`Tours search failed (${response.status}).`)
-    type Product = { title?: string; productUrl?: string; pricing?: { summary?: { fromPrice?: number } }; reviews?: { combinedAverageRating?: number; totalReviews?: number }; duration?: { fixedDurationInMinutes?: number } }
-    const products = ((await response.json()) as { products?: { results?: Product[] } }).products?.results ?? []
-    return ok(products.map(product => ({ title: product.title, from_price_usd: product.pricing?.summary?.fromPrice, rating: product.reviews?.combinedAverageRating, reviews: product.reviews?.totalReviews, minutes: product.duration?.fixedDurationInMinutes, url: product.productUrl })))
   },
 }
 

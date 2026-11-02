@@ -1,6 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import { friendsPlaces, searchPlacesTool, placeDetailsTool, openingHoursTool, travelTimeTool } from './tools/places'
-import { weatherTool, localEventsTool, toursTool, hotelPrices } from './tools/conditions'
+import { weatherTool, localEventsTool, hotelPrices } from './tools/conditions'
+import { toursTool, tourDetailsTool } from './tools/tours'
 import { listTrips, getTrip, addPlaces } from './tools/trips'
 import { fail, type PlannerTool, type ToolContext, type ToolResult } from './types'
 
@@ -8,7 +9,7 @@ import { fail, type PlannerTool, type ToolContext, type ToolResult } from './typ
 // by default; writing ones once there's a confirm step).
 export const PLANNER_TOOLS: PlannerTool[] = [
   friendsPlaces, searchPlacesTool, placeDetailsTool, openingHoursTool, travelTimeTool,
-  hotelPrices, toursTool, weatherTool, localEventsTool,
+  hotelPrices, toursTool, tourDetailsTool, weatherTool, localEventsTool,
   listTrips, getTrip, addPlaces,
 ]
 const byName = new Map(PLANNER_TOOLS.map(tool => [tool.name, tool]))

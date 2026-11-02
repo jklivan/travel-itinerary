@@ -79,6 +79,12 @@ export async function loadPlanningContext(userId: string, excludeTripId?: string
     likedPlaces.length && `Destinations they've liked on Postcard (from trips they hearted):\n${likedPlaces.map(line => `- ${line}`).join('\n')}`,
   ].filter(Boolean)
   if (tastes.length) sections.unshift(`## What this traveler likes\n${tastes.join('\n\n')}`)
+  // Friends' favourite experiences anywhere (activities rated 4-5): the same tour where the traveler is going, or
+  // the same kind of thing (a food tour, a boat trip, a golf-cart tour) somewhere new.
+  const favourites = friends.flatMap(trip => trip.destinations.flatMap(destination => destination.items
+    .filter(item => item.type === 'activity' && (item.rating ?? 0) >= 4 && !item.tags.includes('__option'))
+    .map(item => `- [${item.id}] ${item.name}, ${[destination.name, destination.country].filter(Boolean).join(', ')} · ★${item.rating} · ${trip.user.name}${item.notes ? ` · "${clip(item.notes, 120)}"` : ''}`))).slice(0, 60)
+  if (favourites.length) sections.push(`## Friends' favourite experiences (things to do they rated 4-5 stars, anywhere)\n${favourites.join('\n')}`)
   const text = sections.length ? sections.join('\n\n') : '(No trips yet from you or your friends.)'
   return { text, items, friendCount: new Set(friends.map(trip => trip.user.name)).size, hasOwnTrips }
 }
