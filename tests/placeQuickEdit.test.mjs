@@ -22,7 +22,7 @@ function harness({ user = 'owner', concurrent = false, fail = false } = {}) {
       return { count: 1 }
     },
   } }
-  const deps = { '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, '@/lib/eventPhotos': { eventPhotos }, '@/lib/placeRecommendation': placeRecommendation, 'next/cache': { revalidatePath: p => invalidated.push(p) } }
+  const deps = { '@/lib/tripAccess': { canEdit: id => ({ userId: id }) }, '@/auth': { auth: async () => user ? { user: { id: user } } : null }, '@/lib/prisma': { prisma }, '@/lib/eventPhotos': { eventPhotos }, '@/lib/placeRecommendation': placeRecommendation, 'next/cache': { revalidatePath: p => invalidated.push(p) } }
   const exports = {}
   vm.runInNewContext(code, { exports, require: name => deps[name] })
   return { update: exports.updatePlace, item, invalidated, writes }

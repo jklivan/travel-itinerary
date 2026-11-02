@@ -44,16 +44,24 @@ import { stayLookAlikes } from '@/lib/planDestinationMatch'
 import { X as XIcon } from 'lucide-react'
 import { PRIVATE_TAG } from '@/lib/privateTransport'
 import { getRecommendation } from '@/lib/placeRecommendation'
+import TripPeople from '@/components/TripPeople'
+import DeletedPlaces from '@/components/DeletedPlaces'
+import { copyForPosting, tripFingerprint } from '@/actions/tripMembers'
+import TripChat from '@/components/TripChat'
 
 type PlaceSource = { kind: string; person: string | null; trip: { id: string; title: string } | null }
-type Place = { bookingDetails?: string | null; date?: string | null; time?: string | null; endDate?: string | null; endTime?: string | null; source?: PlaceSource | null; order: number; nights?: number | null; tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[]; mealType: string | null; alternative: string | null; description: string | null; link: string | null; address: string | null }
-type Trip = { coverPhoto?: string | null; coverFocus?: string | null; tripPhotos?: string[]; notes?: string | null; bestMonths?: string[]; budget?: number | null; tripRating?: number | null; tags?: string[]; postType: string; durationDays?: number | null; id: string; title: string; audience: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; days?: number | null; items: Place[] }[] }
+type Place = { addedBy?: string | null; bookingDetails?: string | null; date?: string | null; time?: string | null; endDate?: string | null; endTime?: string | null; source?: PlaceSource | null; order: number; nights?: number | null; tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[]; mealType: string | null; alternative: string | null; description: string | null; link: string | null; address: string | null }
+// A group trip's people: the creator, then everyone invited or joined (#116).
+type TripPerson = { id: string; name: string; image: string | null; status: string }
+type Trip = { isOwner?: boolean; viewerId?: string; deletedCount?: number; people?: TripPerson[]; coverPhoto?: string | null; coverFocus?: string | null; tripPhotos?: string[]; notes?: string | null; bestMonths?: string[]; budget?: number | null; tripRating?: number | null; tags?: string[]; postType: string; durationDays?: number | null; id: string; title: string; audience: string; isPlan: boolean; visibility: string; start: string; end: string; destinations: { id: string; name: string; country: string | null; days?: number | null; items: Place[] }[] }
 const categories = [{ value: 'hotel', label: 'Accommodation', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
 
 // Day names in the planner: "Day 3", or the date when the plan has a start date and dates are chosen ("Thu, Jul 3").
 // Days are still stored as numbers, so a posted trip always shows Day 1, Day 2…
 type DayName = (day: number) => string
 const DayNames = createContext<DayName>(day => `Day ${day}`)
+// Whether someone has joined this trip (a group trip): deletes go to Deleted places.
+const GroupTrip = createContext(false)
 function dateOfDay(start: string, day: number) {
   const date = new Date(`${start}T12:00:00Z`)
   date.setUTCDate(date.getUTCDate() + day - 1)
@@ -72,6 +80,25 @@ function postFormatOf(trip: Trip): 'guide' | 'day-trip' | 'itinerary' {
 
 export default function Planner({ trip, initialImport = false, initialDetails = false, initialPost = false }: { trip: Trip; initialImport?: boolean; initialDetails?: boolean; initialPost?: boolean }) {
   const router = useRouter()
+  // A shared plan keeps itself up to date: every few seconds (while on screen) it checks whether anyone changed the
+  // trip and, if so, refreshes in place (not while you're typing in a box, so nothing you're writing is lost).
+  const shared = !!trip.people?.some(person => person.status === 'joined')
+  useEffect(() => {
+    if (!shared) return
+    let known: string | null = null, active = true
+    void tripFingerprint(trip.id).then(value => { known = value })
+    const timer = setInterval(async () => {
+      if (!active || document.visibilityState !== 'visible') return
+      // (The chat's box keeps its text through a refresh, so it doesn't count.)
+      const typing = document.activeElement instanceof HTMLElement && document.activeElement.matches('input, textarea, select, [contenteditable="true"]') && !document.activeElement.closest('#trip-chat')
+      if (typing) return
+      const now = await tripFingerprint(trip.id).catch(() => null)
+      if (!active || !now) return
+      if (known && now !== known) router.refresh()
+      known = now
+    }, 8000)
+    return () => { active = false; clearInterval(timer) }
+  }, [shared, trip.id, router])
   // "Plan my days with AI" tapped before the trip had a length: plan as soon as the days are set.
   const [aiAfterDays, setAiAfterDays] = useState(false)
   // Trips imported before the import set a length: places are on days but the trip has none, so save it from the
@@ -186,6 +213,13 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     setPublishCover(trip.coverPhoto ?? allPhotos[0] ?? null); setPublishFocus(trip.coverPhoto ? trip.coverFocus ?? null : null)
     setPublishFormat(postFormatOf(trip))
   }
+  // Group trips: someone who joined posts their own copy (with their stars and photos), opened ready to post.
+  async function postMine() {
+    if (publishing) return
+    setPublishing(true); setPostError('')
+    try { const result = await copyForPosting(trip.id); if (result.error || !result.tripId) setPostError(result.error ?? 'Could not make your copy.'); else router.push(`/plan/${result.tripId}?post=1`) }
+    catch { setPostError('Could not make your copy. Please try again.') } finally { setPublishing(false) }
+  }
   const posting = useRef(false)
   async function postNow() {
     if (posting.current) return
@@ -221,9 +255,11 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   // Where the iPhone photo picker opens: the trip's dates, else the dates of its bookings (a dated flight or hotel).
   const bookedDates = places.flatMap(place => [place.date, place.endDate].filter((date): date is string => !!date)).sort()
   const photoDates = trip.start && trip.end ? { start: trip.start, end: trip.end } : bookedDates.length ? { start: bookedDates[0], end: bookedDates[bookedDates.length - 1] } : null
-  return <DayNames.Provider value={dayName}><TripDates.Provider value={photoDates}><div className="mx-auto max-w-2xl px-4 pb-6 pt-2 text-ink">
-    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? 'Private plan · Only you' : 'Shared trip'}</div>
+  return <DayNames.Provider value={dayName}><GroupTrip.Provider value={!!trip.people?.some(person => person.status === 'joined')}><TripDates.Provider value={photoDates}><div className="mx-auto max-w-2xl px-4 pb-6 pt-2 text-ink">
+    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? ((trip.people?.filter(person => person.status !== 'invited').length ?? 0) > 1 ? `Private plan · ${trip.people!.filter(person => person.status !== 'invited').length} of you` : 'Private plan · Only you') : 'Shared trip'}</div>
     <h1 className="trip-title mt-1 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
+    {/* Group trips: who's planning it, and Invite (the creator) or Leave. */}
+    {trip.viewerId && (trip.visibility === 'draft' || (trip.people?.length ?? 0) > 1) && <TripPeople tripId={trip.id} people={trip.people ?? []} isOwner={trip.isOwner !== false} viewerId={trip.viewerId} />}
     {/* A posted trip keeps showing where it is and what it's posted with (budget, who it's for, tags), as on its page. */}
     {trip.visibility !== 'draft' && <div className="mt-2 [&>*:last-child]:mb-0"><TripDescriptors trip={trip} /></div>}
     <div className="mt-1"><details id="trip-details" open={initialDetails || undefined} className="scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-1 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details></div>
@@ -290,18 +326,25 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
           <div className="space-y-3">{places.filter(p => p.day === null).map(place => trip.durationDays ? <PlaceRow key={place.id} tripId={trip.id} tripStart={trip.start} place={place} maxDay={maxDay} destinationChoices={destinations.map(d => ({ id: d.id, name: d.name }))} dayChips={trip.durationDays} dayRange={ranges.get(place.destinationId)} /> : renderPlace(place))}</div>{places.length > 0 && places.every(p => p.day !== null) && <p className="text-sm text-muted">All your places have a day.</p>}{!places.length && <p className="text-sm text-muted">Places you haven’t put on a day yet show here.</p>}</section>
       </>}
     </section>
-    {/* The itinerary PDF on the left, Post (a circle like the ones at the top) in the middle, Unpublish / Delete on the right. */}
+    {/* Group trips: the trip's own chat, at the bottom. */}
+    {trip.viewerId && trip.people?.some(person => person.status === 'joined') && <TripChat tripId={trip.id} viewerId={trip.viewerId} />}
+    {/* Group trips: places someone deleted, to bring back. */}
+    {!!trip.deletedCount && <DeletedPlaces tripId={trip.id} count={trip.deletedCount} />}
+    {/* The itinerary PDF on the left, Post (a circle like the ones at the top) in the middle, Unpublish / Delete on the right
+        (the creator's). Someone else on a group trip posts their own version: their stars and photos. */}
     <div className="mt-8 grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-t border-line pt-5">
       {/* The whole itinerary as a PDF, with private transport and booking details. */}
       <div className="justify-self-start"><ItineraryPdf tripId={trip.id} title={trip.title} /></div>
-      {trip.visibility === 'draft' ? <button type="button" disabled={publishing} onClick={() => { if (!places.length) { askForPlace(); return } openPostBox() }} aria-label="Post trip" title="Post trip" className={`${action} disabled:opacity-60`}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={22} /></span>Post</button> : <span />}
-      <div className="justify-self-end"><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></div>
+      {trip.visibility !== 'draft' ? <span />
+        : trip.isOwner === false ? <button type="button" disabled={publishing} onClick={() => void postMine()} aria-label="Post your version" title="Post your version: your stars and photos" className={`${action} disabled:opacity-60`}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={22} /></span>Post yours</button>
+        : <button type="button" disabled={publishing} onClick={() => { if (!places.length) { askForPlace(); return } openPostBox() }} aria-label="Post trip" title="Post trip" className={`${action} disabled:opacity-60`}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={22} /></span>Post</button>}
+      <div className="justify-self-end">{trip.isOwner !== false && <DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" />}</div>
     </div>
     {trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="panel w-full max-w-md p-5 shadow-pop"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="type-title">A few more details</h2><p className="mt-1 text-sm text-muted">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-title leading-none text-muted" aria-label="Close">×</button></div><div className="mt-5 space-y-5">{allPhotos.length > 0 && <fieldset><legend className="mb-1 text-sm font-semibold text-link">Choose cover photo</legend><p className="mb-1 text-xs text-muted">The photo people see first. Scroll sideways to see them all.</p><CoverPhotoPicker photos={allPhotos} value={publishCover} onChange={url => { setPublishCover(url); setPublishFocus(null) }} />{publishCover && <div className="mt-2"><CoverFramer url={publishCover} value={publishFocus} onChange={setPublishFocus} /></div>}</fieldset>}<TripExtras budget={publishBudget} onBudget={setPublishBudget} rating={publishRating} onRating={setPublishRating} legendClass="mb-2 text-sm font-semibold text-link" />{/* Why posting didn't go through, right above the button (it used to show behind this box). */}{publishMessage && <p role="alert" className="rounded-xl bg-cream p-3 text-sm text-danger">{publishMessage}{!places.length && <> <button type="button" onClick={() => { setPublishFormat(null); setPublishMessage(''); setTab('places'); setImporting(false); setAdding({ at: 'top' }) }} className="font-semibold text-link underline underline-offset-2">Add a place</button></>}</p>}<button type="button" disabled={publishing} onClick={() => void continueToPost(publishFormat)} className="btn btn-primary w-full">{publishing ? 'Posting…' : 'Post trip'}</button></div></div></div>}
     {photosPrompt && <PhotosPrompt places={places} missing={withoutPhotos.length} onClose={() => setPhotosPrompt(false)} onNext={() => void afterPhotos()} posting={publishing} last={!unrated.length} />}
     {unratedPrompt && <UnratedPrompt places={places.filter(place => unratedPrompt.includes(place.id))} onClose={() => setUnratedPrompt(null)} onPost={() => void postNow()} posting={publishing} />}
     {postError && <p role="alert" className="panel-hint fixed inset-x-4 bottom-[calc(var(--app-bottom-clearance)+0.5rem)] z-[75] mx-auto max-w-md p-3 text-sm text-danger">{postError}</p>}
-  </div></TripDates.Provider></DayNames.Provider>
+  </div></TripDates.Provider></GroupTrip.Provider></DayNames.Provider>
 }
 
 function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, initialDay, onClose }: { trip: Trip; maxDay: number; initialDestination?: string; initialDestinationId?: string; initialDay?: number; onClose: () => void }) {
@@ -436,6 +479,7 @@ function IdeaFrom({ source }: { source: PlaceSource }) {
 
 function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChips, dayRange, dayTime = false }: { dayTime?: boolean; tripStart?: string; tripId: string; place: Place & { destination: string; destinationName: string; destinationId: string }; maxDay: number; destinationChoices: { id: string; name: string }[]; dayChips?: number; dayRange?: DayRange }) {
   const dayName = useContext(DayNames)
+  const group = useContext(GroupTrip)
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -484,7 +528,7 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
   // Swipe left (or hover on a computer) to delete; off while the place's edit form is open.
   // Swipe left, or the Delete button under the card; both ask first.
   return <SwipeToDelete title={place.name} disabled={editing} hoverButton={false} className="" confirmLabel="Delete place" keepLabel="Keep place" onDelete={remove}
-    message={<>Delete <span className="font-semibold">{place.name}</span> and its notes? The rest of your trip will stay.</>}>{askDelete => <>
+    message={group ? <>Delete <span className="font-semibold">{place.name}</span>? It goes to Deleted places, where anyone on the trip can bring it back.</> : <>Delete <span className="font-semibold">{place.name}</span> and its notes? The rest of your trip will stay.</>}>{askDelete => <>
   <article id={`place-${place.id}`} className={`${planningStyles.place} ${styles[category.value]} scroll-mt-40`}>
       {/* Tapping the photo or text opens the place with its full notes and details. */}
       <div role="button" tabIndex={0} aria-label={`Open ${place.name}`} onClick={() => { if (!editing) openEditor() }} onKeyDown={event => { if (!editing && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); openEditor() } }} className={`${styles.card} ${planningStyles.card} cursor-pointer`}>
@@ -507,6 +551,8 @@ function PlaceRow({ tripId, tripStart, place, maxDay, destinationChoices, dayChi
         {/* Private booking details: only you see these (and they're in your itinerary PDF). */}
         {place.bookingDetails && <p className="mt-1 flex items-start gap-1 text-xs text-muted [overflow-wrap:anywhere]"><LockKeyhole size={12} className="mt-0.5 shrink-0" />{place.bookingDetails}</p>}
         {place.source && <IdeaFrom source={place.source} />}
+        {/* Group trips: who added it (when it wasn't you). */}
+        {place.addedBy && <p className="mt-1 text-xs text-muted">Added by {place.addedBy.split(' ')[0]}</p>}
         {/* Opens this trip's AI chat with a question about this place ready to finish. */}
         <Link href={`/testplan?trip=${tripId}&ask=${place.id}&from=planner&new=1`} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} className="relative z-[2] mt-2 inline-flex items-center gap-1 text-xs font-semibold text-link underline-offset-2 hover:underline"><Sparkles size={12} />Ask AI about this place</Link>
         {place.type === 'transport' && <PlacePrivacy itemId={place.id} on={place.tags.includes(PRIVATE_TAG)} />}

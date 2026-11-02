@@ -11,7 +11,7 @@ function row(userId, options = {}) {
 }
 function harness(rows = [], signedIn = true, own = null) {
   const queries = [], exports = {}
-  vm.runInNewContext(code, { exports, require: name => ({ '@/auth': { auth: async () => signedIn ? { user: { id: 'me' } } : null }, '@/lib/prisma': { prisma: { follow: { findMany: async q => { queries.push(q); return [{ followingId: 'friend' }] } }, destItem: { findMany: async q => { queries.push(q); return rows }, findFirst: async () => own } } }, '@/lib/placeRecommendation': recommendations, '@/lib/placeMatching': placeMatching, '@/lib/hiddenAccounts': { hiddenAccountsFor: () => [] } })[name] })
+  vm.runInNewContext(code, { exports, require: name => ({ '@/lib/tripAccess': { canEdit: id => ({ userId: id }) }, '@/auth': { auth: async () => signedIn ? { user: { id: 'me' } } : null }, '@/lib/prisma': { prisma: { follow: { findMany: async q => { queries.push(q); return [{ followingId: 'friend' }] } }, destItem: { findMany: async q => { queries.push(q); return rows }, findFirst: async () => own } } }, '@/lib/placeRecommendation': recommendations, '@/lib/placeMatching': placeMatching, '@/lib/hiddenAccounts': { hiddenAccountsFor: () => [] } })[name] })
   return { run: exports.placePeople, queries }
 }
 test('matches exact Google place identity and restricts to public trips and visible accounts', async () => {

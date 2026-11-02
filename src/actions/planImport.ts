@@ -11,6 +11,7 @@ import type { ImportedPlace } from '@/lib/planImport'
 import { isDate, isTime, tripDay, daysBetween, dayOnTrip } from '@/lib/placeDates'
 import { importMatch, type ImportMatch } from '@/lib/importMatch'
 import { insertIntoDay } from '@/lib/dayOrder'
+import { canEdit } from '@/lib/tripAccess'
 
 // tripDates: the trip's dates, when the trip had none and the import suggested them (earliest to latest date in the documents).
 // splitFrom: the destination picked for the import when the document's own stops were used instead (France → Loire Valley,
@@ -27,7 +28,7 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
   if (!matches || typeof matches !== 'object' || Object.entries(matches).some(([key, value]) => !/^\d+$/.test(key) || typeof value !== 'string' || value.length > 100)) return { error: 'Please try again.' }
   try {
     await prisma.$transaction(async tx => {
-      const plan = await tx.itinerary.findFirst({ where: { id: planId, userId }, select: { id: true, datesFlexible: true, startDate: true, endDate: true, durationDays: true } })
+      const plan = await tx.itinerary.findFirst({ where: { id: planId, ...canEdit(userId) }, select: { id: true, datesFlexible: true, startDate: true, endDate: true, durationDays: true } })
       if (!plan) throw Error('Unavailable')
       // The trip's first day, for turning each booking's date into its day of the trip.
       let start = plan.datesFlexible ? null : plan.startDate.toISOString().slice(0, 10)
@@ -89,7 +90,7 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
         if (!destination) destination = await tx.destination.create({ data: { itineraryId: planId, name: place.destination.trim(), country: place.country || null, order: await tx.destination.count({ where: { itineraryId: planId } }) } })
         const last = await tx.destItem.aggregate({ where: { destinationId: destination.id }, _max: { order: true, groupIndex: true } })
         existing.push({ id: `${requestId}:${index}`, name: place.name.trim(), type: place.type, notes: place.notes || null, bookingDetails: place.booking?.trim() || null, date: place.date ? new Date(`${place.date}T00:00:00Z`) : null, time: place.time || null, endDate: place.endDate ? new Date(`${place.endDate}T00:00:00Z`) : null, endTime: place.endTime || null, nights: place.nights ?? null, dayIndex: dayOf(place) })
-        await tx.destItem.create({ data: { id: `${requestId}:${index}`, destinationId: destination.id, name: place.name.trim(), type: place.type, notes: place.notes || null, bookingDetails: place.booking?.trim() || null, rating: place.rating, mealType: place.type === 'food_drink' ? place.mealType || null : null, dayIndex: dayOf(place),
+        await tx.destItem.create({ data: { id: `${requestId}:${index}`, addedById: userId, destinationId: destination.id, name: place.name.trim(), type: place.type, notes: place.notes || null, bookingDetails: place.booking?.trim() || null, rating: place.rating, mealType: place.type === 'food_drink' ? place.mealType || null : null, dayIndex: dayOf(place),
           date: place.date ? new Date(`${place.date}T00:00:00Z`) : null, time: place.time || null, endDate: place.endDate ? new Date(`${place.endDate}T00:00:00Z`) : null, endTime: place.endTime || null,
           nights: place.type === 'hotel' && place.nights && place.nights >= 1 && place.nights <= 60 ? place.nights : null, order: (last._max.order ?? -1) + 1, groupIndex: place.type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0 } })
       }
@@ -128,7 +129,7 @@ export async function importMatches(planId: string, places: { name: string; type
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
   if (typeof planId !== 'string' || !Array.isArray(places) || places.length > 200 || places.some(p => !p || typeof p.name !== 'string' || p.name.length > 240 || typeof p.type !== 'string')) return { error: 'Please try again.' }
-  const plan = await prisma.itinerary.findFirst({ where: { id: planId, userId }, select: { id: true } })
+  const plan = await prisma.itinerary.findFirst({ where: { id: planId, ...canEdit(userId) }, select: { id: true } })
   if (!plan) return { error: 'This trip is unavailable.' }
   const items = await prisma.destItem.findMany({ where: { destination: { itineraryId: planId } }, select: { id: true, name: true, type: true, date: true, dayIndex: true } })
   const existing = items.map(item => ({ id: item.id, name: item.name, type: item.type, date: item.date?.toISOString().slice(0, 10) ?? null, day: item.dayIndex }))

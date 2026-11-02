@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { canEdit } from '@/lib/tripAccess'
 
 export const maxDuration = 120
 
@@ -32,7 +33,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const userId = (await auth())?.user?.id
   if (!userId) return Response.json({ error: 'Please sign in.' }, { status: 401 })
   if (!process.env.ANTHROPIC_API_KEY) return Response.json({ error: 'AI isn’t set up yet.' }, { status: 500 })
-  const trip = await prisma.itinerary.findFirst({ where: { id, userId }, select: { title: true, durationDays: true, destinations: { orderBy: { order: 'asc' }, select: { name: true, country: true, items: { orderBy: { order: 'asc' }, select: { id: true, name: true, type: true, mealType: true, notes: true, dayIndex: true, lat: true, lng: true, tags: true } } } } } })
+  const trip = await prisma.itinerary.findFirst({ where: { id, ...canEdit(userId) }, select: { title: true, durationDays: true, destinations: { orderBy: { order: 'asc' }, select: { name: true, country: true, items: { orderBy: { order: 'asc' }, select: { id: true, name: true, type: true, mealType: true, notes: true, dayIndex: true, lat: true, lng: true, tags: true } } } } } })
   if (!trip) return Response.json({ error: 'This trip is unavailable.' }, { status: 404 })
   const days = trip.durationDays
   if (!days) return Response.json({ error: 'Set how many days your trip is first.' }, { status: 400 })

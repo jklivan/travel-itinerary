@@ -11,6 +11,7 @@ import { locateDestinations } from '@/lib/locateDestinations'
 import { locateTripPlaces } from '@/lib/locatePlaces'
 import { after } from 'next/server'
 import type { Prisma } from '@/generated/prisma/client'
+import { canEdit } from '@/lib/tripAccess'
 
 const unavailable = 'This plan is unavailable or belongs to another account.'
 class NeedsDestinations extends Error { constructor(readonly questions: (DestinationQuestion & { key: string; places: number })[]) { super('needs destinations') } }
@@ -23,7 +24,7 @@ export async function findFriendsPlanPlaces(planId: string, query: string, befor
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in to browse your friends’ trips.' }
   if (typeof query !== 'string' || !query.trim() || query.length > 160) return { error: 'Enter a city or destination.' }
-  const plan = await prisma.itinerary.findFirst({ where: { id: planId, userId }, select: { id: true } })
+  const plan = await prisma.itinerary.findFirst({ where: { id: planId, ...canEdit(userId) }, select: { id: true } })
   if (!plan) return { error: unavailable }
   const search = query.trim()
   const destinationWhere = { OR: [{ name: { contains: search, mode: 'insensitive' as const } }, { country: { contains: search, mode: 'insensitive' as const } }] }
@@ -67,9 +68,9 @@ export async function copyPlacesToPlan(sourceIds: string[], planId: string, choi
   const ids = [...new Set(sourceIds)]
   if (!choices || typeof choices !== 'object' || Object.values(choices).some(value => typeof value !== 'string' || value.length > 100)) return { error: 'Please choose a destination again.' }
   try {
-    if (await prisma.itinerary.count({ where: { id: planId, userId } })) await locateDestinations(planId)
+    if (await prisma.itinerary.count({ where: { id: planId, ...canEdit(userId) } })) await locateDestinations(planId)
     const result = await prisma.$transaction(async tx => {
-      const plan = await tx.itinerary.findFirst({ where: { id: planId, userId }, select: { id: true } })
+      const plan = await tx.itinerary.findFirst({ where: { id: planId, ...canEdit(userId) }, select: { id: true } })
       if (!plan) return { error: unavailable }
       // Serialize bulk additions to this plan so concurrent batches cannot duplicate places.
       await tx.$queryRaw`SELECT id FROM "Itinerary" WHERE id = ${planId} FOR UPDATE`
@@ -96,7 +97,7 @@ export async function copyPlacesToPlan(sourceIds: string[], planId: string, choi
         if (existing.some(item => item.id === id) || known.some(item => samePlanPlace(item, source))) continue
         const destination = { id: filedUnder.get([source.destination.name, source.destination.country].filter(Boolean).join(', '))! }
         const siblings = [...existing, ...data].filter(item => item.destinationId === destination.id)
-        data.push({ id, destinationId: destination.id, name: source.name, type: source.type,
+        data.push({ id, addedById: userId, destinationId: destination.id, name: source.name, type: source.type,
           address: source.address, link: source.link, placeId: source.placeId, lat: source.lat, lng: source.lng,
           order: Math.max(-1, ...siblings.map(item => item.order ?? 0)) + 1,
           groupIndex: source.type === 'hotel' ? Math.max(-1, ...siblings.map(item => item.groupIndex ?? 0)) + 1 : 0,

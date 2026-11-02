@@ -18,6 +18,7 @@ import { nextAiFold } from '@/lib/aiTidy'
 import { moveDestinationInto } from '@/lib/moveDestination'
 import { formatCoverFocus, parseCoverFocus } from '@/lib/coverFocus'
 import { eventPhotos } from '@/lib/eventPhotos'
+import { canEdit } from '@/lib/tripAccess'
 import type { Prisma } from '@/generated/prisma/client'
 import { fileUnderDestination, type DestinationQuestion } from '@/lib/fileUnderDestination'
 import { locateDestinations } from '@/lib/locateDestinations'
@@ -137,11 +138,11 @@ export async function setPlanStartDate(id: string, start: string): Promise<Resul
   if (!userId) return { error: 'Please sign in.' }
   if (typeof start !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(start) || !Number.isFinite(Date.parse(start)) || new Date(start).toISOString().slice(0, 10) !== start) return { error: 'Choose a start date.' }
   try {
-    const trip = await prisma.itinerary.findFirst({ where: { id, userId }, select: { durationDays: true } })
+    const trip = await prisma.itinerary.findFirst({ where: { id, ...canEdit(userId) }, select: { durationDays: true } })
     if (!trip) return { error: unavailable }
     const startDate = new Date(start), endDate = new Date(start)
     endDate.setUTCDate(endDate.getUTCDate() + Math.max(1, trip.durationDays ?? 1) - 1)
-    await prisma.itinerary.updateMany({ where: { id, userId }, data: { datesFlexible: false, startDate, endDate } })
+    await prisma.itinerary.updateMany({ where: { id, ...canEdit(userId) }, data: { datesFlexible: false, startDate, endDate } })
     refresh(id, userId)
     return { success: true }
   } catch (error) { return message(error) }
@@ -166,7 +167,7 @@ export async function savePlanDetails(id: string, form: FormData): Promise<Resul
     if (form.has('destinationDays')) {
       let wanted: Record<string, unknown> = {}
       try { const parsed = JSON.parse(String(form.get('destinationDays'))); if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) wanted = parsed } catch { wanted = {} }
-      const destinations = await prisma.destination.findMany({ where: { itineraryId: id, itinerary: { userId } }, select: { id: true } })
+      const destinations = await prisma.destination.findMany({ where: { itineraryId: id, itinerary: canEdit(userId) }, select: { id: true } })
       for (const destination of destinations) if (destination.id in wanted) {
         const value = Number(wanted[destination.id])
         await prisma.destination.update({ where: { id: destination.id }, data: { days: Number.isInteger(value) && value >= 1 && value <= 365 ? value : null } })
@@ -176,7 +177,7 @@ export async function savePlanDetails(id: string, form: FormData): Promise<Resul
       let chosen: string[] = []
       try { const parsed = JSON.parse(String(form.get('tags'))); if (Array.isArray(parsed)) chosen = parsed.filter((tag): tag is string => typeof tag === 'string' && TAGS.some(known => known.id === tag && tag !== 'day-trip')) } catch { chosen = [] }
       // Day trip follows the trip type, so it stays if the trip had it.
-      const current = await prisma.itinerary.findFirst({ where: { id, userId }, select: { tags: true } })
+      const current = await prisma.itinerary.findFirst({ where: { id, ...canEdit(userId) }, select: { tags: true } })
       extra.tags = [...new Set([...(current?.tags.includes('day-trip') ? ['day-trip'] : []), ...chosen])].slice(0, 20)
     }
     if (form.has('bestMonths')) { try { extra.bestMonths = bestMonths(JSON.parse(String(form.get('bestMonths')))) } catch { extra.bestMonths = [] } }
@@ -188,10 +189,10 @@ export async function savePlanDetails(id: string, form: FormData): Promise<Resul
       const length = form.has('durationDays') ? duration(form) : null
       // A day trip is one day (two if they say so); otherwise the number of days entered stands.
       kind = { postType, durationDays: postType === 'day-trip' ? (length === 2 ? 2 : 1) : length }
-      const current = extra.tags ?? (await prisma.itinerary.findFirst({ where: { id, userId }, select: { tags: true } }))?.tags ?? []
+      const current = extra.tags ?? (await prisma.itinerary.findFirst({ where: { id, ...canEdit(userId) }, select: { tags: true } }))?.tags ?? []
       extra.tags = postType === 'day-trip' ? [...new Set(['day-trip', ...current])].slice(0, 20) : current.filter(tag => tag !== 'day-trip')
     }
-    const result = await prisma.itinerary.updateMany({ where: { id, userId }, data: { title, audience, ...dates(form), ...kind, ...extra } })
+    const result = await prisma.itinerary.updateMany({ where: { id, ...canEdit(userId) }, data: { title, audience, ...dates(form), ...kind, ...extra } })
     if (!result.count) return { error: unavailable }
     refresh(id, userId)
     return { success: true }
@@ -204,10 +205,10 @@ export async function setPlanDays(id: string, days: number): Promise<Result> {
   if (!userId) return { error: 'Please sign in.' }
   if (!Number.isInteger(days) || days < 1 || days > 365) return { error: 'Enter a number of days from 1 to 365.' }
   try {
-    const trip = await prisma.itinerary.findFirst({ where: { id, userId }, select: { tags: true } })
+    const trip = await prisma.itinerary.findFirst({ where: { id, ...canEdit(userId) }, select: { tags: true } })
     if (!trip) return { error: unavailable }
     const tags = days === 1 ? [...new Set([...trip.tags, 'day-trip'])] : trip.tags.filter(tag => tag !== 'day-trip')
-    await prisma.itinerary.updateMany({ where: { id, userId }, data: { durationDays: days, postType: days === 1 ? 'day-trip' : 'itinerary', tags } })
+    await prisma.itinerary.updateMany({ where: { id, ...canEdit(userId) }, data: { durationDays: days, postType: days === 1 ? 'day-trip' : 'itinerary', tags } })
     refresh(id, userId)
     return { success: true }
   } catch { return { error: 'Could not save. Please try again.' } }
@@ -219,7 +220,7 @@ export async function deletePlanDay(id: string, day: number): Promise<Result> {
   if (!userId) return { error: 'Please sign in.' }
   if (!Number.isInteger(day) || day < 1 || day > 365) return { error: 'Choose a day to delete.' }
   try {
-    const trip = await prisma.itinerary.findFirst({ where: { id, userId }, select: { durationDays: true, tags: true, destinations: { select: { items: { select: { id: true, type: true, dayIndex: true } } } } } })
+    const trip = await prisma.itinerary.findFirst({ where: { id, ...canEdit(userId) }, select: { durationDays: true, tags: true, destinations: { select: { items: { select: { id: true, type: true, dayIndex: true } } } } } })
     if (!trip) return { error: unavailable }
     if (!trip.durationDays || trip.durationDays <= 1 || day > trip.durationDays) return { error: 'A trip needs at least one day.' }
     const updates: { id: string; dayIndex: number | null }[] = []
@@ -237,7 +238,7 @@ export async function deletePlanDay(id: string, day: number): Promise<Result> {
     const tags = days === 1 ? [...new Set([...trip.tags, 'day-trip'])] : trip.tags.filter(tag => tag !== 'day-trip')
     await prisma.$transaction([
       ...updates.map(update => prisma.destItem.update({ where: { id: update.id }, data: { dayIndex: update.dayIndex } })),
-      prisma.itinerary.updateMany({ where: { id, userId }, data: { durationDays: days, postType: days === 1 ? 'day-trip' : 'itinerary', tags } }),
+      prisma.itinerary.updateMany({ where: { id, ...canEdit(userId) }, data: { durationDays: days, postType: days === 1 ? 'day-trip' : 'itinerary', tags } }),
     ])
     refresh(id, userId)
     return { success: true }
@@ -250,7 +251,7 @@ export async function setPlaceDay(itemId: string, day: number | null): Promise<R
   if (!userId) return { error: 'Please sign in.' }
   if (day !== null && (!Number.isInteger(day) || day < 1 || day > 365)) return { error: 'Choose a day.' }
   try {
-    const owned = { id: itemId, destination: { itinerary: { userId } } }
+    const owned = { id: itemId, destination: { itinerary: canEdit(userId) } }
     const item = await prisma.destItem.findFirst({ where: owned, select: { destinationId: true, destination: { select: { itinerary: { select: { id: true, durationDays: true, tags: true } } } } } })
     if (!item) return { error: unavailable }
     const trip = item.destination.itinerary
@@ -260,7 +261,7 @@ export async function setPlaceDay(itemId: string, day: number | null): Promise<R
       if (zeroBased) await tx.destItem.updateMany({ where: { destinationId: item.destinationId, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
       await tx.destItem.updateMany({ where: owned, data: { dayIndex: day } })
       if (day !== null) await slotIntoDay(tx, trip.id, day, [itemId])
-      if (day !== null && trip.durationDays && day > trip.durationDays) await tx.itinerary.updateMany({ where: { id: trip.id, userId }, data: { durationDays: day, postType: 'itinerary', tags: trip.tags.filter(tag => tag !== 'day-trip') } })
+      if (day !== null && trip.durationDays && day > trip.durationDays) await tx.itinerary.updateMany({ where: { id: trip.id, ...canEdit(userId) }, data: { durationDays: day, postType: 'itinerary', tags: trip.tags.filter(tag => tag !== 'day-trip') } })
     })
     refresh(trip.id, userId)
     return { success: true }
@@ -274,7 +275,7 @@ export async function setPlaceTime(itemId: string, time: string | null): Promise
   if (!userId) return { error: 'Please sign in.' }
   if (time !== null && !isTime(time)) return { error: 'Choose a valid time.' }
   try {
-    const item = await prisma.destItem.findFirst({ where: { id: itemId, destination: { itinerary: { userId } } }, select: { dayIndex: true, destination: { select: { itineraryId: true } } } })
+    const item = await prisma.destItem.findFirst({ where: { id: itemId, destination: { itinerary: canEdit(userId) } }, select: { dayIndex: true, destination: { select: { itineraryId: true } } } })
     if (!item) return { error: unavailable }
     const tripId = item.destination.itineraryId
     await prisma.$transaction(async tx => {
@@ -297,7 +298,7 @@ export async function setDayOrder(tripId: string, itemIds: string[]): Promise<Re
   if (!userId) return { error: 'Please sign in.' }
   if (!Array.isArray(itemIds) || !itemIds.length || itemIds.length > 200 || itemIds.some(id => typeof id !== 'string') || new Set(itemIds).size !== itemIds.length) return { error: 'Could not reorder.' }
   try {
-    const owned = await prisma.destItem.count({ where: { id: { in: itemIds }, destination: { itinerary: { id: tripId, userId } } } })
+    const owned = await prisma.destItem.count({ where: { id: { in: itemIds }, destination: { itinerary: { id: tripId, ...canEdit(userId) } } } })
     if (owned !== itemIds.length) return { error: unavailable }
     await prisma.$transaction(itemIds.map((id, order) => prisma.destItem.update({ where: { id }, data: { order } })))
     refresh(tripId, userId)
@@ -312,7 +313,7 @@ export async function applyDayPlan(tripId: string, assignments: { id: string; da
   if (!userId) return { error: 'Please sign in.' }
   if (!Array.isArray(assignments) || assignments.length > 500 || assignments.some(a => !a || typeof a.id !== 'string' || a.id.length > 100 || !Number.isInteger(a.day) || a.day < 1 || a.day > 365)) return { error: 'Please try organizing again.' }
   try {
-    const trip = await prisma.itinerary.findFirst({ where: { id: tripId, userId }, select: { durationDays: true, destinations: { select: { id: true, items: { select: { id: true, type: true, dayIndex: true } } } } } })
+    const trip = await prisma.itinerary.findFirst({ where: { id: tripId, ...canEdit(userId) }, select: { durationDays: true, destinations: { select: { id: true, items: { select: { id: true, type: true, dayIndex: true } } } } } })
     if (!trip) return { error: unavailable }
     const days = trip.durationDays ?? 0
     await prisma.$transaction(async tx => {
@@ -337,13 +338,13 @@ export async function setTripCover(id: string, url: string | null, focus?: strin
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
   try {
-    const trip = await prisma.itinerary.findFirst({ where: { id, userId }, select: { photos: { select: { url: true } }, destinations: { select: { items: { select: { photoUrl: true, photoUrls: true } } } } } })
+    const trip = await prisma.itinerary.findFirst({ where: { id, ...canEdit(userId) }, select: { photos: { select: { url: true } }, destinations: { select: { items: { select: { photoUrl: true, photoUrls: true } } } } } })
     if (!trip) return { error: unavailable }
     const own = new Set([...trip.photos.map(photo => photo.url), ...trip.destinations.flatMap(d => d.items.flatMap(item => [...item.photoUrls, ...(item.photoUrl ? [item.photoUrl] : [])]))])
     if (url !== null && (typeof url !== 'string' || !own.has(url))) return { error: 'Choose one of this trip’s photos.' }
     const framing = typeof focus === 'string' ? formatCoverFocus(parseCoverFocus(focus)) : null
     if (focus !== undefined && focus !== null && typeof focus !== 'string') return { error: 'Please try again.' }
-    await prisma.itinerary.updateMany({ where: { id, userId }, data: { coverPhoto: url, coverFocus: url ? framing : null } })
+    await prisma.itinerary.updateMany({ where: { id, ...canEdit(userId) }, data: { coverPhoto: url, coverFocus: url ? framing : null } })
     refresh(id, userId)
     return { success: true }
   } catch { return { error: 'Could not save the cover photo. Please try again.' } }
@@ -356,7 +357,7 @@ export async function removeTripPhoto(id: string, url: string): Promise<Result> 
   if (!userId) return { error: 'Please sign in.' }
   if (typeof url !== 'string' || !url) return { error: 'Choose a photo to remove.' }
   try {
-    const trip = await prisma.itinerary.findFirst({ where: { id, userId }, select: { coverPhoto: true, destinations: { select: { items: { where: { OR: [{ photoUrl: url }, { photoUrls: { has: url } }] }, select: { id: true, photoUrl: true, photoUrls: true } } } } } })
+    const trip = await prisma.itinerary.findFirst({ where: { id, ...canEdit(userId) }, select: { coverPhoto: true, destinations: { select: { items: { where: { OR: [{ photoUrl: url }, { photoUrls: { has: url } }] }, select: { id: true, photoUrl: true, photoUrls: true } } } } } })
     if (!trip) return { error: unavailable }
     const items = trip.destinations.flatMap(d => d.items)
     await prisma.$transaction([
@@ -365,7 +366,7 @@ export async function removeTripPhoto(id: string, url: string): Promise<Result> 
         const photos = eventPhotos(item.photoUrls, item.photoUrl).filter(photo => photo !== url)
         return prisma.destItem.update({ where: { id: item.id }, data: { photoUrls: photos, photoUrl: photos[0] ?? null } })
       }),
-      ...(trip.coverPhoto === url ? [prisma.itinerary.updateMany({ where: { id, userId }, data: { coverPhoto: null, coverFocus: null } })] : []),
+      ...(trip.coverPhoto === url ? [prisma.itinerary.updateMany({ where: { id, ...canEdit(userId) }, data: { coverPhoto: null, coverFocus: null } })] : []),
     ])
     refresh(id, userId)
     return { success: true }
@@ -401,7 +402,7 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
     const key = process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_PLACES_API
     const location = placeId && !destinationId && key ? await findPlaceLocation(placeId, key) : null
     await prisma.$transaction(async tx => {
-      const trip = await tx.itinerary.findFirst({ where: { id, userId }, select: { id: true } })
+      const trip = await tx.itinerary.findFirst({ where: { id, ...canEdit(userId) }, select: { id: true } })
       if (!trip) throw new InputError(unavailable)
       const existing = await tx.destItem.findUnique({ where: { id: clientId }, select: { destination: { select: { itineraryId: true } } } })
       if (existing) {
@@ -417,7 +418,7 @@ export async function addPlanPlace(id: string, form: FormData): Promise<Result> 
       const last = await tx.destItem.aggregate({ where: { destinationId: dest.id }, _max: { order: true, groupIndex: true } })
       const zeroBased = await tx.destItem.count({ where: { destinationId: dest.id, dayIndex: 0, type: { not: 'hotel' } } })
       if (zeroBased) await tx.destItem.updateMany({ where: { destinationId: dest.id, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
-      await tx.destItem.create({ data: { id: clientId, destinationId: dest.id, name, type, placeId: placeId ?? null, ...(location ? { lat: location.lat, lng: location.lng, address: location.address } : {}), ...(form.get('source') === 'ai' ? { sourceKind: 'ai' } : {}), notes: notes || null,
+      await tx.destItem.create({ data: { id: clientId, addedById: userId, destinationId: dest.id, name, type, placeId: placeId ?? null, ...(location ? { lat: location.lat, lng: location.lng, address: location.address } : {}), ...(form.get('source') === 'ai' ? { sourceKind: 'ai' } : {}), notes: notes || null,
         rating: rating || null, planningStatus: status, mealType: type === 'food_drink' ? mealType || null : null, tags: privateTransport ? [...tags, PRIVATE_TAG] : tags, photoUrls, photoUrl: photoUrls[0] ?? null,
         dayIndex: day ? Number(day) : null, nights: type === 'hotel' ? nightsFrom(form) : null,
         order: (last._max.order ?? -1) + 1, groupIndex: type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0,
@@ -484,9 +485,15 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     }
     if (!name || !['considering', 'booked', 'visited'].includes(status)) return { error: 'Enter a place name and choose a status.' }
     if (day && (!/^\d+$/.test(day) || Number(day) < 1 || Number(day) > 365)) return { error: 'Choose a day from 1 to 365, or leave it unscheduled.' }
-    const owned = { id: itemId, destination: { itinerary: { userId } } }
-    const item = await prisma.destItem.findFirst({ where: owned, select: { name: true, type: true, placeId: true, destinationId: true, destination: { select: { itineraryId: true, name: true, country: true } } } })
+    const owned = { id: itemId, destination: { itinerary: canEdit(userId) } }
+    const item = await prisma.destItem.findFirst({ where: owned, select: { name: true, type: true, placeId: true, destinationId: true, destination: { select: { itineraryId: true, name: true, country: true, itinerary: { select: { userId: true } } } } } })
     if (!item) return { error: unavailable }
+    // Someone who joined a group trip: their stars and photos go to their own take on the place, and the creator's
+    // booking details (which they don't see) are left alone.
+    const creator = item.destination.itinerary?.userId
+    const member = !!creator && creator !== userId
+    const take = member ? { ...(rating === undefined ? {} : { rating: rating || null }), ...(extra.photoUrls ? { photoUrls: extra.photoUrls } : {}) } : null
+    if (member) { delete extra.photoUrls; delete extra.photoUrl; delete extra.bookingDetails }
     if (nextType && nextType !== item.type) {
       extra.type = nextType
       // Hotels each get their own stay group; meal types only apply to restaurants.
@@ -510,8 +517,9 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
         const zeroBased = await tx.destItem.count({ where: { destinationId, dayIndex: 0, type: { not: 'hotel' } } })
         if (zeroBased) await tx.destItem.updateMany({ where: { destinationId, dayIndex: { not: null } }, data: { dayIndex: { increment: 1 } } })
       }
-      const result = await tx.destItem.updateMany({ where: owned, data: { name, placeId: nextPlaceId, ...(identityChanged ? { lat: null, lng: null, address: null, link: null, description: null } : {}), ...extra, ...(moveTo ?? {}), notes: notes || null, ...(rating === undefined ? {} : { rating: rating || null }), planningStatus: status, dayIndex: day ? Number(day) : null } })
+      const result = await tx.destItem.updateMany({ where: owned, data: { name, placeId: nextPlaceId, ...(identityChanged ? { lat: null, lng: null, address: null, link: null, description: null } : {}), ...extra, ...(moveTo ?? {}), notes: notes || null, ...(rating === undefined || member ? {} : { rating: rating || null }), planningStatus: status, dayIndex: day ? Number(day) : null } })
       if (!result.count) throw new InputError(unavailable)
+      if (take && Object.keys(take).length) await tx.placeTake.upsert({ where: { itemId_userId: { itemId, userId } }, create: { itemId, userId, ...take }, update: take })
       // Snapshots of this place show its corrected category too.
       if (extra.type) await tx.story.updateMany({ where: { sourceItemId: itemId, userId }, data: { type: extra.type } })
       // The destination it left goes away once it's empty, unless it has its own notes.
@@ -576,7 +584,7 @@ export async function sharePlan(id: string, format: PublishFormat = 'itinerary',
 // Editing a destination heading in the planner: change it, move its places into another destination (which
 // removes it), or remove it (with its places, if any). A trip always keeps at least one destination.
 async function ownedDestination(tx: Prisma.TransactionClient, userId: string, tripId: string, destinationId: string) {
-  const destination = await tx.destination.findFirst({ where: { id: destinationId, itineraryId: tripId, itinerary: { userId } }, select: { id: true, days: true } })
+  const destination = await tx.destination.findFirst({ where: { id: destinationId, itineraryId: tripId, itinerary: canEdit(userId) }, select: { id: true, days: true } })
   if (!destination) throw new InputError(unavailable)
   return destination
 }
@@ -591,7 +599,7 @@ export async function renamePlanDestination(tripId: string, destinationId: strin
       const from = await ownedDestination(tx, userId, tripId, destinationId)
       // A trip still called by its first destination ("Trip to University of Michigan main hospital, …") follows the new name.
       const current = await tx.destination.findUnique({ where: { id: destinationId }, select: { name: true } })
-      if (current) await tx.itinerary.updateMany({ where: { id: tripId, userId, title: `Trip to ${current.name}` }, data: { title: `Trip to ${next}` } })
+      if (current) await tx.itinerary.updateMany({ where: { id: tripId, ...canEdit(userId), title: `Trip to ${current.name}` }, data: { title: `Trip to ${next}` } })
       // The trip already has this destination ("Ann Arbor" and "Ann Arbor, MI, USA"): its places join that one.
       const others = await tx.destination.findMany({ where: { itineraryId: tripId, id: { not: destinationId } }, select: { id: true, name: true, country: true, days: true } })
       const same = others.find(other => other.name.trim().toLowerCase() === next.toLowerCase()) ?? others.find(other => other.name !== 'Destination to decide' && samePlanDestination(other, { name: next }))
@@ -611,7 +619,7 @@ export async function tidyAiPlaces(tripId: string): Promise<Result> {
   if (!userId) return { error: 'Please sign in.' }
   try {
     await prisma.$transaction(async tx => {
-      const trip = await tx.itinerary.findFirst({ where: { id: tripId, userId }, select: { id: true } })
+      const trip = await tx.itinerary.findFirst({ where: { id: tripId, ...canEdit(userId) }, select: { id: true } })
       if (!trip) throw new InputError(unavailable)
       for (let step = 0; step < 20; step++) {
         const destinations = await tx.destination.findMany({ where: { itineraryId: tripId }, select: { id: true, name: true, country: true, lat: true, lng: true, order: true, days: true,
@@ -661,13 +669,52 @@ export async function removePlanPlace(itemId: string): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
   try {
-    const owned = { id: itemId, destination: { itinerary: { userId } } }
-    const item = await prisma.destItem.findFirst({ where: owned, select: { destination: { select: { itineraryId: true } } } })
+    const owned = { id: itemId, destination: { itinerary: canEdit(userId) } }
+    const item = await prisma.destItem.findFirst({ where: owned, omit: { bookingDetails: false }, include: { takes: { omit: { id: true, itemId: true, updatedAt: true } }, destination: { select: { itineraryId: true, itinerary: { select: { members: { where: { status: 'joined' }, take: 1, select: { id: true } } } } } } } })
     if (!item) return { error: unavailable }
-    await prisma.destItem.deleteMany({ where: owned })
-    refresh(item.destination.itineraryId, userId)
+    const { destination, takes, ...place } = item
+    await prisma.$transaction(async tx => {
+      // A group trip keeps what's deleted (with everyone's own stars and photos on it), so anyone can bring it back.
+      if (destination.itinerary.members.length) await tx.deletedPlace.create({ data: { itineraryId: destination.itineraryId, destinationId: place.destinationId, deletedById: userId, data: JSON.parse(JSON.stringify({ place, takes })) } })
+      await tx.destItem.deleteMany({ where: owned })
+    })
+    refresh(destination.itineraryId, userId)
     return { success: true }
   } catch { return { error: 'Could not remove this place. Please try again.' } }
+}
+
+// A group trip's Deleted folder: places deleted from it, newest first.
+export async function deletedPlaces(tripId: string) {
+  const userId = (await auth())?.user?.id
+  if (!userId) return []
+  const rows = await prisma.deletedPlace.findMany({ where: { itinerary: { id: tripId, ...canEdit(userId) } }, orderBy: { deletedAt: 'desc' }, take: 100, select: { id: true, data: true, deletedAt: true, deletedBy: { select: { id: true, name: true } } } })
+  return rows.map(row => { const place = (row.data as { place?: { name?: string; type?: string } }).place ?? {}; return { id: row.id, name: place.name ?? 'A place', type: place.type ?? 'activity', deletedAt: row.deletedAt.toISOString(), by: row.deletedBy.id === userId ? 'You' : row.deletedBy.name } })
+}
+
+// Bring a deleted place back where it was (or into the trip's first destination if that's gone), with everyone's
+// own stars and photos on it.
+export async function restoreDeletedPlace(deletedId: string): Promise<Result> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  try {
+    const row = await prisma.deletedPlace.findFirst({ where: { id: deletedId, itinerary: canEdit(userId) }, select: { id: true, itineraryId: true, destinationId: true, data: true } })
+    if (!row) return { error: 'That place can’t be restored any more.' }
+    const { place, takes = [] } = row.data as { place: Prisma.DestItemUncheckedCreateInput & { id: string }; takes?: { userId: string; rating: number | null; notes: string | null; photoUrls: string[] }[] }
+    await prisma.$transaction(async tx => {
+      const home = (row.destinationId && await tx.destination.findFirst({ where: { id: row.destinationId, itineraryId: row.itineraryId }, select: { id: true } }))
+        || await tx.destination.findFirst({ where: { itineraryId: row.itineraryId }, orderBy: { order: 'asc' }, select: { id: true } })
+      if (!home) throw new InputError('Add a destination to this trip first.')
+      const taken = await tx.destItem.findUnique({ where: { id: place.id }, select: { id: true } })
+      // Links to a trip or person that's gone since are dropped.
+      if (place.sourceItineraryId && !await tx.itinerary.count({ where: { id: place.sourceItineraryId } })) place.sourceItineraryId = null
+      for (const key of ['sourceUserId', 'addedById'] as const) if (place[key] && !await tx.user.count({ where: { id: place[key] as string } })) place[key] = null
+      const created = await tx.destItem.create({ data: { ...place, id: taken ? undefined : place.id, destinationId: home.id, date: place.date ? new Date(place.date as string) : null, endDate: place.endDate ? new Date(place.endDate as string) : null } })
+      if (takes.length) await tx.placeTake.createMany({ data: takes.map(take => ({ ...take, itemId: created.id })), skipDuplicates: true })
+      await tx.deletedPlace.delete({ where: { id: row.id } })
+    })
+    refresh(row.itineraryId, userId)
+    return { success: true }
+  } catch (error) { return message(error) }
 }
 
 // Private plans offered by the Post button, newest first, with how many places each has.
@@ -682,7 +729,7 @@ export async function plansForPosting() {
 export async function plansForSaving() {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in to save a place.', trips: [] }
-  const trips = await prisma.itinerary.findMany({ where: { userId, isPlan: true }, select: { id: true, title: true }, orderBy: { createdAt: 'desc' } })
+  const trips = await prisma.itinerary.findMany({ where: { isPlan: true, ...canEdit(userId) }, select: { id: true, title: true }, orderBy: { createdAt: 'desc' } })
   return { trips }
 }
 
@@ -692,9 +739,9 @@ export async function copyPlaceToPlan(sourceId: string, planId: string, clientId
   if (!userId) return { error: 'Please sign in.' }
   if (!/^[a-f0-9-]{36}$/.test(clientId) || (destination !== undefined && (typeof destination !== 'string' || destination.length > 100))) return { error: 'Please reload and try again.' }
   try {
-    if (await prisma.itinerary.count({ where: { id: planId, userId } })) await locateDestinations(planId)
+    if (await prisma.itinerary.count({ where: { id: planId, ...canEdit(userId) } })) await locateDestinations(planId)
     const question = await prisma.$transaction(async tx => {
-      const plan = await tx.itinerary.findFirst({ where: { id: planId, userId, isPlan: true }, select: { id: true } })
+      const plan = await tx.itinerary.findFirst({ where: { id: planId, ...canEdit(userId), isPlan: true }, select: { id: true } })
       if (!plan) throw new InputError(unavailable)
       const source = await tx.destItem.findFirst({ where: { id: sourceId, destination: { itinerary: { visibility: 'public' } } }, include: { destination: { include: { itinerary: { select: { userId: true } } } } } })
       if (!source) throw new InputError('This place is no longer available.')
@@ -706,7 +753,7 @@ export async function copyPlaceToPlan(sourceId: string, planId: string, clientId
       const filed = await fileUnderDestination(tx, planId, source, destination)
       if ('ask' in filed) return filed.ask
       const last = await tx.destItem.aggregate({ where: { destinationId: filed.id }, _max: { order: true, groupIndex: true } })
-      await tx.destItem.create({ data: { id: clientId, destinationId: filed.id, name: source.name, type: source.type,
+      await tx.destItem.create({ data: { id: clientId, addedById: userId, destinationId: filed.id, name: source.name, type: source.type,
         address: source.address, link: source.link, placeId: source.placeId, lat: source.lat, lng: source.lng,
         order: (last._max.order ?? -1) + 1, groupIndex: source.type === 'hotel' ? (last._max.groupIndex ?? -1) + 1 : 0,
         sourceKind: 'trip', sourceItineraryId: source.destination.itineraryId, sourceUserId: source.destination.itinerary.userId,
@@ -726,7 +773,7 @@ export async function setPlacePrivate(itemId: string, on: boolean): Promise<Resu
   if (!userId) return { error: 'Please sign in.' }
   if (typeof itemId !== 'string' || typeof on !== 'boolean') return { error: 'Please try again.' }
   try {
-    const item = await prisma.destItem.findFirst({ where: { id: itemId, type: 'transport', destination: { itinerary: { userId } } }, select: { tags: true, destination: { select: { itineraryId: true } } } })
+    const item = await prisma.destItem.findFirst({ where: { id: itemId, type: 'transport', destination: { itinerary: canEdit(userId) } }, select: { tags: true, destination: { select: { itineraryId: true } } } })
     if (!item) return { error: unavailable }
     await prisma.destItem.update({ where: { id: itemId }, data: { tags: on ? [...new Set([...item.tags, PRIVATE_TAG])] : item.tags.filter(tag => tag !== PRIVATE_TAG) } })
     refresh(item.destination.itineraryId, userId)
@@ -744,10 +791,10 @@ export async function setPlanDatesIfMissing(id: string, start: string, end: stri
     const parsed = dates(form)
     if (parsed.datesFlexible) return { error: 'Choose dates.' }
     const length = Math.round((parsed.endDate.getTime() - parsed.startDate.getTime()) / 864e5) + 1
-    const trip = await prisma.itinerary.findFirst({ where: { id, userId }, select: { datesFlexible: true, durationDays: true } })
+    const trip = await prisma.itinerary.findFirst({ where: { id, ...canEdit(userId) }, select: { datesFlexible: true, durationDays: true } })
     if (!trip) return { error: unavailable }
     if (!trip.datesFlexible) return { success: true }
-    await prisma.itinerary.updateMany({ where: { id, userId, datesFlexible: true }, data: { ...parsed, ...(trip.durationDays ? {} : { durationDays: length }) } })
+    await prisma.itinerary.updateMany({ where: { id, ...canEdit(userId), datesFlexible: true }, data: { ...parsed, ...(trip.durationDays ? {} : { durationDays: length }) } })
     refresh(id, userId)
     return { success: true }
   } catch (error) { return message(error) }

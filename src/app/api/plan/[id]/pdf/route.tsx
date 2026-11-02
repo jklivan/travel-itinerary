@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { formatDate, whenLabel, addDays } from '@/lib/placeDates'
 import { inTimeOrder } from '@/lib/timeOrder'
+import { canEdit } from '@/lib/tripAccess'
 
 export const maxDuration = 60
 
@@ -46,7 +47,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const userId = (await auth())?.user?.id
   if (!userId) return Response.json({ error: 'Please sign in.' }, { status: 401 })
   const { id } = await params
-  const trip = await prisma.itinerary.findFirst({ where: { id, userId }, select: { title: true, datesFlexible: true, startDate: true, endDate: true, durationDays: true,
+  const trip = await prisma.itinerary.findFirst({ where: { id, ...canEdit(userId) }, select: { title: true, datesFlexible: true, startDate: true, endDate: true, durationDays: true,
     destinations: { orderBy: { order: 'asc' }, select: { name: true, country: true, items: { orderBy: { order: 'asc' }, select: { id: true, name: true, type: true, order: true, dayIndex: true, address: true, notes: true, bookingDetails: true, link: true, nights: true, date: true, time: true, endDate: true, endTime: true, tags: true } } } } } })
   if (!trip) return Response.json({ error: 'This trip is unavailable.' }, { status: 404 })
 
