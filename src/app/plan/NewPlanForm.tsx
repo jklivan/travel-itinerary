@@ -113,15 +113,14 @@ export default function NewPlanForm({ savePlace, saveStory, past = false }: { sa
     {/* A one-time tip: an AI assistant can send you an itinerary to import. */}
     <AiAgentTip hidden={importOpen} />
     {importOpen && <fieldset disabled={saving} id="new-plan-import" className="panel space-y-4 p-4">
-        <p className="text-sm text-muted">{destination.trim() ? <>Places go under <strong className="text-ink">{destination}</strong>. Each one shows its own town once it’s found on Google.</> : `Each place goes under the town or city your file gives for it. Add where you${past ? ' went' : '’re going'} above to put them all in one place.`}</p>
-        {/* Choosing a file is the main way in, so it's a big tile first; pasting notes is the alternative. */}
-        <label className={`panel-dashed flex min-h-28 cursor-pointer flex-col items-center justify-center gap-1.5 p-4 text-center hover:bg-cream ${file ? 'border-link' : ''}`}>
-          <Upload size={22} className="text-link" />
-          <span className="text-base font-semibold text-link">{file ? file.name : 'Choose a file'}</span>
-          <span className="text-xs text-muted">{file ? 'Tap to choose a different file' : 'PDF, Word, Excel, screenshot or email'}</span>
+        {/* Kept short so the import button shows without scrolling on a phone: a slim file row, then a small notes box. */}
+        <label className={`panel-dashed flex min-h-14 cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-cream ${file ? 'border-link' : ''}`}>
+          <Upload size={18} className="shrink-0 text-link" />
+          <span className="min-w-0"><span className="block break-words text-sm font-semibold text-link">{file ? file.name : 'Choose a file'}</span>
+          <span className="block text-xs text-muted">{file ? 'Tap to choose a different file' : 'PDF, Word, Excel, screenshot or email'}</span></span>
           <input key={file?.name ?? 'empty'} type="file" accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.html,.htm,image/jpeg,image/png,image/gif,image/webp" onChange={event => setFile(event.target.files?.[0] ?? null)} className="sr-only" />
         </label>
-        <label className="block text-sm">Or paste notes<textarea value={notes} onChange={event => { setNotes(event.target.value); setFile(null) }} maxLength={200000} rows={5} placeholder="Hotels, restaurants, activities…" className="field mt-2" /></label>
+        <label className="block text-sm">Or paste notes<textarea value={notes} onChange={event => { setNotes(event.target.value); setFile(null) }} maxLength={200000} rows={2} placeholder="Hotels, restaurants, activities…" className="field mt-2" /></label>
         <button type="submit" value="import" disabled={!file && !notes.trim()} className={`${buttonClass} w-full`}>{stage || 'Import and start planning →'}</button>
       </fieldset>}
     <div className="panel space-y-5 p-4 sm:p-6">

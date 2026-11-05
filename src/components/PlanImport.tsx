@@ -105,16 +105,15 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
     {!places.length ? <>
       <fieldset disabled={!!stage} className="space-y-4">
         <div className="space-y-2"><label className="block text-sm">Destination <span className="text-muted">(optional)</span><PlacesAutocomplete maxLength={160} value={typedDestination} onChange={value => { setTypedDestination(value); setDestination(destinations.find(d => d.name === value) ?? null) }} onSelect={(main, secondary) => { setTypedDestination([main, secondary].filter(Boolean).join(', ')); setDestination(null) }} type="destination" placeholder="City or area" className="field mt-2" /></label>
-          {destinations.length > 1 && <div className="flex flex-wrap gap-2">{destinations.map(d => <button key={d.name} type="button" aria-pressed={destination?.name === d.name} onClick={() => { setDestination(d); setTypedDestination(d.name) }} className="chip">{d.name}</button>)}</div>}
-          <p className="text-xs text-muted">{typedDestination.trim() ? 'Places are added here. Each one shows its own town once it’s found on Google.' : 'Leave empty and each place goes under the town or city your files give for it.'}</p></div>
-        {/* Choosing files is the main way in, so it's a big tile first; pasting notes is the alternative. */}
-        <label className={`panel-dashed flex min-h-28 cursor-pointer flex-col items-center justify-center gap-1.5 p-4 text-center hover:bg-cream ${files.length ? 'border-link' : ''}`}>
-          <Upload size={22} className="text-link" />
-          <span className="break-words text-base font-semibold text-link">{files.length ? files.map(f => f.name).join(', ') : 'Choose files'}</span>
-          <span className="text-xs text-muted">{files.length ? 'Tap to choose different files' : 'One or several: confirmations, reservation emails, PDFs, screenshots'}</span>
+          {destinations.length > 1 && <div className="flex flex-wrap gap-2">{destinations.map(d => <button key={d.name} type="button" aria-pressed={destination?.name === d.name} onClick={() => { setDestination(d); setTypedDestination(d.name) }} className="chip">{d.name}</button>)}</div>}</div>
+        {/* Kept short so Find places shows without scrolling on a phone: a slim file row, then a small notes box. */}
+        <label className={`panel-dashed flex min-h-14 cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-cream ${files.length ? 'border-link' : ''}`}>
+          <Upload size={18} className="shrink-0 text-link" />
+          <span className="min-w-0"><span className="block break-words text-sm font-semibold text-link">{files.length ? files.map(f => f.name).join(', ') : 'Choose files'}</span>
+          <span className="block text-xs text-muted">{files.length ? 'Tap to choose different files' : 'Confirmations, emails, PDFs or screenshots'}</span></span>
           <input key={files.map(f => f.name).join('|') || 'empty'} type="file" multiple accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.html,.htm,image/jpeg,image/png,image/gif,image/webp" onChange={event => setFiles(Array.from(event.target.files ?? []).slice(0, 20))} className="sr-only" />
         </label>
-        <label className="block text-sm">Or paste notes<textarea value={text} onChange={event => { setText(event.target.value); setFiles([]) }} maxLength={200000} rows={5} placeholder="Hotels, restaurants, activities…" className="field mt-2" /></label>
+        <label className="block text-sm">Or paste notes<textarea value={text} onChange={event => { setText(event.target.value); setFiles([]) }} maxLength={200000} rows={2} placeholder="Hotels, restaurants, activities…" className="field mt-2" /></label>
         <button type="button" disabled={!file && !text.trim()} onClick={() => void read()} className="btn btn-primary w-full">Find places</button>
       </fieldset>
     </> : <>
