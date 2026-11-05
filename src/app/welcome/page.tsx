@@ -12,8 +12,9 @@ export default async function WelcomePage({ searchParams }: { searchParams: Prom
   const userId = (await auth())?.user?.id
   if (!userId) redirect('/login?callbackUrl=%2Fwelcome')
   const tripId = saveTripId((await searchParams).saveTrip ?? null)
-  // Next: a few questions about their best vacation (then the feed, or the trip they were saving).
-  const next = `/welcome/trip${tripId ? `?saveTrip=${encodeURIComponent(tripId)}` : ''}`
+  // Next: bringing trips in with an AI assistant, then a few questions about their best vacation (then the feed, or
+  // the trip they were saving).
+  const next = `/welcome/assistant${tripId ? `?saveTrip=${encodeURIComponent(tripId)}` : ''}`
 
   const [suggested, following] = await Promise.all([
     suggestedPeople(userId),

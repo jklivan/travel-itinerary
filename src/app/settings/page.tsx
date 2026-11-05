@@ -9,6 +9,7 @@ import BlockButton from '@/components/BlockButton'
 import UserAvatar from '@/components/UserAvatar'
 import DisconnectAssistant from '@/components/DisconnectAssistant'
 import TripInbox from '@/components/TripInbox'
+import AssistantConnect from '@/components/AssistantConnect'
 import { inboxAddress } from '@/lib/inbox'
 
 export default async function SettingsPage() {
@@ -33,6 +34,7 @@ export default async function SettingsPage() {
         </div>
       </section>
       {me && <TripInbox initialAddress={me.inboxToken ? inboxAddress(me.inboxToken) : null} initialSenders={me.inboxSenders} accountEmail={me.email} />}
+      <AssistantConnect />
       {connected.length > 0 && <section className="panel mt-6 p-5" aria-labelledby="assistants-heading">
         <h2 id="assistants-heading" className="type-label text-ink">Connected assistants</h2>
         <p className="mt-0.5 text-sm text-brown">These can see your trips and add private plans.</p>
