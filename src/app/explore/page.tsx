@@ -15,7 +15,8 @@ import { locationConditions } from '@/lib/locationMatch'
 import { DAY_TRIP_TAG, isDayTrip } from '@/lib/dayTrips'
 import { after } from 'next/server'
 import { locateDestinations } from '@/lib/locateDestinations'
-import { MapPin } from 'lucide-react'
+import { ChevronRight, MapPin } from 'lucide-react'
+import UserAvatar from '@/components/UserAvatar'
 import ExploreMap from '@/components/ExploreMap'
 import ExploreTripFilters from '@/components/ExploreTripFilters'
 import NearbyDayTrips from '@/components/NearbyDayTrips'
@@ -247,6 +248,23 @@ const REGION_GRADIENT: Record<string, string> = {
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────────
+// Search: people whose name has the words searched for (anyone with a posted trip, or someone you follow), people
+// you follow first, then whoever has posted most. Not you, and not anyone blocked either way.
+async function peopleNamed(q: string, userId: string | null) {
+  const words = q.trim().split(/\s+/).filter(word => word.length >= 2).slice(0, 4)
+  if (!words.length) return []
+  const rows = await prisma.user.findMany({
+    where: {
+      AND: [...words.map(word => ({ name: { contains: word, mode: 'insensitive' as const } })), notBlocked(userId), ...(userId ? [{ id: { not: userId } }] : [])],
+      OR: [{ itineraries: { some: { visibility: 'public' } } }, ...(userId ? [{ followers: { some: { followerId: userId } } }] : [])],
+    },
+    select: { id: true, name: true, image: true, _count: { select: { itineraries: { where: { visibility: 'public' } } } }, followers: { where: { followerId: userId ?? '' }, select: { id: true }, take: 1 } },
+    take: 20,
+  })
+  return rows.map(row => ({ id: row.id, name: row.name, image: row.image, trips: row._count.itineraries, following: row.followers.length > 0 }))
+    .sort((a, b) => Number(b.following) - Number(a.following) || b.trips - a.trips).slice(0, 6)
+}
+
 type ExploreParams = { country?: string; city?: string; type?: string; q?: string; view?: string; tag?: string; tags?: string; types?: string; region?: string; location?: string }
 
 export default async function ExplorePage({
@@ -271,7 +289,7 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
 
   // ── Natural language search ────────────────────────────────────────────────
   if (q) {
-    const parsed = await parseSearchQuery(q)
+    const [parsed, people] = await Promise.all([parseSearchQuery(q), peopleNamed(q, userId)])
     const where: ItineraryWhereInput = {}
     if (parsed.postType) where.postType = parsed.postType
     if (parsed.audience) where.audience = parsed.audience
@@ -310,6 +328,18 @@ async function ExploreResults({ params }: { params: ExploreParams }) {
     return (
       <div className="max-w-xl mx-auto px-5 py-6 sm:px-8">
         <ExploreSearchBar />
+        {/* People whose name matches (friends first): tap to open their profile. */}
+        {people.length > 0 && <section aria-labelledby="people-results" className="mb-5">
+          <h2 id="people-results" className="type-label mb-2 text-ink">People</h2>
+          <ul className="panel divide-y divide-line-soft">{people.map(person => <li key={person.id}>
+            <Link href={`/user/${person.id}`} className="flex min-h-14 items-center gap-3 px-4 py-2.5 hover:bg-paper">
+              <UserAvatar name={person.name} image={person.image} size={36} />
+              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-ink">{person.name}</span>
+                <span className="block text-xs text-muted">{[person.following && 'Following', `${person.trips} ${person.trips === 1 ? 'trip' : 'trips'} posted`].filter(Boolean).join(' · ')}</span></span>
+              <ChevronRight size={16} className="shrink-0 text-muted" />
+            </Link>
+          </li>)}</ul>
+        </section>}
         <SearchFiltersDisplay parsed={parsed} />
         <p className="text-sm text-brown mb-4">
           {itineraries.length} result{itineraries.length !== 1 ? 's' : ''} for &ldquo;{q}&rdquo;

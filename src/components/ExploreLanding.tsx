@@ -19,7 +19,7 @@ export default function ExploreLanding() {
     <form action="/explore" className={styles.search} role="search">
       <label className="sr-only" htmlFor="explore-search">Search destinations, trip types, or keywords</label>
       <button type="submit" aria-label="Search Explore"><Search size={22} /></button>
-      <input id="explore-search" name="q" type="search" required placeholder="Search destinations, trip types, or keywords" />
+      <input id="explore-search" name="q" type="search" required placeholder="Search destinations, trip types or friends" />
     </form>
     <nav aria-label="Ways to explore" className={styles.grid}>
       {/* Same polaroid tiles as Search by trip type and the new-plan choices, with an arrow. */}
