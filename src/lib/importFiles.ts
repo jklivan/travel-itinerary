@@ -108,21 +108,32 @@ export async function fetchExtraction(payload: ({ text: string } | { base64: str
       const cancelReading = () => controller.abort()
       externalSignal?.addEventListener('abort', cancelReading, { once: true })
       const timeout = setTimeout(() => controller.abort(), IMPORT_TIMEOUT_MS)
+      // This reading's id: the server saves its result under it, so if the phone switches apps mid-reading (iOS
+      // freezes the page and the answer is lost), coming back fetches the saved result instead.
+      const jobId = crypto.randomUUID()
+      const tracker = trackHidden()
       try {
-        const res = await fetch('/api/extract-pdf', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        })
-        // Keep the timeout and Cancel listener active until the body is read.
-        if (res.ok) {
-          const data = await res.json()
-          if (externalSignal?.aborted) throw new Error('Import cancelled.')
-          return data
-        }
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.error ?? 'Extraction failed.')
+        const posted = (async () => {
+          try {
+            const res = await fetch('/api/extract-pdf', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...payload, jobId }),
+              signal: controller.signal,
+            })
+            // Keep the timeout and Cancel listener active until the body is read.
+            if (res.ok) return await res.json() as ExtractionData
+            const body = await res.json().catch(() => ({}))
+            throw new Error(body.error ?? 'Extraction failed.')
+          } catch (err) {
+            // Lost while the app was in the background: the saved result decides (see resumed below).
+            if (tracker.wasHidden && !controller.signal.aborted) return new Promise<never>(() => {})
+            throw err
+          }
+        })()
+        const data = await Promise.race([posted, resumed(jobId, tracker, controller.signal)])
+        if (externalSignal?.aborted) throw new Error('Import cancelled.')
+        return data
       } catch (err) {
         lastError = err
         if (externalSignal?.aborted) throw new Error('Import cancelled.')
@@ -130,6 +141,7 @@ export async function fetchExtraction(payload: ({ text: string } | { base64: str
         if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 750))
       } finally {
         clearTimeout(timeout)
+        tracker.stop()
         externalSignal?.removeEventListener('abort', cancelReading)
       }
     }
@@ -137,3 +149,49 @@ export async function fetchExtraction(payload: ({ text: string } | { base64: str
     throw new Error(`Could not read ${label}. Please try again.${detail}`)
   }
 
+
+// Whether the page went into the background (another app, the phone locked) during a reading, and a way to wait
+// until it's back on screen.
+function trackHidden() {
+  const tracker = { wasHidden: document.visibilityState === 'hidden', stopped: false, back: null as null | (() => void), stop: () => {} }
+  const onChange = () => {
+    if (document.visibilityState === 'hidden') tracker.wasHidden = true
+    else if (tracker.wasHidden) tracker.back?.()
+  }
+  document.addEventListener('visibilitychange', onChange)
+  tracker.stop = () => { tracker.stopped = true; document.removeEventListener('visibilitychange', onChange) }
+  return tracker
+}
+
+const pause = (ms: number, signal: AbortSignal) => new Promise<void>((resolve, reject) => {
+  const timer = setTimeout(resolve, ms)
+  signal.addEventListener('abort', () => { clearTimeout(timer); reject(new Error('aborted')) }, { once: true })
+})
+
+// After the page comes back from the background: the saved result of this reading (checked every few seconds while
+// the server is still reading). Never settles while the page stays on screen, so the request's own answer wins then.
+// If the server never got the reading, it fails so the reading is sent again.
+function resumed(jobId: string, tracker: ReturnType<typeof trackHidden>, signal: AbortSignal): Promise<ExtractionData> {
+  return new Promise<ExtractionData>((resolve, reject) => {
+    signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true })
+    let polling = false
+    const poll = async () => {
+      if (polling) return
+      polling = true
+      let unknown = 0
+      try {
+        // Until this reading is settled either way (its own answer may still win).
+        while (!signal.aborted && !tracker.stopped) {
+          const res = await fetch(`/api/extract-pdf?job=${jobId}`, { cache: 'no-store', signal }).catch(() => null)
+          const job = res?.ok ? await res.json().catch(() => null) as { status?: string; result?: ExtractionData; error?: string } | null : null
+          if (job?.status === 'done' && job.result) return resolve(job.result)
+          if (job?.status === 'failed') return reject(new Error(job.error || 'Extraction failed.'))
+          if (job?.status === 'unknown' && ++unknown >= 3) return reject(new Error('The reading didn’t reach Postcard.'))
+          await pause(2500, signal)
+        }
+      } catch (err) { reject(err) }
+    }
+    tracker.back = () => void poll()
+    if (tracker.wasHidden && document.visibilityState === 'visible') void poll()
+  })
+}
