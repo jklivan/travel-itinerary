@@ -14,8 +14,10 @@ const config: CapacitorConfig = {
     // so the plugin itself doesn't resize), and the header and bottom bar stay put when the keyboard closes.
     Keyboard: { resize: KeyboardResize.None },
   },
+  // The site the app opens: the live one, or the preview for a TestFlight-only test build (npm run ios:preview;
+  // npm run ios:sync switches back before an App Store build).
   server: {
-    url: 'https://travel-itinerary-gules.vercel.app',
+    url: process.env.POSTCARD_APP_URL || 'https://travel-itinerary-gules.vercel.app',
     cleartext: false,
   },
 }

@@ -10,6 +10,7 @@
     "start": "next start",
     "lint": "eslint",
     "ios:sync": "npx cap sync ios",
+    "ios:preview": "POSTCARD_APP_URL=https://postcard-travel-preview.vercel.app npx cap sync ios",
     "ios:open": "npx cap open ios",
     "postinstall": "prisma generate"
   },
