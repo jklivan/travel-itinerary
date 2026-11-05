@@ -8,8 +8,7 @@ import SignOutButton from '@/components/SignOutButton'
 import BlockButton from '@/components/BlockButton'
 import UserAvatar from '@/components/UserAvatar'
 import DisconnectAssistant from '@/components/DisconnectAssistant'
-import TripInbox from '@/components/TripInbox'
-import AssistantConnect from '@/components/AssistantConnect'
+import { ChevronRight, Mail, Sparkles } from 'lucide-react'
 import { inboxAddress } from '@/lib/inbox'
 
 export default async function SettingsPage() {
@@ -33,8 +32,17 @@ export default async function SettingsPage() {
           </p>
         </div>
       </section>
-      {me && <TripInbox initialAddress={me.inboxToken ? inboxAddress(me.inboxToken) : null} initialSenders={me.inboxSenders} accountEmail={me.email} />}
-      <AssistantConnect />
+      {/* Bringing trips in: connecting an AI assistant, and your Postcard email address. */}
+      <div className="mt-6 space-y-3">
+        <Link href="/settings/assistant" className="panel group flex min-h-20 items-center gap-4 p-4 hover:bg-paper">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Sparkles size={22} /></span>
+          <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-title">Connect an AI assistant</span><span className="mt-0.5 block text-sm text-muted">Muse, ChatGPT or Claude</span></span><ChevronRight size={18} className="text-link" />
+        </Link>
+        <Link href="/settings/email" className="panel group flex min-h-20 items-center gap-4 p-4 hover:bg-paper">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Mail size={22} /></span>
+          <span className="min-w-0 flex-1"><span className="block font-[family-name:var(--font-playfair)] text-title">Email trips to Postcard</span><span className="mt-0.5 block truncate text-sm text-muted">{me?.inboxToken ? inboxAddress(me.inboxToken) : 'Get your own address for confirmations'}</span></span><ChevronRight size={18} className="text-link" />
+        </Link>
+      </div>
       {connected.length > 0 && <section className="panel mt-6 p-5" aria-labelledby="assistants-heading">
         <h2 id="assistants-heading" className="type-label text-ink">Connected assistants</h2>
         <p className="mt-0.5 text-sm text-brown">These can see your trips and add private plans.</p>

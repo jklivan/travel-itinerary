@@ -24,7 +24,7 @@ export default function TripInbox({ initialAddress, initialSenders, accountEmail
     try { await navigator.clipboard.writeText(address); setMessage('Copied.') } catch { setMessage('Select the address and copy it.') }
   }
 
-  return <section className="panel mt-6 space-y-3 p-5" aria-labelledby="inbox-heading">
+  return <section className="panel space-y-3 p-5" aria-labelledby="inbox-heading">
     <h2 id="inbox-heading" className="type-label text-ink">Send trips to Postcard</h2>
     <p className="text-sm text-brown">Email booking confirmations or a trip summary to your Postcard address, or ask your assistant to. Postcard adds the places to the private plan they belong to, or starts a new one, and emails you back.</p>
     {!address ? <button type="button" disabled={busy} onClick={() => void run(() => createInbox())} className="btn btn-primary btn-sm"><Mail size={16} />Get my address</button> : <>

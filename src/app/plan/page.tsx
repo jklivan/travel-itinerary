@@ -4,8 +4,8 @@ import Link from 'next/link'
 import NewPlanForm from './NewPlanForm'
 import { ChevronRight, Sparkles } from 'lucide-react'
 
-export default async function PlansPage({ searchParams }: { searchParams: Promise<{ savePlace?: string; saveStory?: string; from?: string }> }) {
-  const { savePlace, saveStory, from } = await searchParams
+export default async function PlansPage({ searchParams }: { searchParams: Promise<{ savePlace?: string; saveStory?: string; from?: string; import?: string }> }) {
+  const { savePlace, saveStory, from, import: openImport } = await searchParams
   // Post → Another trip lands here too: the same new-trip step and planner, in the past tense, minus Plan with AI.
   const posting = from === 'post'
   const userId = (await auth())?.user?.id
@@ -21,7 +21,7 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
         <span className="min-w-0 flex-1"><span className="block font-semibold">Plan with AI</span><span className="block text-sm text-link">Ask where to go, using what you and your friends loved.</span></span>
         <ChevronRight size={18} className="shrink-0 text-link transition-transform group-hover:translate-x-0.5" />
       </Link>}
-      <NewPlanForm saveStory={typeof saveStory === 'string' && saveStory.length <= 200 ? saveStory : undefined} savePlace={typeof savePlace === 'string' && savePlace.length <= 200 ? savePlace : undefined} past={posting} />
+      <NewPlanForm saveStory={typeof saveStory === 'string' && saveStory.length <= 200 ? saveStory : undefined} savePlace={typeof savePlace === 'string' && savePlace.length <= 200 ? savePlace : undefined} past={posting} initialImport={openImport === '1'} />
     </section>
   </div>
 }

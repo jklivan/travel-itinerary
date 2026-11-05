@@ -18,7 +18,7 @@ export const inputClass = 'field mt-1.5'
 export const buttonClass = 'btn btn-primary'
 
 // past: posting a trip they've already taken (Post → Another trip), so the wording is in the past tense.
-export default function NewPlanForm({ savePlace, saveStory, past = false }: { savePlace?: string; saveStory?: string; past?: boolean }) {
+export default function NewPlanForm({ savePlace, saveStory, past = false, initialImport = false }: { savePlace?: string; saveStory?: string; past?: boolean; initialImport?: boolean }) {
   const router = useRouter()
   const clientId = useRef('')
   const placeCopyId = useRef('')
@@ -42,7 +42,7 @@ export default function NewPlanForm({ savePlace, saveStory, past = false }: { sa
   const [audience, setAudience] = useState('family')
   // "Import notes or a file" opens here, under the buttons; places are read before the plan is made, so
   // notes with no places don't leave an empty plan behind.
-  const [importOpen, setImportOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(initialImport)
   const [notes, setNotes] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [stage, setStage] = useState('')
