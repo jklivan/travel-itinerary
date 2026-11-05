@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { previousPage } from '@/lib/backNavigation'
 import { tripReturnPath } from '@/lib/tripNavigation'
+import FeedTips from './FeedTips'
 
 // Where Back goes when there's no earlier page in the app (e.g. a link opened directly).
 function parentPath(pathname: string, search: string) {
@@ -15,11 +16,11 @@ function parentPath(pathname: string, search: string) {
   return parent || '/'
 }
 
-// Left of the logo: Back everywhere but the Feed (where Post is in the bottom bar). Pages don't have their own Back links.
+// Left of the logo: Back everywhere but the Feed, which has Tips instead. Pages don't have their own Back links.
 export default function HeaderLeft() {
   const pathname = usePathname()
   const router = useRouter()
-  if (pathname === '/') return <span aria-hidden="true" className="size-11" />
+  if (pathname === '/') return <FeedTips />
   return <button type="button" onClick={() => {
     if (previousPage(window.history.state)) router.back()
     else router.push(parentPath(pathname, window.location.search))

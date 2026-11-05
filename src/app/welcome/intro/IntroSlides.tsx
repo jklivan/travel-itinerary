@@ -4,7 +4,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, ChevronRight, FileText, Mail, Sparkles } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import NewUserTips from '@/components/NewUserTips'
 import styles from './intro.module.css'
 
 // Each slide: a heading, a line about it, and a real screenshot of that page (public/brand/intro, taken at phone size
@@ -41,7 +42,7 @@ export default function IntroSlides({ next }: { next: string }) {
         className="flex w-full shrink-0 snap-center flex-col items-center px-6">
         <h1 className={`type-display ${styles.headline} max-w-sm text-center`}>{slide.title}</h1>
         <p className="mt-3 max-w-sm text-center text-base leading-snug text-link">{slide.text}</p>
-        {slide.tips ? <TipsAndTricks next={next} /> : <div className={`${styles.stage} mt-5 flex min-h-0 w-full flex-1 items-start justify-center`}>
+        {slide.tips ? <NewUserTips back={next} className="mt-5 min-h-0 w-full max-w-sm flex-1 overflow-y-auto pb-2" /> : <div className={`${styles.stage} mt-5 flex min-h-0 w-full flex-1 items-start justify-center`}>
           <div className={`${styles.phone} shadow-pop`}>
             <div className={styles.screen}>
               {slide.video
@@ -73,31 +74,4 @@ function SlideVideo({ src, poster, active }: { src: string; poster: string; acti
     if (active) { element.currentTime = 0; void element.play().catch(() => {}) } else element.pause()
   }, [active])
   return <video ref={video} src={src} poster={poster} muted loop playsInline preload="auto" aria-hidden="true" className="absolute inset-0 size-full object-cover object-top" />
-}
-
-// The last slide: three ways to bring trips in (each opens its page; Continue there comes back here to sign-up's next
-// step), and a few more tips.
-function TipsAndTricks({ next }: { next: string }) {
-  const back = encodeURIComponent(next)
-  const tiles = [
-    { href: `/settings/assistant?next=${back}`, Icon: Sparkles, title: 'Connect an AI agent', text: 'Link an AI trip planner (like Muse, ChatGPT or Claude) to create and import itineraries for you.' },
-    { href: '/plan?from=post&import=1', Icon: FileText, title: 'Import a trip', text: 'Upload a PDF, notes or an itinerary and we’ll turn it into a shareable trip.' },
-    { href: `/settings/email?next=${back}`, Icon: Mail, title: 'Email it to Postcard', text: 'Forward itineraries, confirmations or notes to your own Postcard address and we’ll make a trip for you.' },
-  ]
-  return <div className="mt-5 min-h-0 w-full max-w-sm flex-1 space-y-3 overflow-y-auto pb-2">
-    {tiles.map(({ href, Icon, title, text }) => <Link key={title} href={href} className="panel-hint flex items-center gap-4 p-4 text-left text-ink transition-colors hover:bg-mist-strong">
-      <Icon size={28} strokeWidth={1.5} className="shrink-0 text-link" />
-      <span className="min-w-0 flex-1"><span className="block text-base font-semibold">{title}</span><span className="mt-0.5 block text-sm leading-snug text-muted">{text}</span></span>
-      <ChevronRight size={18} className="shrink-0 text-link" />
-    </Link>)}
-    <div className="rounded-2xl bg-cream p-4 text-left">
-      <p className="flex items-center gap-2 text-base font-semibold text-ink"><Sparkles size={18} className="text-link" />More tips</p>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink">
-        <li>Post a full trip or just your favorite spots</li>
-        <li>Edit or reorder your itinerary anytime</li>
-        <li>Keep trips private or share with friends</li>
-        <li>Save places to a folder for later</li>
-      </ul>
-    </div>
-  </div>
 }
