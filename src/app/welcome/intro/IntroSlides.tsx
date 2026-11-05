@@ -19,7 +19,7 @@ const SLIDES: { title: string; text: string; image?: string; video?: string; tip
   { title: 'Bring in trips you’ve already taken.', text: 'Have an itinerary or notes? Import a PDF, doc, email or screenshot and Postcard turns it into a trip.', image: '/brand/intro/import.jpg' },
   { title: 'Stay organized.', text: 'See your posted trips, plan your upcoming adventures, and save places you love, all in one place.', image: '/brand/intro/trips.jpg' },
   // Last: ways to bring trips in, each opening its page (and Continue there comes back to signing up).
-  { title: 'Tips & tricks for new users.', text: 'Quick ways to get the most out of Postcard.', tips: true },
+  { title: 'Tips for new users.', text: 'Quick ways to get the most out of Postcard.', tips: true },
 ]
 
 // Full screen over the app's header and bottom bar. Swipe between slides (they snap), or tap Next; Skip and the
