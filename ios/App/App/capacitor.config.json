@@ -19,6 +19,7 @@
 		"cleartext": false
 	},
 	"packageClassList": [
+		"InAppReviewPlugin",
 		"KeyboardPlugin",
 		"PushNotificationsPlugin"
 	]

@@ -1,3 +1,4 @@
+import AskForRating from '@/components/AskForRating'
 import { prisma } from '@/lib/prisma'
 import { notBlocked } from '@/lib/blocks'
 import { auth } from '@/auth'
@@ -96,6 +97,7 @@ async function FeedResults({ searchQuery, feed, posted }: { searchQuery: string;
       </div>}
 
       {justPosted && feed === 'all' && <p role="status" className="mb-3 rounded-xl bg-mist px-4 py-3 text-sm text-ink">Your postcard is posted.</p>}
+      {justPosted && <AskForRating />}
       {feed !== 'all' ? (
         <div className="panel-dashed px-5 py-10 text-center">
           <p className="font-[family-name:var(--font-playfair)] text-title text-ink">{feed === 'friends' ? 'Friends’ trips are coming soon.' : 'Expert recommendations are coming soon.'}</p>
