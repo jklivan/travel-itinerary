@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { generateKeyPairSync, verify } from 'node:crypto'
-import { appleClientSecret } from '../src/lib/appleSecret.ts'
+import { appleClientSecret, readPem } from '../src/lib/appleSecret.ts'
 
 // A throwaway P-256 key stands in for the Sign in with Apple .p8 key.
 test('Apple client secret: an ES256 JWT for Apple, signed with the key; off until every setting is there', () => {
@@ -17,4 +17,11 @@ test('Apple client secret: an ES256 JWT for Apple, signed with the key; off unti
   assert.ok(verify('sha256', Buffer.from(`${head}.${body}`), { key: publicKey, dsaEncoding: 'ieee-p1363' }, Buffer.from(signature, 'base64url')))
   delete process.env.APPLE_KEY_ID
   assert.equal(appleClientSecret(), null)
+})
+
+test('the pasted key is read with or without its line breaks and BEGIN/END lines', () => {
+  const { privateKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' })
+  const pem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString()
+  const body = pem.replace(/-----[^-]+-----/g, '').replace(/\s/g, '')
+  for (const pasted of [pem, pem.replace(/\n/g, ' '), pem.replace(/\n/g, '\\n'), body, `  ${pem}  `]) assert.equal(readPem(pasted), pem)
 })
