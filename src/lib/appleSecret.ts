@@ -13,7 +13,8 @@ export function appleClientSecret(): string | null {
     const key = createPrivateKey(readPem(pem))
     return `${body}.${sign('sha256', Buffer.from(body), { key, dsaEncoding: 'ieee-p1363' }).toString('base64url')}`
   } catch {
-    console.error('[auth] APPLE_PRIVATE_KEY could not be read; Sign in with Apple is off')
+    // Only the shape of what was pasted (never the key): a .p8 key is about 200 characters with BEGIN/END lines.
+    console.error('[auth] APPLE_PRIVATE_KEY could not be read; Sign in with Apple is off', JSON.stringify({ length: pem.length, hasBegin: pem.includes('BEGIN'), base64Length: readPem(pem).length }))
     return null
   }
 }
