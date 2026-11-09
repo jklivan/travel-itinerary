@@ -70,3 +70,15 @@ export async function socialSignIn(formData: FormData) {
   // Then /welcome/continue: the intro for a brand-new account, otherwise the trip they were saving or the Feed.
   await signIn(provider, { redirectTo: `/welcome/continue${tripId ? `?saveTrip=${encodeURIComponent(tripId)}` : ''}` })
 }
+
+// Inside the iPhone app: the ID token from native Apple or Google sign-in (checked in auth.ts), then on like socialSignIn.
+export async function nativeSignIn(provider: 'apple' | 'google', idToken: string, name: string, tripId: string): Promise<{ error?: string }> {
+  try {
+    const trip = saveTripId(tripId)
+    await signIn('native', { provider, idToken, name, redirectTo: `/welcome/continue${trip ? `?saveTrip=${encodeURIComponent(trip)}` : ''}` })
+  } catch (e) {
+    if (e instanceof AuthError) return { error: 'That sign-in didn’t go through. Try again, or sign in with your email.' }
+    throw e
+  }
+  return {}
+}
