@@ -5,6 +5,9 @@ import Apple from 'next-auth/providers/apple'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { followSuggestedPeople } from '@/lib/suggestedPeople'
+import { appleClientSecret } from '@/lib/appleSecret'
+
+const appleSecret = appleClientSecret()
 
 // Apple posts its answer back from appleid.apple.com, so the cookies that check it must be sent cross-site.
 const crossSite = { httpOnly: true, sameSite: 'none' as const, path: '/', secure: true }
@@ -28,9 +31,9 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         return { id: user.id, email: user.email, name: user.name }
       },
     }),
-    // Each shows up once its keys are set (AUTH_GOOGLE_ID/SECRET, AUTH_APPLE_ID/SECRET). Sign-in only: name and email.
+    // Each shows up once its keys are set (AUTH_GOOGLE_ID/SECRET; Apple's from lib/appleSecret). Sign-in only: name and email.
     ...(process.env.AUTH_GOOGLE_ID ? [Google] : []),
-    ...(process.env.AUTH_APPLE_ID ? [Apple] : []),
+    ...(appleSecret ? [Apple({ clientId: process.env.AUTH_APPLE_ID!.trim(), clientSecret: appleSecret })] : []),
   ],
   pages: {
     signIn: '/login',
