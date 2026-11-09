@@ -149,6 +149,8 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
   // After Post trip: offer to add photos first when some places have none (then ratings, then it posts).
   const [photosPrompt, setPhotosPrompt] = useState(false)
   const places = trip.destinations.flatMap(d => d.items.map(item => ({ ...item, destinationId: d.id, destinationName: d.name, destination: [d.name, d.country].filter(Boolean).join(', ') })))
+  // Trip photos not on any place yet: the photo sorter's pile to tap into places.
+  const photoPile = (trip.tripPhotos ?? []).filter(url => !places.some(place => place.photos.includes(url)))
   // Trips with more than one destination split their places under a heading for each.
   const destinations = trip.destinations.filter(d => d.items.length || d.name !== 'Destination to decide')
   const multiDestination = destinations.length > 1
@@ -280,8 +282,8 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
     {needsPlace && !places.length && <p role="alert" className="panel-hint mb-3 p-3 text-sm text-ink">Add at least one place before you post this trip: a place you stayed, ate or visited.</p>}
     <div ref={panelsRef}>
     {addForm('top')}
-    {sortingPhotos && (places.length ? <PhotoSorter places={places} startOpen onClose={() => setSortingPhotos(false)} />
-      : <p className="panel-hint mb-4 p-3 text-sm text-ink">Add your places first, then choose the trip’s photos and tap them into each place.</p>)}
+    {/* Photos can be added before places: they wait on the trip until they're tapped into places. */}
+    {sortingPhotos && <PhotoSorter tripId={trip.id} places={places} initialPile={photoPile} startOpen onClose={() => setSortingPhotos(false)} />}
     {importing && <div id="plan-import-panel"><PlanImport tripId={trip.id} trip={trip.start && trip.end ? { start: trip.start, end: trip.end } : null} destinations={destinations.filter(d => d.name !== 'Destination to decide').map(d => ({ name: d.name, country: d.country }))} onClose={() => setImporting(false)} /></div>}
     </div>
     <div role="tablist" aria-label="Trip view" className="tabs mb-4 mt-1">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className="tab">{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
@@ -343,7 +345,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
       <div className="justify-self-end">{trip.isOwner !== false && <DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" />}</div>
     </div>
     {trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="panel w-full max-w-md p-5 shadow-pop"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="type-title">A few more details</h2><p className="mt-1 text-sm text-muted">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-title leading-none text-muted" aria-label="Close">×</button></div><div className="mt-5 space-y-5">{allPhotos.length > 0 && <fieldset><legend className="mb-1 text-sm font-semibold text-link">Choose cover photo</legend><p className="mb-1 text-xs text-muted">The photo people see first. Scroll sideways to see them all.</p><CoverPhotoPicker photos={allPhotos} value={publishCover} onChange={url => { setPublishCover(url); setPublishFocus(null) }} />{publishCover && <div className="mt-2"><CoverFramer url={publishCover} value={publishFocus} onChange={setPublishFocus} /></div>}</fieldset>}<TripExtras budget={publishBudget} onBudget={setPublishBudget} rating={publishRating} onRating={setPublishRating} legendClass="mb-2 text-sm font-semibold text-link" />{/* Why posting didn't go through, right above the button (it used to show behind this box). */}{publishMessage && <p role="alert" className="rounded-xl bg-cream p-3 text-sm text-danger">{publishMessage}{!places.length && <> <button type="button" onClick={() => { setPublishFormat(null); setPublishMessage(''); setTab('places'); setImporting(false); setAdding({ at: 'top' }) }} className="font-semibold text-link underline underline-offset-2">Add a place</button></>}</p>}<button type="button" disabled={publishing} onClick={() => void continueToPost(publishFormat)} className="btn btn-primary w-full">{publishing ? 'Posting…' : 'Post trip'}</button></div></div></div>}
-    {photosPrompt && <PhotosPrompt places={places} missing={withoutPhotos.length} onClose={() => setPhotosPrompt(false)} onNext={() => void afterPhotos()} posting={publishing} last={!unrated.length} />}
+    {photosPrompt && <PhotosPrompt tripId={trip.id} pile={photoPile} places={places} missing={withoutPhotos.length} onClose={() => setPhotosPrompt(false)} onNext={() => void afterPhotos()} posting={publishing} last={!unrated.length} />}
     {unratedPrompt && <UnratedPrompt places={places.filter(place => unratedPrompt.includes(place.id))} onClose={() => setUnratedPrompt(null)} onPost={() => void postNow()} posting={publishing} />}
     {postError && <p role="alert" className="panel-hint fixed inset-x-4 bottom-[calc(var(--app-bottom-clearance)+0.5rem)] z-[75] mx-auto max-w-md p-3 text-sm text-danger">{postError}</p>}
   </div></TripDates.Provider></GroupTrip.Provider></DayNames.Provider>
@@ -429,12 +431,12 @@ function AddPlace({ trip, maxDay, initialDestination, initialDestinationId, init
 // After "A few more details" → Continue: rate places that have no rating, right here. Each tap saves.
 // Before posting: places without photos. The trip's photos go in all at once (in the iPhone app, straight from the
 // trip's dates), then tap them into places. Then ratings, or straight to posting.
-function PhotosPrompt({ places, missing, onClose, onNext, posting, last }: { places: Parameters<typeof PhotoSorter>[0]['places']; missing: number; onClose: () => void; onNext: () => void; posting: boolean; last: boolean }) {
+function PhotosPrompt({ tripId, pile, places, missing, onClose, onNext, posting, last }: { tripId: string; pile: string[]; places: Parameters<typeof PhotoSorter>[0]['places']; missing: number; onClose: () => void; onNext: () => void; posting: boolean; last: boolean }) {
   return <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="photos-heading">
     <div className="panel w-full max-w-md min-w-0 p-5 shadow-pop">
       <div className="flex items-start justify-between gap-4"><div className="min-w-0"><h2 id="photos-heading" className="type-title">Add your photos?</h2><p className="mt-1 text-sm text-muted">{missing === 0 ? 'Every place has photos. Thanks!' : missing === 1 ? 'One place doesn’t have photos yet.' : `${missing} places don’t have photos yet.`} Trips with photos are the ones friends open.</p></div>
         <button type="button" onClick={onClose} aria-label="Close" className="btn-icon shrink-0"><XIcon size={18} /></button></div>
-      <div className="mt-4 max-h-[55dvh] overflow-y-auto"><PhotoSorter places={places} prompt="Choose all your trip photos at once, then tap them into places." /></div>
+      <div className="mt-4 max-h-[55dvh] overflow-y-auto"><PhotoSorter tripId={tripId} places={places} initialPile={pile} prompt="Choose all your trip photos at once, then tap them into places." /></div>
       <button type="button" onClick={onNext} disabled={posting} className="btn btn-primary mt-4 w-full">{posting ? 'Posting…' : missing === 0 ? (last ? 'Post trip' : 'Next') : (last ? 'Skip and post' : 'Skip')}</button>
     </div>
   </div>
