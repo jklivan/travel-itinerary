@@ -75,6 +75,8 @@ For each recommendation:
 - friendName = the friend's name when source is "friend"; otherwise "".
 - destination = the city or area; country = the country.
 - price = for a hotel you priced with hotel_prices, e.g. "from $420/night · Jun 3–7", or "from $780/night · 2 rooms · Jun 3–7" for more than one room; otherwise "".
+- A trip with a length (they gave one, it follows from their dates, or you suggested it) gets a day-by-day itinerary, not a list by category: a sentence or two of overview, then Day 1 to the last day, a line or two each (where you are, what you do, where you eat), and every recommendation on its day.
+- day = the day of the trip the place is on in that itinerary (1 = the first day; a hotel: the first day you stay there). 0 when it isn't part of a day-by-day plan (alternatives, general ideas, trips without a length yet).
 - tripOption = a short name (2-4 words) for the trip idea this place belongs to, e.g. "Amalfi Coast" or "Greek islands". When you suggest alternative trips, give each its own name and use exactly the same name for every place in it. Reuse a name from earlier in the conversation when adding to that idea.
 Also return, for the conversation list:
 - title = a short, evocative title for the whole conversation so far (2-5 words, no quotes or emoji), e.g. "Amalfi coast honeymoon" or "Greenwich dinner favorites". Update it as the conversation develops.
@@ -106,13 +108,14 @@ const schema = {
     recommendations: { type: 'array', items: {
       type: 'object',
       additionalProperties: false,
-      required: ['name', 'type', 'destination', 'country', 'tripOption', 'why', 'price', 'source', 'sourceItemId', 'friendName'],
+      required: ['name', 'type', 'destination', 'country', 'tripOption', 'day', 'why', 'price', 'source', 'sourceItemId', 'friendName'],
       properties: {
         name: { type: 'string' },
         type: { type: 'string', enum: ['hotel', 'food_drink', 'activity'] },
         destination: { type: 'string' },
         country: { type: 'string' },
         tripOption: { type: 'string' },
+        day: { type: 'integer' },
         why: { type: 'string' },
         price: { type: 'string' },
         source: { type: 'string', enum: ['friend', 'you', 'claude'] },
@@ -123,7 +126,7 @@ const schema = {
   },
 }
 
-type RawRecommendation = { name: string; type: 'hotel' | 'food_drink' | 'activity'; destination: string; country: string; tripOption: string; why: string; price?: string; source: 'friend' | 'you' | 'claude'; sourceItemId: string; friendName: string }
+type RawRecommendation = { name: string; type: 'hotel' | 'food_drink' | 'activity'; destination: string; country: string; tripOption: string; day?: number; why: string; price?: string; source: 'friend' | 'you' | 'claude'; sourceItemId: string; friendName: string }
 
 export async function POST(request: Request) {
   const userId = (await auth())?.user?.id
@@ -199,7 +202,7 @@ export async function POST(request: Request) {
       const card = (rec: RawRecommendation, index: number, messageId: string) => {
         const source = context.items.get(rec.sourceItemId)
         return {
-          key: `${messageId}:${index}`, name: rec.name, type: rec.type, why: rec.why, price: rec.price?.trim() || '', tripOption: rec.tripOption.trim(), description: '',
+          key: `${messageId}:${index}`, name: rec.name, type: rec.type, why: rec.why, price: rec.price?.trim() || '', tripOption: rec.tripOption.trim(), day: Number.isInteger(rec.day) && rec.day! >= 1 && rec.day! <= 60 ? rec.day! : null, description: '',
           destination: source?.destination ?? rec.destination, country: source?.country ?? (rec.country || null),
           source: source ? (source.mine ? 'you' : 'friend') : 'claude' as const,
           friendName: source && !source.mine ? source.owner : '',

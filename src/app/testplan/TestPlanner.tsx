@@ -6,7 +6,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core'
 import { Keyboard } from '@capacitor/keyboard'
 import { useRouter } from 'next/navigation'
-import { ArrowUp, ArrowUpRight, Camera, Check, ChevronRight, EyeOff, History, Hotel, Map as MapIcon, Maximize2, Minimize2, Plane, Plus, Sparkles, Users, Utensils, MapPin, SquarePen, X } from 'lucide-react'
+import { ArrowUp, ArrowUpRight, CalendarDays, Camera, Check, ChevronRight, EyeOff, History, Hotel, Map as MapIcon, Maximize2, Minimize2, Plane, Plus, Sparkles, Users, Utensils, MapPin, SquarePen, X } from 'lucide-react'
 import styles from '../itinerary/[id]/places.module.css'
 import planningStyles from '../plan/[id]/Planner.module.css'
 import detailStyles from '@/components/PlaceDetailsCard.module.css'
@@ -25,7 +25,7 @@ import { formatDate } from '@/lib/placeDates'
 
 type Place = { id: string; name: string; type: string; notes: string | null; placeId: string | null; lat: number | null; lng: number | null; day: number | null; photos: string[]; destination: string }
 type Trip = { id: string; title: string; places: Place[] }
-type Recommendation = { key: string; name: string; type: 'hotel' | 'food_drink' | 'activity'; why: string; price?: string; destination: string; country: string | null; tripOption?: string; description?: string; source: 'friend' | 'you' | 'claude'; friendName: string; sourceItemId: string; placeId: string | null; lat: number | null; lng: number | null }
+type Recommendation = { key: string; name: string; type: 'hotel' | 'food_drink' | 'activity'; why: string; price?: string; destination: string; country: string | null; tripOption?: string; day?: number | null; description?: string; source: 'friend' | 'you' | 'claude'; friendName: string; sourceItemId: string; placeId: string | null; lat: number | null; lng: number | null }
 export type Turn = { role: 'user'; text: string } | { role: 'assistant'; text: string; recommendations: Recommendation[]; title?: string; summary?: string; ask?: Ask; tripDates?: { start: string; end: string }; tripDays?: number } | { role: 'preferences'; preferences: TravelPreferences }
 type MapPlace = TripMapPlace & { lat: number | null; lng: number | null; color?: string; label?: string }
 
@@ -359,7 +359,7 @@ export default function TestPlanner({ usualTravelers = null, trip: initialTrip, 
       // Hotels first, so the restaurants and sights that follow join the stay around them.
       for (const [index, rec] of [...recs.entries()].sort(([, a], [, b]) => Number(b.type === 'hotel') - Number(a.type === 'hotel'))) {
         const form = new FormData()
-        for (const [key, value] of Object.entries({ name: rec.name, type: rec.type, destination: [rec.destination, rec.country].filter(Boolean).join(', '), notes: `${rec.why}${rec.friendName ? ` — via ${rec.friendName}` : ''}`, clientId: crypto.randomUUID(), day: '', source: 'ai' })) form.set(key, value)
+        for (const [key, value] of Object.entries({ name: rec.name, type: rec.type, destination: [rec.destination, rec.country].filter(Boolean).join(', '), notes: `${rec.why}${rec.friendName ? ` — via ${rec.friendName}` : ''}`, clientId: crypto.randomUUID(), day: rec.day ? String(rec.day) : '', source: 'ai' })) form.set(key, value)
         if (placeIds[index]) form.set('placeId', placeIds[index]!)
         const result = await addPlanPlace(planId, form)
         if (result.error) { setError(`${rec.name}: ${result.error}`); break }
@@ -372,7 +372,10 @@ export default function TestPlanner({ usualTravelers = null, trip: initialTrip, 
       setNotice(current => ({ count: (current?.href === `/plan/${planId}` ? current.count : 0) + done.length, title, href: `/plan/${planId}`, days: done.length ? 'placing' : current?.days }))
       // Then onto days, following the day-by-day plan the chat gave (a trip without a length keeps them unscheduled),
       // once a few quick taps in a row are done.
-      if (done.length) { if (daysTimer.current) clearTimeout(daysTimer.current); daysTimer.current = setTimeout(() => void placeOnDays(planId, title), 2500) }
+      // Places the chat already put on a day go straight onto it; only the rest need planning.
+      const undated = recs.some(rec => done.includes(rec.key) && !rec.day)
+      if (done.length && !undated) setNotice(current => current ? { ...current, days: current.days === 'placing' && daysTimer.current ? 'placing' : 'placed' } : current)
+      else if (done.length) { if (daysTimer.current) clearTimeout(daysTimer.current); daysTimer.current = setTimeout(() => { daysTimer.current = null; void placeOnDays(planId, title) }, 2500) }
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not add these places.') }
     finally { setAdding(current => { const next = new Set(current); for (const rec of recs) next.delete(rec.key); return next }) }
   }
@@ -448,10 +451,12 @@ export default function TestPlanner({ usualTravelers = null, trip: initialTrip, 
                     <span className="mt-0.5 block text-xs text-ink-soft">{([['hotel', 'hotel', 'hotels'], ['food_drink', 'restaurant', 'restaurants'], ['activity', 'thing to do', 'things to do']] as const).map(([type, one, many]) => { const n = recs.filter(rec => rec.type === type).length; return n ? `${n} ${n === 1 ? one : many}` : null }).filter(Boolean).join(' · ')}</span>
                   </span>
                 </summary>
-                {sectionOrder.map(({ type, label, Icon }) => { const items = recs.filter(rec => rec.type === type); return items.length > 0 && <div key={type} className="mt-3">
+                {/* A day-by-day plan shows by day (hotel, things to do, then meals); otherwise by kind of place. */}
+                {(recs.some(rec => rec.day) ? [...[...new Set(recs.flatMap(rec => rec.day ? [rec.day] : []))].sort((a, b) => a - b).map(day => ({ key: `day-${day}`, label: `Day ${day}`, Icon: CalendarDays, items: recs.filter(rec => rec.day === day).sort((a, b) => sectionOrder.findIndex(section => section.type === a.type) - sectionOrder.findIndex(section => section.type === b.type)) })), { key: 'more', label: 'More ideas', Icon: Sparkles, items: recs.filter(rec => !rec.day) }]
+                  : sectionOrder.map(({ type, label, Icon }) => ({ key: type, label, Icon, items: recs.filter(rec => rec.type === type) }))).map(({ key, label, Icon, items }) => items.length > 0 && <div key={key} className="mt-3">
                   <h4 className="type-label mb-1.5 flex items-center gap-1.5"><Icon size={12} />{label}</h4>
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-2">{items.map(rec => <RecommendationCard key={rec.key} rec={rec} color={colorOf(rec)} grouped added={inTrip(rec)} adding={adding.has(rec.key)} onAdd={() => addSelected([rec])} />)}</div>
-                </div> })}
+                </div>)}
               </details>)}
               {/* The latest plan: add every place at once, instead of tapping each one. */}
               {index === planTurn && !thinking && unadded.length > 0 && <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
