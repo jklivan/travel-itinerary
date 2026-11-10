@@ -28,7 +28,7 @@ export default function ItineraryPdf({ tripId, title }: { tripId: string; title:
     finally { setBusy(false) }
   }
   return <span className="inline-flex flex-col">
-    <button type="button" onClick={() => void make()} disabled={busy} className="btn btn-outline btn-sm"><FileDown size={16} />{busy ? 'Making PDF…' : 'Itinerary PDF'}</button>
+    <button type="button" onClick={() => void make()} disabled={busy} className="btn btn-outline btn-sm"><FileDown size={16} />{busy ? 'Making PDF…' : 'Export to PDF'}</button>
     {error && <span role="alert" className="mt-1 text-xs text-danger">{error}</span>}
   </span>
 }
