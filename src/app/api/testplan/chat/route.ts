@@ -5,6 +5,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { loadPlanningContext } from '@/lib/testplanContext'
 import { cleanPreferences, describePreferences } from '@/lib/travelPreferences'
+import { describeTravelers, usualTravelers } from '@/lib/usualTravelers'
 import type { Prisma } from '@/generated/prisma/client'
 import { anthropicTools, runPlannerTool } from '@/lib/planner/registry'
 import { finishedJsonItems, finishedJsonObject, partialJsonString } from '@/lib/partialJson'
@@ -46,6 +47,7 @@ How to help:
 - Before recommending places, you need to know: what kind of trip this is now (who's going, how long), their budget, the types of destination they like, and what they like to do. Use <traveler_preferences> when present. When the user has past trips of their own, infer budget, destination types and activities from those trips (budgets, ratings, tags, places) instead of asking.
 - A user with no past trips who hasn't said what they want: don't recommend yet. Ask what kind of trip, their budget and who's going in one short, friendly question, with ask kind "trip_basics" (it shows all three as choices to tap: trip types, budget levels and who's going; question "Your trip", options [], multiple false). Skip it if <traveler_preferences> or their messages already cover all three, and return an empty recommendations list until it's answered. If the travel data includes their best vacation (from sign-up), don't ask that combined question: take the kind of trip, what they like to do and who they travel with from their best vacation (unless they say otherwise), and ask only their budget, with ask kind "choose", multiple false, options "$ Budget-friendly", "$$ Mid-range", "$$$ Upscale", "$$$$ Luxury".
 - A new trip where they haven't said who's going (e.g. they only name a place: "Costa Rica"), and <current_trip> doesn't say: before looking anything up or recommending, ask who's coming and roughly when in one short, friendly question ("Who's coming, and roughly when? If you're not sure how long to go for, I'll suggest the ideal length."), with ask kind "dates_and_guests", and return an empty recommendations list. Past trips and preferences don't answer this: they say what someone likes, not this trip's group. Don't make them choose a length: many people don't know how long they need.
+- <usual_travelers>, when present, is who they went with last time. Don't ask who's going from scratch: check it's the same group in a few words ("Same group as last time, you two and the kids (5, 8 and 10)?"), still with ask kind "dates_and_guests" (its picker starts with that group), and use it unless they say otherwise.
 - When they haven't given a length (or say they don't know), decide the ideal length for this destination, group and season yourself, say it in a sentence with why ("8 days lets you do the volcano, the cloud forest and the beach without rushing"), plan that many days, and set tripDays to it. End by offering to change it, with ask kind "choose", multiple false, options "Looks good", a shorter length and a longer one (e.g. "Make it 6 days", "Make it 10 days"); they can also type any number of days. When they pick or type another length, re-plan for that many days and update tripDays.
 - When a next step needs their travel dates or who's going (for example, before you can look up hotel prices), don't just mention it or offer it for later ("once you have dates"): end your reply by asking for it, e.g. "When are you looking to go?" (and who's coming, if you don't know), and set ask to "dates" or "dates_and_guests" so they can pick on a calendar.
 - ask = something to tap instead of typing, for the question your reply ends with: kind "choose" with 2-8 short options (multiple true when several can apply) for any question with a small set of answers; kind "dates" when you need their travel dates; kind "guests" when you need how many adults and children (and children's ages) are going; kind "dates_and_guests" when you need both (e.g. before looking up hotel prices). question = a 2-5 word label for it. Otherwise kind "none", question "", options [], multiple false. Ask one thing at a time.
@@ -136,9 +138,10 @@ export async function POST(request: Request) {
   // History lives server-side and is only ever appended to, so thinking blocks are replayed unchanged.
   const history = (chat?.history ?? []) as unknown as Anthropic.MessageParam[]
 
-  const [context, trip] = await Promise.all([
+  const [context, trip, usual] = await Promise.all([
     loadPlanningContext(userId, tripId),
     tripId ? prisma.itinerary.findFirst({ where: { id: tripId, ...canEdit(userId) }, select: { title: true, startDate: true, endDate: true, datesFlexible: true, destinations: { select: { name: true, items: { select: { name: true, type: true, dayIndex: true } } } } } }) : null,
+    usualTravelers(userId),
   ])
   const current = trip
     ? `<current_trip title="${trip.title}"${trip.datesFlexible ? '' : ` dates="${trip.startDate.toISOString().slice(0, 10)} to ${trip.endDate.toISOString().slice(0, 10)}"`}>\n${trip.destinations.flatMap(d => d.items.map(item => `- ${item.name} (${item.type}, ${d.name}${item.dayIndex === null ? '' : `, day ${item.dayIndex}`})`)).join('\n') || '(empty so far)'}\n</current_trip>`
@@ -151,7 +154,7 @@ export async function POST(request: Request) {
     preferences.friends = follows.map(follow => follow.following.name)
     if (!preferences.friends.length) delete preferences.friends
   }
-  const traveler = `<traveler past_trips="${context.hasOwnTrips ? 'yes' : 'none'}" />`
+  const traveler = `<traveler past_trips="${context.hasOwnTrips ? 'yes' : 'none'}" />${usual ? `\n<usual_travelers>${describeTravelers(usual)} (the last time they said who was going; children's ages moved on since)</usual_travelers>` : ''}`
   const preferencesBlock = preferences ? `\n<traveler_preferences>\n${describePreferences(preferences)}\n</traveler_preferences>` : ''
   // What the traveler's other conversations about this trip settled: each one's latest notes (or, for chats from
   // before notes existed, its summary), newest first.

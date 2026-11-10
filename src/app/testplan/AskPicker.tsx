@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ArrowRight, CalendarDays, Check, Minus, Plus } from 'lucide-react'
 import DateRangeCalendar from '@/components/ui/DateRangeCalendar'
 import { daysBetween, formatDate } from '@/lib/placeDates'
+import type { UsualTravelers } from '@/lib/usualTravelers'
 
 // What the planner's question offers instead of typing: chips to choose from, travel dates, or who's going.
 export type Ask = { kind: 'none' | 'choose' | 'dates' | 'guests' | 'dates_and_guests' | 'trip_basics'; question: string; options: string[]; multiple: boolean }
@@ -17,7 +18,7 @@ const longDate = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateStr
 const list = (items: (string | number)[]) => items.length > 1 ? `${items.slice(0, -1).join(', ')} and ${items.at(-1)}` : String(items[0] ?? '')
 
 // Under the planner's latest question: tap an answer instead of typing it. The answer is sent as a message.
-export default function AskPicker({ ask, disabled, waiting = false, onAnswer: send }: { ask: Ask; disabled: boolean; waiting?: boolean; onAnswer: (text: string) => void }) {
+export default function AskPicker({ ask, usual = null, disabled, waiting = false, onAnswer: send }: { ask: Ask; usual?: UsualTravelers | null; disabled: boolean; waiting?: boolean; onAnswer: (text: string) => void }) {
   const [today] = useState(() => new Date().toISOString().slice(0, 10))
   // Answered while the reply is still finishing: it's sent as soon as it's done.
   const [answered, setAnswered] = useState('')
@@ -28,8 +29,9 @@ export default function AskPicker({ ask, disabled, waiting = false, onAnswer: se
   const [start, setStart] = useState(''), [end, setEnd] = useState('')
   // No dates yet (or no idea how long): Postcard suggests the length instead.
   const [unsure, setUnsure] = useState(false)
-  const [adults, setAdults] = useState(2)
-  const [children, setChildren] = useState<number[]>([])
+  // Who's going starts as last time's group (children a year older each year), so it's usually just Continue.
+  const [adults, setAdults] = useState(usual?.adults ?? 2)
+  const [children, setChildren] = useState<number[]>(usual?.childAges ?? [])
   const wantsDates = ask.kind === 'dates' || ask.kind === 'dates_and_guests'
   // Answered while the reply is still being written: says it's waiting, and goes once that's done.
   if (answered) return <p role="status" className="text-xs text-muted">{waiting ? `Sending “${answered.length > 60 ? `${answered.slice(0, 57)}…` : answered}” when Postcard finishes…` : 'Sending…'}</p>

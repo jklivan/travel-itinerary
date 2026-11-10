@@ -20,6 +20,7 @@ import { tripMapLookupKey, validMapLocation, type TripMapPlace } from '@/lib/tri
 import { BUDGETS, PICKS_PREFIX, SETUP_MESSAGE, TRAVELER_LABELS, type TravelPreferences } from '@/lib/travelPreferences'
 import PlanLanding, { type Landing } from './PlanLanding'
 import AskPicker, { type Ask } from './AskPicker'
+import type { UsualTravelers } from '@/lib/usualTravelers'
 import { formatDate } from '@/lib/placeDates'
 
 type Place = { id: string; name: string; type: string; notes: string | null; placeId: string | null; lat: number | null; lng: number | null; day: number | null; photos: string[]; destination: string }
@@ -67,7 +68,7 @@ async function savedAnswer(id: string, expected: number): Promise<Turn[] | null>
   return null
 }
 
-export default function TestPlanner({ trip: initialTrip, chat, history, landing = null, initialDraft = '', fromPlanner = false }: { fromPlanner?: boolean; initialDraft?: string; trip: Trip | null; chat: { id: string; turns: Turn[] } | null; history: PastChat[]; landing?: Landing | null }) {
+export default function TestPlanner({ usualTravelers = null, trip: initialTrip, chat, history, landing = null, initialDraft = '', fromPlanner = false }: { usualTravelers?: UsualTravelers | null; fromPlanner?: boolean; initialDraft?: string; trip: Trip | null; chat: { id: string; turns: Turn[] } | null; history: PastChat[]; landing?: Landing | null }) {
   const router = useRouter()
   // The trip the chat is filling, kept here so adding places updates "Your trip" in place (no page reload).
   const [trip, setTrip] = useState<Trip | null>(initialTrip)
@@ -436,7 +437,7 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
             ? <p key={index} ref={index === lastQuestionIndex ? lastQuestion : undefined} className="ml-auto w-fit max-w-[85%] scroll-mt-28 whitespace-pre-wrap rounded-2xl rounded-br-sm bg-ink px-4 py-2 text-sm text-white">{turn.text}</p>
             : <div key={index} className="space-y-3"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed"><BoldText text={turn.text} /></p>
               {/* The latest question's answers to tap (choices, dates, who's going) instead of typing. */}
-              {turn.ask && index === shownTurns.length - 1 && <AskPicker key={index} ask={turn.ask} disabled={false} waiting={thinking} onAnswer={text => { if (answering.current) queued.current = text; else void send(text) }} />}
+              {turn.ask && index === shownTurns.length - 1 && <AskPicker key={index} ask={turn.ask} usual={usualTravelers} disabled={false} waiting={thinking} onAnswer={text => { if (answering.current) queued.current = text; else void send(text) }} />}
               {/* Each option folds up to its name, places and counts; tap to see its cards. A short single answer starts open. */}
               {groupByOption(turn.recommendations).map(([option, recs], _i, options) => <details key={option} open={options.length === 1 && recs.length <= 4} onToggle={event => { const open = event.currentTarget.open; setFocus(current => open ? option : current === option ? null : current) }} className="group rounded-xl border-l-4 bg-cream py-3 pl-3 pr-2" style={{ borderColor: colorOf(recs[0]) }}>
                 <summary className="flex cursor-pointer list-none items-start gap-2 [&::-webkit-details-marker]:hidden">

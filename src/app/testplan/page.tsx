@@ -8,6 +8,7 @@ import type { Landing } from './PlanLanding'
 import { SETUP_MESSAGE } from '@/lib/travelPreferences'
 import { nameChat } from '@/lib/chatTitle'
 import { canEdit } from '@/lib/tripAccess'
+import { usualTravelers } from '@/lib/usualTravelers'
 
 export const metadata: Metadata = { title: 'Plan with Postcard', robots: { index: false, follow: false } }
 export const maxDuration = 300
@@ -43,7 +44,7 @@ export default async function TestPlanPage({ searchParams }: { searchParams: Pro
         : turns.some(turn => turn.role === 'assistant') ? await nameChat(past.id, turns, past.updatedAt) : null
       return { id: past.id, topic: named?.title || chatTopic(turns, past.trip?.title), summary: named?.summary || undefined, updatedAt: past.updatedAt.toISOString() }
     }))
-  const trip = tripId ? await findPlannerTrip(userId, tripId) : null
+  const [trip, usual] = await Promise.all([tripId ? findPlannerTrip(userId, tripId) : null, usualTravelers(userId)])
   // ?ask= (from "Ask AI about this place" in the planner): start a question about that place.
   const askPlace = ask ? trip?.destinations.flatMap(d => d.items.map(item => ({ item, d }))).find(({ item }) => item.id === ask) : undefined
   const initialDraft = askPlace ? `Tell me more about ${askPlace.item.name} (${[askPlace.d.name, askPlace.d.country].filter(Boolean).join(', ')}): ` : ''
@@ -54,6 +55,6 @@ export default async function TestPlanPage({ searchParams }: { searchParams: Pro
     prisma.itinerary.findMany({ where: { isPlan: true, visibility: 'draft', ...canEdit(userId) }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 20,
       select: { id: true, title: true, destinations: { select: { _count: { select: { items: true } } } } } }),
   ]).then(([savedCount, plans]) => ({ savedCount, plans: plans.map(plan => ({ id: plan.id, title: plan.title || 'Untitled trip', places: plan.destinations.reduce((sum, d) => sum + d._count.items, 0) })) })) : null
-  return <TestPlanner key={`${chat?.id ?? `new:${tripId ?? ''}`}:${ask ?? ''}`} landing={landing} initialDraft={initialDraft} fromPlanner={from === 'planner'} history={history} chat={chat && { id: chat.id, turns: chat.turns as unknown as Turn[] }} trip={trip && plannerTripProps(trip)} />
+  return <TestPlanner usualTravelers={usual} key={`${chat?.id ?? `new:${tripId ?? ''}`}:${ask ?? ''}`} landing={landing} initialDraft={initialDraft} fromPlanner={from === 'planner'} history={history} chat={chat && { id: chat.id, turns: chat.turns as unknown as Turn[] }} trip={trip && plannerTripProps(trip)} />
 }
 
