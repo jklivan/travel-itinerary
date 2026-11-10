@@ -216,6 +216,9 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
   const shownTurns: Turn[] = thinking && streaming ? [...turns, { role: 'assistant', text: streaming, recommendations: streamingCards, ...(streamingAsk ? { ask: streamingAsk } : {}) }] : turns
   const places = trip?.places ?? []
   const inTrip = (rec: Recommendation) => added.has(rec.key) || places.some(place => place.name.trim().toLowerCase() === rec.name.trim().toLowerCase())
+  // The answer holding the latest plan, and its places not yet in the trip (for Add all).
+  const planTurn = turns.findLastIndex(turn => turn.role === 'assistant' && turn.recommendations.length > 0)
+  const unadded = latestPlan(turns)
   const allRecommendations = turns.flatMap(turn => turn.role === 'assistant' ? turn.recommendations : [])
   const options = [...new Set(allRecommendations.map(optionOf))]
   const colorOf = (rec: Recommendation) => optionColors[options.indexOf(optionOf(rec)) % optionColors.length]
@@ -254,7 +257,8 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
     setThinking(true); setError(''); setDraft(''); setShowHistory(false)
     const pending: Turn[] = [...(preferences ? [{ role: 'preferences' as const, preferences }] : []), { role: 'user', text: message }]
     // The conversation's turns once this answer is saved: the ones so far, these, and the reply.
-    const expected = turnsNow.current.length + pending.length + 1
+    const before = turnsNow.current
+    const expected = before.length + pending.length + 1
     setTurns(current => [...current, ...pending])
     try {
       const response = await fetch('/api/testplan/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chatId: chatId.current, message, tripId: tripId.current, preferences }) })
@@ -265,14 +269,14 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
       }
       // The answer streams in as lines of JSON: the reply as it's written, then the place cards when it's done.
       const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
-      let buffer = '', finished = false, cards = 0
+      let buffer = '', finished = false, cards = 0, approved: Turn[] | null = null
       while (!finished) {
         const { value, done } = await reader.read()
         if (done) break
         buffer += value
         const lines = buffer.split('\n'); buffer = lines.pop() ?? ''
         for (const line of lines.filter(Boolean)) {
-          const event = JSON.parse(line) as { type: string; text?: string; error?: string; chatId?: string; reply?: string; recommendations?: Recommendation[]; ask?: Ask; card?: Recommendation; tripDates?: { start: string; end: string }; tripDays?: number }
+          const event = JSON.parse(line) as { type: string; text?: string; error?: string; chatId?: string; reply?: string; recommendations?: Recommendation[]; ask?: Ask; card?: Recommendation; tripDates?: { start: string; end: string }; tripDays?: number; addToTrip?: boolean }
           // The address stays as it is: saving places refreshes this page from the server, and a different address
           // would rebuild it from scratch (losing your place in the chat and what you've picked).
           if (event.type === 'start') chatId.current = event.chatId ?? chatId.current
@@ -285,7 +289,10 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
           else if (event.type === 'error') throw new AnswerError(event.error || 'Something went wrong.')
           else if (event.type === 'done') {
             chatId.current = event.chatId ?? ''
-            setTurns(current => [...current, { role: 'assistant', text: event.reply ?? '', recommendations: event.recommendations ?? [], ...(event.ask ? { ask: event.ask } : {}), ...(event.tripDates ? { tripDates: event.tripDates } : {}), ...(event.tripDays ? { tripDays: event.tripDays } : {}) }])
+            const reply: Turn = { role: 'assistant', text: event.reply ?? '', recommendations: event.recommendations ?? [], ...(event.ask ? { ask: event.ask } : {}), ...(event.tripDates ? { tripDates: event.tripDates } : {}), ...(event.tripDays ? { tripDays: event.tripDays } : {}) }
+            setTurns(current => [...current, reply])
+            // "Looks good": the latest plan's places go into the trip (no tapping each one).
+            if (event.addToTrip) approved = [...before, ...pending, reply]
             cards = event.recommendations?.length ?? 0
             finished = true
           }
@@ -293,6 +300,7 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
       }
       if (!finished) throw new Error('The answer was cut off. Please try again.')
       if (cards) void describeCards(chatId.current)
+      if (approved) { const plan = latestPlan(approved); if (plan.length) void addSelected(plan, approved) }
     } catch (caught) {
       // The connection dropped (say, switching to another app): the answer is still being saved, so wait for it.
       if (!(caught instanceof AnswerError) && chatId.current) {
@@ -317,8 +325,15 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
     setNotice(null)
     if (plans === null) { setPlans([]); void plansForSaving().then(result => setPlans(result.trips ?? []), () => setPlans([])) }
   }
-  async function addSelected() {
-    const recs = [...selected.values()]
+  // The places in the chat's latest plan (its most recent answer with places) not already in the trip.
+  function latestPlan(all: Turn[]) {
+    const last = all.findLast(turn => turn.role === 'assistant' && turn.recommendations.length > 0)
+    return last && last.role === 'assistant' ? last.recommendations.filter(rec => !inTrip(rec)) : []
+  }
+  // The picked places, or a whole plan ("Looks good" or Add all), with the conversation as it now stands.
+  async function addSelected(list?: Recommendation[], conversation: Turn[] = turns) {
+    const recs = list ?? [...selected.values()]
+    const turns = conversation
     if (!recs.length || addingSelected) return
     setAddingSelected(true); setError('')
     const choice = target || (tripId.current ? tripId.current : 'new')
@@ -439,6 +454,11 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-2">{items.map(rec => <RecommendationCard key={rec.key} rec={rec} color={colorOf(rec)} grouped added={inTrip(rec)} selected={selected.has(rec.key)} disabled={addingSelected} onToggle={() => toggle(rec)} />)}</div>
                 </div> })}
               </details>)}
+              {/* The latest plan: add every place at once, instead of tapping each one. */}
+              {index === planTurn && !thinking && unadded.length > 0 && <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <button type="button" onClick={() => void addSelected(unadded)} disabled={addingSelected} className="btn btn-primary btn-sm"><Plus size={16} />{addingSelected ? 'Adding…' : `Add all ${unadded.length} to ${trip?.id ? 'your trip' : 'a new trip'}`}</button>
+                <span className="text-xs text-muted">or tap places to choose</span>
+              </div>}
               {/* The latest answer ends with a way to the trip it's filling. */}
               {trip?.id && index === shownTurns.length - 1 && !thinking && <Link href={`/plan/${trip.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-link underline underline-offset-2">Open {trip.title || 'your trip'}<ArrowUpRight size={16} /></Link>}
             </div>)}

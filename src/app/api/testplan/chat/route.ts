@@ -76,6 +76,7 @@ Also return, for the conversation list:
 - title = a short, evocative title for the whole conversation so far (2-5 words, no quotes or emoji), e.g. "Amalfi coast honeymoon" or "Greenwich dinner favorites". Update it as the conversation develops.
 - summary = one plain sentence (at most 15 words) on what's been discussed or decided so far.
 - notes = this conversation's memory for later chats about the same trip: a few short phrases, separated by "; ", on what's been decided or learned (the trip idea or places they chose, dates, who's going, budget, likes and dislikes such as "no big resorts", what they've added or turned down). At most 60 words. Keep what still holds from earlier and update what changed; "" when nothing's been decided yet.
+- addToTrip = true when the user approves your plan or asks to save it ("looks good", "perfect", "add them", "save this to my trip"): Postcard then adds every place from your latest plan to their trip and puts them on days, so say so briefly in the reply ("Adding these to your trip now.") and don't ask them to pick places. Otherwise false. When you offer choices after a plan, a "Looks good" option means exactly this.
 - tripDays = how many days the trip is, when they've said so without dates ("5 days", "a week" = 7, "a long weekend" = 3), or worked out from tripDates; 0 until then.
 - tripDates = the trip's dates once the user has given them (start and end as YYYY-MM-DD; a month with no year means its next one; work out the end from a start and a number of nights or days). "" for both until then.
 - <earlier_chats_about_this_trip>, when present, holds the notes from the traveler's other conversations about this trip. Treat them as things the traveler already told you: don't ask again, and don't re-suggest what they turned down.`
@@ -83,7 +84,7 @@ Also return, for the conversation list:
 const schema = {
   type: 'object',
   additionalProperties: false,
-  required: ['reply', 'recommendations', 'title', 'summary', 'notes', 'tripDates', 'tripDays', 'ask'],
+  required: ['reply', 'recommendations', 'title', 'summary', 'notes', 'tripDates', 'tripDays', 'addToTrip', 'ask'],
   properties: {
     reply: { type: 'string' },
     ask: { type: 'object', additionalProperties: false, required: ['kind', 'question', 'options', 'multiple'], properties: {
@@ -97,6 +98,7 @@ const schema = {
     notes: { type: 'string' },
     tripDates: { type: 'object', additionalProperties: false, required: ['start', 'end'], properties: { start: { type: 'string' }, end: { type: 'string' } } },
     tripDays: { type: 'integer' },
+    addToTrip: { type: 'boolean' },
     recommendations: { type: 'array', items: {
       type: 'object',
       additionalProperties: false,
@@ -288,7 +290,7 @@ export async function POST(request: Request) {
       if (response.stop_reason === 'refusal') return emit({ type: 'error', error: 'Postcard couldn’t answer that one. Try rephrasing.' })
       // The answer's text (web results can split it into several pieces).
       const text = response.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('')
-      let parsed: { reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string; notes?: string; tripDates?: { start: string; end: string }; tripDays?: number; ask?: Ask }
+      let parsed: { reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string; notes?: string; tripDates?: { start: string; end: string }; tripDays?: number; addToTrip?: boolean; ask?: Ask }
       try { parsed = JSON.parse(text ?? '') } catch { return emit({ type: 'error', error: 'The answer was cut off. Please try again.' }) }
 
       // Something to tap for the reply's question, kept only when it's usable.
@@ -313,7 +315,7 @@ export async function POST(request: Request) {
       // The turns as saved now (descriptions may have been added to earlier cards since this started).
       const latest = await prisma.planChat.findUnique({ where: { id: activeChatId }, select: { turns: true } })
       const saved = await prisma.planChat.update({ where: { id: activeChatId }, data: { history: nextHistory, turns: [...((latest?.turns ?? chat?.turns ?? []) as Prisma.JsonArray), ...newTurns] as Prisma.InputJsonValue, ...(trip && !chat?.tripId ? { tripId } : {}) }, select: { id: true } })
-      emit({ type: 'done', chatId: saved.id, reply: parsed.reply, recommendations, ...(ask ? { ask } : {}), ...(tripDates ? { tripDates } : {}), ...(tripDays ? { tripDays } : {}) })
+      emit({ type: 'done', chatId: saved.id, reply: parsed.reply, recommendations, ...(ask ? { ask } : {}), ...(tripDates ? { tripDates } : {}), ...(tripDays ? { tripDays } : {}), ...(parsed.addToTrip === true ? { addToTrip: true } : {}) })
     } catch (error) {
       if (error instanceof Anthropic.RateLimitError) return emit({ type: 'error', error: 'Postcard is busy. Try again in a moment.' })
       if (error instanceof Anthropic.APIError) console.error('[testplan] Claude API error', error.status, error.message)
