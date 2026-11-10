@@ -45,6 +45,7 @@ How to help:
 - When you suggest a destination, cover it as a whole trip: a place or two to stay, a few things to do, and a few places to eat. When you offer alternative destinations, do this for each one.
 - Before recommending places, you need to know: what kind of trip this is now (who's going, how long), their budget, the types of destination they like, and what they like to do. Use <traveler_preferences> when present. When the user has past trips of their own, infer budget, destination types and activities from those trips (budgets, ratings, tags, places) instead of asking.
 - A user with no past trips who hasn't said what they want: don't recommend yet. Ask what kind of trip, their budget and who's going in one short, friendly question, with ask kind "trip_basics" (it shows all three as choices to tap: trip types, budget levels and who's going; question "Your trip", options [], multiple false). Skip it if <traveler_preferences> or their messages already cover all three, and return an empty recommendations list until it's answered. If the travel data includes their best vacation (from sign-up), don't ask that combined question: take the kind of trip, what they like to do and who they travel with from their best vacation (unless they say otherwise), and ask only their budget, with ask kind "choose", multiple false, options "$ Budget-friendly", "$$ Mid-range", "$$$ Upscale", "$$$$ Luxury".
+- A new trip where they haven't said when or for how long, or who's going (e.g. they only name a place: "Copenhagen"), and <current_trip> doesn't give its dates: before looking anything up or recommending, ask for both first in one short, friendly question ("When are you going, and who's coming? If you don't have dates yet, just tell me how many days."), with ask kind "dates_and_guests", and return an empty recommendations list. Past trips and preferences don't answer this: they say what someone likes, not this trip's length or group. Once they've answered (or said they don't know yet), go ahead.
 - When a next step needs their travel dates or who's going (for example, before you can look up hotel prices), don't just mention it or offer it for later ("once you have dates"): end your reply by asking for it, e.g. "When are you looking to go?" (and who's coming, if you don't know), and set ask to "dates" or "dates_and_guests" so they can pick on a calendar.
 - ask = something to tap instead of typing, for the question your reply ends with: kind "choose" with 2-8 short options (multiple true when several can apply) for any question with a small set of answers; kind "dates" when you need their travel dates; kind "guests" when you need how many adults and children (and children's ages) are going; kind "dates_and_guests" when you need both (e.g. before looking up hotel prices). question = a 2-5 word label for it. Otherwise kind "none", question "", options [], multiple false. Ask one thing at a time.
 - Recommendations are optional: return an empty list when the user is just chatting or asking a question that doesn't call for places.
@@ -75,13 +76,14 @@ Also return, for the conversation list:
 - title = a short, evocative title for the whole conversation so far (2-5 words, no quotes or emoji), e.g. "Amalfi coast honeymoon" or "Greenwich dinner favorites". Update it as the conversation develops.
 - summary = one plain sentence (at most 15 words) on what's been discussed or decided so far.
 - notes = this conversation's memory for later chats about the same trip: a few short phrases, separated by "; ", on what's been decided or learned (the trip idea or places they chose, dates, who's going, budget, likes and dislikes such as "no big resorts", what they've added or turned down). At most 60 words. Keep what still holds from earlier and update what changed; "" when nothing's been decided yet.
+- tripDays = how many days the trip is, when they've said so without dates ("5 days", "a week" = 7, "a long weekend" = 3), or worked out from tripDates; 0 until then.
 - tripDates = the trip's dates once the user has given them (start and end as YYYY-MM-DD; a month with no year means its next one; work out the end from a start and a number of nights or days). "" for both until then.
 - <earlier_chats_about_this_trip>, when present, holds the notes from the traveler's other conversations about this trip. Treat them as things the traveler already told you: don't ask again, and don't re-suggest what they turned down.`
 
 const schema = {
   type: 'object',
   additionalProperties: false,
-  required: ['reply', 'recommendations', 'title', 'summary', 'notes', 'tripDates', 'ask'],
+  required: ['reply', 'recommendations', 'title', 'summary', 'notes', 'tripDates', 'tripDays', 'ask'],
   properties: {
     reply: { type: 'string' },
     ask: { type: 'object', additionalProperties: false, required: ['kind', 'question', 'options', 'multiple'], properties: {
@@ -94,6 +96,7 @@ const schema = {
     summary: { type: 'string' },
     notes: { type: 'string' },
     tripDates: { type: 'object', additionalProperties: false, required: ['start', 'end'], properties: { start: { type: 'string' }, end: { type: 'string' } } },
+    tripDays: { type: 'integer' },
     recommendations: { type: 'array', items: {
       type: 'object',
       additionalProperties: false,
@@ -285,7 +288,7 @@ export async function POST(request: Request) {
       if (response.stop_reason === 'refusal') return emit({ type: 'error', error: 'Postcard couldn’t answer that one. Try rephrasing.' })
       // The answer's text (web results can split it into several pieces).
       const text = response.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('')
-      let parsed: { reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string; notes?: string; tripDates?: { start: string; end: string }; ask?: Ask }
+      let parsed: { reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string; notes?: string; tripDates?: { start: string; end: string }; tripDays?: number; ask?: Ask }
       try { parsed = JSON.parse(text ?? '') } catch { return emit({ type: 'error', error: 'The answer was cut off. Please try again.' }) }
 
       // Something to tap for the reply's question, kept only when it's usable.
@@ -293,6 +296,8 @@ export async function POST(request: Request) {
       // The trip's dates from the chat, when real and in order (a trip made from it starts with them).
       const day = /^\d{4}-\d{2}-\d{2}$/
       const tripDates = parsed.tripDates && day.test(parsed.tripDates.start) && day.test(parsed.tripDates.end) && parsed.tripDates.end >= parsed.tripDates.start ? { start: parsed.tripDates.start, end: parsed.tripDates.end } : null
+      // Or just how many days, when they gave a length without dates (a trip made from it gets that many days).
+      const tripDays = !tripDates && Number.isInteger(parsed.tripDays) && parsed.tripDays! >= 1 && parsed.tripDays! <= 365 ? parsed.tripDays! : null
       // Picks Google lists as closed are left out, and the reply says so.
       const statuses = await Promise.all(parsed.recommendations.map(rec => check(rec)))
       const closed = parsed.recommendations.filter((_, index) => statuses[index] === 'closed').map(rec => rec.name)
@@ -304,11 +309,11 @@ export async function POST(request: Request) {
       if (closed.length) parsed.reply = `${parsed.reply}\n\n(I left out ${closed.join(', ')}: Google lists ${closed.length === 1 ? 'it' : 'them'} as closed.)`
       const recommendations = parsed.recommendations.map((rec, index) => { const status = statuses[index]; return { ...card(current(rec, status), index, response.id), ...(typeof status === 'object' ? { placeId: status.placeId } : {}) } }).filter((_, index) => statuses[index] !== 'closed')
       const nextHistory = [...history, ...turns, { role: 'assistant', content: response.content }] as unknown as Prisma.InputJsonValue
-      const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, ...(ask ? { ask } : {}), title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160), notes: (parsed.notes ?? '').trim().slice(0, 600), ...(tripDates ? { tripDates } : {}), ...(closed.length ? { closed } : {}) }]
+      const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, ...(ask ? { ask } : {}), title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160), notes: (parsed.notes ?? '').trim().slice(0, 600), ...(tripDates ? { tripDates } : {}), ...(tripDays ? { tripDays } : {}), ...(closed.length ? { closed } : {}) }]
       // The turns as saved now (descriptions may have been added to earlier cards since this started).
       const latest = await prisma.planChat.findUnique({ where: { id: activeChatId }, select: { turns: true } })
       const saved = await prisma.planChat.update({ where: { id: activeChatId }, data: { history: nextHistory, turns: [...((latest?.turns ?? chat?.turns ?? []) as Prisma.JsonArray), ...newTurns] as Prisma.InputJsonValue, ...(trip && !chat?.tripId ? { tripId } : {}) }, select: { id: true } })
-      emit({ type: 'done', chatId: saved.id, reply: parsed.reply, recommendations, ...(ask ? { ask } : {}), ...(tripDates ? { tripDates } : {}) })
+      emit({ type: 'done', chatId: saved.id, reply: parsed.reply, recommendations, ...(ask ? { ask } : {}), ...(tripDates ? { tripDates } : {}), ...(tripDays ? { tripDays } : {}) })
     } catch (error) {
       if (error instanceof Anthropic.RateLimitError) return emit({ type: 'error', error: 'Postcard is busy. Try again in a moment.' })
       if (error instanceof Anthropic.APIError) console.error('[testplan] Claude API error', error.status, error.message)

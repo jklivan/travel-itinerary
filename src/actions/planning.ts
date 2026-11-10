@@ -214,6 +214,17 @@ export async function setPlanDays(id: string, days: number): Promise<Result> {
   } catch { return { error: 'Could not save. Please try again.' } }
 }
 
+// Plan with AI: the length the chat settled (without dates), for a trip that doesn't have one yet.
+export async function setPlanDaysIfMissing(id: string, days: number): Promise<Result> {
+  const userId = (await auth())?.user?.id
+  if (!userId) return { error: 'Please sign in.' }
+  if (!Number.isInteger(days) || days < 1 || days > 365) return { error: 'Enter a number of days from 1 to 365.' }
+  const trip = await prisma.itinerary.findFirst({ where: { id, ...canEdit(userId) }, select: { durationDays: true, destinations: { select: { items: { where: { dayIndex: { not: null } }, select: { id: true }, take: 1 } } } } })
+  if (!trip) return { error: unavailable }
+  if (trip.durationDays || trip.destinations.some(d => d.items.length)) return { success: true }
+  return setPlanDays(id, days)
+}
+
 // Removes one day from a day-by-day trip: its places become unscheduled and later days move up one.
 export async function deletePlanDay(id: string, day: number): Promise<Result> {
   const userId = (await auth())?.user?.id

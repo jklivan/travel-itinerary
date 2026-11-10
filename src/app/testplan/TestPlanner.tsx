@@ -13,7 +13,7 @@ import detailStyles from '@/components/PlaceDetailsCard.module.css'
 import ItineraryMap from '@/components/ItineraryMap'
 import type { ItemPin } from '@/components/ItineraryMapInner'
 import PlacePhoto from '@/components/PlacePhoto'
-import { addPlanPlace, plansForSaving, setPlanDatesIfMissing, startPlan, tidyAiPlaces } from '@/actions/planning'
+import { addPlanPlace, plansForSaving, setPlanDatesIfMissing, setPlanDaysIfMissing, startPlan, tidyAiPlaces } from '@/actions/planning'
 import { plannerTrip } from './actions'
 import { linkPlanChat } from '@/actions/planChat'
 import { tripMapLookupKey, validMapLocation, type TripMapPlace } from '@/lib/tripMapPlaces'
@@ -25,7 +25,7 @@ import { formatDate } from '@/lib/placeDates'
 type Place = { id: string; name: string; type: string; notes: string | null; placeId: string | null; lat: number | null; lng: number | null; day: number | null; photos: string[]; destination: string }
 type Trip = { id: string; title: string; places: Place[] }
 type Recommendation = { key: string; name: string; type: 'hotel' | 'food_drink' | 'activity'; why: string; price?: string; destination: string; country: string | null; tripOption?: string; description?: string; source: 'friend' | 'you' | 'claude'; friendName: string; sourceItemId: string; placeId: string | null; lat: number | null; lng: number | null }
-export type Turn = { role: 'user'; text: string } | { role: 'assistant'; text: string; recommendations: Recommendation[]; title?: string; summary?: string; ask?: Ask; tripDates?: { start: string; end: string } } | { role: 'preferences'; preferences: TravelPreferences }
+export type Turn = { role: 'user'; text: string } | { role: 'assistant'; text: string; recommendations: Recommendation[]; title?: string; summary?: string; ask?: Ask; tripDates?: { start: string; end: string }; tripDays?: number } | { role: 'preferences'; preferences: TravelPreferences }
 type MapPlace = TripMapPlace & { lat: number | null; lng: number | null; color?: string; label?: string }
 
 const categories = [{ value: 'hotel', label: 'Accommodation', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
@@ -273,7 +273,7 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
         buffer += value
         const lines = buffer.split('\n'); buffer = lines.pop() ?? ''
         for (const line of lines.filter(Boolean)) {
-          const event = JSON.parse(line) as { type: string; text?: string; error?: string; chatId?: string; reply?: string; recommendations?: Recommendation[]; ask?: Ask; card?: Recommendation; tripDates?: { start: string; end: string } }
+          const event = JSON.parse(line) as { type: string; text?: string; error?: string; chatId?: string; reply?: string; recommendations?: Recommendation[]; ask?: Ask; card?: Recommendation; tripDates?: { start: string; end: string }; tripDays?: number }
           // The address stays as it is: saving places refreshes this page from the server, and a different address
           // would rebuild it from scratch (losing your place in the chat and what you've picked).
           if (event.type === 'start') chatId.current = event.chatId ?? chatId.current
@@ -286,7 +286,7 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
           else if (event.type === 'error') throw new AnswerError(event.error || 'Something went wrong.')
           else if (event.type === 'done') {
             chatId.current = event.chatId ?? ''
-            setTurns(current => [...current, { role: 'assistant', text: event.reply ?? '', recommendations: event.recommendations ?? [], ...(event.ask ? { ask: event.ask } : {}), ...(event.tripDates ? { tripDates: event.tripDates } : {}) }])
+            setTurns(current => [...current, { role: 'assistant', text: event.reply ?? '', recommendations: event.recommendations ?? [], ...(event.ask ? { ask: event.ask } : {}), ...(event.tripDates ? { tripDates: event.tripDates } : {}), ...(event.tripDays ? { tripDays: event.tripDays } : {}) }])
             cards = event.recommendations?.length ?? 0
             finished = true
           }
@@ -329,14 +329,17 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
       let planId = choice, title = choice === tripId.current ? trip?.title ?? 'your trip' : plans?.find(plan => plan.id === choice)?.title ?? 'your trip'
       // The trip's dates, when the chat has settled them: a new trip starts with them, and a trip without dates gets them.
       const chatDates = [...turns].reverse().find((turn): turn is Extract<Turn, { role: 'assistant' }> => turn.role === 'assistant' && !!turn.tripDates)?.tripDates ?? null
+      // Or just how many days, when they gave a length without dates.
+      const chatDays = chatDates ? null : [...turns].reverse().find((turn): turn is Extract<Turn, { role: 'assistant' }> => turn.role === 'assistant' && !!turn.tripDays)?.tripDays ?? null
       if (choice === 'new') {
         const form = new FormData()
-        for (const [key, value] of Object.entries({ clientId: crypto.randomUUID(), title: '', destination: [recs[0].destination, recs[0].country].filter(Boolean).join(', '), audience: 'family', format: chatDates ? 'auto' : 'itinerary', startDate: chatDates?.start ?? '', endDate: chatDates?.end ?? '' })) form.set(key, value)
+        for (const [key, value] of Object.entries({ clientId: crypto.randomUUID(), title: '', destination: [recs[0].destination, recs[0].country].filter(Boolean).join(', '), audience: 'family', format: chatDates || chatDays ? 'auto' : 'itinerary', startDate: chatDates?.start ?? '', endDate: chatDates?.end ?? '', durationDays: chatDays ? String(chatDays) : '' })) form.set(key, value)
         const result = await startPlan(form)
         if (result.error || !result.id) throw new Error(result.error || 'Could not start the trip.')
         planId = result.id; title = 'your new trip'
       }
       else if (chatDates) await setPlanDatesIfMissing(planId, chatDates.start, chatDates.end).catch(() => null)
+      else if (chatDays) await setPlanDaysIfMissing(planId, chatDays).catch(() => null)
       // A chat with no trip yet now fills this one.
       if (!tripId.current) { tripId.current = planId; if (chatId.current) await linkPlanChat(chatId.current, planId) }
       const done: string[] = []
