@@ -304,7 +304,7 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
     } catch (caught) {
       // The connection dropped (say, switching to another app): the answer is still being saved, so wait for it.
       if (!(caught instanceof AnswerError) && chatId.current) {
-        setStreaming(''); setStatus('Reconnecting…')
+        setStreaming(''); setStatus('Still working on it…')
         const saved = await savedAnswer(chatId.current, expected)
         if (saved) { setTurns(saved); void describeCards(chatId.current); return }
       }

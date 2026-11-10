@@ -180,7 +180,10 @@ export async function POST(request: Request) {
     if (disconnected || !controller) return
     try { controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`)) } catch { disconnected = true }
   }
-  after(answer().finally(() => { if (!disconnected) try { controller?.close() } catch { /* already closed */ } }))
+  // A small line every few seconds while it works, so phones (the iPhone app especially) don't drop a connection
+  // that's gone quiet during lookups; the page ignores it.
+  const heartbeat = setInterval(() => emit({ type: 'ping' }), 5000)
+  after(answer().finally(() => { clearInterval(heartbeat); if (!disconnected) try { controller?.close() } catch { /* already closed */ } }))
   return new Response(output, { headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' } })
 
   async function answer() {
