@@ -462,7 +462,7 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
               {/* The latest answer ends with a way to the trip it's filling. */}
               {trip?.id && index === shownTurns.length - 1 && !thinking && <Link href={`/plan/${trip.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-link underline underline-offset-2">Open {trip.title || 'your trip'}<ArrowUpRight size={16} /></Link>}
             </div>)}
-          {thinking && <p className="text-sm text-muted">{status || (streaming ? 'Finding the places…' : 'Planning in progress…')}</p>}
+          {thinking && <p role="status" className="text-shimmer text-sm">{status || (streaming ? 'Finding the places…' : 'Planning in progress…')}</p>}
         </div>
         {error && <p role="alert" className="px-4 pb-2 text-sm text-danger">{error}</p>}
         <div ref={endOfChat} aria-hidden="true" style={{ scrollMarginBottom: 'calc(var(--app-bottom-clearance) + 4.5rem)' }} />
@@ -503,7 +503,7 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
           <button type="button" onClick={() => setSelected(new Map())} disabled={addingSelected} className="btn btn-outline btn-sm">Clear</button>
         </> : notice && <>
           <Check size={16} className="text-link" />
-          <span className="min-w-0 flex-1 text-sm text-ink">Added {notice.count} {notice.count === 1 ? 'place' : 'places'} to {notice.title}{notice.days === 'placing' ? '. Putting them on days…' : notice.days === 'placed' ? ' and put them on days.' : '.'}</span>
+          <span className="min-w-0 flex-1 text-sm text-ink">Added {notice.count} {notice.count === 1 ? 'place' : 'places'} to {notice.title}{notice.days === 'placing' ? <>. <span className="text-shimmer">Putting them on days…</span></> : notice.days === 'placed' ? ' and put them on days.' : '.'}</span>
           <Link href={notice.href} className="text-sm font-semibold text-link underline underline-offset-2">Open trip</Link>
           <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss" className="btn-icon !size-8"><X size={14} /></button>
         </>}
