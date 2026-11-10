@@ -13,7 +13,7 @@ import detailStyles from '@/components/PlaceDetailsCard.module.css'
 import ItineraryMap from '@/components/ItineraryMap'
 import type { ItemPin } from '@/components/ItineraryMapInner'
 import PlacePhoto from '@/components/PlacePhoto'
-import { addPlanPlace, plansForSaving, setPlanDatesIfMissing, setPlanDaysIfMissing, startPlan, tidyAiPlaces } from '@/actions/planning'
+import { addPlanPlace, setPlanDatesIfMissing, setPlanDaysIfMissing, startPlan, tidyAiPlaces } from '@/actions/planning'
 import { plannerTrip } from './actions'
 import { linkPlanChat } from '@/actions/planChat'
 import { tripMapLookupKey, validMapLocation, type TripMapPlace } from '@/lib/tripMapPlaces'
@@ -89,7 +89,8 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
   useEffect(() => { turnsNow.current = turns })
   const [error, setError] = useState('')
   const [added, setAdded] = useState<Set<string>>(new Set())
-  const [selected, setSelected] = useState<Map<string, Recommendation>>(new Map())
+  // Places being added right now (their cards say Adding…).
+  const [adding, setAdding] = useState<Set<string>>(new Set())
   // The trip idea the map is zoomed in on (null: all of them).
   const [focus, setFocus] = useState<string | null>(null)
   // Running down one idea with the AI: an answer about a single idea brings that idea into focus.
@@ -97,10 +98,10 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
   const answeredKey = answeredOptions.join('|')
   const [lastAnswered, setLastAnswered] = useState(answeredKey)
   if (answeredKey !== lastAnswered) { setLastAnswered(answeredKey); if (answeredOptions.length === 1) setFocus(answeredOptions[0]) }
-  const [addingSelected, setAddingSelected] = useState(false)
-  // Where the selected places go: '' means the chat's trip (or a new one when it has none), 'new', or a plan's id.
-  const [target, setTarget] = useState('')
-  const [plans, setPlans] = useState<{ id: string; title: string }[] | null>(null)
+  const addingSelected = adding.size > 0
+  // Adds run one after another (so a new trip is made once), and the days are planned once the adding stops.
+  const addQueue = useRef<Promise<void>>(Promise.resolve())
+  const daysTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [notice, setNotice] = useState<{ count: number; title: string; href: string; days?: 'placing' | 'placed' } | null>(null)
   // 'auto' until changed: the map shows on desktop and starts hidden on phones, behind "Show map". Phones
   // don't load it (or look up its places) until it's shown.
@@ -319,28 +320,25 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
   }
 
 
-  // Picking several suggestions, then adding them together: to the chat's trip, a new trip, or another plan.
-  function toggle(rec: Recommendation) {
-    setSelected(current => { const next = new Map(current); if (next.has(rec.key)) next.delete(rec.key); else next.set(rec.key, rec); return next })
-    setNotice(null)
-    if (plans === null) { setPlans([]); void plansForSaving().then(result => setPlans(result.trips ?? []), () => setPlans([])) }
-  }
   // The places in the chat's latest plan (its most recent answer with places) not already in the trip.
   function latestPlan(all: Turn[]) {
     const last = all.findLast(turn => turn.role === 'assistant' && turn.recommendations.length > 0)
     return last && last.role === 'assistant' ? last.recommendations.filter(rec => !inTrip(rec)) : []
   }
-  // The picked places, or a whole plan ("Looks good" or Add all), with the conversation as it now stands.
-  async function addSelected(list?: Recommendation[], conversation: Turn[] = turns) {
-    const recs = list ?? [...selected.values()]
-    const turns = conversation
-    if (!recs.length || addingSelected) return
-    setAddingSelected(true); setError('')
-    const choice = target || (tripId.current ? tripId.current : 'new')
+  // Adds places to the trip this chat is working on (a new trip when it has none yet): one tapped place, or a whole
+  // plan ("Looks good" or Add all), with the conversation as it now stands.
+  function addSelected(list: Recommendation[], conversation: Turn[] = turns) {
+    const recs = list.filter(rec => !adding.has(rec.key))
+    if (!recs.length) return
+    setAdding(current => new Set([...current, ...recs.map(rec => rec.key)])); setError('')
+    addQueue.current = addQueue.current.then(() => addPlaces(recs, conversation))
+  }
+  async function addPlaces(recs: Recommendation[], turns: Turn[]) {
+    const choice = tripId.current || 'new'
     try {
       // Their Google places first (all at once), so the planner can show photos and map pins.
       const placeIds = await Promise.all(recs.map(rec => rec.placeId ? Promise.resolve(rec.placeId) : loadPickInfo(rec).then(info => info.placeId, () => null)))
-      let planId = choice, title = choice === tripId.current ? trip?.title ?? 'your trip' : plans?.find(plan => plan.id === choice)?.title ?? 'your trip'
+      let planId = choice, title = trip?.title || 'your trip'
       // The trip's dates, when the chat has settled them: a new trip starts with them, and a trip without dates gets them.
       const chatDates = [...turns].reverse().find((turn): turn is Extract<Turn, { role: 'assistant' }> => turn.role === 'assistant' && !!turn.tripDates)?.tripDates ?? null
       // Or just how many days, when they gave a length without dates.
@@ -369,17 +367,17 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
       // Stops the AI made on its own fold into the trip, instead of the planner asking about each one.
       if (done.length) await tidyAiPlaces(planId).catch(() => null)
       setAdded(current => new Set([...current, ...done]))
-      setSelected(current => { const next = new Map(current); for (const key of done) next.delete(key); return next })
-      if (planId === tripId.current) { const fresh = await plannerTrip(planId); if (fresh) { setTrip(fresh); title = fresh.title || title } }
-      setNotice({ count: done.length, title, href: `/plan/${planId}`, days: done.length ? 'placing' : undefined }); setTarget('')
-      // Then onto days, following the day-by-day plan the chat gave (a trip without a length keeps them unscheduled).
-      if (done.length) void placeOnDays(planId, title, done.length)
+      const fresh = await plannerTrip(planId).catch(() => null); if (fresh) { setTrip(fresh); title = fresh.title || title }
+      setNotice(current => ({ count: (current?.href === `/plan/${planId}` ? current.count : 0) + done.length, title, href: `/plan/${planId}`, days: done.length ? 'placing' : current?.days }))
+      // Then onto days, following the day-by-day plan the chat gave (a trip without a length keeps them unscheduled),
+      // once a few quick taps in a row are done.
+      if (done.length) { if (daysTimer.current) clearTimeout(daysTimer.current); daysTimer.current = setTimeout(() => void placeOnDays(planId, title), 2500) }
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not add these places.') }
-    finally { setAddingSelected(false) }
+    finally { setAdding(current => { const next = new Set(current); for (const rec of recs) next.delete(rec.key); return next }) }
   }
 
   // Added picks go straight onto days (they can be moved in the trip), following the chat's own day-by-day plan.
-  async function placeOnDays(planId: string, title: string, count: number) {
+  async function placeOnDays(planId: string, title: string) {
     const guide = turns.flatMap(turn => turn.role === 'assistant' && turn.text ? [turn.text] : []).slice(-4).join('\n\n')
     let placed = false
     try {
@@ -387,7 +385,7 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
       placed = response.ok && ((await response.json().catch(() => null))?.applied ?? 0) > 0
     } catch { /* stays unscheduled; Plan my days with AI is on the trip */ }
     if (placed && planId === tripId.current) { const fresh = await plannerTrip(planId).catch(() => null); if (fresh) setTrip(fresh) }
-    setNotice(current => current?.href === `/plan/${planId}` && current.count === count ? { ...current, title, days: placed ? 'placed' : undefined } : current)
+    setNotice(current => current?.href === `/plan/${planId}` ? { ...current, title, days: placed ? 'placed' : undefined } : current)
   }
 
   // A new chat that isn't about a trip starts on the Plan with Postcard page; asking switches to the chat.
@@ -451,17 +449,19 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
                 </summary>
                 {sectionOrder.map(({ type, label, Icon }) => { const items = recs.filter(rec => rec.type === type); return items.length > 0 && <div key={type} className="mt-3">
                   <h4 className="type-label mb-1.5 flex items-center gap-1.5"><Icon size={12} />{label}</h4>
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-2">{items.map(rec => <RecommendationCard key={rec.key} rec={rec} color={colorOf(rec)} grouped added={inTrip(rec)} selected={selected.has(rec.key)} disabled={addingSelected} onToggle={() => toggle(rec)} />)}</div>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-2">{items.map(rec => <RecommendationCard key={rec.key} rec={rec} color={colorOf(rec)} grouped added={inTrip(rec)} adding={adding.has(rec.key)} onAdd={() => addSelected([rec])} />)}</div>
                 </div> })}
               </details>)}
               {/* The latest plan: add every place at once, instead of tapping each one. */}
               {index === planTurn && !thinking && unadded.length > 0 && <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <button type="button" onClick={() => void addSelected(unadded)} disabled={addingSelected} className="btn btn-primary btn-sm"><Plus size={16} />{addingSelected ? 'Adding…' : `Add all ${unadded.length} to ${trip?.id ? 'your trip' : 'a new trip'}`}</button>
-                <span className="text-xs text-muted">or tap places to choose</span>
+                <button type="button" onClick={() => addSelected(unadded)} disabled={addingSelected} className="btn btn-primary btn-sm"><Plus size={16} />{addingSelected ? 'Adding…' : `Add all ${unadded.length} to ${trip?.id ? 'your trip' : 'a new trip'}`}</button>
+                <span className="text-xs text-muted">or add places one by one</span>
               </div>}
               {/* The latest answer ends with a way to the trip it's filling. */}
               {trip?.id && index === shownTurns.length - 1 && !thinking && <Link href={`/plan/${trip.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-link underline underline-offset-2">Open {trip.title || 'your trip'}<ArrowUpRight size={16} /></Link>}
             </div>)}
+          {/* What was just added, where, and whether it's on days yet. */}
+          {notice && <p role="status" className="flex items-start gap-1.5 text-sm text-ink"><Check size={16} className="mt-0.5 shrink-0 text-link" /><span>Added {notice.count} {notice.count === 1 ? 'place' : 'places'} to <Link href={notice.href} className="font-semibold text-link underline underline-offset-2">{notice.title}</Link>{notice.days === 'placing' ? <>. <span className="text-shimmer">Putting them on days…</span></> : notice.days === 'placed' ? ' and put them on days.' : '.'}</span></p>}
           {thinking && <p role="status" className="text-shimmer text-sm">{status || (streaming ? 'Finding the places…' : 'Planning in progress…')}</p>}
         </div>
         {error && <p role="alert" className="px-4 pb-2 text-sm text-danger">{error}</p>}
@@ -487,36 +487,14 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
       </div>}
     </section>}
 
-    {/* Picked suggestions: one bar to add them all, to this chat's trip, a new trip or another plan. It stays put
-        while you keep scrolling and picking. After adding, a short note with a link to the trip. */}
-    {(selected.size > 0 || notice) && <div role="region" aria-label="Add selected places" className="fixed inset-x-0 bottom-[calc(var(--app-bottom-clearance)-0.5rem)] z-40 px-4">
-      <div className="panel mx-auto flex max-w-2xl flex-wrap items-center gap-2 p-3 shadow-pop">
-        {selected.size > 0 ? <>
-          <span className="text-sm font-semibold text-ink">{selected.size} selected</span>
-          <label className="min-w-0 flex-1"><span className="sr-only">Add them to</span>
-            <select value={target || trip?.id || 'new'} onChange={event => setTarget(event.target.value)} disabled={addingSelected} className="field !min-h-9 !py-1.5">
-              {trip?.id && <option value={trip?.id}>{trip?.title || 'This chat’s trip'}</option>}
-              <option value="new">A new trip</option>
-              {(plans ?? []).filter(plan => plan.id !== trip?.id).map(plan => <option key={plan.id} value={plan.id}>{plan.title || 'Untitled trip'}</option>)}
-            </select></label>
-          <button type="button" onClick={() => void addSelected()} disabled={addingSelected} className="btn btn-primary btn-sm">{addingSelected ? 'Adding…' : `Add ${selected.size}`}</button>
-          <button type="button" onClick={() => setSelected(new Map())} disabled={addingSelected} className="btn btn-outline btn-sm">Clear</button>
-        </> : notice && <>
-          <Check size={16} className="text-link" />
-          <span className="min-w-0 flex-1 text-sm text-ink">Added {notice.count} {notice.count === 1 ? 'place' : 'places'} to {notice.title}{notice.days === 'placing' ? <>. <span className="text-shimmer">Putting them on days…</span></> : notice.days === 'placed' ? ' and put them on days.' : '.'}</span>
-          <Link href={notice.href} className="text-sm font-semibold text-link underline underline-offset-2">Open trip</Link>
-          <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss" className="btn-icon !size-8"><X size={14} /></button>
-        </>}
-      </div>
-    </div>}
   </div>
 }
 
-function RecommendationCard({ rec, color, grouped = false, added, selected, disabled, onToggle }: { rec: Recommendation; color: string; grouped?: boolean; added: boolean; selected: boolean; disabled: boolean; onToggle: () => void }) {
+function RecommendationCard({ rec, color, grouped = false, added, adding, onAdd }: { rec: Recommendation; color: string; grouped?: boolean; added: boolean; adding: boolean; onAdd: () => void }) {
   const category = categories.find(category => category.value === rec.type) ?? categories[2]
   const [open, setOpen] = useState(false)
-  // Tap to pick it (several at once), then add them together from the bar at the bottom.
-  const addButton = <button type="button" onClick={onToggle} aria-pressed={selected} disabled={added || disabled} className="chip">{added ? <><Check size={14} />Added</> : selected ? <><Check size={14} />Selected</> : <><Plus size={14} />Select</>}</button>
+  // Tap to add it to the trip this chat is working on.
+  const addButton = <button type="button" onClick={onAdd} disabled={added || adding} className="chip">{added ? <><Check size={14} />Added</> : adding ? 'Adding…' : <><Plus size={14} />Add to trip</>}</button>
   return <article className="panel-inset flex flex-col p-3 transition-shadow hover:shadow-card">
     <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={`View details for ${rec.name}`} className="flex flex-1 flex-col text-left">
       {/* In a grouped reply the idea and category are already in the headings above. */}
