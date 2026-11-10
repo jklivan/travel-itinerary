@@ -36,7 +36,9 @@ export async function register(state: RegisterState, formData: FormData): Promis
   await followSuggestedPeople(user.id).catch(error => console.error('[register] suggested follows failed', error))
 
   const tripId = saveTripId(formData.get('saveTrip'))
-  redirect(`/login?registered=1${tripId ? `&saveTrip=${encodeURIComponent(tripId)}` : ''}`)
+  // Signing up while connecting an AI assistant: sign in, then straight back to its "Allow" page.
+  const next = oauthReturn(formData.get('next'))
+  redirect(`/login?registered=1${tripId ? `&saveTrip=${encodeURIComponent(tripId)}` : ''}${next ? `&next=${encodeURIComponent(next)}` : ''}`)
 }
 
 export type LoginState = { message?: string } | undefined
@@ -67,15 +69,16 @@ export async function socialSignIn(formData: FormData) {
   const provider = formData.get('provider')
   if (provider !== 'google' && provider !== 'apple') return
   const tripId = saveTripId(formData.get('saveTrip'))
-  // Then /welcome/continue: the intro for a brand-new account, otherwise the trip they were saving or the Feed.
-  await signIn(provider, { redirectTo: `/welcome/continue${tripId ? `?saveTrip=${encodeURIComponent(tripId)}` : ''}` })
+  // Then back to an AI assistant's "Allow" page when connecting one; otherwise /welcome/continue: the intro for a
+  // brand-new account, else the trip they were saving or the Feed.
+  await signIn(provider, { redirectTo: oauthReturn(formData.get('next')) || `/welcome/continue${tripId ? `?saveTrip=${encodeURIComponent(tripId)}` : ''}` })
 }
 
 // Inside the iPhone app: the ID token from native Apple or Google sign-in (checked in auth.ts), then on like socialSignIn.
-export async function nativeSignIn(provider: 'apple' | 'google', idToken: string, name: string, tripId: string): Promise<{ error?: string }> {
+export async function nativeSignIn(provider: 'apple' | 'google', idToken: string, name: string, tripId: string, next = ''): Promise<{ error?: string }> {
   try {
     const trip = saveTripId(tripId)
-    await signIn('native', { provider, idToken, name, redirectTo: `/welcome/continue${trip ? `?saveTrip=${encodeURIComponent(trip)}` : ''}` })
+    await signIn('native', { provider, idToken, name, redirectTo: oauthReturn(next) || `/welcome/continue${trip ? `?saveTrip=${encodeURIComponent(trip)}` : ''}` })
   } catch (e) {
     if (e instanceof AuthError) return { error: 'That sign-in didn’t go through. Try again, or sign in with your email.' }
     throw e

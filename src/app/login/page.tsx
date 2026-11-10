@@ -25,7 +25,7 @@ function LoginForm() {
         </div>
 
         <div className="panel p-6">
-          <SocialSignIn tripId={tripId} />
+          <SocialSignIn tripId={tripId} next={oauthReturn(searchParams.get('next'))} />
           <form action={action} className="space-y-4">
             <input type="hidden" name="saveTrip" value={tripId} />
             {/* Connecting an AI assistant: back to its "Connect … to Postcard?" page after signing in. */}
@@ -97,7 +97,7 @@ function LoginForm() {
 
         <p className="text-center text-sm text-brown mt-6">
           Don&apos;t have an account?{' '}
-          <Link href={tripId ? `/register?saveTrip=${encodeURIComponent(tripId)}` : "/register"} className="text-ink-soft font-medium hover:underline">
+          <Link href={oauthReturn(searchParams.get('next')) ? `/register?next=${encodeURIComponent(oauthReturn(searchParams.get('next')))}` : tripId ? `/register?saveTrip=${encodeURIComponent(tripId)}` : "/register"} className="text-ink-soft font-medium hover:underline">
             Create one
           </Link>
         </p>

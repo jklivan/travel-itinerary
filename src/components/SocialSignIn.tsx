@@ -13,7 +13,8 @@ const buttons = [
 // Sign in with Apple and Google. On the website: the providers that are set up, through their own sign-in pages. In
 // the iPhone app: both, signed in natively (Google blocks its web sign-in inside apps); app builds from before the
 // sign-in plugin show neither.
-export default function SocialSignIn({ tripId }: { tripId: string }) {
+// next: an AI assistant's "Allow" page to come back to (connecting it), if any.
+export default function SocialSignIn({ tripId, next = '' }: { tripId: string; next?: string }) {
   const [available, setAvailable] = useState<string[]>([])
   const [native, setNative] = useState(false)
   const [busy, setBusy] = useState('')
@@ -38,7 +39,7 @@ export default function SocialSignIn({ tripId }: { tripId: string }) {
       if (!result.idToken) { setError('That sign-in didn’t go through. Try again, or sign in with your email.'); return }
       // Apple only gives the name the first time someone signs in to the app.
       const name = result.profile?.name || [result.profile?.givenName, result.profile?.familyName].filter(Boolean).join(' ')
-      const outcome = await nativeSignIn(provider, result.idToken, name, tripId)
+      const outcome = await nativeSignIn(provider, result.idToken, name, tripId, next)
       if (outcome?.error) setError(outcome.error)
     } catch (caught) {
       // Closing the Apple or Google sheet isn't an error worth showing.
@@ -54,6 +55,7 @@ export default function SocialSignIn({ tripId }: { tripId: string }) {
       : <form key={button.id} action={socialSignIn}>
         <input type="hidden" name="provider" value={button.id} />
         <input type="hidden" name="saveTrip" value={tripId} />
+        {next && <input type="hidden" name="next" value={next} />}
         <button type="submit" className={button.className}>{button.label}</button>
       </form>)}
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}

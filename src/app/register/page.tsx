@@ -2,13 +2,16 @@
 
 import { Suspense, useActionState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { saveTripId } from '@/lib/saveTripReturn'
+import { oauthReturn, saveTripId } from '@/lib/saveTripReturn'
 import { register } from '@/actions/auth'
 import Link from 'next/link'
 import SocialSignIn from '@/components/SocialSignIn'
 
 function RegisterForm() {
-  const tripId = saveTripId(useSearchParams().get('saveTrip'))
+  const searchParams = useSearchParams()
+  const tripId = saveTripId(searchParams.get('saveTrip'))
+  // Signing up to connect an AI assistant: back to its "Allow" page afterwards.
+  const next = oauthReturn(searchParams.get('next'))
   const [state, action, pending] = useActionState(register, undefined)
 
   return (
@@ -16,13 +19,14 @@ function RegisterForm() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="type-display">Create an account</h1>
-          <p className="text-sm text-brown mt-1">Join Postcard. Good places ahead.</p>
+          <p className="text-sm text-brown mt-1">{next ? 'Create your Postcard account to connect your AI assistant.' : 'Join Postcard. Good places ahead.'}</p>
         </div>
 
         <div className="panel p-6">
-          <SocialSignIn tripId={tripId} />
+          <SocialSignIn tripId={tripId} next={next} />
           <form action={action} className="space-y-4">
             <input type="hidden" name="saveTrip" value={tripId} />
+            {next && <input type="hidden" name="next" value={next} />}
             {state?.message && (
               <p className="text-sm text-danger bg-danger/10 border border-danger/30 rounded-lg px-4 py-3">
                 {state.message}
@@ -96,7 +100,7 @@ function RegisterForm() {
 
         <p className="text-center text-sm text-brown mt-6">
           Already have an account?{' '}
-          <Link href={tripId ? `/login?saveTrip=${encodeURIComponent(tripId)}` : "/login"} className="text-ink-soft font-medium hover:underline">
+          <Link href={next ? `/login?next=${encodeURIComponent(next)}` : tripId ? `/login?saveTrip=${encodeURIComponent(tripId)}` : "/login"} className="text-ink-soft font-medium hover:underline">
             Sign in
           </Link>
         </p>
