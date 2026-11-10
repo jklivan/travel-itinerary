@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import { Copy, Sparkles } from 'lucide-react'
 
@@ -18,7 +19,7 @@ export default function AssistantConnect() {
     <p className="text-sm text-ink">Ask your assistant to add this address as a connector:</p>
     <div className="panel-inset flex items-center gap-2 p-3"><span className="min-w-0 flex-1 select-all break-all text-sm text-ink">{connectorUrl}</span><button type="button" onClick={() => void copy()} aria-label="Copy connector address" className="btn-icon"><Copy size={18} /></button></div>
     <p className="text-sm text-ink">Sign in to Postcard when it asks, and tap <strong>Allow</strong>.</p>
-    <p className="text-sm text-muted">Then try: “Add my last five trips to Postcard” or “What did my friends love in Lisbon?”</p>
+    <p className="text-sm text-muted">Then try: “Add my last five trips to Postcard” or “What did my friends love in Lisbon?” <Link href="/connector" className="text-link underline">More about the connector</Link></p>
     {message && <p role="status" className="text-sm text-link">{message}</p>}
   </section>
 }

@@ -11,6 +11,7 @@ const answers: { question: string; answer: React.ReactNode }[] = [
   { question: 'How do I block someone?', answer: <p>Open their profile and tap <strong>Block</strong>. You won’t see each other’s trips, comments or snapshots, you’ll stop following each other, and they can’t message you. They aren’t told.</p> },
   { question: 'Who can see my trips?', answer: <p>Plans you’re working on are private: only you can see them. When you post a trip, it’s shared with the people you choose. A private profile limits your posts to people you approve.</p> },
   { question: 'How do I turn notifications on or off?', answer: <p>In the app, go to <strong>Profile → Settings</strong> and choose which notifications you get. You can also turn them off in your iPhone’s Settings → Notifications → Postcard.</p> },
+  { question: 'Can I use Postcard with ChatGPT, Claude or Muse?', answer: <p>Yes. Connect your assistant and it can add your trips to Postcard and read them for you. See <Link href="/connector" className="font-semibold text-link underline">Postcard for AI assistants</Link> for how to set it up.</p> },
   { question: 'How do I delete my account?', answer: <p>Go to <strong>Profile → Settings → Delete account</strong>. Your account and everything in it are removed right away, and this can’t be undone.</p> },
 ]
 
