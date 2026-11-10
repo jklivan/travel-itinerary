@@ -23,7 +23,7 @@ async function answer(message: Message, userId: string, origin: string) {
       protocolVersion: VERSIONS.includes(asked) ? asked : VERSIONS[0],
       capabilities: { tools: { listChanged: false } },
       serverInfo: { name: 'postcard', title: 'Postcard', version: '1.0.0' },
-      instructions: 'Postcard is where friends share the places worth going, and plan trips. Use list_trips and get_trip to see the person’s trips; import_trip to turn a written summary of a trip (past or planned) into a private plan, one call per trip; add_places to add places to a private plan. When adding to a plan with days, ask which day each place is for; when the person has been somewhere, ask for their 1–5 rating. Don’t guess days or ratings. Plans stay private until the person posts them in the app.',
+      instructions: 'Postcard is where friends share the places worth going, and plan trips. list_trips and get_trip read the person’s trips; import_trip turns a written summary of one trip (past or planned) into a private plan; add_places adds places to a private plan, each with an optional day and the person’s own 1–5 rating. Plans stay private until the person posts them in the app.',
     })
   }
   if (method === 'ping') return result(id, {})

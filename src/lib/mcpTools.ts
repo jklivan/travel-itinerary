@@ -28,14 +28,14 @@ export const TOOLS = [
   {
     name: 'get_trip',
     title: 'Read a trip',
-    description: 'Every place in one of the person’s trips (hotels, restaurants, things to do, transport), by destination, with its day, date and time, notes and rating. Use a trip_id from list_trips.',
-    inputSchema: { type: 'object', properties: { trip_id: { type: 'string' } }, required: ['trip_id'], additionalProperties: false },
+    description: 'Every place in one of the person’s trips (hotels, restaurants, things to do, transport), by destination, with its day, date and time, notes and rating.',
+    inputSchema: { type: 'object', properties: { trip_id: { type: 'string', description: 'The trip’s id, as listed by list_trips.' } }, required: ['trip_id'], additionalProperties: false },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   {
     name: 'import_trip',
     title: 'Import a trip',
-    description: 'Creates a new private plan in Postcard from a written trip summary: where they went or are going, dates, hotels, restaurants, activities and transport, in any format (notes, an itinerary, booking confirmations). Postcard finds the real places and puts dated ones on their days. Use one call per trip, e.g. for each of someone’s past trips. The plan stays private until they post it in the app.',
+    description: 'Creates a new private plan in Postcard from a written trip summary: where they went or are going, dates, hotels, restaurants, activities and transport, in any format (notes, an itinerary, booking confirmations). Postcard finds the real places and puts dated ones on their days. Each call creates one trip. The plan stays private until they post it in the app.',
     inputSchema: { type: 'object', properties: {
       summary: { type: 'string', description: 'The trip in writing. Include the destination, dates if known, and every place with what it was (hotel, restaurant, activity), plus any notes.', maxLength: 20000 },
       title: { type: 'string', description: 'Optional trip name, e.g. "Paris, March 2025".', maxLength: 160 },
@@ -45,17 +45,17 @@ export const TOOLS = [
   {
     name: 'add_places',
     title: 'Add places to a plan',
-    description: 'Adds places to one of the person’s private plans (not to posted trips). Before adding, check the plan with get_trip. If it has days, ask the person which day each place is for (unless they already said) and send day; places without one go to Unscheduled. If they’ve already been there (a past trip, or they say so), ask how they’d rate it from 1 to 5 and send rating. A place already in the plan isn’t added twice: send it again with a day or rating to fill those in.',
+    description: 'Adds places to one of the person’s private plans (not to posted trips), each with an optional day of the trip, notes and the person’s own 1–5 rating. Places without a day go to Unscheduled. A place already in the plan isn’t added twice: sending it again with a day or rating fills those in.',
     inputSchema: { type: 'object', properties: {
-      trip_id: { type: 'string' },
+      trip_id: { type: 'string', description: 'The plan’s id, as listed by list_trips.' },
       places: { type: 'array', minItems: 1, maxItems: 50, items: { type: 'object', properties: {
         name: { type: 'string', maxLength: 240 },
         type: { type: 'string', enum: TYPES, description: 'hotel, food_drink (restaurants, cafés, bars), activity, or transport' },
         city: { type: 'string', description: 'The town or city it’s in', maxLength: 160 },
         country: { type: 'string', maxLength: 160 },
         notes: { type: 'string', maxLength: 4000 },
-        day: { type: 'integer', minimum: 1, maximum: 365, description: 'Day of the trip it’s on. Ask the person when the plan has days.' },
-        rating: { type: 'integer', minimum: 1, maximum: 5, description: 'The person’s own rating, only if they’ve been. Ask; never guess.' },
+        day: { type: 'integer', minimum: 1, maximum: 365, description: 'Day of the trip it’s on (1 = the first day).' },
+        rating: { type: 'integer', minimum: 1, maximum: 5, description: 'The person’s own rating of a place they’ve been to.' },
       }, required: ['name', 'type', 'city'], additionalProperties: false } },
     }, required: ['trip_id', 'places'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
@@ -112,8 +112,7 @@ export async function callTool(name: string, args: Args, userId: string, origin:
     const imported = await actAs(userId, () => importIntoPlan(started.id!, randomUUID(), places))
     if (imported.error) return { text: imported.error, error: true }
     return { text: JSON.stringify({ trip_id: started.id, title, places: places.length, status: 'private plan', url: `${origin}/plan/${started.id}`,
-      message: `Created the private plan “${title}” with ${places.length} ${places.length === 1 ? 'place' : 'places'}.`,
-      next_step: 'If this trip has already happened, offer to rate the places: ask the person for 1 to 5 stars and send them with add_places (same names, with rating).' }) }
+      message: `Created the private plan “${title}” with ${places.length} ${places.length === 1 ? 'place' : 'places'}.` }) }
   }
 
   if (name === 'add_places') {
@@ -132,7 +131,7 @@ export async function callTool(name: string, args: Args, userId: string, origin:
     // A plan with days: say which places are still unscheduled, so the assistant asks which day.
     const unscheduled = plan.durationDays ? (await prisma.destItem.findMany({ where: { destination: { itineraryId: tripId }, dayIndex: null, name: { in: places.map(place => place.name) } }, select: { name: true } })).map(item => item.name) : []
     return { text: JSON.stringify({ trip_id: tripId, added: places.length, url: `${origin}/plan/${tripId}`, message: `Added ${places.length} ${places.length === 1 ? 'place' : 'places'} (any already in the plan were merged, not repeated).`,
-      ...(unscheduled.length ? { unscheduled, next_step: `This plan has ${plan.durationDays} days and these places aren’t on one yet. Ask the person which day each is for, then send them again with day.` } : {}) }) }
+      ...(unscheduled.length ? { unscheduled, plan_days: plan.durationDays } : {}) }) }
   }
 
   return { text: `Unknown tool: ${name}`, error: true }
