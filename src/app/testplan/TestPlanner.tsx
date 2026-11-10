@@ -239,7 +239,8 @@ export default function TestPlanner({ usualTravelers = null, trip: initialTrip, 
   function startNewChat() {
     if (!turns.length) { setShowHistory(false); requestAnimationFrame(() => { composer.current?.scrollIntoView({ block: 'center' }); composer.current?.focus() }); return }
     // A trip's chat starts over on the same trip; otherwise a fresh chat with no trip.
-    chatId.current = ''; tripId.current = tripChat && trip ? trip.id : ''; setTurns([]); setAdded(new Set()); setError('')
+    chatId.current = ''; tripId.current = tripChat && trip ? trip.id : ''; setTurns([]); setAdded(new Set()); setError(''); setNotice(null); setFocus(null)
+    if (!tripChat) setTrip(null)
     router.push(tripChat && trip ? `/testplan?trip=${trip.id}&from=planner&new=1` : '/testplan?new=1')
   }
 

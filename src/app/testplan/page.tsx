@@ -48,9 +48,10 @@ export default async function TestPlanPage({ searchParams }: { searchParams: Pro
   // ?ask= (from "Ask AI about this place" in the planner): start a question about that place.
   const askPlace = ask ? trip?.destinations.flatMap(d => d.items.map(item => ({ item, d }))).find(({ item }) => item.id === ask) : undefined
   const initialDraft = askPlace ? `Tell me more about ${askPlace.item.name} (${[askPlace.d.name, askPlace.d.country].filter(Boolean).join(', ')}): ` : ''
-  // A new chat that isn't about a trip opens on the Plan with Postcard start page.
+  // A new chat that isn't about a trip opens on the Plan with Postcard start page (not one started from a chat).
   // The start page also lists the private plans you're working on, so Plan leads back to them.
-  const landing: Landing | null = !chat && !trip ? await Promise.all([
+  // "Start a new chat" (?new=1) stays in the chat, blank, instead of going back to the start page.
+  const landing: Landing | null = !chat && !trip && !fresh ? await Promise.all([
     prisma.bucketListItem.count({ where: { userId, itinerary: { visibility: { not: 'draft' } } } }),
     prisma.itinerary.findMany({ where: { isPlan: true, visibility: 'draft', ...canEdit(userId) }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 20,
       select: { id: true, title: true, destinations: { select: { _count: { select: { items: true } } } } } }),
