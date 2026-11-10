@@ -306,7 +306,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
           {categorySections(items)}
         </section> }) : categorySections(places)}
       </> : <>
-        {!trip.durationDays && !lastScheduledDay && <TripDaysPrompt tripId={trip.id} hint={places.length ? 'Then Postcard puts your places on days.' : undefined} onDone={() => { if (places.length) setAiAfterDays(true) }} />}
+        {!trip.durationDays && !lastScheduledDay && <TripDaysPrompt tripId={trip.id} hint={places.length ? 'Then Postcard plans each day.' : undefined} onDone={() => { if (places.length) setAiAfterDays(true) }} />}
         {/* One switch: plan by calendar days. Turning it on asks for the start date if the plan has none. */}
         {!!trip.durationDays && <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
           <button type="button" aria-pressed={showDates} onClick={() => { if (showDates) { chooseDayNames(false); setAskingStart(false) } else if (trip.start) chooseDayNames(true); else setAskingStart(value => !value) }} className="chip"><CalendarDays size={14} />Plan by calendar days</button>
