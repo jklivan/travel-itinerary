@@ -26,6 +26,8 @@ export default function AskPicker({ ask, disabled, waiting = false, onAnswer: se
   const [basics, setBasics] = useState<Record<string, string[]>>({})
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [start, setStart] = useState(''), [end, setEnd] = useState('')
+  // No dates yet (or no idea how long): Postcard suggests the length instead.
+  const [unsure, setUnsure] = useState(false)
   const [adults, setAdults] = useState(2)
   const [children, setChildren] = useState<number[]>([])
   const wantsDates = ask.kind === 'dates' || ask.kind === 'dates_and_guests'
@@ -58,10 +60,15 @@ export default function AskPicker({ ask, disabled, waiting = false, onAnswer: se
   const nights = start && end ? daysBetween(start, end) : 0
   const datesText = start && end ? `${longDate(start)} to ${longDate(end)}` : ''
   const guestsText = `${adults} ${adults === 1 ? 'adult' : 'adults'}${children.length ? ` and ${children.length} ${children.length === 1 ? 'child' : 'children'} (${children.length === 1 ? 'age' : 'ages'} ${list(children)})` : ''}`
-  const ready = (!wantsDates || !!datesText) && !disabled
+  const ready = (!wantsDates || !!datesText || unsure) && !disabled
+  const whenText = datesText || (unsure ? 'Not sure of dates or how long yet, so suggest the ideal length' : '')
   return <div className="panel-inset space-y-4 p-3">
     {wantsDates && <div>
-      <button type="button" onClick={() => setCalendarOpen(open => !open)} aria-expanded={calendarOpen} className="btn btn-outline btn-sm"><CalendarDays size={16} />{datesText ? `${formatDate(start)} – ${formatDate(end)} · ${nights} ${nights === 1 ? 'night' : 'nights'}` : start ? `${formatDate(start)} – choose the last day` : 'Choose dates'}</button>
+      <div className="flex flex-wrap items-center gap-2">
+      <button type="button" onClick={() => { setUnsure(false); setCalendarOpen(open => !open) }} aria-expanded={calendarOpen} className="btn btn-outline btn-sm"><CalendarDays size={16} />{datesText ? `${formatDate(start)} – ${formatDate(end)} · ${nights} ${nights === 1 ? 'night' : 'nights'}` : start ? `${formatDate(start)} – choose the last day` : 'Choose dates'}</button>
+      <button type="button" aria-pressed={unsure} onClick={() => { setUnsure(value => !value); setStart(''); setEnd(''); setCalendarOpen(false) }} className="chip">{unsure && <Check size={14} />}Not sure yet</button>
+      </div>
+      {unsure && <p className="mt-2 text-xs text-muted">Postcard will suggest the ideal length.</p>}
       {calendarOpen && <div className="mt-3 max-w-xs"><DateRangeCalendar start={start} end={end} min={today} onChange={(first, last) => { setStart(first); setEnd(last); if (last) setCalendarOpen(false) }} /></div>}
     </div>}
     {wantsGuests && <div className="space-y-3">
@@ -72,7 +79,7 @@ export default function AskPicker({ ask, disabled, waiting = false, onAnswer: se
           {Array.from({ length: 18 }, (_, value) => <option key={value} value={value}>{value}</option>)}
         </select></label>)}</div>}
     </div>}
-    <button type="button" disabled={!ready} onClick={() => onAnswer([datesText, wantsGuests && guestsText].filter(Boolean).join(', '))} className="btn btn-primary btn-sm">Continue<ArrowRight size={16} /></button>
+    <button type="button" disabled={!ready} onClick={() => onAnswer([whenText, wantsGuests && guestsText].filter(Boolean).join(', '))} className="btn btn-primary btn-sm">Continue<ArrowRight size={16} /></button>
   </div>
 }
 
