@@ -193,24 +193,23 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
   }, [initialDraft])
   const endOfChat = useRef<HTMLDivElement>(null)
   const lastQuestion = useRef<HTMLParagraphElement>(null)
-  const firstRender = useRef(true)
+  // How many questions were asked when the view last moved, so it moves once per question: not again when the
+  // reply arrives or its cards fill in later (that made the chat jump while you were reading).
+  const shownQuestions = useRef<number | null>(null)
+  const questions = turns.filter(turn => turn.role === 'user').length
   useEffect(() => {
     const box = scroller.current
     const question = lastQuestion.current
-    // Opening a conversation shows its latest question and the reply, the part its title and summary
-    // describe (earlier messages are above). After that, each new message scrolls into view.
+    if (shownQuestions.current === questions || !question) return
+    // Opening a conversation shows its latest question and the reply, the part its title and summary describe
+    // (earlier messages are above). Asking something puts your question at the top, with the reply filling in below.
     // Desktop: the messages scroll inside their panel. Phones: they flow with the page.
-    if (firstRender.current) {
-      if (question && box && box.scrollHeight > box.clientHeight) box.scrollTop += question.getBoundingClientRect().top - box.getBoundingClientRect().top - 16
-      else question?.scrollIntoView({ behavior: 'auto', block: 'start' })
-    } else if (!thinking && question && turns.at(-1)?.role === 'assistant') {
-      // A reply arrived: show it from the top (your question, then the reply), not the end of its cards.
-      if (box && box.scrollHeight > box.clientHeight) box.scrollTo({ top: box.scrollTop + question.getBoundingClientRect().top - box.getBoundingClientRect().top - 16, behavior: 'smooth' })
-      else question.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    } else if (box && box.scrollHeight > box.clientHeight) box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' })
-    else endOfChat.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-    firstRender.current = false
-  }, [turns, thinking])
+    const opening = shownQuestions.current === null
+    shownQuestions.current = questions
+    const behavior = opening ? 'auto' : 'smooth'
+    if (box && box.scrollHeight > box.clientHeight) box.scrollTo({ top: box.scrollTop + question.getBoundingClientRect().top - box.getBoundingClientRect().top - 16, behavior })
+    else question.scrollIntoView({ behavior, block: 'start' })
+  }, [questions])
 
   const lastQuestionIndex = turns.findLastIndex(turn => turn.role === 'user')
   // While an answer is being written, it shows as a reply in progress: its text, cards and picker so far.
@@ -440,6 +439,8 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-2">{items.map(rec => <RecommendationCard key={rec.key} rec={rec} color={colorOf(rec)} grouped added={inTrip(rec)} selected={selected.has(rec.key)} disabled={addingSelected} onToggle={() => toggle(rec)} />)}</div>
                 </div> })}
               </details>)}
+              {/* The latest answer ends with a way to the trip it's filling. */}
+              {trip?.id && index === shownTurns.length - 1 && !thinking && <Link href={`/plan/${trip.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-link underline underline-offset-2">Open {trip.title || 'your trip'}<ArrowUpRight size={16} /></Link>}
             </div>)}
           {thinking && <p className="text-sm text-muted">{status || (streaming ? 'Finding the places…' : 'Planning in progress…')}</p>}
         </div>
