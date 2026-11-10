@@ -306,7 +306,7 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
           {categorySections(items)}
         </section> }) : categorySections(places)}
       </> : <>
-        {!trip.durationDays && !lastScheduledDay && <TripDaysPrompt tripId={trip.id} hint={aiAfterDays ? 'Then Postcard plans your days.' : undefined} />}
+        {!trip.durationDays && !lastScheduledDay && <TripDaysPrompt tripId={trip.id} hint={places.length ? 'Then Postcard puts your places on days.' : undefined} onDone={() => { if (places.length) setAiAfterDays(true) }} />}
         {/* One switch: plan by calendar days. Turning it on asks for the start date if the plan has none. */}
         {!!trip.durationDays && <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
           <button type="button" aria-pressed={showDates} onClick={() => { if (showDates) { chooseDayNames(false); setAskingStart(false) } else if (trip.start) chooseDayNames(true); else setAskingStart(value => !value) }} className="chip"><CalendarDays size={14} />Plan by calendar days</button>
@@ -316,9 +316,8 @@ export default function Planner({ trip, initialImport = false, initialDetails = 
         {/* Right here, so you don't have to scroll up to the trip details. */}
         {askingStart && <StartDateForm tripId={trip.id} initial={trip.start} onDone={() => { setAskingStart(false); chooseDayNames(true) }} />}
         {/* AI day planning, at the top so it's easy to find: fills in the places without a day, and once some places
-            have days, can also re-plan the whole trip. Either way it's a suggestion to review first. */}
-        {/* Shown before the trip has a length too: tapping it then asks how many days (above), and planning starts once
-            they're set. */}
+            have days, can also re-plan the whole trip. Tapped, it's a suggestion to review first. */}
+        {/* Shown before the trip has a length too: setting the days (above) puts the places on days straight away. */}
         {places.length > 0 && <OrganizeWithAI tripId={trip.id} places={places} canFill={places.some(p => p.day === null)} canReplan={places.some(p => p.day !== null)}
           hasDays={!!trip.durationDays} autoStart={aiAfterDays && !!trip.durationDays} onStarted={() => setAiAfterDays(false)}
           onNeedDays={() => { setAiAfterDays(true); requestAnimationFrame(() => { const input = document.getElementById(`trip-days-${trip.id}`); input?.scrollIntoView({ block: 'center', behavior: 'smooth' }); input?.focus() }) }} />}
@@ -914,10 +913,19 @@ function OrganizeWithAI({ tripId, places, canFill, canReplan, hasDays, autoStart
     try { const result = await applyDayPlan(tripId, plan.assignments, replan); if (result.error) { setError(result.error); setState('review') } else { setPlan(null); setState('idle'); router.refresh() } }
     catch { setError('Could not apply the plan. Please try again.'); setState('review') }
   }
-  // The days were just set after tapping the button without them: plan now.
+  // The days were just set: put the places on days straight away (no review; they can be moved afterwards).
+  async function organizeNow() {
+    setReplan(false); setState('thinking'); setError('')
+    try {
+      const response = await fetch(`/api/plan/${tripId}/organize`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apply: true }) })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Something went wrong.')
+      setState('idle'); router.refresh()
+    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Something went wrong.'); setState('idle') }
+  }
   useEffect(() => {
     if (!autoStart) return
-    const timer = setTimeout(() => { onStarted(); void organize(false) }, 0)
+    const timer = setTimeout(() => { onStarted(); void organizeNow() }, 0)
     return () => clearTimeout(timer)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart])

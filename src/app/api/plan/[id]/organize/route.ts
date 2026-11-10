@@ -79,8 +79,8 @@ async function checkPlan(plan: Plan, places: Place[], start: string | null) {
 
 // "Plan my days with AI" on the planner's Itinerary tab: proposes a day for each unscheduled place, or with
 // { replan: true } ("Re-plan my days") for every place. Nothing is saved here; the traveler reviews and applies it.
-// Picks added from the AI chat ({ apply: true, guide }) go straight onto days, following the day-by-day plan the chat
-// gave (`guide`, its recent answers), and can be moved afterwards.
+// { apply: true } saves it straight away instead (picks added from the AI chat, or days just set in the planner); they
+// can be moved afterwards. Either way it follows the day-by-day plan the trip's AI chat gave, when there is one.
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const userId = (await auth())?.user?.id
@@ -93,7 +93,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const body = await request.json().catch(() => null)
   const replan = body?.replan === true
   const apply = body?.apply === true && !replan
-  const guide = typeof body?.guide === 'string' ? body.guide.slice(-8000).trim() : ''
+  // The day-by-day plan from the AI chat: sent by the chat, or else this trip's latest chat with Postcard (so days set
+  // later in the planner still follow it). A re-plan starts from scratch.
+  let guide = typeof body?.guide === 'string' ? body.guide.slice(-8000).trim() : ''
+  if (!guide && !replan) {
+    const chat = await prisma.planChat.findFirst({ where: { tripId: id, userId }, orderBy: { updatedAt: 'desc' }, select: { turns: true } }).catch(() => null)
+    const turns = Array.isArray(chat?.turns) ? chat.turns as { role?: unknown; text?: unknown }[] : []
+    guide = turns.flatMap(turn => turn?.role === 'assistant' && typeof turn.text === 'string' && turn.text ? [turn.text] : []).slice(-4).join('\n\n').slice(-8000).trim()
+  }
   const lines: string[] = []
   const unscheduled = new Set<string>()
   const places: Place[] = []
