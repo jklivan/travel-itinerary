@@ -7,6 +7,9 @@ import { isDate } from '@/lib/placeDates'
 import { startPlan } from '@/actions/planning'
 import { importIntoPlan } from '@/actions/planImport'
 
+// New trips per person per 24 hours through import_trip (a runaway assistant can't run up AI costs).
+const DAILY_TRIP_LIMIT = 25
+
 // What an AI assistant can do with someone's Postcard account through the connector (api/mcp): read their trips,
 // and start private plans or add places to them. Nothing here posts, deletes or messages anyone.
 type Args = Record<string, unknown>
@@ -94,6 +97,9 @@ export async function callTool(name: string, args: Args, userId: string, origin:
   if (name === 'import_trip') {
     const summary = str(args.summary, 20000)
     if (summary.length < 10) return { text: 'Send the trip as a written summary: where, when, and the places.', error: true }
+    // Each import runs our AI to read the summary, so a day's new trips are capped (counting trips started any way).
+    const today = await prisma.itinerary.count({ where: { userId, createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } })
+    if (today >= DAILY_TRIP_LIMIT) return { text: `This account has started ${today} trips in the last 24 hours, the daily limit for importing. Try again tomorrow, or add places to an existing plan with add_places.`, error: true }
     const extracted = await extractFromText(summary, extractPrompt(true, []))
     const places = importedPlaces(extracted).slice(0, 200)
     if (!places.length) return { text: 'No places found in that summary. Include the hotels, restaurants or things to do, and the town each is in.', error: true }
