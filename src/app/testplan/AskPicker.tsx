@@ -27,8 +27,12 @@ export default function AskPicker({ ask, usual = null, disabled, waiting = false
   const [basics, setBasics] = useState<Record<string, string[]>>({})
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [start, setStart] = useState(''), [end, setEnd] = useState('')
-  // No dates yet (or no idea how long): Postcard suggests the length instead.
-  const [unsure, setUnsure] = useState(false)
+  // When: exact dates, roughly when ("Late June"), or not sure yet. Without exact dates, how long is a number of days
+  // or left to Postcard to suggest.
+  const [when, setWhen] = useState<'dates' | 'month' | 'unsure' | ''>('')
+  const months = useState(() => Array.from({ length: 13 }, (_, index) => { const date = new Date(); date.setUTCDate(1); date.setUTCMonth(date.getUTCMonth() + index); return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }) }))[0]
+  const [month, setMonth] = useState(''), [part, setPart] = useState('')
+  const [days, setDays] = useState('')
   // Who's going starts as last time's group (children a year older each year), so it's usually just Continue.
   const [adults, setAdults] = useState(usual?.adults ?? 2)
   const [children, setChildren] = useState<number[]>(usual?.childAges ?? [])
@@ -62,16 +66,25 @@ export default function AskPicker({ ask, usual = null, disabled, waiting = false
   const nights = start && end ? daysBetween(start, end) : 0
   const datesText = start && end ? `${longDate(start)} to ${longDate(end)}` : ''
   const guestsText = `${adults} ${adults === 1 ? 'adult' : 'adults'}${children.length ? ` and ${children.length} ${children.length === 1 ? 'child' : 'children'} (${children.length === 1 ? 'age' : 'ages'} ${list(children)})` : ''}`
-  const ready = (!wantsDates || !!datesText || unsure) && !disabled
-  const whenText = datesText || (unsure ? 'Not sure of dates or how long yet, so suggest the ideal length' : '')
+  const length = Number(days) >= 1 && Number(days) <= 60 ? `${Number(days)} ${Number(days) === 1 ? 'day' : 'days'}` : 'not sure how long, so suggest the ideal length'
+  const whenText = when === 'dates' ? datesText
+    : when === 'month' && month ? `Going ${part ? `${part.toLowerCase()} ` : ''}${month}, ${length}`
+    : when === 'unsure' ? `Not sure when yet, ${length}` : ''
+  const ready = (!wantsDates || !!whenText) && !disabled
   return <div className="panel-inset space-y-4 p-3">
-    {wantsDates && <div>
+    {wantsDates && <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-      <button type="button" onClick={() => { setUnsure(false); setCalendarOpen(open => !open) }} aria-expanded={calendarOpen} className="btn btn-outline btn-sm"><CalendarDays size={16} />{datesText ? `${formatDate(start)} – ${formatDate(end)} · ${nights} ${nights === 1 ? 'night' : 'nights'}` : start ? `${formatDate(start)} – choose the last day` : 'Choose dates'}</button>
-      <button type="button" aria-pressed={unsure} onClick={() => { setUnsure(value => !value); setStart(''); setEnd(''); setCalendarOpen(false) }} className="chip">{unsure && <Check size={14} />}Not sure yet</button>
+        <button type="button" aria-pressed={when === 'dates'} onClick={() => { setWhen('dates'); setCalendarOpen(open => when !== 'dates' || !open) }} aria-expanded={calendarOpen} className="chip"><CalendarDays size={14} />{when === 'dates' && datesText ? `${formatDate(start)} – ${formatDate(end)} · ${nights} ${nights === 1 ? 'night' : 'nights'}` : when === 'dates' && start ? `${formatDate(start)} – choose the last day` : 'Exact dates'}</button>
+        <button type="button" aria-pressed={when === 'month'} onClick={() => { setWhen('month'); setCalendarOpen(false) }} className="chip">{when === 'month' && <Check size={14} />}Roughly when</button>
+        <button type="button" aria-pressed={when === 'unsure'} onClick={() => { setWhen('unsure'); setCalendarOpen(false) }} className="chip">{when === 'unsure' && <Check size={14} />}Not sure yet</button>
       </div>
-      {unsure && <p className="mt-2 text-xs text-muted">Postcard will suggest the ideal length.</p>}
-      {calendarOpen && <div className="mt-3 max-w-xs"><DateRangeCalendar start={start} end={end} min={today} onChange={(first, last) => { setStart(first); setEnd(last); if (last) setCalendarOpen(false) }} /></div>}
+      {when === 'dates' && calendarOpen && <div className="max-w-xs"><DateRangeCalendar start={start} end={end} min={today} onChange={(first, last) => { setStart(first); setEnd(last); if (last) setCalendarOpen(false) }} /></div>}
+      {when === 'month' && <div className="flex flex-wrap gap-2">
+        <label className="text-xs text-muted">Part of the month<select value={part} onChange={event => setPart(event.target.value)} className="field mt-1 w-32"><option value="">Any time</option><option>Early</option><option>Mid</option><option>Late</option></select></label>
+        <label className="text-xs text-muted">Month<select value={month} onChange={event => setMonth(event.target.value)} className="field mt-1 w-44"><option value="">Choose…</option>{months.map(value => <option key={value}>{value}</option>)}</select></label>
+      </div>}
+      {(when === 'month' || when === 'unsure') && <label className="block text-xs text-muted">How many days? <span className="font-normal">(leave empty and Postcard suggests the ideal length)</span>
+        <input type="number" inputMode="numeric" min={1} max={60} value={days} onChange={event => setDays(event.target.value)} placeholder="Not sure" className="field mt-1 w-28" /></label>}
     </div>}
     {wantsGuests && <div className="space-y-3">
       <Stepper label="Adults" value={adults} min={1} max={12} onChange={setAdults} />
