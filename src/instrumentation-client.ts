@@ -1,4 +1,5 @@
 import { isStaleDeployError, reloadForNewDeploy, reportClientError } from '@/lib/clientErrors'
+import { startAnalytics } from '@/lib/analytics'
 
 try {
   window.addEventListener('error', event => {
@@ -10,3 +11,5 @@ try {
     if (isStaleDeployError(event.reason)) reloadForNewDeploy()
   })
 } catch {}
+
+try { startAnalytics() } catch {}

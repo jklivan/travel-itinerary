@@ -4,7 +4,7 @@ import { SUPPORT_EMAIL } from '@/lib/support'
 
 export const metadata: Metadata = { title: 'Privacy Policy — Postcard' }
 
-const UPDATED = 'November 9, 2026'
+const UPDATED = 'November 10, 2026'
 
 const sections: { title: string; body: React.ReactNode }[] = [
   { title: 'What we collect', body: <ul className="list-disc space-y-1 pl-5">
@@ -13,10 +13,12 @@ const sections: { title: string; body: React.ReactNode }[] = [
     <li><strong>People you connect with:</strong> who you follow and who follows you.</li>
     <li><strong>Planning chats:</strong> messages you send to the Plan with AI assistant and its replies.</li>
     <li><strong>Your device:</strong> if you turn on notifications in the iPhone app, a push token so we can send them.</li>
+    <li><strong>How you use Postcard:</strong> which pages you open, how long you spend on them, and what you tap, along with your browser or device type. This is linked to your account when you’re signed in.</li>
   </ul> },
   { title: 'How we use it', body: <ul className="list-disc space-y-1 pl-5">
     <li>To run Postcard: show your trips to the people you choose, send notifications and messages, and keep you signed in.</li>
     <li>To suggest places and plans, using your trips and your friends’ trips.</li>
+    <li>To understand which parts of Postcard people use and where they get stuck, so we can improve it.</li>
     <li>We do not sell your information and do not use it for advertising.</li>
   </ul> },
   { title: 'Who can see your trips', body: <p>Trips you post are visible according to the settings you choose. Private plans are visible only to you. A private profile limits your posts to people you approve.</p> },
@@ -28,6 +30,7 @@ const sections: { title: string; body: React.ReactNode }[] = [
       <li><strong>Google Maps and Places</strong> look up places and show maps and place photos.</li>
       <li><strong>Anthropic, OpenAI, and Google Gemini</strong> power AI features such as trip planning and importing trips from files. They receive the text you send to those features and relevant trip details.</li>
       <li><strong>Pexels</strong> provides stock cover photos.</li>
+      <li><strong>PostHog</strong> measures how Postcard is used (pages opened, time spent, taps). It doesn’t use this for advertising.</li>
       <li><strong>Apple</strong> delivers push notifications; <strong>Google and Apple</strong> handle sign-in if you choose them.</li>
     </ul>
   </> },
