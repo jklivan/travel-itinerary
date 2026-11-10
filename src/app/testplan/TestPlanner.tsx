@@ -322,10 +322,15 @@ export default function TestPlanner({ usualTravelers = null, trip: initialTrip, 
   }
 
 
-  // The places in the chat's latest plan (its most recent answer with places) not already in the trip.
+  // The places in the chat's latest plan (its most recent answer with places) not already in the trip. A day-by-day
+  // plan is the places on its days (not the "More ideas", such as a second hotel to choose from); otherwise one hotel
+  // per town, the first suggested, so Add all doesn't book you into two.
   function latestPlan(all: Turn[]) {
     const last = all.findLast(turn => turn.role === 'assistant' && turn.recommendations.length > 0)
-    return last && last.role === 'assistant' ? last.recommendations.filter(rec => !inTrip(rec)) : []
+    if (!last || last.role !== 'assistant') return []
+    const recs = last.recommendations.some(rec => rec.day) ? last.recommendations.filter(rec => rec.day) : last.recommendations
+    const towns = new Set<string>()
+    return recs.filter(rec => { if (rec.type !== 'hotel' || recs.some(other => other.day)) return true; const town = rec.destination.trim().toLowerCase(); if (towns.has(town)) return false; towns.add(town); return true }).filter(rec => !inTrip(rec))
   }
   // Adds places to the trip this chat is working on (a new trip when it has none yet): one tapped place, or a whole
   // plan ("Looks good" or Add all), with the conversation as it now stands.

@@ -76,7 +76,7 @@ For each recommendation:
 - destination = the city or area; country = the country.
 - price = for a hotel you priced with hotel_prices, e.g. "from $420/night · Jun 3–7", or "from $780/night · 2 rooms · Jun 3–7" for more than one room; otherwise "".
 - A trip with a length (they gave one, it follows from their dates, or you suggested it) gets a day-by-day itinerary, not a list by category: a sentence or two of overview, then Day 1 to the last day, a line or two each (where you are, what you do, where you eat), and every recommendation on its day.
-- day = the day of the trip the place is on in that itinerary (1 = the first day; a hotel: the first day you stay there). 0 when it isn't part of a day-by-day plan (alternatives, general ideas, trips without a length yet).
+- day = the day of the trip the place is on in that itinerary (1 = the first day; a hotel: the first day you stay there). 0 when it isn't part of a day-by-day plan (alternatives, general ideas, trips without a length yet). The plan has one hotel for each stay; a second hotel to choose from (or any other alternative) gets day 0, so adding the plan doesn't add both.
 - tripOption = a short name (2-4 words) for the trip idea this place belongs to, e.g. "Amalfi Coast" or "Greek islands". When you suggest alternative trips, give each its own name and use exactly the same name for every place in it. Reuse a name from earlier in the conversation when adding to that idea.
 Also return, for the conversation list:
 - title = a short, evocative title for the whole conversation so far (2-5 words, no quotes or emoji), e.g. "Amalfi coast honeymoon" or "Greenwich dinner favorites". Update it as the conversation develops.
