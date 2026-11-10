@@ -101,7 +101,7 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
   // Where the selected places go: '' means the chat's trip (or a new one when it has none), 'new', or a plan's id.
   const [target, setTarget] = useState('')
   const [plans, setPlans] = useState<{ id: string; title: string }[] | null>(null)
-  const [notice, setNotice] = useState<{ count: number; title: string; href: string } | null>(null)
+  const [notice, setNotice] = useState<{ count: number; title: string; href: string; days?: 'placing' | 'placed' } | null>(null)
   // 'auto' until changed: the map shows on desktop and starts hidden on phones, behind "Show map". Phones
   // don't load it (or look up its places) until it's shown.
   const [mapView, setMapView] = useState<'auto' | 'normal' | 'small' | 'hidden'>('auto')
@@ -354,9 +354,23 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
       setAdded(current => new Set([...current, ...done]))
       setSelected(current => { const next = new Map(current); for (const key of done) next.delete(key); return next })
       if (planId === tripId.current) { const fresh = await plannerTrip(planId); if (fresh) { setTrip(fresh); title = fresh.title || title } }
-      setNotice({ count: done.length, title, href: `/plan/${planId}` }); setTarget('')
+      setNotice({ count: done.length, title, href: `/plan/${planId}`, days: done.length ? 'placing' : undefined }); setTarget('')
+      // Then onto days, following the day-by-day plan the chat gave (a trip without a length keeps them unscheduled).
+      if (done.length) void placeOnDays(planId, title, done.length)
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not add these places.') }
     finally { setAddingSelected(false) }
+  }
+
+  // Added picks go straight onto days (they can be moved in the trip), following the chat's own day-by-day plan.
+  async function placeOnDays(planId: string, title: string, count: number) {
+    const guide = turns.flatMap(turn => turn.role === 'assistant' && turn.text ? [turn.text] : []).slice(-4).join('\n\n')
+    let placed = false
+    try {
+      const response = await fetch(`/api/plan/${planId}/organize`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apply: true, guide }) })
+      placed = response.ok && ((await response.json().catch(() => null))?.applied ?? 0) > 0
+    } catch { /* stays unscheduled; Plan my days with AI is on the trip */ }
+    if (placed && planId === tripId.current) { const fresh = await plannerTrip(planId).catch(() => null); if (fresh) setTrip(fresh) }
+    setNotice(current => current?.href === `/plan/${planId}` && current.count === count ? { ...current, title, days: placed ? 'placed' : undefined } : current)
   }
 
   // A new chat that isn't about a trip starts on the Plan with Postcard page; asking switches to the chat.
@@ -465,7 +479,7 @@ export default function TestPlanner({ trip: initialTrip, chat, history, landing 
           <button type="button" onClick={() => setSelected(new Map())} disabled={addingSelected} className="btn btn-outline btn-sm">Clear</button>
         </> : notice && <>
           <Check size={16} className="text-link" />
-          <span className="min-w-0 flex-1 text-sm text-ink">Added {notice.count} {notice.count === 1 ? 'place' : 'places'} to {notice.title}.</span>
+          <span className="min-w-0 flex-1 text-sm text-ink">Added {notice.count} {notice.count === 1 ? 'place' : 'places'} to {notice.title}{notice.days === 'placing' ? '. Putting them on days…' : notice.days === 'placed' ? ' and put them on days.' : '.'}</span>
           <Link href={notice.href} className="text-sm font-semibold text-link underline underline-offset-2">Open trip</Link>
           <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss" className="btn-icon !size-8"><X size={14} /></button>
         </>}

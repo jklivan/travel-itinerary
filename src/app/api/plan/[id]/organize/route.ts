@@ -5,6 +5,7 @@ import { canEdit } from '@/lib/tripAccess'
 import { placeDetails } from '@/lib/planner/google'
 import { hoursOn, dayName } from '@/lib/planner/hours'
 import { distanceMiles } from '@/lib/distance'
+import { applyDayPlan } from '@/actions/planning'
 
 export const maxDuration = 300
 
@@ -78,6 +79,8 @@ async function checkPlan(plan: Plan, places: Place[], start: string | null) {
 
 // "Plan my days with AI" on the planner's Itinerary tab: proposes a day for each unscheduled place, or with
 // { replan: true } ("Re-plan my days") for every place. Nothing is saved here; the traveler reviews and applies it.
+// Picks added from the AI chat ({ apply: true, guide }) go straight onto days, following the day-by-day plan the chat
+// gave (`guide`, its recent answers), and can be moved afterwards.
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const userId = (await auth())?.user?.id
@@ -87,7 +90,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!trip) return Response.json({ error: 'This trip is unavailable.' }, { status: 404 })
   const days = trip.durationDays
   if (!days) return Response.json({ error: 'Set how many days your trip is first.' }, { status: 400 })
-  const replan = (await request.json().catch(() => null))?.replan === true
+  const body = await request.json().catch(() => null)
+  const replan = body?.replan === true
+  const apply = body?.apply === true && !replan
+  const guide = typeof body?.guide === 'string' ? body.guide.slice(-8000).trim() : ''
   const lines: string[] = []
   const unscheduled = new Set<string>()
   const places: Place[] = []
@@ -110,7 +116,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   // The trip's first day, when it has real dates: opening hours are checked on each day's date.
   const start = trip.datesFlexible ? null : trip.startDate.toISOString().slice(0, 10)
-  const ask = `<trip title="${trip.title.replace(/"/g, "'")}" days="${days}"${start ? ` starts="${start}"` : ''}>\n${lines.join('\n')}\n</trip>\n\n${replan ? `Re-plan the whole trip: arrange every place into days 1 to ${days} from scratch, ignoring their current days, and return every place.` : `Arrange the unscheduled places into days 1 to ${days}.`}`
+  // The chat's own plan, as data: which places it put on which day.
+  const chatPlan = guide ? `<chat_plan>\n${guide.replace(/<\/?chat_plan>/g, '')}\n</chat_plan>\n\nThe traveler planned this trip in a chat with Postcard (above). Where that chat put a place on a particular day, use that day; arrange the rest as usual.\n\n` : ''
+  const ask = `${chatPlan}<trip title="${trip.title.replace(/"/g, "'")}" days="${days}"${start ? ` starts="${start}"` : ''}>\n${lines.join('\n')}\n</trip>\n\n${replan ? `Re-plan the whole trip: arrange every place into days 1 to ${days} from scratch, ignoring their current days, and return every place.` : `Arrange the unscheduled places into days 1 to ${days}.`}`
   // Only this trip's unscheduled places, on real days; anything else stays unscheduled.
   const tidy = (parsed: Plan): Plan => {
     const seen = new Set<string>()
@@ -136,6 +144,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const second = await run([{ role: 'user', content: ask }, { role: 'assistant', content: first.content }, { role: 'user', content: `I checked your plan and found:\n${review.problems.map(problem => `- ${problem}`).join('\n')}\n\nFix these by moving places to other days (day 0 if nothing fits), keeping the rest as it is, and return the whole plan again.` }]).catch(() => null)
       const better = second && second.stop_reason !== 'refusal' ? read(second) : null
       if (better) { plan = tidy(better); fixed = review.problems.length }
+    }
+    if (apply) {
+      const result = plan.assignments.length ? await applyDayPlan(id, plan.assignments) : {}
+      if (result.error) return Response.json({ error: result.error }, { status: 500 })
+      return Response.json({ applied: plan.assignments.length })
     }
     return Response.json({ ...plan, checked: review.checked, fixed })
   } catch {
