@@ -54,6 +54,8 @@ export default function EventPhotoInput({ photos, name, onChange, onBusyChange, 
         <button type="button" disabled={busy} onClick={() => onChange(photos.filter(photo => photo !== url))} aria-label={`Remove photo ${index + 1} for ${name}`} className="absolute -top-1 -right-1 rounded-full bg-ink p-1 text-white disabled:opacity-50"><X size={12} /></button>
       </div>)}
     </div>}
+    {/* Add photos, and beside it (not in the big snapshot tile) From Google Photos. */}
+    <div className={large ? '' : 'flex flex-wrap items-center gap-x-5 gap-y-2'}>
     <label onClick={event => { if (event.target !== fileInput.current && canPickTripPhotos() && !busy) { event.preventDefault(); setPickingTrip(true) } }} className={large ? `panel-dashed flex min-h-40 w-full flex-col items-center justify-center gap-2 text-base font-semibold text-link ${busy ? 'opacity-50' : 'cursor-pointer hover:bg-cream'}` : `inline-flex items-center gap-1.5 text-xs font-medium text-link ${busy ? 'opacity-50' : 'cursor-pointer'}`}>
       {large ? <ImageIcon size={28} /> : <ImageIcon size={14} />}{busy ? 'Uploading…' : photos.length ? 'Add more photos' : 'Add photos'}
       <input ref={fileInput} type="file" multiple accept="image/*" className="sr-only" disabled={busy} aria-label={`Add photos for ${name}`} onChange={event => {
@@ -63,6 +65,7 @@ export default function EventPhotoInput({ photos, name, onChange, onBusyChange, 
       }} />
     </label>
     {!large && <GooglePhotosButton link disabled={busy || googleBusy} onBusyChange={googleBusyChange} onAdded={urls => { if (urls.length) onChange(eventPhotos([...photos, ...urls])) }} />}
+    </div>
     {error && <p role="alert" className="text-xs text-danger">{error}</p>}
     {pickingTrip && <TripPhotoPicker start={tripDates?.start} end={tripDates?.end} name={name} onPick={files => void addPhotos(files)} onFallback={openLibrary} onClose={closeTripPicker} />}
   </div>
