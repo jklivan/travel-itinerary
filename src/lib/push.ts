@@ -23,7 +23,7 @@ export async function deliverNotification(id: string) {
   const notification = await prisma.notification.findUnique({
     where: { id }, include: { actor: { select: { name: true } }, itinerary: { select: { title: true, visibility: true } }, message: { select: { itineraryId: true } } },
   })
-  if (!notification || notification.readAt || (notification.kind !== 'message' && notification.kind !== 'follow' && notification.kind !== 'forum' && notification.kind !== 'forum_reply' && (!notification.itinerary || notification.itinerary.visibility === 'draft'))) return
+  if (!notification || notification.readAt || (notification.kind !== 'message' && notification.kind !== 'follow' && notification.kind !== 'forum' && notification.kind !== 'forum_reply' && (!notification.itinerary || (notification.itinerary.visibility === 'draft' && notification.kind !== 'trip_imported' && notification.kind !== 'places_imported')))) return
   if (notification.kind === 'forum' && (!notification.questionId || !await prisma.friendQuestion.findFirst({ where: { id: notification.questionId, author: { following: { some: { followingId: notification.recipientId, status: 'accepted' } } } }, select: { id: true } }))) return
   if (notification.kind === 'forum_reply' && (!notification.questionId || !await prisma.friendQuestion.findFirst({ where: { id: notification.questionId, authorId: notification.recipientId }, select: { id: true } }))) return
   const devices = await prisma.pushDevice.findMany({ where: { userId: notification.recipientId } })

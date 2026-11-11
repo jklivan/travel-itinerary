@@ -1,6 +1,9 @@
 import { messageThreadHref } from './messageThread'
 
 export function notificationText(kind: string, actor: string, trip: string) {
+  // Trips and places that came in by email or from an AI assistant (lib/importNotice).
+  if (kind === 'trip_imported') return `Your trip “${trip}” arrived in Postcard.`
+  if (kind === 'places_imported') return `New places were added to “${trip}”.`
   if (kind === 'forum_reply') return `${actor} replied to your forum question.`
   if (kind === 'forum') return `${actor} posted in Ask your friends.`
   if (kind === 'message') return `${actor} sent you a private message.`
@@ -19,7 +22,7 @@ export function notificationPath(itineraryId: string | null, kind: string, actor
   if (!itineraryId) return '/notifications'
   // Group trips: an invite opens the join page; someone joining opens the plan.
   if (kind === 'trip_invite') return `/join/${encodeURIComponent(itineraryId)}`
-  if (kind === 'trip_joined') return `/plan/${encodeURIComponent(itineraryId)}`
+  if (kind === 'trip_joined' || kind === 'trip_imported' || kind === 'places_imported') return `/plan/${encodeURIComponent(itineraryId)}`
   if (kind === 'trip_chat') return `/plan/${encodeURIComponent(itineraryId)}#trip-chat`
   // Someone reacting to your trip: open it as others see it (with its comments and likes). Your own trips otherwise
   // open in the planner; people's other trips ignore ?as=guest.

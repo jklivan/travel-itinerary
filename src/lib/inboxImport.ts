@@ -14,6 +14,7 @@ import { authenticatedFrom, emailOf, inboxRefs, stableId, tokenFrom } from '@/li
 import { sendEmail } from '@/lib/email'
 import { startPlan } from '@/actions/planning'
 import { importIntoPlan } from '@/actions/planImport'
+import { noteImported } from '@/lib/importNotice'
 
 // One email sent to someone's "Send trips to Postcard" address: check it's really from them, read it and its
 // attachments like Import notes or files, and add the places to the private plan it belongs to (or a new one).
@@ -166,6 +167,7 @@ export async function processInboundEmail(emailId: string, origin: string) {
   const result = await actAs(user.id, () => importIntoPlan(plan.id, refs.import, places, dates))
   if (result.error) { log('import failed', result.error); return }
   log('imported', places.length, 'places')
+  await noteImported(user.id, plan.id, created)
   await reply(sender, subject, [`Added ${places.length} ${places.length === 1 ? 'place' : 'places'} to ${created ? 'a new private plan, ' : ''}“${plan.title}”. Places already in the trip were updated, not repeated.`,
     'Plans stay private until you post them.'], [{ href: `${origin}/plan/${plan.id}`, label: 'Open the trip' }, { href: `${origin}/inbox/${refs.ref}`, label: 'Wrong trip? Move these places, make them their own trip, or undo' }])
 }

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { noteImported } from '@/lib/importNotice'
 import { prisma } from '@/lib/prisma'
 import { actAs } from '@/lib/actingUser'
 import { extractFromText, extractPrompt } from '@/lib/extractItinerary'
@@ -111,6 +112,7 @@ export async function callTool(name: string, args: Args, userId: string, origin:
     if (!started.id) return { text: started.error ?? 'Could not start the plan.', error: true }
     const imported = await actAs(userId, () => importIntoPlan(started.id!, randomUUID(), places))
     if (imported.error) return { text: imported.error, error: true }
+    await noteImported(userId, started.id, true)
     return { text: JSON.stringify({ trip_id: started.id, title, places: places.length, status: 'private plan', url: `${origin}/plan/${started.id}`,
       message: `Created the private plan “${title}” with ${places.length} ${places.length === 1 ? 'place' : 'places'}.` }) }
   }
@@ -128,6 +130,7 @@ export async function callTool(name: string, args: Args, userId: string, origin:
     if (!places.length) return { text: 'Each place needs a name, a type (hotel, food_drink, activity or transport) and its city.', error: true }
     const result = await actAs(userId, () => importIntoPlan(tripId, randomUUID(), places))
     if (result.error) return { text: result.error, error: true }
+    await noteImported(userId, tripId, false)
     // A plan with days: say which places are still unscheduled, so the assistant asks which day.
     const unscheduled = plan.durationDays ? (await prisma.destItem.findMany({ where: { destination: { itineraryId: tripId }, dayIndex: null, name: { in: places.map(place => place.name) } }, select: { name: true } })).map(item => item.name) : []
     return { text: JSON.stringify({ trip_id: tripId, added: places.length, url: `${origin}/plan/${tripId}`, message: `Added ${places.length} ${places.length === 1 ? 'place' : 'places'} (any already in the plan were merged, not repeated).`,

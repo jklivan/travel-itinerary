@@ -6,7 +6,8 @@ import NativeNotifications from './NativeNotifications'
 import KeyboardDismiss from './KeyboardDismiss'
 import PreviewAppTag from './PreviewAppTag'
 import AnalyticsIdentify from './AnalyticsIdentify'
+import ImportedNotice from './ImportedNotice'
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  return <SessionProvider><AnalyticsIdentify /><PreviewAppTag /><TripNavigation /><KeyboardDismiss /><NativeNotifications>{children}</NativeNotifications></SessionProvider>
+  return <SessionProvider><AnalyticsIdentify /><ImportedNotice /><PreviewAppTag /><TripNavigation /><KeyboardDismiss /><NativeNotifications>{children}</NativeNotifications></SessionProvider>
 }
