@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Send } from 'lucide-react'
 import { tripShareLink } from '@/actions/tripShare'
 
@@ -10,9 +10,13 @@ import { tripShareLink } from '@/actions/tripShare'
 // small icon button.
 export default function SendTripButton({ tripId, title, className, iconClassName }: { tripId: string; title: string; className?: string; iconClassName?: string }) {
   const [note, setNote] = useState('')
+  // The link is fetched ahead of the tap: iPhones only open the share sheet straight from a tap, not after waiting
+  // on the server.
+  const [link, setLink] = useState<{ path?: string; error?: string } | null>(null)
+  useEffect(() => { let live = true; void tripShareLink(tripId).then(result => { if (live) setLink(result) }, () => { if (live) setLink({ error: 'Could not make a link. Please try again.' }) }); return () => { live = false } }, [tripId])
   async function send() {
     setNote('')
-    const result = await tripShareLink(tripId).catch(() => ({ error: 'Could not make a link. Please try again.' } as { error: string; path?: string }))
+    const result = link ?? await tripShareLink(tripId).catch(() => ({ error: 'Could not make a link. Please try again.' } as { error: string; path?: string }))
     if (!result.path) { setNote(result.error ?? 'Could not make a link.'); return }
     const url = `${window.location.origin}${result.path}`
     const text = `${title || 'A trip'} on Postcard`
