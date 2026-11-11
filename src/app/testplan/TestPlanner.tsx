@@ -20,7 +20,8 @@ import { tripMapLookupKey, validMapLocation, type TripMapPlace } from '@/lib/tri
 import { BUDGETS, PICKS_PREFIX, SETUP_MESSAGE, TRAVELER_LABELS, type TravelPreferences } from '@/lib/travelPreferences'
 import PlanLanding, { type Landing } from './PlanLanding'
 import AskPicker, { type Ask } from './AskPicker'
-import type { UsualTravelers } from '@/lib/usualTravelers'
+import { readTravelers, type UsualTravelers } from '@/lib/travelers'
+import { audienceFor } from '@/lib/audience'
 import { formatDate } from '@/lib/placeDates'
 
 type Place = { id: string; name: string; type: string; notes: string | null; placeId: string | null; lat: number | null; lng: number | null; day: number | null; photos: string[]; destination: string }
@@ -354,9 +355,11 @@ export default function TestPlanner({ embedded = false, usualTravelers = null, t
       const chatDates = [...turns].reverse().find((turn): turn is Extract<Turn, { role: 'assistant' }> => turn.role === 'assistant' && !!turn.tripDates)?.tripDates ?? null
       // Or just how many days, when they gave a length without dates.
       const chatDays = chatDates ? null : [...turns].reverse().find((turn): turn is Extract<Turn, { role: 'assistant' }> => turn.role === 'assistant' && !!turn.tripDays)?.tripDays ?? null
+      // Who it's for, from who's going (the chat's latest answer, else the usual group).
+      const chatAudience = audienceFor(turns.flatMap(turn => turn.role === 'user' ? [readTravelers(turn.text)] : []).filter(Boolean).at(-1) ?? usualTravelers) ?? 'family'
       if (choice === 'new') {
         const form = new FormData()
-        for (const [key, value] of Object.entries({ clientId: crypto.randomUUID(), title: '', destination: [recs[0].destination, recs[0].country].filter(Boolean).join(', '), audience: 'family', format: chatDates || chatDays ? 'auto' : 'itinerary', startDate: chatDates?.start ?? '', endDate: chatDates?.end ?? '', durationDays: chatDays ? String(chatDays) : '' })) form.set(key, value)
+        for (const [key, value] of Object.entries({ clientId: crypto.randomUUID(), title: '', destination: [recs[0].destination, recs[0].country].filter(Boolean).join(', '), audience: chatAudience, format: chatDates || chatDays ? 'auto' : 'itinerary', startDate: chatDates?.start ?? '', endDate: chatDates?.end ?? '', durationDays: chatDays ? String(chatDays) : '' })) form.set(key, value)
         const result = await startPlan(form)
         if (result.error || !result.id) throw new Error(result.error || 'Could not start the trip.')
         planId = result.id; title = 'your new trip'

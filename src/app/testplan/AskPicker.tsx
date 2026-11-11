@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { ArrowRight, CalendarDays, Check, Minus, Plus } from 'lucide-react'
 import DateRangeCalendar from '@/components/ui/DateRangeCalendar'
 import { daysBetween, formatDate } from '@/lib/placeDates'
-import type { UsualTravelers } from '@/lib/usualTravelers'
+import type { UsualTravelers } from '@/lib/travelers'
 
 // What the planner's question offers instead of typing: chips to choose from, travel dates, or who's going.
 export type Ask = { kind: 'none' | 'choose' | 'dates' | 'guests' | 'dates_and_guests' | 'trip_basics'; question: string; options: string[]; multiple: boolean }

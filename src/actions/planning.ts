@@ -14,6 +14,8 @@ import { planDestinationFor } from '@/lib/planDestinationMatch'
 import { findPlaceLocation } from '@/lib/placePhoto'
 import { PRIVATE_TAG } from '@/lib/privateTransport'
 import { insertIntoDay } from '@/lib/dayOrder'
+import { AUDIENCE_IDS } from '@/lib/audience'
+import { estimateBudget } from '@/lib/estimateBudget'
 import { nextAiFold } from '@/lib/aiTidy'
 import { moveDestinationInto } from '@/lib/moveDestination'
 import { formatCoverFocus, parseCoverFocus } from '@/lib/coverFocus'
@@ -97,7 +99,7 @@ export async function startPlan(form: FormData): Promise<Result> {
     const title = text(form, 'title', 160)
     const destination = text(form, 'destination', 160)
     const audience = text(form, 'audience', 20) || 'family'
-    if (!['family', 'friends', 'romantic', 'adult'].includes(audience)) throw new InputError('Choose who the trip is for.')
+    if (!AUDIENCE_IDS.includes(audience)) throw new InputError('Choose who the trip is for.')
     const id = text(form, 'clientId', 50)
     if (!/^[a-f0-9-]{36}$/.test(id)) return { error: 'Please reload and try again.' }
     if (!title && !destination) return { error: 'Enter a trip name or destination to get started.' }
@@ -155,7 +157,7 @@ export async function savePlanDetails(id: string, form: FormData): Promise<Resul
     const title = text(form, 'title', 160)
     if (!title) return { error: 'Give your trip a name.' }
     const audience = text(form, 'audience', 20)
-    if (!['family', 'friends', 'romantic', 'adult'].includes(audience)) return { error: 'Choose a trip type.' }
+    if (!AUDIENCE_IDS.includes(audience)) return { error: 'Choose a trip type.' }
     // Whole-trip notes & tips and When to go are only changed when the form sends them.
     const extra: { notes?: string | null; bestMonths?: string[]; budget?: number | null; tripRating?: number | null; tags?: string[] } = {}
     if (form.has('notes')) extra.notes = text(form, 'notes', 8000) || null
@@ -542,7 +544,7 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
 }
 
 type PublishFormat = 'guide' | 'day-trip' | 'itinerary'
-type PublishDetails = { budget?: number; tripRating?: number; tags?: string[]; bestMonths?: string[] }
+type PublishDetails = { budget?: number; tripRating?: number; tags?: string[]; bestMonths?: string[]; audience?: string }
 // The post type, duration, budget, rating and tags a plan gets when posted; also saved ahead of time
 // so the preview shows the trip exactly as it will be posted.
 function publishFields(format: PublishFormat, details: PublishDetails, durationDays: number | null) {
@@ -550,7 +552,8 @@ function publishFields(format: PublishFormat, details: PublishDetails, durationD
   const tripRating = details.tripRating && details.tripRating >= 1 && details.tripRating <= 5 ? Math.floor(details.tripRating) : null
   const tags = Array.isArray(details.tags) ? [...new Set(details.tags.filter(tag => typeof tag === 'string').slice(0, 20))] : []
   return { postType: format, durationDays: format === 'day-trip' ? 1 : format === 'guide' ? null : durationDays, budget, tripRating, tags: format === 'day-trip' ? [...new Set(['day-trip', ...tags])] : tags,
-    ...(details.bestMonths === undefined ? {} : { bestMonths: bestMonths(details.bestMonths) }) }
+    ...(details.bestMonths === undefined ? {} : { bestMonths: bestMonths(details.bestMonths) }),
+    ...(typeof details.audience === 'string' && AUDIENCE_IDS.includes(details.audience) ? { audience: details.audience } : {}) }
 }
 
 // "A few more details" → Continue: save the details on the still-private plan, before previewing it.
@@ -576,6 +579,15 @@ export async function sharePlan(id: string, format: PublishFormat = 'itinerary',
     const result = await prisma.itinerary.updateMany({ where: { id, userId, visibility: 'draft' }, data: { visibility: 'public', publishedAt: new Date(), ...publishFields(format, details, trip.durationDays) } })
     if (result.count) {
       scheduleTripPublishedNotifications(id)
+      // No budget chosen: the AI estimates one from the hotels and restaurants, so the card shows its $ guide.
+      if (!publishFields(format, details, trip.durationDays).budget) after(async () => {
+        try {
+          const posted = await prisma.itinerary.findUnique({ where: { id }, select: { title: true, budget: true, destinations: { select: { name: true, country: true, items: { select: { type: true, name: true } } } } } })
+          if (!posted || posted.budget) return
+          const budget = await estimateBudget(posted.title, posted.destinations)
+          if (budget) await prisma.itinerary.updateMany({ where: { id, budget: null }, data: { budget } })
+        } catch { /* the card just has no $ guide */ }
+      })
       // No photos at all: a stock photo of the destination, so the trip's card isn't a blank colour.
       after(async () => {
         try {

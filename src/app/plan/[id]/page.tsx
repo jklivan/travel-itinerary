@@ -5,6 +5,7 @@ import Planner from './Planner'
 import { canEdit } from '@/lib/tripAccess'
 import { findPlannerTrip, plannerTripProps } from '@/app/testplan/plannerTrip'
 import { usualTravelers } from '@/lib/usualTravelers'
+import { audienceFor } from '@/lib/audience'
 import type { Turn } from '@/app/testplan/TestPlanner'
 
 export const maxDuration = 300
@@ -31,11 +32,15 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
     prisma.planChat.findFirst({ where: { tripId: id, userId }, orderBy: { updatedAt: 'desc' }, select: { id: true, turns: true } }),
     findPlannerTrip(userId, id), usualTravelers(userId),
   ]) : [null, null, null]
+  // Who it was with, filled in for the post step: a trip planned with two or more others is friends; otherwise what the
+  // creator's usual group says (kids: family, one: solo, two: couples), when it was still the default family.
+  const joinedOthers = trip.members.filter(member => member.status === 'joined').length
+  const audienceSuggestion = trip.audience !== 'family' ? trip.audience : joinedOthers >= 2 ? 'friends' : audienceFor(usual) ?? trip.audience
   const askItem = search.ask ? trip.destinations.flatMap(d => d.items.map(item => ({ item, d }))).find(({ item }) => item.id === search.ask) : undefined
   const ai = aiTrip ? { chat: aiChat && { id: aiChat.id, turns: aiChat.turns as unknown as Turn[] }, trip: plannerTripProps(aiTrip), usual, open: search.chat === 'open' || !!askItem,
     draft: askItem ? `Tell me more about ${askItem.item.name} (${[askItem.d.name, askItem.d.country].filter(Boolean).join(', ')}): ` : '', ask: search.ask ?? '' } : null
   const group = trip.members.some(member => member.status === 'joined')
-  return <Planner ai={ai} planDays={search.days === '1'} initialImport={importing} initialDetails={search.details === '1'} initialPost={initialPost} trip={{ id: trip.id, title: trip.title, audience: trip.audience, isPlan: trip.isPlan, visibility: trip.visibility,
+  return <Planner ai={ai} audienceSuggestion={audienceSuggestion} planDays={search.days === '1'} initialImport={importing} initialDetails={search.details === '1'} initialPost={initialPost} trip={{ id: trip.id, title: trip.title, audience: trip.audience, isPlan: trip.isPlan, visibility: trip.visibility,
     postType: trip.postType, durationDays: trip.durationDays, budget: trip.budget, tripRating: trip.tripRating, tags: trip.tags, notes: trip.notes, bestMonths: trip.bestMonths, coverPhoto: trip.coverPhoto, coverFocus: trip.coverFocus, tripPhotos: trip.photos.map(photo => photo.url),
     start: trip.datesFlexible ? '' : trip.startDate.toISOString().slice(0, 10), end: trip.datesFlexible ? '' : trip.endDate.toISOString().slice(0, 10),
     destinations: trip.destinations.map(d => ({ id: d.id, name: d.name, country: d.country, days: d.days, items: d.items.map(item => ({ id: item.id, order: item.order,

@@ -3,9 +3,9 @@ import { Star, Users } from 'lucide-react'
 import TagChip, { TAG_PILL } from '@/components/ui/TagChip'
 import { TRIP_STAMPS, STAMP_COLORS } from '@/lib/tripStamps'
 import { tripLocationLabel } from '@/lib/tripLocation'
+import { audienceLabel } from '@/lib/audience'
 
 const MONTH_ORDER = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const AUDIENCE: Record<string, string> = { family: 'Family', friends: 'Friends', romantic: 'Couples', adult: 'Adults' }
 
 type Trip = { destinations: { name: string; country?: string | null; items?: readonly { type: string }[] }[]; tripRating?: number | null; budget?: number | null; audience?: string | null; tags?: string[]; bestMonths?: string[] }
 
@@ -15,7 +15,7 @@ type Trip = { destinations: { name: string; country?: string | null; items?: rea
 export default function TripDescriptors({ trip, leading }: { trip: Trip; leading?: ReactNode }) {
   const location = tripLocationLabel(trip.destinations)
   const stamp = trip.tripRating ? TRIP_STAMPS.find(s => s.value === trip.tripRating) : null
-  const audience = trip.audience ? AUDIENCE[trip.audience] : undefined
+  const audience = audienceLabel(trip.audience)
   const budget = trip.budget ?? 0
   const months = [...(trip.bestMonths ?? [])].sort((a, b) => MONTH_ORDER.indexOf(a) - MONTH_ORDER.indexOf(b))
   return <>

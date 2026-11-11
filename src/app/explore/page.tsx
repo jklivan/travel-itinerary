@@ -149,6 +149,7 @@ function SearchFiltersDisplay({ parsed }: { parsed: ParsedQuery }) {
   const chips: string[] = []
   if (parsed.audience === 'family') chips.push('👨‍👩‍👧 Family')
   if (parsed.audience === 'adult') chips.push('🍷 Adults')
+  if (parsed.audience === 'solo') chips.push('🎒 Solo')
   if (parsed.audience === 'friends') chips.push('🥳 Friends')
   if (parsed.audience === 'romantic') chips.push('💋 Romantic')
   if (parsed.maxBudget) chips.push('$'.repeat(parsed.maxBudget) + ' or less')

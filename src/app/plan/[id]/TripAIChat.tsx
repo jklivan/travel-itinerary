@@ -3,7 +3,7 @@
 import { forwardRef } from 'react'
 import { ChevronDown, Sparkles } from 'lucide-react'
 import TestPlanner, { type Turn } from '@/app/testplan/TestPlanner'
-import type { UsualTravelers } from '@/lib/usualTravelers'
+import type { UsualTravelers } from '@/lib/travelers'
 
 export type TripAI = { chat: { id: string; turns: Turn[] } | null; trip: { id: string; title: string; places: { id: string; name: string; type: string; notes: string | null; placeId: string | null; lat: number | null; lng: number | null; day: number | null; photos: string[]; destination: string }[] }; usual: UsualTravelers | null; open: boolean; draft: string; ask: string }
 

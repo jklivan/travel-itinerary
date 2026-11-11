@@ -8,6 +8,7 @@ import { coverStyle } from '@/lib/coverFocus'
 import LikesSheetButton from './LikesSheet'
 import { hasTripDates, tripDuration } from '@/lib/dayTrips'
 import { tripSeason } from '@/lib/tripSeason'
+import { audienceLabel } from '@/lib/audience'
 import { TRIP_STAMPS, STAMP_COLORS } from '@/lib/tripStamps'
 import Stamp from '@/components/ui/Stamp'
 import PhotoStrip from './PhotoStrip'
@@ -66,10 +67,10 @@ function hashPick(str: string, arr: string[]) {
 
 
 export default function ItineraryCard({
-  id, postType, title, startDate, endDate, budget, tripRating, authorName, authorImage, authorId, destinations, coverPhoto, coverFocus, photos = [],
+  id, postType, title, startDate, endDate, audience, budget, tripRating, authorName, authorImage, authorId, destinations, coverPhoto, coverFocus, photos = [],
   currentUserId, isOwn, isBucketed = false, likeCount, isLiked = false, fullWidth = false, datesFlexible = false, bestMonths = [], tags = [], durationDays,
   // Budget shows on the trip page, not on cards.
-  commentCount = 0, showBudget = false, social,
+  commentCount = 0, showBudget = true, social,
 }: Props) {
   const days = tripDuration({ postType, startDate, endDate, datesFlexible, destinations, tags, durationDays })
   const isGuide = days === null
@@ -108,7 +109,7 @@ export default function ItineraryCard({
               <MapPin size={12} className="shrink-0 text-brown" />{location}
             </span>}
             <h2 className="trip-title break-words font-[family-name:var(--font-playfair)] text-title !uppercase leading-[1.1] tracking-caps sm:text-title">{title}</h2>
-            <span className="mt-1 block text-label font-medium uppercase tracking-label text-link">{days === null ? 'Guide' : `${days}-day trip`}</span>
+            <span className="mt-1 block text-label font-medium uppercase tracking-label text-link">{days === null ? 'Guide' : `${days}-day trip`}{audienceLabel(audience) && ` · ${audienceLabel(audience)}`}</span>
           </Link>
           {stamp && <Stamp aria-label={`Author verdict: ${stamp.label}`} label={stamp.label} color={STAMP_COLORS[stamp.value]} className="pointer-events-none absolute -top-5 right-0 z-20 -rotate-[12deg]" />}
         </div>

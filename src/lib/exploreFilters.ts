@@ -5,7 +5,7 @@ export const TRIP_TYPES = [
   { id: 'family', label: 'Family', emoji: '👨‍👩‍👧' },
   { id: 'friends', label: 'Friends', emoji: '🥳' },
   { id: 'romantic', label: 'Couples', emoji: '💕' },
-  { id: 'adult', label: 'Adults', emoji: '🍷' },
+  { id: 'solo', label: 'Solo', emoji: '🎒' },
 ] as const
 
 function selection(value: string | undefined, allowed: readonly string[]) {
