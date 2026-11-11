@@ -3,10 +3,13 @@ import { prisma } from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
 import Planner from './Planner'
 import { canEdit } from '@/lib/tripAccess'
+import { findPlannerTrip, plannerTripProps } from '@/app/testplan/plannerTrip'
+import { usualTravelers } from '@/lib/usualTravelers'
+import type { Turn } from '@/app/testplan/TestPlanner'
 
 export const maxDuration = 300
 
-export default async function PlanPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ import?: string; details?: string; post?: string }> }) {
+export default async function PlanPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ import?: string; details?: string; post?: string; chat?: string; ask?: string; days?: string }> }) {
   const { id } = await params
   const search = await searchParams
   const importing = search.import === '1'
@@ -22,8 +25,17 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
   // Group trips: the creator's stars and photos are on the place itself; everyone else's are their own (PlaceTake).
   // Booking details (confirmation numbers) stay private to the creator.
   const isOwner = trip.userId === userId
+  // The trip's AI chat, at the top of the page: its latest conversation, carried on. Open when ?chat=open (just made
+  // from a chat, or Plan with AI / Ask AI tapped); otherwise folded. The creator's only.
+  const [aiChat, aiTrip, usual] = isOwner ? await Promise.all([
+    prisma.planChat.findFirst({ where: { tripId: id, userId }, orderBy: { updatedAt: 'desc' }, select: { id: true, turns: true } }),
+    findPlannerTrip(userId, id), usualTravelers(userId),
+  ]) : [null, null, null]
+  const askItem = search.ask ? trip.destinations.flatMap(d => d.items.map(item => ({ item, d }))).find(({ item }) => item.id === search.ask) : undefined
+  const ai = aiTrip ? { chat: aiChat && { id: aiChat.id, turns: aiChat.turns as unknown as Turn[] }, trip: plannerTripProps(aiTrip), usual, open: search.chat === 'open' || !!askItem,
+    draft: askItem ? `Tell me more about ${askItem.item.name} (${[askItem.d.name, askItem.d.country].filter(Boolean).join(', ')}): ` : '', ask: search.ask ?? '' } : null
   const group = trip.members.some(member => member.status === 'joined')
-  return <Planner initialImport={importing} initialDetails={search.details === '1'} initialPost={initialPost} trip={{ id: trip.id, title: trip.title, audience: trip.audience, isPlan: trip.isPlan, visibility: trip.visibility,
+  return <Planner ai={ai} planDays={search.days === '1'} initialImport={importing} initialDetails={search.details === '1'} initialPost={initialPost} trip={{ id: trip.id, title: trip.title, audience: trip.audience, isPlan: trip.isPlan, visibility: trip.visibility,
     postType: trip.postType, durationDays: trip.durationDays, budget: trip.budget, tripRating: trip.tripRating, tags: trip.tags, notes: trip.notes, bestMonths: trip.bestMonths, coverPhoto: trip.coverPhoto, coverFocus: trip.coverFocus, tripPhotos: trip.photos.map(photo => photo.url),
     start: trip.datesFlexible ? '' : trip.startDate.toISOString().slice(0, 10), end: trip.datesFlexible ? '' : trip.endDate.toISOString().slice(0, 10),
     destinations: trip.destinations.map(d => ({ id: d.id, name: d.name, country: d.country, days: d.days, items: d.items.map(item => ({ id: item.id, order: item.order,

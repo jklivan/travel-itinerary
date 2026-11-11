@@ -68,7 +68,7 @@ async function savedAnswer(id: string, expected: number): Promise<Turn[] | null>
   return null
 }
 
-export default function TestPlanner({ usualTravelers = null, trip: initialTrip, chat, history, landing = null, initialDraft = '', fromPlanner = false }: { usualTravelers?: UsualTravelers | null; fromPlanner?: boolean; initialDraft?: string; trip: Trip | null; chat: { id: string; turns: Turn[] } | null; history: PastChat[]; landing?: Landing | null }) {
+export default function TestPlanner({ embedded = false, usualTravelers = null, trip: initialTrip, chat, history, landing = null, initialDraft = '', fromPlanner = false }: { embedded?: boolean; usualTravelers?: UsualTravelers | null; fromPlanner?: boolean; initialDraft?: string; trip: Trip | null; chat: { id: string; turns: Turn[] } | null; history: PastChat[]; landing?: Landing | null }) {
   const router = useRouter()
   // The trip the chat is filling, kept here so adding places updates "Your trip" in place (no page reload).
   const [trip, setTrip] = useState<Trip | null>(initialTrip)
@@ -241,6 +241,8 @@ export default function TestPlanner({ usualTravelers = null, trip: initialTrip, 
     // A trip's chat starts over on the same trip; otherwise a fresh chat with no trip.
     chatId.current = ''; tripId.current = tripChat && trip ? trip.id : ''; setTurns([]); setAdded(new Set()); setError(''); setNotice(null); setFocus(null)
     if (!tripChat) setTrip(null)
+    // On the trip page: start over right there.
+    if (embedded) return
     router.push(tripChat && trip ? `/testplan?trip=${trip.id}&from=planner&new=1` : '/testplan?new=1')
   }
 
@@ -342,6 +344,8 @@ export default function TestPlanner({ usualTravelers = null, trip: initialTrip, 
   }
   async function addPlaces(recs: Recommendation[], turns: Turn[]) {
     const choice = tripId.current || 'new'
+    // A chat that just made its trip goes to the trip's page, carrying on there (the chat at the top).
+    const madeTrip = choice === 'new' && !embedded
     try {
       // Their Google places first (all at once), so the planner can show photos and map pins.
       const placeIds = await Promise.all(recs.map(rec => rec.placeId ? Promise.resolve(rec.placeId) : loadPickInfo(rec).then(info => info.placeId, () => null)))
@@ -380,6 +384,10 @@ export default function TestPlanner({ usualTravelers = null, trip: initialTrip, 
       // once a few quick taps in a row are done.
       // Places the chat already put on a day go straight onto it; only the rest need planning.
       const undated = recs.some(rec => done.includes(rec.key) && !rec.day)
+      // The trip page plans the rest of the days itself (?days=1) once it opens.
+      if (madeTrip && done.length) { router.push(`/plan/${planId}?chat=open${undated ? '&days=1' : ''}`); return }
+      // On the trip page, the trip below shows what was added.
+      if (embedded && done.length) router.refresh()
       if (done.length && !undated) setNotice(current => current ? { ...current, days: current.days === 'placing' && daysTimer.current ? 'placing' : 'placed' } : current)
       else if (done.length) { if (daysTimer.current) clearTimeout(daysTimer.current); daysTimer.current = setTimeout(() => { daysTimer.current = null; void placeOnDays(planId, title) }, 2500) }
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not add these places.') }
@@ -395,8 +403,67 @@ export default function TestPlanner({ usualTravelers = null, trip: initialTrip, 
       placed = response.ok && ((await response.json().catch(() => null))?.applied ?? 0) > 0
     } catch { /* stays unscheduled; Plan my days with AI is on the trip */ }
     if (placed && planId === tripId.current) { const fresh = await plannerTrip(planId).catch(() => null); if (fresh) setTrip(fresh) }
+    if (placed && embedded) router.refresh()
     setNotice(current => current?.href === `/plan/${planId}` ? { ...current, title, days: placed ? 'placed' : undefined } : current)
   }
+
+  // The conversation (also shown inside the trip page) and its message box.
+  const messages = <>
+          {!turns.length && !tripChat && <div className="text-sm text-muted"><p>Postcard uses your trips and your friends’ trips—their ratings and notes—plus its own picks. Try:</p><div className="mt-3 flex flex-wrap gap-2">{starters.map(starter => <button key={starter} type="button" onClick={() => void send(starter)} className="chip text-left">{starter}</button>)}</div></div>}
+          {shownTurns.map((turn, index) => turn.role === 'preferences'
+            // The question already says the choices in words: no separate summary.
+            ? (next => next?.role === 'user' && next.text.startsWith(PICKS_PREFIX) && next.text !== SETUP_MESSAGE ? null : <PreferencesSummary key={index} preferences={turn.preferences} />)(turns[index + 1])
+            : turn.role === 'user'
+            ? <p key={index} ref={index === lastQuestionIndex ? lastQuestion : undefined} className="ml-auto w-fit max-w-[85%] scroll-mt-28 whitespace-pre-wrap rounded-2xl rounded-br-sm bg-ink px-4 py-2 text-sm text-white">{turn.text}</p>
+            : <div key={index} className="space-y-3"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed"><BoldText text={turn.text} /></p>
+              {/* The latest question's answers to tap (choices, dates, who's going) instead of typing. */}
+              {turn.ask && index === shownTurns.length - 1 && <AskPicker key={index} ask={turn.ask} usual={usualTravelers} disabled={false} waiting={thinking} onAnswer={text => { if (answering.current) queued.current = text; else void send(text) }} />}
+              {/* Each option folds up to its name, places and counts; tap to see its cards. A short single answer starts open. */}
+              {groupByOption(turn.recommendations).map(([option, recs], _i, options) => <details key={option} open={options.length === 1 && recs.length <= 4} onToggle={event => { const open = event.currentTarget.open; setFocus(current => open ? option : current === option ? null : current) }} className="group rounded-xl border-l-4 bg-cream py-3 pl-3 pr-2" style={{ borderColor: colorOf(recs[0]) }}>
+                <summary className="flex cursor-pointer list-none items-start gap-2 [&::-webkit-details-marker]:hidden">
+                  <ChevronRight size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-muted transition-transform group-open:rotate-90" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-[family-name:var(--font-playfair)] text-lg leading-tight" style={{ color: colorOf(recs[0]) }}>{option}</span>
+                    <span className="block text-xs text-muted">{(towns => towns.length > 3 ? `${towns.slice(0, 3).join(' · ')} & more` : towns.join(' · '))([...new Set(recs.map(rec => rec.destination.split(',')[0].trim()).filter(Boolean))])}</span>
+                    <span className="mt-0.5 block text-xs text-ink-soft">{([['hotel', 'hotel', 'hotels'], ['food_drink', 'restaurant', 'restaurants'], ['activity', 'thing to do', 'things to do']] as const).map(([type, one, many]) => { const n = recs.filter(rec => rec.type === type).length; return n ? `${n} ${n === 1 ? one : many}` : null }).filter(Boolean).join(' · ')}</span>
+                  </span>
+                </summary>
+                {/* A day-by-day plan shows by day (hotel, things to do, then meals); otherwise by kind of place. */}
+                {(recs.some(rec => rec.day) ? [...[...new Set(recs.flatMap(rec => rec.day ? [rec.day] : []))].sort((a, b) => a - b).map(day => ({ key: `day-${day}`, label: `Day ${day}`, Icon: CalendarDays, items: recs.filter(rec => rec.day === day).sort((a, b) => sectionOrder.findIndex(section => section.type === a.type) - sectionOrder.findIndex(section => section.type === b.type)) })), { key: 'more', label: 'More ideas', Icon: Sparkles, items: recs.filter(rec => !rec.day) }]
+                  : sectionOrder.map(({ type, label, Icon }) => ({ key: type, label, Icon, items: recs.filter(rec => rec.type === type) }))).map(({ key, label, Icon, items }) => items.length > 0 && <div key={key} className="mt-3">
+                  <h4 className="type-label mb-1.5 flex items-center gap-1.5"><Icon size={12} />{label}</h4>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-2">{items.map(rec => <RecommendationCard key={rec.key} rec={rec} color={colorOf(rec)} grouped added={inTrip(rec)} adding={adding.has(rec.key)} onAdd={() => addSelected([rec])} />)}</div>
+                </div>)}
+              </details>)}
+              {/* The latest plan: add every place at once, instead of tapping each one. */}
+              {index === planTurn && !thinking && unadded.length > 0 && <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <button type="button" onClick={() => addSelected(unadded)} disabled={addingSelected} className="btn btn-primary btn-sm"><Plus size={16} />{addingSelected ? 'Adding…' : `Add all ${unadded.length} to ${trip?.id ? 'your trip' : 'a new trip'}`}</button>
+                <span className="text-xs text-muted">or add places one by one</span>
+              </div>}
+              {/* The latest answer ends with a way to the trip it's filling. */}
+              {trip?.id && index === shownTurns.length - 1 && !thinking && <Link href={`/plan/${trip.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-link underline underline-offset-2">Open {trip.title || 'your trip'}<ArrowUpRight size={16} /></Link>}
+            </div>)}
+          {/* What was just added, where, and whether it's on days yet. */}
+          {notice && <p role="status" className="flex items-start gap-1.5 text-sm text-ink"><Check size={16} className="mt-0.5 shrink-0 text-link" /><span>Added {notice.count} {notice.count === 1 ? 'place' : 'places'} to <Link href={notice.href} className="font-semibold text-link underline underline-offset-2">{notice.title}</Link>{notice.days === 'placing' ? <>. <span className="text-shimmer">Putting them on days…</span></> : notice.days === 'placed' ? ' and put them on days.' : '.'}</span></p>}
+          {thinking && <p role="status" className="text-shimmer text-sm">{status || (streaming ? 'Finding the places…' : 'Planning in progress…')}</p>}
+  </>
+  const composerForm = (sticky: boolean) => (
+        <form ref={form} style={pinnedTop === null ? undefined : { position: 'fixed', top: pinnedTop, left: 12, right: 12, bottom: 'auto', zIndex: 60 }} className={`${sticky ? 'sticky bottom-[calc(var(--app-bottom-clearance)-1.5rem)] pb-[calc(0.75rem+1.5rem)] lg:static lg:pb-3' : ''} z-10 flex items-end gap-2 border-t border-line-soft bg-card p-3 ${pinnedTop === null ? 'rounded-b-2xl' : 'rounded-2xl border shadow-pop'}`} onSubmit={event => { event.preventDefault(); void send(draft) }}>
+          <textarea ref={composer} autoFocus={!!initialDraft} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(draft) } }} rows={1} maxLength={4000} placeholder={tripChat ? 'Ask about this trip…' : 'Ask about a place or a trip…'} aria-label="Message Postcard" className="field max-h-40 flex-1 resize-none overflow-y-auto" />
+          <button type="submit" disabled={thinking || !draft.trim()} aria-label="Send" className="btn btn-primary w-11 shrink-0 !px-0"><ArrowUp size={18} /></button>
+        </form>
+  )
+
+  // On the trip page: just the conversation and its message box (the trip itself is the page around it).
+  if (embedded) return <section aria-label="Chat with Postcard" className="flex flex-col text-ink">
+    <div ref={scroller} className="max-h-[min(60dvh,560px)] min-h-20 space-y-4 overflow-y-auto p-4" aria-live="polite">
+      {turns.length > 0 && <button type="button" disabled={thinking} onClick={startNewChat} className="flex items-center gap-1 text-xs font-semibold text-link underline underline-offset-2"><SquarePen size={12} />Start a new chat</button>}
+      {!turns.length && <p className="text-sm text-muted">Ask anything about this trip: plan the days, find a dinner spot near the hotel, or check what&apos;s open.</p>}
+      {messages}
+    </div>
+    {error && <p role="alert" className="px-4 pb-2 text-sm text-danger">{error}</p>}
+    {composerForm(false)}
+  </section>
 
   // A new chat that isn't about a trip starts on the Plan with Postcard page; asking switches to the chat.
   if (onLanding) return <>
@@ -438,51 +505,12 @@ export default function TestPlanner({ usualTravelers = null, trip: initialTrip, 
 
       <section aria-label="Chat with Postcard" className="panel flex min-h-0 flex-col lg:h-auto lg:flex-[1.2]">
         <div ref={scroller} className="min-h-0 flex-1 space-y-4 p-4 lg:overflow-y-auto" aria-live="polite">
-          {!turns.length && !tripChat && <div className="text-sm text-muted"><p>Postcard uses your trips and your friends’ trips—their ratings and notes—plus its own picks. Try:</p><div className="mt-3 flex flex-wrap gap-2">{starters.map(starter => <button key={starter} type="button" onClick={() => void send(starter)} className="chip text-left">{starter}</button>)}</div></div>}
-          {shownTurns.map((turn, index) => turn.role === 'preferences'
-            // The question already says the choices in words: no separate summary.
-            ? (next => next?.role === 'user' && next.text.startsWith(PICKS_PREFIX) && next.text !== SETUP_MESSAGE ? null : <PreferencesSummary key={index} preferences={turn.preferences} />)(turns[index + 1])
-            : turn.role === 'user'
-            ? <p key={index} ref={index === lastQuestionIndex ? lastQuestion : undefined} className="ml-auto w-fit max-w-[85%] scroll-mt-28 whitespace-pre-wrap rounded-2xl rounded-br-sm bg-ink px-4 py-2 text-sm text-white">{turn.text}</p>
-            : <div key={index} className="space-y-3"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed"><BoldText text={turn.text} /></p>
-              {/* The latest question's answers to tap (choices, dates, who's going) instead of typing. */}
-              {turn.ask && index === shownTurns.length - 1 && <AskPicker key={index} ask={turn.ask} usual={usualTravelers} disabled={false} waiting={thinking} onAnswer={text => { if (answering.current) queued.current = text; else void send(text) }} />}
-              {/* Each option folds up to its name, places and counts; tap to see its cards. A short single answer starts open. */}
-              {groupByOption(turn.recommendations).map(([option, recs], _i, options) => <details key={option} open={options.length === 1 && recs.length <= 4} onToggle={event => { const open = event.currentTarget.open; setFocus(current => open ? option : current === option ? null : current) }} className="group rounded-xl border-l-4 bg-cream py-3 pl-3 pr-2" style={{ borderColor: colorOf(recs[0]) }}>
-                <summary className="flex cursor-pointer list-none items-start gap-2 [&::-webkit-details-marker]:hidden">
-                  <ChevronRight size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-muted transition-transform group-open:rotate-90" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-[family-name:var(--font-playfair)] text-lg leading-tight" style={{ color: colorOf(recs[0]) }}>{option}</span>
-                    <span className="block text-xs text-muted">{(towns => towns.length > 3 ? `${towns.slice(0, 3).join(' · ')} & more` : towns.join(' · '))([...new Set(recs.map(rec => rec.destination.split(',')[0].trim()).filter(Boolean))])}</span>
-                    <span className="mt-0.5 block text-xs text-ink-soft">{([['hotel', 'hotel', 'hotels'], ['food_drink', 'restaurant', 'restaurants'], ['activity', 'thing to do', 'things to do']] as const).map(([type, one, many]) => { const n = recs.filter(rec => rec.type === type).length; return n ? `${n} ${n === 1 ? one : many}` : null }).filter(Boolean).join(' · ')}</span>
-                  </span>
-                </summary>
-                {/* A day-by-day plan shows by day (hotel, things to do, then meals); otherwise by kind of place. */}
-                {(recs.some(rec => rec.day) ? [...[...new Set(recs.flatMap(rec => rec.day ? [rec.day] : []))].sort((a, b) => a - b).map(day => ({ key: `day-${day}`, label: `Day ${day}`, Icon: CalendarDays, items: recs.filter(rec => rec.day === day).sort((a, b) => sectionOrder.findIndex(section => section.type === a.type) - sectionOrder.findIndex(section => section.type === b.type)) })), { key: 'more', label: 'More ideas', Icon: Sparkles, items: recs.filter(rec => !rec.day) }]
-                  : sectionOrder.map(({ type, label, Icon }) => ({ key: type, label, Icon, items: recs.filter(rec => rec.type === type) }))).map(({ key, label, Icon, items }) => items.length > 0 && <div key={key} className="mt-3">
-                  <h4 className="type-label mb-1.5 flex items-center gap-1.5"><Icon size={12} />{label}</h4>
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-2">{items.map(rec => <RecommendationCard key={rec.key} rec={rec} color={colorOf(rec)} grouped added={inTrip(rec)} adding={adding.has(rec.key)} onAdd={() => addSelected([rec])} />)}</div>
-                </div>)}
-              </details>)}
-              {/* The latest plan: add every place at once, instead of tapping each one. */}
-              {index === planTurn && !thinking && unadded.length > 0 && <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <button type="button" onClick={() => addSelected(unadded)} disabled={addingSelected} className="btn btn-primary btn-sm"><Plus size={16} />{addingSelected ? 'Adding…' : `Add all ${unadded.length} to ${trip?.id ? 'your trip' : 'a new trip'}`}</button>
-                <span className="text-xs text-muted">or add places one by one</span>
-              </div>}
-              {/* The latest answer ends with a way to the trip it's filling. */}
-              {trip?.id && index === shownTurns.length - 1 && !thinking && <Link href={`/plan/${trip.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-link underline underline-offset-2">Open {trip.title || 'your trip'}<ArrowUpRight size={16} /></Link>}
-            </div>)}
-          {/* What was just added, where, and whether it's on days yet. */}
-          {notice && <p role="status" className="flex items-start gap-1.5 text-sm text-ink"><Check size={16} className="mt-0.5 shrink-0 text-link" /><span>Added {notice.count} {notice.count === 1 ? 'place' : 'places'} to <Link href={notice.href} className="font-semibold text-link underline underline-offset-2">{notice.title}</Link>{notice.days === 'placing' ? <>. <span className="text-shimmer">Putting them on days…</span></> : notice.days === 'placed' ? ' and put them on days.' : '.'}</span></p>}
-          {thinking && <p role="status" className="text-shimmer text-sm">{status || (streaming ? 'Finding the places…' : 'Planning in progress…')}</p>}
+          {messages}
         </div>
         {error && <p role="alert" className="px-4 pb-2 text-sm text-danger">{error}</p>}
         <div ref={endOfChat} aria-hidden="true" style={{ scrollMarginBottom: 'calc(var(--app-bottom-clearance) + 4.5rem)' }} />
         {/* On phones the composer sticks just above the bottom navigation so it is always reachable. */}
-        <form ref={form} style={pinnedTop === null ? undefined : { position: 'fixed', top: pinnedTop, left: 12, right: 12, bottom: 'auto', zIndex: 60 }} className={`sticky bottom-[calc(var(--app-bottom-clearance)-1.5rem)] z-10 flex items-end gap-2 border-t border-line-soft bg-card p-3 pb-[calc(0.75rem+1.5rem)] lg:static lg:pb-3 ${pinnedTop === null ? 'rounded-b-2xl' : 'rounded-2xl border shadow-pop'}`} onSubmit={event => { event.preventDefault(); void send(draft) }}>
-          <textarea ref={composer} autoFocus={!!initialDraft} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(draft) } }} rows={1} maxLength={4000} placeholder={tripChat ? 'Ask about this trip…' : 'Ask about a place or a trip…'} aria-label="Message Postcard" className="field max-h-40 flex-1 resize-none overflow-y-auto" />
-          <button type="submit" disabled={thinking || !draft.trim()} aria-label="Send" className="btn btn-primary w-11 shrink-0 !px-0"><ArrowUp size={18} /></button>
-        </form>
+        {composerForm(true)}
       </section>
     </div>
 

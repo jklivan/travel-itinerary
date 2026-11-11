@@ -72,7 +72,7 @@ export default function PlanLanding({ landing, history, busy, onSend }: { landin
         {landing.plans.length > 3 && <button type="button" onClick={() => setAllPlans(open => !open)} className="inline-flex shrink-0 items-center text-sm text-link">{allPlans ? 'Show fewer' : 'See all'}<ChevronRight size={16} /></button>}</div>
       <div className="space-y-2">{(allPlans ? landing.plans : landing.plans.slice(0, 3)).map(plan => <div key={plan.id} className="panel flex items-center gap-3 px-4 py-3 text-sm text-ink">
         <Link href={`/plan/${plan.id}`} className="min-w-0 flex-1"><span className="block truncate font-semibold">{plan.title}</span><span className="block text-xs text-muted">{plan.places} {plan.places === 1 ? 'place' : 'places'} · Private plan</span></Link>
-        <Link href={`/testplan?trip=${plan.id}&from=planner&new=1`} className="chip shrink-0"><Sparkles size={14} />Ask AI</Link>
+        <Link href={`/plan/${plan.id}?chat=open`} className="chip shrink-0"><Sparkles size={14} />Ask AI</Link>
       </div>)}</div>
     </section>}
 
