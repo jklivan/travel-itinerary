@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 import NewUserTips from '@/components/NewUserTips'
+import { startNavTour } from '@/lib/navTour'
 import styles from './intro.module.css'
 
 // Each slide: a heading, a line about it, and a real screenshot of that page (public/brand/intro, taken at phone size
@@ -31,6 +32,8 @@ export default function IntroSlides({ next }: { next: string }) {
   const [index, setIndex] = useState(0)
   const last = index === SLIDES.length - 1
   const go = (to: number) => track.current?.scrollTo({ left: to * track.current.clientWidth, behavior: 'smooth' })
+  // New here: once the intro's done, the bottom bar shows where to start (Feed, then Plan, then Post).
+  useEffect(() => { startNavTour() }, [])
 
   return <div className="fixed inset-0 z-[60] flex flex-col bg-paper pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] text-ink">
     <div className="flex justify-end px-5 pt-3">
