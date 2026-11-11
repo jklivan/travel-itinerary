@@ -24,9 +24,12 @@ const SLIDES: { title: string; text: string; image?: string; video?: string; tip
   { title: 'Tips for new users.', text: 'Quick ways to get the most out of Postcard.', tips: true },
 ]
 
+const SLIDE_KEY = 'postcard-intro-slide'
+
 // Full screen over the app's header and bottom bar. Swipe between slides (they snap), or tap Next; Skip and the
 // last slide's button go on to `next`.
-export default function IntroSlides({ next }: { next: string }) {
+// `here`: this page's own address, where the tips' pages come back to (on the same slide).
+export default function IntroSlides({ next, here }: { next: string; here: string }) {
   const router = useRouter()
   const track = useRef<HTMLDivElement>(null)
   const [index, setIndex] = useState(0)
@@ -34,6 +37,13 @@ export default function IntroSlides({ next }: { next: string }) {
   const go = (to: number) => track.current?.scrollTo({ left: to * track.current.clientWidth, behavior: 'smooth' })
   // New here: once the intro's done, the bottom bar shows where to start (Feed, then Plan, then Post).
   useEffect(() => { startNavTour() }, [])
+  // Coming back (Back from a tip's page, say) opens the slide you left, not the first one.
+  useEffect(() => {
+    let saved = 0
+    try { saved = Number(sessionStorage.getItem(SLIDE_KEY)) || 0 } catch { /* storage unavailable */ }
+    if (saved > 0 && saved < SLIDES.length && track.current) track.current.scrollTo({ left: saved * track.current.clientWidth, behavior: 'instant' })
+  }, [])
+  useEffect(() => { try { sessionStorage.setItem(SLIDE_KEY, String(index)) } catch { /* storage unavailable */ } }, [index])
 
   return <div className="fixed inset-0 z-[60] flex flex-col bg-paper pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] text-ink">
     <div className="flex justify-end px-5 pt-3">
@@ -45,7 +55,7 @@ export default function IntroSlides({ next }: { next: string }) {
         className="flex w-full shrink-0 snap-center flex-col items-center px-6">
         <h1 className={`type-display ${styles.headline} max-w-sm text-center`}>{slide.title}</h1>
         <p className="mt-3 max-w-sm text-center text-base leading-snug text-link">{slide.text}</p>
-        {slide.tips ? <NewUserTips back={next} className="mt-5 min-h-0 w-full max-w-sm flex-1 overflow-y-auto pb-2" /> : <div className={`${styles.stage} mt-5 flex min-h-0 w-full flex-1 items-start justify-center`}>
+        {slide.tips ? <NewUserTips back={here} className="mt-5 min-h-0 w-full max-w-sm flex-1 overflow-y-auto pb-2" /> : <div className={`${styles.stage} mt-5 flex min-h-0 w-full flex-1 items-start justify-center`}>
           <div className={`${styles.phone} shadow-pop`}>
             <div className={styles.screen}>
               {slide.video
