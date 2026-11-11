@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { Images } from 'lucide-react'
-import { googleWebClientId } from '@/actions/googleClient'
+import { googlePhotosSetup } from '@/actions/googleClient'
 import { GOOGLE_IOS_CLIENT_ID } from '@/lib/nativeSignInIds'
 
 const SCOPE = 'https://www.googleapis.com/auth/photospicker.mediaitems.readonly'
@@ -22,6 +22,8 @@ export default function GooglePhotosButton({ tripId, onAdded, onBusyChange, disa
   const session = useRef<{ id: string; pickerUri: string; pollMs: number } | null>(null)
   const tokenClient = useRef<TokenClient | null>(null)
   const native = Capacitor.isNativePlatform()
+  // Shown only to people who can use it yet (lib/googlePhotosAccess).
+  const [allowed, setAllowed] = useState(false)
   // The form waits (no saving) while photos are being picked and copied.
   useEffect(() => { onBusyChange?.(step === 'picking' || step === 'copying') }, [step, onBusyChange])
 
@@ -76,10 +78,11 @@ export default function GooglePhotosButton({ tripId, onAdded, onBusyChange, disa
   }
   // The website: Google's script and client ready ahead of the tap, so its window opens straight from it.
   useEffect(() => {
-    if (native) return
     let live = true
-    void googleWebClientId().then(clientId => {
-      if (!clientId || !live) return
+    void googlePhotosSetup().then(({ allowed: can, clientId }) => {
+      if (!live) return
+      setAllowed(can)
+      if (!can || !clientId || native) return
       const ready = () => { const google = (window as unknown as { google?: Gis }).google; if (google && live) tokenClient.current = google.accounts.oauth2.initTokenClient({ client_id: clientId, scope: SCOPE, callback: response => { if (response.access_token) void start(response.access_token); else { setStep('idle'); setError('Google Photos wasn’t allowed.') } } }) }
       if ((window as unknown as { google?: Gis }).google) { ready(); return }
       const script = Object.assign(document.createElement('script'), { src: 'https://accounts.google.com/gsi/client', async: true })
@@ -106,6 +109,7 @@ export default function GooglePhotosButton({ tripId, onAdded, onBusyChange, disa
     } catch { setStep('idle'); setError('Google Photos wasn’t allowed.') }
   }
   const cancel = () => { session.current = null; setStep('idle') }
+  if (!allowed) return null
 
   return <>
     {step === 'idle' || step === 'allowing'

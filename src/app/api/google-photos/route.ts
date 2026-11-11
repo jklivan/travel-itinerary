@@ -1,13 +1,16 @@
 import { auth } from '@/auth'
 import { createSession, importPicked, sessionDone } from '@/lib/googlePhotos'
 import { addToPhotoPile } from '@/actions/tripPhotoPile'
+import { googlePhotosAllowed } from '@/lib/googlePhotosAccess'
 
 export const maxDuration = 300
 
 // From Google Photos (components/GooglePhotosButton): { step: 'start' } makes a picking session, { step: 'poll' } says
 // whether the person has finished picking, { step: 'import', tripId? } copies the picked photos in (into the trip's photo pile when there's a tripId).
 export async function POST(request: Request) {
-  if (!(await auth())?.user?.id) return Response.json({ error: 'Please sign in.' }, { status: 401 })
+  const user = (await auth())?.user
+  if (!user?.id) return Response.json({ error: 'Please sign in.' }, { status: 401 })
+  if (!googlePhotosAllowed(user.email)) return Response.json({ error: 'Google Photos isn’t available yet.' }, { status: 403 })
   const body = await request.json().catch(() => null) as { step?: string; token?: unknown; session?: unknown; tripId?: unknown } | null
   const token = typeof body?.token === 'string' && body.token.length < 4096 ? body.token : ''
   const session = typeof body?.session === 'string' && body.session.length < 200 ? body.session : ''
