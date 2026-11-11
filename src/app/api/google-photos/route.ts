@@ -5,7 +5,7 @@ import { addToPhotoPile } from '@/actions/tripPhotoPile'
 export const maxDuration = 300
 
 // From Google Photos (components/GooglePhotosButton): { step: 'start' } makes a picking session, { step: 'poll' } says
-// whether the person has finished picking, { step: 'import', tripId } copies the picked photos into the trip's photo pile.
+// whether the person has finished picking, { step: 'import', tripId? } copies the picked photos in (into the trip's photo pile when there's a tripId).
 export async function POST(request: Request) {
   if (!(await auth())?.user?.id) return Response.json({ error: 'Please sign in.' }, { status: 401 })
   const body = await request.json().catch(() => null) as { step?: string; token?: unknown; session?: unknown; tripId?: unknown } | null
@@ -16,9 +16,10 @@ export async function POST(request: Request) {
     if (body?.step === 'start') return Response.json(await createSession(token))
     if (!session) return Response.json({ error: 'Start again.' }, { status: 400 })
     if (body?.step === 'poll') return Response.json({ done: await sessionDone(token, session) })
-    if (body?.step === 'import' && typeof body.tripId === 'string') {
+    if (body?.step === 'import') {
       const { urls, skipped } = await importPicked(token, session)
-      if (urls.length) { const kept = await addToPhotoPile(body.tripId, urls); if (kept.error) return Response.json({ error: kept.error }, { status: 400 }) }
+      // For a trip's photo pile, kept on the trip straight away; for one place, the place's form saves them.
+      if (urls.length && typeof body.tripId === 'string') { const kept = await addToPhotoPile(body.tripId, urls); if (kept.error) return Response.json({ error: kept.error }, { status: 400 }) }
       return Response.json({ urls, skipped })
     }
     return Response.json({ error: 'Unknown step.' }, { status: 400 })

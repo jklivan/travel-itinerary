@@ -13,13 +13,17 @@ type Gis = { accounts: { oauth2: { initTokenClient: (config: { client_id: string
 
 // Add trip photos from Google Photos (lib/googlePhotos): allow access once, pick in Google's own screen, and the photos
 // land in the trip's photo pile. On the website Google's sign-in window asks; in the iPhone app, its Google sign-in does.
-export default function GooglePhotosButton({ tripId, onAdded, disabled = false }: { tripId: string; onAdded: (urls: string[]) => void; disabled?: boolean }) {
+// tripId: the photos go into that trip's photo pile; without one (a place's form) they're just handed back.
+// link: a small text link (in a place's form, beside Add photos) instead of a button.
+export default function GooglePhotosButton({ tripId, onAdded, onBusyChange, disabled = false, link = false }: { tripId?: string; onAdded: (urls: string[]) => void; onBusyChange?: (busy: boolean) => void; disabled?: boolean; link?: boolean }) {
   const [step, setStep] = useState<'idle' | 'allowing' | 'ready' | 'picking' | 'copying'>('idle')
   const [error, setError] = useState('')
   const token = useRef('')
   const session = useRef<{ id: string; pickerUri: string; pollMs: number } | null>(null)
   const tokenClient = useRef<TokenClient | null>(null)
   const native = Capacitor.isNativePlatform()
+  // The form waits (no saving) while photos are being picked and copied.
+  useEffect(() => { onBusyChange?.(step === 'picking' || step === 'copying') }, [step, onBusyChange])
 
   async function post(body: Record<string, unknown>) {
     const response = await fetch('/api/google-photos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: token.current, ...body }) })
@@ -105,9 +109,9 @@ export default function GooglePhotosButton({ tripId, onAdded, disabled = false }
 
   return <>
     {step === 'idle' || step === 'allowing'
-      ? <button type="button" disabled={disabled || step === 'allowing'} onClick={() => void allow()} className="btn btn-outline btn-sm"><Images size={16} />{step === 'allowing' ? 'Asking Google…' : 'Google Photos'}</button>
-      : step === 'ready' ? <button type="button" onClick={pick} className="btn btn-primary btn-sm"><Images size={16} />Open Google Photos</button>
-      : <span className="flex flex-wrap items-center gap-2 text-sm text-link"><span className="text-shimmer">{step === 'picking' ? 'Pick your photos in Google Photos, then tap Done…' : 'Copying your photos…'}</span>{step === 'picking' && <button type="button" onClick={cancel} className="text-xs font-semibold text-link underline">Cancel</button>}</span>}
+      ? <button type="button" disabled={disabled || step === 'allowing'} onClick={() => void allow()} className={link ? 'inline-flex items-center gap-1.5 text-xs font-medium text-link disabled:opacity-50' : 'btn btn-outline btn-sm'}>{link ? <Images size={14} /> : <Images size={16} />}{step === 'allowing' ? 'Asking Google…' : link ? 'From Google Photos' : 'Google Photos'}</button>
+      : step === 'ready' ? <button type="button" onClick={pick} className={link ? 'inline-flex items-center gap-1.5 text-xs font-semibold text-link underline' : 'btn btn-primary btn-sm'}>{link ? <Images size={14} /> : <Images size={16} />}Open Google Photos</button>
+      : <span className={`flex flex-wrap items-center gap-2 text-link ${link ? 'text-xs' : 'text-sm'}`}><span className="text-shimmer">{step === 'picking' ? 'Pick your photos in Google Photos, then tap Done…' : 'Copying your photos…'}</span>{step === 'picking' && <button type="button" onClick={cancel} className="text-xs font-semibold text-link underline">Cancel</button>}</span>}
     {error && <p role="alert" className="w-full text-sm text-danger">{error}</p>}
   </>
 }

@@ -7,6 +7,7 @@ import { sizedPhoto } from '@/lib/photoSizing'
 import { uploadFailureMessage, uploadPhotos } from '@/lib/uploadPhotos'
 import { canPickTripPhotos, TripDates } from '@/lib/tripPhotos'
 import TripPhotoPicker from './TripPhotoPicker'
+import GooglePhotosButton from './GooglePhotosButton'
 
 // large: a big dashed tile, where adding photos is the main thing on screen (the snapshot composer's first step).
 export default function EventPhotoInput({ photos, name, onChange, onBusyChange, showThumbnails = true, large = false }: {
@@ -25,6 +26,9 @@ export default function EventPhotoInput({ photos, name, onChange, onBusyChange, 
   const [pickingTrip, setPickingTrip] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
   const closeTripPicker = useCallback(() => setPickingTrip(false), [])
+  // From Google Photos (beside Add photos): copied in, then added like uploaded photos.
+  const [googleBusy, setGoogleBusy] = useState(false)
+  const googleBusyChange = useCallback((value: boolean) => { setGoogleBusy(value); onBusyChange(value) }, [onBusyChange])
   const openLibrary = useCallback(() => fileInput.current?.click(), [])
   async function addPhotos(files: File[]) {
     if (uploading.current || !files.length) return
@@ -58,6 +62,7 @@ export default function EventPhotoInput({ photos, name, onChange, onBusyChange, 
         void addPhotos(files)
       }} />
     </label>
+    {!large && <GooglePhotosButton link disabled={busy || googleBusy} onBusyChange={googleBusyChange} onAdded={urls => { if (urls.length) onChange(eventPhotos([...photos, ...urls])) }} />}
     {error && <p role="alert" className="text-xs text-danger">{error}</p>}
     {pickingTrip && <TripPhotoPicker start={tripDates?.start} end={tripDates?.end} name={name} onPick={files => void addPhotos(files)} onFallback={openLibrary} onClose={closeTripPicker} />}
   </div>
