@@ -77,7 +77,7 @@ export default async function MyTripsPage({ searchParams }: { searchParams: Prom
     </nav>
     <TripSection title="Not posted yet" description={past ? 'Trips you’ve been on that only you (and anyone you planned with) can see. Post them so friends can use your picks.' : 'Only you, and anyone you’re planning with, can see these. Keep planning, then post when you’re ready.'} empty={past ? 'Nothing waiting to be posted.' : 'No upcoming plans yet.'}>
       {/* Plans go straight to /plan: the trip editor's redirect there fails during in-app navigation. */}
-      {privateTrips.map(trip => { const ready = past && trip.userId === userId && readyToPost(trip); return <TripRow key={trip.id} id={trip.id} href={ready ? `/plan/${trip.id}?post=1` : `/plan/${trip.id}`} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={`${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}`} cta={past ? 'Finish and post →' : 'Keep planning →'} ready={ready} own={trip.userId === userId} newMessages={unread.has(trip.id)}
+      {privateTrips.map(trip => { const ready = past && trip.userId === userId && readyToPost(trip); return <TripRow key={trip.id} id={trip.id} href={`/plan/${trip.id}`} postHref={trip.userId === userId ? `/plan/${trip.id}?post=1` : undefined} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={`${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}`} cta="Keep planning →" ready={ready} own={trip.userId === userId} newMessages={unread.has(trip.id)}
         people={trip.members.length ? { joined: [trip.user, ...trip.members.filter(member => member.status === 'joined').map(member => member.user!)], invited: trip.members.filter(member => member.status === 'invited').length } : undefined} /> })}
     </TripSection>
     <TripSection title="Posted" description={past ? 'Trips you’ve shared. You can still add places and update them.' : 'Upcoming trips you’ve shared.'} empty={past ? 'You haven’t posted a trip yet.' : 'No upcoming trips posted.'}>
@@ -93,13 +93,18 @@ function TripSection({ title, description, empty, children }: { title: string; d
   </section>
 }
 
-function TripRow({ id, href, title, photo, detail, cta, own = true, people, newMessages = false, ready = false }: { ready?: boolean; newMessages?: boolean; id: string; href: string; title: string; photo: { saved: string | null; itemId: string | null; stock: string | null; focus?: string | null }; detail: string; cta: string; own?: boolean
+function TripRow({ id, href, postHref, title, photo, detail, cta, own = true, people, newMessages = false, ready = false }: { postHref?: string; ready?: boolean; newMessages?: boolean; id: string; href: string; title: string; photo: { saved: string | null; itemId: string | null; stock: string | null; focus?: string | null }; detail: string; cta: string; own?: boolean
   // Group trips: everyone planning it (the creator first) and how many are invited.
   people?: { joined: { name: string; image: string | null }[]; invited: number } }) {
   const row = <Link href={href} draggable={false} className="panel flex items-center gap-4 p-3 shadow-card transition-colors hover:bg-chip">
     <span className="photo-polaroid w-24 shrink-0"><span className="photo-polaroid-image"><TripCover {...photo} /></span></span>
-    <span className="min-w-0 flex-1"><span className="block break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-ink">{title}</span><span className="mt-2 block text-label font-semibold uppercase tracking-widest text-muted">{detail}</span>{people && <span className="mt-1.5 flex items-center gap-1.5"><span className="flex -space-x-1.5">{people.joined.slice(0, 4).map((person, index) => <UserAvatar key={index} name={person.name} image={person.image} size={20} className="ring-2 ring-card" />)}</span><span className="text-xs text-muted">{people.joined.length} planning{people.invited ? ` · ${people.invited} invited` : ''}</span></span>}{newMessages && <span className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-link"><span aria-hidden="true" className="size-2 rounded-full bg-danger" />New messages</span>}{ready ? <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1 text-sm font-semibold text-white motion-safe:animate-pulse">Ready to post →</span> : <span className="mt-1 block text-sm text-link">{cta}</span>}</span>
+    <span className="min-w-0 flex-1"><span className="block break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-ink">{title}</span><span className="mt-2 block text-label font-semibold uppercase tracking-widest text-muted">{detail}</span>{people && <span className="mt-1.5 flex items-center gap-1.5"><span className="flex -space-x-1.5">{people.joined.slice(0, 4).map((person, index) => <UserAvatar key={index} name={person.name} image={person.image} size={20} className="ring-2 ring-card" />)}</span><span className="text-xs text-muted">{people.joined.length} planning{people.invited ? ` · ${people.invited} invited` : ''}</span></span>}{newMessages && <span className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-link"><span aria-hidden="true" className="size-2 rounded-full bg-danger" />New messages</span>}<span className="mt-1 block text-sm text-link">{cta}</span></span>
+    {/* Room for the Post button, which sits over the card's corner (a link can't hold another link). */}
+    {postHref && <span aria-hidden="true" className="w-16 shrink-0" />}
   </Link>
+  // Not posted yet: a Post button on the card (opens the post step). A past trip with ratings and photos is ready to
+  // post, so its button pulses.
+  const card = postHref ? <div className="relative">{row}<Link href={postHref} className={`btn btn-primary btn-sm absolute right-3 top-1/2 -translate-y-1/2 ${ready ? 'motion-safe:animate-pulse' : ''}`}>Post</Link></div> : row
   // Only the creator can delete a trip; someone who joined leaves it from inside the plan.
-  return own ? <SwipeToDeleteTrip id={id} title={title}>{row}</SwipeToDeleteTrip> : row
+  return own ? <SwipeToDeleteTrip id={id} title={title}>{card}</SwipeToDeleteTrip> : card
 }
