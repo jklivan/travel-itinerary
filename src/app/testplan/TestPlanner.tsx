@@ -366,26 +366,31 @@ export default function TestPlanner({ embedded = false, usualTravelers = null, t
       // A chat with no trip yet now fills this one.
       if (!tripId.current) { tripId.current = planId; if (chatId.current) await linkPlanChat(chatId.current, planId) }
       const done: string[] = []
-      // Hotels first, so the restaurants and sights that follow join the stay around them.
-      for (const [index, rec] of [...recs.entries()].sort(([, a], [, b]) => Number(b.type === 'hotel') - Number(a.type === 'hotel'))) {
+      const addOne = async (rec: Recommendation, index: number) => {
         const form = new FormData()
         for (const [key, value] of Object.entries({ name: rec.name, type: rec.type, destination: [rec.destination, rec.country].filter(Boolean).join(', '), notes: `${rec.why}${rec.friendName ? ` — via ${rec.friendName}` : ''}`, clientId: crypto.randomUUID(), day: rec.day ? String(rec.day) : '', source: 'ai' })) form.set(key, value)
         if (placeIds[index]) form.set('placeId', placeIds[index]!)
-        const result = await addPlanPlace(planId, form)
-        if (result.error) { setError(`${rec.name}: ${result.error}`); break }
-        done.push(rec.key)
+        const result = await addPlanPlace(planId, form).catch(() => ({ error: 'Could not add it.' }))
+        if (result.error) setError(`${rec.name}: ${result.error}`); else done.push(rec.key)
       }
+      // Hotels first, so the restaurants and sights that follow join the stay around them, and one place per town before
+      // the rest (so each town is made once); then everything else at the same time, a few at once, which is much
+      // quicker than one by one.
+      const ordered = [...recs.entries()].sort(([, a], [, b]) => Number(b.type === 'hotel') - Number(a.type === 'hotel'))
+      const towns = new Set<string>(), first: typeof ordered = [], rest: typeof ordered = []
+      for (const entry of ordered) { const town = entry[1].destination.trim().toLowerCase(); if (entry[1].type === 'hotel' || !towns.has(town)) { towns.add(town); first.push(entry) } else rest.push(entry) }
+      for (const [index, rec] of first) await addOne(rec, index)
+      for (let start = 0; start < rest.length; start += 5) await Promise.all(rest.slice(start, start + 5).map(([index, rec]) => addOne(rec, index)))
       // Stops the AI made on its own fold into the trip, instead of the planner asking about each one.
       if (done.length) await tidyAiPlaces(planId).catch(() => null)
       setAdded(current => new Set([...current, ...done]))
+      if (madeTrip && done.length) { router.push(`/plan/${planId}?chat=open${recs.some(rec => done.includes(rec.key) && !rec.day) ? '&days=1' : ''}`); return }
       const fresh = await plannerTrip(planId).catch(() => null); if (fresh) { setTrip(fresh); title = fresh.title || title }
       setNotice(current => ({ count: (current?.href === `/plan/${planId}` ? current.count : 0) + done.length, title, href: `/plan/${planId}`, days: done.length ? 'placing' : current?.days }))
       // Then onto days, following the day-by-day plan the chat gave (a trip without a length keeps them unscheduled),
       // once a few quick taps in a row are done.
       // Places the chat already put on a day go straight onto it; only the rest need planning.
       const undated = recs.some(rec => done.includes(rec.key) && !rec.day)
-      // The trip page plans the rest of the days itself (?days=1) once it opens.
-      if (madeTrip && done.length) { router.push(`/plan/${planId}?chat=open${undated ? '&days=1' : ''}`); return }
       // On the trip page, the trip below shows what was added.
       if (embedded && done.length) router.refresh()
       if (done.length && !undated) setNotice(current => current ? { ...current, days: current.days === 'placing' && daysTimer.current ? 'placing' : 'placed' } : current)
@@ -418,8 +423,9 @@ export default function TestPlanner({ embedded = false, usualTravelers = null, t
             : <div key={index} className="space-y-3"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed"><BoldText text={turn.text} /></p>
               {/* The latest question's answers to tap (choices, dates, who's going) instead of typing. */}
               {turn.ask && index === shownTurns.length - 1 && <AskPicker key={index} ask={turn.ask} usual={usualTravelers} disabled={false} waiting={thinking} onAnswer={text => { if (answering.current) queued.current = text; else void send(text) }} />}
-              {/* Each option folds up to its name, places and counts; tap to see its cards. A short single answer starts open. */}
-              {groupByOption(turn.recommendations).map(([option, recs], _i, options) => <details key={option} open={options.length === 1 && recs.length <= 4} onToggle={event => { const open = event.currentTarget.open; setFocus(current => open ? option : current === option ? null : current) }} className="group rounded-xl border-l-4 bg-cream py-3 pl-3 pr-2" style={{ borderColor: colorOf(recs[0]) }}>
+              {/* Each option folds up to its name, places and counts; tap to see its cards. A single plan starts open (and
+                  stays as you left it while its cards arrive: it used to fold shut at the fifth card and jump the page). */}
+              {groupByOption(turn.recommendations).map(([option, recs], _i, options) => <details key={option} open={options.length === 1} onToggle={event => { const open = event.currentTarget.open; setFocus(current => open ? option : current === option ? null : current) }} className="group rounded-xl border-l-4 bg-cream py-3 pl-3 pr-2" style={{ borderColor: colorOf(recs[0]) }}>
                 <summary className="flex cursor-pointer list-none items-start gap-2 [&::-webkit-details-marker]:hidden">
                   <ChevronRight size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-muted transition-transform group-open:rotate-90" />
                   <span className="min-w-0 flex-1">
@@ -441,10 +447,10 @@ export default function TestPlanner({ embedded = false, usualTravelers = null, t
                 <span className="text-xs text-muted">or add places one by one</span>
               </div>}
               {/* The latest answer ends with a way to the trip it's filling. */}
-              {trip?.id && index === shownTurns.length - 1 && !thinking && <Link href={`/plan/${trip.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-link underline underline-offset-2">Open {trip.title || 'your trip'}<ArrowUpRight size={16} /></Link>}
+              {trip?.id && !embedded && index === shownTurns.length - 1 && !thinking && <Link href={`/plan/${trip.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-link underline underline-offset-2">Open {trip.title || 'your trip'}<ArrowUpRight size={16} /></Link>}
             </div>)}
           {/* What was just added, where, and whether it's on days yet. */}
-          {notice && <p role="status" className="flex items-start gap-1.5 text-sm text-ink"><Check size={16} className="mt-0.5 shrink-0 text-link" /><span>Added {notice.count} {notice.count === 1 ? 'place' : 'places'} to <Link href={notice.href} className="font-semibold text-link underline underline-offset-2">{notice.title}</Link>{notice.days === 'placing' ? <>. <span className="text-shimmer">Putting them on days…</span></> : notice.days === 'placed' ? ' and put them on days.' : '.'}</span></p>}
+          {notice && <p role="status" className="flex items-start gap-1.5 text-sm text-ink"><Check size={16} className="mt-0.5 shrink-0 text-link" /><span>Added {notice.count} {notice.count === 1 ? 'place' : 'places'} to {embedded ? 'this trip' : <Link href={notice.href} className="font-semibold text-link underline underline-offset-2">{notice.title}</Link>}{notice.days === 'placing' ? <>. <span className="text-shimmer">Putting them on days…</span></> : notice.days === 'placed' ? ' and put them on days.' : '.'}</span></p>}
           {thinking && <p role="status" className="text-shimmer text-sm">{status || (streaming ? 'Finding the places…' : 'Planning in progress…')}</p>}
   </>
   const composerForm = (sticky: boolean) => (
