@@ -6,6 +6,7 @@ import { getFriendQuestion } from '@/actions/questions'
 import QuestionComposer from '@/components/QuestionComposer'
 import MessageAttachment from '@/components/MessageAttachment'
 import MessageRefresh from '@/components/MessageRefresh'
+import { tripPaths } from '@/lib/tripViewLink'
 
 export default async function QuestionPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ before?: string }> }) {
   const { id } = await params
@@ -16,11 +17,13 @@ export default async function QuestionPage({ params, searchParams }: { params: P
   const result = await getFriendQuestion(id, before)
   if (!result.question) notFound()
   const { question, replies } = result
+  // Tagged trips open on their page (a private plan with its view-only link).
+  const paths = await tripPaths([question.itineraryId, ...replies.map(reply => reply.itineraryId)].filter((tripId): tripId is string => !!tripId))
   return <div className="mx-auto max-w-2xl space-y-5 px-4 py-6">
     <div className="flex items-center justify-between gap-3"><h1 className="type-display">{question.authorId === userId ? 'Your question' : `${question.author.name} asked`}</h1><MessageRefresh /></div>
     <article className="panel space-y-4 p-5">
       <p className="whitespace-pre-wrap break-words text-lg leading-relaxed text-ink">{question.content}</p>
-      {question.itineraryTitle && <MessageAttachment kind="trip" name={question.itineraryTitle} href={question.itineraryId ? `/itinerary/${question.itineraryId}` : undefined} />}
+      {question.itineraryTitle && <MessageAttachment kind="trip" name={question.itineraryTitle} href={question.itineraryId ? paths.get(question.itineraryId) ?? undefined : undefined} />}
       <p className="text-xs text-brown">Visible to {question.authorId === userId ? 'you and the people you follow' : `${question.author.name} and the people they follow`}.</p>
     </article>
     <section aria-label="Replies" className="space-y-3">
@@ -31,7 +34,7 @@ export default async function QuestionPage({ params, searchParams }: { params: P
       {replies.map(reply => <article key={reply.id} id={`reply-${reply.id}`} className="panel space-y-3 p-4">
         <Link href={`/user/${reply.authorId}`} className="text-sm font-semibold text-link">{reply.authorId === userId ? 'You' : reply.author.name}</Link>
         <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink">{reply.content}</p>
-        {reply.itineraryTitle && <MessageAttachment kind="trip" name={reply.itineraryTitle} href={reply.itineraryId ? `/itinerary/${reply.itineraryId}` : undefined} />}
+        {reply.itineraryTitle && <MessageAttachment kind="trip" name={reply.itineraryTitle} href={reply.itineraryId ? paths.get(reply.itineraryId) ?? undefined : undefined} />}
         <time className="block text-xs text-brown" dateTime={reply.createdAt.toISOString()}>{reply.createdAt.toLocaleString('en-US', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' })} UTC</time>
       </article>)}
     </section>

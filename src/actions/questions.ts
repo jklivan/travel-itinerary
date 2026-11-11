@@ -2,6 +2,8 @@
 
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { canEdit } from '@/lib/tripAccess'
+import { viewerToken } from '@/lib/tripViewLink'
 import { questionAudience } from '@/lib/friendQuestions'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
@@ -17,10 +19,14 @@ function validate(input: QuestionInput) {
   if (input.itineraryId !== undefined && typeof input.itineraryId !== 'string') return 'Choose an available itinerary.'
 }
 
-async function tripAttachment(itineraryId?: string) {
+// A trip tagged on a question or reply: a posted trip, or one of your own private plans (friends then open it with its
+// view-only link, made here).
+async function tripAttachment(itineraryId: string | undefined, userId: string) {
   if (!itineraryId) return {}
-  const trip = await prisma.itinerary.findFirst({ where: { id: itineraryId, visibility: { not: 'draft' } }, select: { id: true, title: true } })
-  return trip ? { itineraryId: trip.id, itineraryTitle: trip.title } : null
+  const trip = await prisma.itinerary.findFirst({ where: { id: itineraryId, OR: [{ visibility: { not: 'draft' } }, canEdit(userId)] }, select: { id: true, title: true, visibility: true } })
+  if (!trip) return null
+  if (trip.visibility === 'draft') await viewerToken(trip.id, userId)
+  return { itineraryId: trip.id, itineraryTitle: trip.title }
 }
 
 export async function getFriendQuestions(before?: string) {
@@ -56,7 +62,7 @@ export async function createFriendQuestion(input: QuestionInput) {
   const authorId = session.user.id
   const error = validate(input)
   if (error) return { error }
-  const attachment = await tripAttachment(input.itineraryId)
+  const attachment = await tripAttachment(input.itineraryId, authorId)
   if (!attachment) return { error: 'This itinerary is no longer available. Remove it or choose another.' }
   const { question, notifications } = await prisma.$transaction(async tx => {
     const question = await tx.friendQuestion.upsert({
@@ -83,9 +89,9 @@ export async function replyToFriendQuestion(questionId: string, input: QuestionI
   if (error) return { error }
   const question = await prisma.friendQuestion.findFirst({ where: { id: questionId, ...questionAudience(session.user.id) }, select: { id: true, authorId: true } })
   if (!question) return { error: 'This question is no longer available to you.' }
-  const attachment = await tripAttachment(input.itineraryId)
-  if (!attachment) return { error: 'This itinerary is no longer available. Remove it or choose another.' }
   const authorId = session.user.id
+  const attachment = await tripAttachment(input.itineraryId, authorId)
+  if (!attachment) return { error: 'This itinerary is no longer available. Remove it or choose another.' }
   const { reply, notificationId } = await prisma.$transaction(async tx => {
     const reply = await tx.friendQuestionReply.upsert({
       where: { authorId_clientId: { authorId, clientId: input.clientId } }, update: {},
@@ -104,6 +110,13 @@ export async function replyToFriendQuestion(questionId: string, input: QuestionI
   revalidatePath('/explore/questions')
   revalidatePath(`/explore/questions/${questionId}`)
   return { id: reply.id }
+}
+
+// Your trips to tag on a question or reply (Ask your friends): the ones you're planning and the ones you've posted.
+export async function myQuestionTrips() {
+  const userId = (await auth())?.user?.id
+  if (!userId) return []
+  return prisma.itinerary.findMany({ where: canEdit(userId), select: { id: true, title: true, visibility: true }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 200 })
 }
 
 export async function searchQuestionItineraries(query: string) {
