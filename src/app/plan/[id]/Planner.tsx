@@ -261,11 +261,7 @@ export default function Planner({ trip, ai = null, planDays = false, initialImpo
     <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? ((trip.people?.filter(person => person.status !== 'invited').length ?? 0) > 1 ? `Private plan · ${trip.people!.filter(person => person.status !== 'invited').length} of you` : 'Private plan · Only you') : 'Shared trip'}</div>
     <h1 className="trip-title mt-1 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
     {/* Group trips: who's planning it, and Invite (the creator) or Leave. */}
-    {/* Plan together, and Send (the paper airplane): the trip's link by Messages, WhatsApp…, view-only while private. */}
-    <div className="flex items-start gap-2">
-      <div className="min-w-0 flex-1">{trip.viewerId && (trip.visibility === 'draft' || (trip.people?.length ?? 0) > 1) && <TripPeople tripId={trip.id} people={trip.people ?? []} isOwner={trip.isOwner !== false} viewerId={trip.viewerId} />}</div>
-      <SendTripButton tripId={trip.id} title={trip.title} />
-    </div>
+    {trip.viewerId && (trip.visibility === 'draft' || (trip.people?.length ?? 0) > 1) && <TripPeople tripId={trip.id} people={trip.people ?? []} isOwner={trip.isOwner !== false} viewerId={trip.viewerId} />}
     {/* A posted trip keeps showing where it is and what it's posted with (budget, who it's for, tags), as on its page. */}
     {trip.visibility !== 'draft' && <div className="mt-2 [&>*:last-child]:mb-0"><TripDescriptors trip={trip} /></div>}
     <div className="mt-1"><details id="trip-details" open={initialDetails || undefined} className="scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-1 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details></div>
@@ -279,9 +275,9 @@ export default function Planner({ trip, ai = null, planDays = false, initialImpo
         {nudgeImport && <><span aria-hidden="true" className="absolute -inset-x-2 -top-2 bottom-[-0.5rem] -z-10 rounded-full bg-mist" />
           <span className="absolute bottom-full left-1/2 z-10 mb-0 w-44 -translate-x-1/2 rounded-2xl bg-mist px-3 py-1.5 text-center text-xs font-medium leading-snug text-link shadow-card after:absolute after:left-1/2 after:top-full after:-translate-x-1/2 after:border-x-[7px] after:border-t-[7px] after:border-x-transparent after:border-t-mist">Have an itinerary or notes? Import them here.</span></>}
         <span className={`${actionIcon} ${nudgeImport ? 'border-mist-line bg-mist text-link' : 'border-line bg-card text-ink'}`}><Upload size={22} strokeWidth={1.75} /></span>Import notes or files</button>
-      {/* This trip's AI chat (at the top of the page; elsewhere a separate page): it sees the trip's places and adds
-          its picks here. */}
-      {ai ? <button type="button" onClick={() => { setChatOpen(true); requestAnimationFrame(() => chatRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })) }} aria-expanded={chatOpen} className={action}><span className={`${actionIcon} border-mist-line bg-mist text-ink`}><Sparkles size={22} strokeWidth={1.75} /></span>Plan with AI</button>
+      {/* Send (the paper airplane): the trip's link by Messages, WhatsApp…, view-only while private. Plan with AI is the
+          chat below (Chat with AI about this trip); someone who joined the trip opens it on its own page instead. */}
+      {ai ? <SendTripButton tripId={trip.id} title={trip.title} className={action} iconClassName={`${actionIcon} border-line bg-card text-ink`} />
       : <Link href={`/testplan?trip=${trip.id}&from=planner`} className={action}><span className={`${actionIcon} border-mist-line bg-mist text-ink`}><Sparkles size={22} strokeWidth={1.75} /></span>Plan with AI</Link>}
     </div>
     {ai && <TripAIChat ref={chatRef} ai={ai} open={chatOpen} onToggle={setChatOpen} />}
