@@ -8,6 +8,7 @@ import { addToPhotoPile, takeFromPhotoPile } from '@/actions/tripPhotoPile'
 import { eventPhotos } from '@/lib/eventPhotos'
 import { sizedPhoto } from '@/lib/photoSizing'
 import { uploadFailureMessage, uploadPhotos } from '@/lib/uploadPhotos'
+import GooglePhotosButton from './GooglePhotosButton'
 import { canPickTripPhotos, TripDates } from '@/lib/tripPhotos'
 import TripPhotoPicker from './TripPhotoPicker'
 
@@ -77,6 +78,8 @@ export default function PhotoSorter({ tripId, places, initialPile = [], prompt =
       <ImagePlus size={16} />{pile.length ? 'Add more photos' : 'Choose photos'}
       <input ref={fileInput} type="file" multiple accept="image/*" className="sr-only" disabled={!!progress} onChange={event => { const files = Array.from(event.target.files ?? []); event.target.value = ''; void choose(files) }} />
     </label>
+    {/* Or from Google Photos (people who keep their photos there, not on the phone). */}
+    <GooglePhotosButton tripId={tripId} disabled={!!progress} onAdded={urls => { setPile(current => [...current, ...urls]); if (urls.length) { setMessage(`Added ${urls.length} photo${urls.length === 1 ? '' : 's'} from Google Photos.`); router.refresh() } }} />
     {pickingTrip && <TripPhotoPicker start={tripDates?.start} end={tripDates?.end} name="this trip" onPick={files => void choose(files)} onFallback={() => fileInput.current?.click()} onClose={() => setPickingTrip(false)} />}
     {progress && <p role="status" className="type-body text-link">{progress}</p>}
     {message && <p role="status" className="flex items-center gap-1.5 text-sm text-link"><Check size={16} />{message}</p>}
