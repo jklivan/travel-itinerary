@@ -2,6 +2,7 @@
 
 import { Suspense, useActionState } from 'react'
 import Link from 'next/link'
+import PasswordField from '@/components/ui/PasswordField'
 import { useSearchParams } from 'next/navigation'
 import { resetPassword } from '@/actions/passwordReset'
 
@@ -28,11 +29,11 @@ function ResetForm() {
               )}
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-ink-soft mb-1">New password</label>
-                <input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required className="field" />
+                <PasswordField id="password" name="password" autoComplete="new-password" minLength={8} required />
               </div>
               <div>
                 <label htmlFor="confirm" className="block text-sm font-medium text-ink-soft mb-1">Type it again</label>
-                <input id="confirm" name="confirm" type="password" autoComplete="new-password" minLength={8} required className="field" />
+                <PasswordField id="confirm" name="confirm" autoComplete="new-password" minLength={8} required />
               </div>
               <button type="submit" disabled={pending} className="btn btn-primary w-full">{pending ? 'Saving…' : 'Save new password'}</button>
             </form>

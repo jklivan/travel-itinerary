@@ -3,6 +3,7 @@
 import { useActionState } from 'react'
 import { login } from '@/actions/auth'
 import Link from 'next/link'
+import PasswordField from '@/components/ui/PasswordField'
 import SocialSignIn from '@/components/SocialSignIn'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
@@ -74,14 +75,12 @@ function LoginForm() {
                 </label>
                 <Link href="/forgot-password" className="text-sm text-link hover:underline">Forgot password?</Link>
               </div>
-              <input
+              <PasswordField
                 id="password"
                 name="password"
-                type="password"
                 autoComplete="current-password"
                 required
-                className="field"
-                placeholder="••••••••"
+                placeholder="Your password"
               />
             </div>
 

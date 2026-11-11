@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { oauthReturn, saveTripId } from '@/lib/saveTripReturn'
 import { register } from '@/actions/auth'
 import Link from 'next/link'
+import PasswordField from '@/components/ui/PasswordField'
 import SocialSignIn from '@/components/SocialSignIn'
 
 function RegisterForm() {
@@ -73,13 +74,11 @@ function RegisterForm() {
               <label htmlFor="password" className="block text-sm font-medium text-ink-soft mb-1">
                 Password
               </label>
-              <input
+              <PasswordField
                 id="password"
                 name="password"
-                type="password"
                 autoComplete="new-password"
                 required
-                className="field"
                 placeholder="Min. 8 characters"
               />
               {state?.errors?.password && (
