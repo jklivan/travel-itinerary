@@ -39,6 +39,7 @@ import { placeTown } from '@/lib/placeTown'
 import { TripDates } from '@/lib/tripPhotos'
 import PhotoSorter from '@/components/PhotoSorter'
 import TripAIChat, { type TripAI } from './TripAIChat'
+import SendTripButton from '@/components/SendTripButton'
 import { DateFields, inputClass, buttonClass } from '../NewPlanForm'
 import { tagMeta } from '@/lib/tags'
 import { samePlanDestination } from '@/lib/planPlaceIdentity'
@@ -260,7 +261,11 @@ export default function Planner({ trip, ai = null, planDays = false, initialImpo
     <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? ((trip.people?.filter(person => person.status !== 'invited').length ?? 0) > 1 ? `Private plan · ${trip.people!.filter(person => person.status !== 'invited').length} of you` : 'Private plan · Only you') : 'Shared trip'}</div>
     <h1 className="trip-title mt-1 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
     {/* Group trips: who's planning it, and Invite (the creator) or Leave. */}
-    {trip.viewerId && (trip.visibility === 'draft' || (trip.people?.length ?? 0) > 1) && <TripPeople tripId={trip.id} people={trip.people ?? []} isOwner={trip.isOwner !== false} viewerId={trip.viewerId} />}
+    {/* Plan together, and Send (the paper airplane): the trip's link by Messages, WhatsApp…, view-only while private. */}
+    <div className="flex items-start gap-2">
+      <div className="min-w-0 flex-1">{trip.viewerId && (trip.visibility === 'draft' || (trip.people?.length ?? 0) > 1) && <TripPeople tripId={trip.id} people={trip.people ?? []} isOwner={trip.isOwner !== false} viewerId={trip.viewerId} />}</div>
+      <SendTripButton tripId={trip.id} title={trip.title} />
+    </div>
     {/* A posted trip keeps showing where it is and what it's posted with (budget, who it's for, tags), as on its page. */}
     {trip.visibility !== 'draft' && <div className="mt-2 [&>*:last-child]:mb-0"><TripDescriptors trip={trip} /></div>}
     <div className="mt-1"><details id="trip-details" open={initialDetails || undefined} className="scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-1 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} />Edit</summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details></div>

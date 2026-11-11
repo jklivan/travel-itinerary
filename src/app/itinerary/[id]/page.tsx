@@ -18,6 +18,7 @@ import FollowButton from '@/components/FollowButton'
 import { Plane, Hotel, Utensils, Camera, MapPin, Check, Ban, Pencil, Clock } from 'lucide-react'
 import BucketButton from '@/components/BucketButton'
 import LikeButton from '@/components/LikeButton'
+import SendTripButton from '@/components/SendTripButton'
 import { eventPhotos, pickEventPhoto, tripPhotoGallery } from '@/lib/eventPhotos'
 import DeleteButton from '@/components/DeleteButton'
 import { STAMP_COLORS } from '@/lib/tripStamps'
@@ -199,10 +200,10 @@ export default async function ItineraryPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ view?: string; preview?: string; as?: string }>
+  searchParams: Promise<{ view?: string; preview?: string; as?: string; v?: string }>
 }) {
   const { id } = await params
-  const { view, preview: previewParam, as } = await searchParams
+  const { view, preview: previewParam, as, v: viewToken } = await searchParams
   const session = await auth()
 
   const it = await prisma.itinerary.findUnique({
@@ -242,7 +243,10 @@ export default async function ItineraryPage({
   const showDayByDay = view === 'day-by-day' && hasDailyPlan
   const showMap = view === 'map'
 
-  if (it.visibility === 'draft' && !isOwn) notFound()
+  // A private trip is only for its creator, unless opened with its view-only link (the Send button, actions/tripShare).
+  const sentToYou = it.visibility === 'draft' && !isOwn && typeof viewToken === 'string' && viewToken.length <= 40
+    && !!await prisma.tripMember.findFirst({ where: { itineraryId: it.id, token: viewToken, status: 'viewer', userId: null }, select: { id: true } })
+  if (it.visibility === 'draft' && !isOwn && !sentToYou) notFound()
   // ?preview=1: a private plan shown as it will look once posted (from "A few more details" → Continue).
   const previewing = previewParam === '1' && it.visibility === 'draft' && isOwn && it.isPlan
   if (it.visibility === 'draft' && isOwn && it.isPlan && !previewing) redirect(`/plan/${it.id}`)
@@ -535,6 +539,10 @@ export default async function ItineraryPage({
           <div className="panel-hint mb-4 px-3 py-2 text-xs font-medium text-ink">
             Preview — only you can see this. It’s how your trip will look once you post it.
           </div>
+        ) : sentToYou ? (
+          <div className="panel-hint mb-4 px-3 py-2 text-xs font-medium text-ink">
+            {it.user.name.split(' ')[0]} shared this private trip with you. Only people with the link can see it.
+          </div>
         ) : it.visibility === 'draft' && (
           <div className="mb-4 bg-sand border border-gold-faint rounded-lg px-3 py-2 text-xs text-brown font-medium">
             Draft — only visible to you. <Link href={editHref} className="underline">Edit &amp; publish</Link>
@@ -547,11 +555,13 @@ export default async function ItineraryPage({
             {it.title}
           </h1>
 
-          <TripDescriptors trip={it} leading={!isOwn && <>
+          <TripDescriptors trip={it} leading={<>
             {/* Like (public heart, with its count) and Save (private, to your folders). Not on your own trip: you can't
-                like it (its likes show in Liked by below). */}
-            <LikeButton variant="pill" itineraryId={it.id} initialLiked={!!viewerLike} initialCount={likeCount} isLoggedIn={!!session?.user} />
-            <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />
+                like it (its likes show in Liked by below), and not on a private trip someone sent you. */}
+            {!isOwn && it.visibility !== 'draft' && <LikeButton variant="pill" itineraryId={it.id} initialLiked={!!viewerLike} initialCount={likeCount} isLoggedIn={!!session?.user} />}
+            {!isOwn && it.visibility !== 'draft' && <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />}
+            {/* Send it to someone (Messages, WhatsApp…). */}
+            {it.visibility !== 'draft' && <SendTripButton tripId={it.id} title={it.title} />}
           </>} />
 
           {/* Italic description */}

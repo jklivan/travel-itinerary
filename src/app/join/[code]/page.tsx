@@ -10,7 +10,7 @@ export default async function JoinPage({ params }: { params: Promise<{ code: str
   const { code } = await params
   const userId = (await auth())?.user?.id
   if (!userId) redirect(`/login?callbackUrl=${encodeURIComponent(`/join/${code}`)}`)
-  const link = await prisma.tripMember.findFirst({ where: { token: code, userId: null }, select: { itineraryId: true } })
+  const link = await prisma.tripMember.findFirst({ where: { token: code, userId: null, status: 'invited' }, select: { itineraryId: true } })
   const tripId = link?.itineraryId ?? code
   const trip = await prisma.itinerary.findUnique({ where: { id: tripId }, select: {
     id: true, title: true, userId: true, user: { select: { name: true, image: true } },

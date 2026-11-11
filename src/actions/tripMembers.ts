@@ -65,7 +65,7 @@ export async function inviteLink(tripId: string): Promise<Result> {
   if (!userId) return { error: 'Please sign in.' }
   const trip = await prisma.itinerary.findFirst({ where: { id: tripId, userId }, select: { id: true } })
   if (!trip) return { error: 'Only the person who started this trip can invite people.' }
-  const existing = await prisma.tripMember.findFirst({ where: { itineraryId: tripId, userId: null, token: { not: null } }, select: { token: true } })
+  const existing = await prisma.tripMember.findFirst({ where: { itineraryId: tripId, userId: null, token: { not: null }, status: 'invited' }, select: { token: true } })
   const token = existing?.token ?? (await prisma.tripMember.create({ data: { itineraryId: tripId, invitedById: userId, token: randomBytes(12).toString('base64url') }, select: { token: true } })).token
   return { success: true, link: `/join/${token}` }
 }
@@ -74,7 +74,7 @@ export async function inviteLink(tripId: string): Promise<Result> {
 export async function answerInvite(code: string, join: boolean): Promise<Result> {
   const userId = await me()
   if (!userId) return { error: 'Please sign in.' }
-  const link = await prisma.tripMember.findFirst({ where: { token: code, userId: null }, select: { itineraryId: true, invitedById: true } })
+  const link = await prisma.tripMember.findFirst({ where: { token: code, userId: null, status: 'invited' }, select: { itineraryId: true, invitedById: true } })
   const tripId = link?.itineraryId ?? code
   const trip = await prisma.itinerary.findUnique({ where: { id: tripId }, select: { id: true, userId: true } })
   if (!trip) return { error: unavailable }
