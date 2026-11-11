@@ -12,16 +12,19 @@ import UserAvatar from '@/components/UserAvatar'
 export const metadata: Metadata = { title: 'My Trips — Postcard' }
 
 const tripSelect = {
-  id: true, title: true, isPlan: true, publishedAt: true, coverPhoto: true, coverFocus: true,
+  id: true, title: true, isPlan: true, publishedAt: true, coverPhoto: true, coverFocus: true, startDate: true, endDate: true, datesFlexible: true,
   // Group trips: who started it and who's invited or joined.
   userId: true, user: { select: { name: true, image: true } },
   members: { where: { userId: { not: null }, status: { in: ['invited', 'joined'] } }, orderBy: { createdAt: 'asc' as const }, select: { status: true, user: { select: { name: true, image: true } } } },
   photos: { orderBy: { isStock: 'asc' as const }, select: { url: true, isStock: true } },
-  destinations: { orderBy: { order: 'asc' as const }, select: { name: true, country: true, items: { orderBy: { order: 'asc' as const }, select: { id: true, type: true, photoUrl: true, photoUrls: true } } } },
+  destinations: { orderBy: { order: 'asc' as const }, select: { name: true, country: true, items: { orderBy: { order: 'asc' as const }, select: { id: true, type: true, photoUrl: true, photoUrls: true, rating: true } } } },
 }
 
-// My Trips: private plans you're still working on (yours and group trips you've joined), then the trips you've posted.
-export default async function MyTripsPage() {
+// My Trips, in two tabs: Upcoming (trips still ahead, or plans with no dates yet) and Past (trips whose dates have
+// gone by, and trips you've posted without dates). Each is split into private and posted. A past trip that isn't
+// posted yet but has ratings and photos is ready to post, and says so.
+export default async function MyTripsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const past = (await searchParams).tab === 'past'
   const userId = (await auth())?.user?.id
   if (!userId) redirect('/login?callbackUrl=%2Ftrips')
 
@@ -46,12 +49,20 @@ export default async function MyTripsPage() {
     if (savedCover(trip) || !destination) return [trip.id, null] as const
     return [trip.id, await fetchStockPhoto(`${trip.title} ${destination.name} ${destination.country ?? ''} travel`).catch(() => null)] as const
   })))
+  const today = new Date().toISOString().slice(0, 10)
+  const isPast = (trip: Trip) => trip.datesFlexible ? trip.publishedAt !== null : trip.endDate.toISOString().slice(0, 10) < today
+  const items = (trip: Trip) => trip.destinations.flatMap(d => d.items)
+  const readyToPost = (trip: Trip) => items(trip).some(item => item.rating) && (trip.photos.some(photo => !photo.isStock) || items(trip).some(item => item.photoUrl || item.photoUrls.length))
+  const privateTrips = plans.filter(trip => isPast(trip) === past)
+  const postedTrips = postcards.filter(trip => isPast(trip) === past)
+  const upcomingCount = plans.filter(trip => !isPast(trip)).length + postcards.filter(trip => !isPast(trip)).length
+  const pastCount = plans.length + postcards.length - upcomingCount
   const cover = (trip: Trip) => ({ saved: savedCover(trip), focus: trip.coverPhoto ? trip.coverFocus : null, itemId: trip.destinations.flatMap(d => d.items).find(item => item.type !== 'transport')?.id ?? null, stock: stock.get(trip.id) ?? null })
 
   return <div className="page-wrap">
     <header className="page-header">
       <h1 className="page-title">My trips</h1>
-      <p className="page-subtitle">Plans you’re working on and trips you’ve posted.</p>
+      <p className="page-subtitle">Trips you’re planning and trips you’ve been on.</p>
     </header>
     {invites.length > 0 && <section aria-label="Invitations" className="mb-7 space-y-2">
       {invites.map(invite => <Link key={invite.itinerary.id} href={`/join/${invite.itinerary.id}`} className="panel-hint flex items-center gap-3 p-3 text-sm text-ink">
@@ -60,13 +71,17 @@ export default async function MyTripsPage() {
         <span className="shrink-0 text-xs font-semibold text-link">Join or decline →</span>
       </Link>)}
     </section>}
-    <TripSection title="Private plans" description="Only you, and anyone you’re planning with, can see these. Keep planning, then post when you’re ready." empty="No private plans yet.">
+    <nav className="tabs mb-6" aria-label="Trips">
+      <Link href="/trips" aria-current={!past ? 'page' : undefined} className="tab">Upcoming ({upcomingCount})</Link>
+      <Link href="/trips?tab=past" aria-current={past ? 'page' : undefined} className="tab">Past ({pastCount})</Link>
+    </nav>
+    <TripSection title={past ? 'Not posted yet' : 'Private plans'} description={past ? 'Trips you’ve been on that only you (and anyone you planned with) can see. Post them so friends can use your picks.' : 'Only you, and anyone you’re planning with, can see these. Keep planning, then post when you’re ready.'} empty={past ? 'Nothing waiting to be posted.' : 'No upcoming plans yet.'}>
       {/* Plans go straight to /plan: the trip editor's redirect there fails during in-app navigation. */}
-      {plans.map(trip => <TripRow key={trip.id} id={trip.id} href={`/plan/${trip.id}`} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={`${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}`} cta="Keep planning →" own={trip.userId === userId} newMessages={unread.has(trip.id)}
-        people={trip.members.length ? { joined: [trip.user, ...trip.members.filter(member => member.status === 'joined').map(member => member.user!)], invited: trip.members.filter(member => member.status === 'invited').length } : undefined} />)}
+      {privateTrips.map(trip => { const ready = past && trip.userId === userId && readyToPost(trip); return <TripRow key={trip.id} id={trip.id} href={ready ? `/plan/${trip.id}?post=1` : `/plan/${trip.id}`} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={`${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}`} cta={past ? 'Finish and post →' : 'Keep planning →'} ready={ready} own={trip.userId === userId} newMessages={unread.has(trip.id)}
+        people={trip.members.length ? { joined: [trip.user, ...trip.members.filter(member => member.status === 'joined').map(member => member.user!)], invited: trip.members.filter(member => member.status === 'invited').length } : undefined} /> })}
     </TripSection>
-    <TripSection title="Shared postcards" description="Posted trips. You can still add places and update them." empty="You haven’t posted a trip yet.">
-      {postcards.map(trip => <TripRow key={trip.id} id={trip.id} href={`/itinerary/${trip.id}`} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={`${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}${trip.publishedAt ? ` · Posted ${trip.publishedAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : ''}`} cta="View postcard →" />)}
+    <TripSection title="Posted" description={past ? 'Trips you’ve shared. You can still add places and update them.' : 'Upcoming trips you’ve shared.'} empty={past ? 'You haven’t posted a trip yet.' : 'No upcoming trips posted.'}>
+      {postedTrips.map(trip => <TripRow key={trip.id} id={trip.id} href={`/itinerary/${trip.id}`} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={`${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}${trip.publishedAt ? ` · Posted ${trip.publishedAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : ''}`} cta="View postcard →" />)}
     </TripSection>
   </div>
 }
@@ -78,12 +93,12 @@ function TripSection({ title, description, empty, children }: { title: string; d
   </section>
 }
 
-function TripRow({ id, href, title, photo, detail, cta, own = true, people, newMessages = false }: { newMessages?: boolean; id: string; href: string; title: string; photo: { saved: string | null; itemId: string | null; stock: string | null; focus?: string | null }; detail: string; cta: string; own?: boolean
+function TripRow({ id, href, title, photo, detail, cta, own = true, people, newMessages = false, ready = false }: { ready?: boolean; newMessages?: boolean; id: string; href: string; title: string; photo: { saved: string | null; itemId: string | null; stock: string | null; focus?: string | null }; detail: string; cta: string; own?: boolean
   // Group trips: everyone planning it (the creator first) and how many are invited.
   people?: { joined: { name: string; image: string | null }[]; invited: number } }) {
   const row = <Link href={href} draggable={false} className="panel flex items-center gap-4 p-3 shadow-card transition-colors hover:bg-chip">
     <span className="photo-polaroid w-24 shrink-0"><span className="photo-polaroid-image"><TripCover {...photo} /></span></span>
-    <span className="min-w-0 flex-1"><span className="block break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-ink">{title}</span><span className="mt-2 block text-label font-semibold uppercase tracking-widest text-muted">{detail}</span>{people && <span className="mt-1.5 flex items-center gap-1.5"><span className="flex -space-x-1.5">{people.joined.slice(0, 4).map((person, index) => <UserAvatar key={index} name={person.name} image={person.image} size={20} className="ring-2 ring-card" />)}</span><span className="text-xs text-muted">{people.joined.length} planning{people.invited ? ` · ${people.invited} invited` : ''}</span></span>}{newMessages && <span className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-link"><span aria-hidden="true" className="size-2 rounded-full bg-danger" />New messages</span>}<span className="mt-1 block text-sm text-link">{cta}</span></span>
+    <span className="min-w-0 flex-1"><span className="block break-words font-[family-name:var(--font-playfair)] text-lg leading-tight text-ink">{title}</span><span className="mt-2 block text-label font-semibold uppercase tracking-widest text-muted">{detail}</span>{people && <span className="mt-1.5 flex items-center gap-1.5"><span className="flex -space-x-1.5">{people.joined.slice(0, 4).map((person, index) => <UserAvatar key={index} name={person.name} image={person.image} size={20} className="ring-2 ring-card" />)}</span><span className="text-xs text-muted">{people.joined.length} planning{people.invited ? ` · ${people.invited} invited` : ''}</span></span>}{newMessages && <span className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-link"><span aria-hidden="true" className="size-2 rounded-full bg-danger" />New messages</span>}{ready ? <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1 text-sm font-semibold text-white motion-safe:animate-pulse">Ready to post →</span> : <span className="mt-1 block text-sm text-link">{cta}</span>}</span>
   </Link>
   // Only the creator can delete a trip; someone who joined leaves it from inside the plan.
   return own ? <SwipeToDeleteTrip id={id} title={title}>{row}</SwipeToDeleteTrip> : row
