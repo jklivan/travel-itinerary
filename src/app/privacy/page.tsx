@@ -4,7 +4,7 @@ import { SUPPORT_EMAIL } from '@/lib/support'
 
 export const metadata: Metadata = { title: 'Privacy Policy — Postcard' }
 
-const UPDATED = 'November 10, 2026'
+const UPDATED = 'November 11, 2026'
 
 const sections: { title: string; body: React.ReactNode }[] = [
   { title: 'What we collect', body: <ul className="list-disc space-y-1 pl-5">
@@ -34,6 +34,7 @@ const sections: { title: string; body: React.ReactNode }[] = [
       <li><strong>Apple</strong> delivers push notifications; <strong>Google and Apple</strong> handle sign-in if you choose them.</li>
     </ul>
   </> },
+  { title: 'Google Photos', body: <p>If you choose to add trip photos from Google Photos, Postcard asks Google for permission to see only the photos you pick in Google’s own photo picker. Postcard copies those photos into your trip, where they’re treated like any photo you upload, and never sees the rest of your library. Postcard doesn’t keep access to your Google account: the permission is used only while you’re picking, and isn’t stored. You can remove it any time at <a href="https://myaccount.google.com/permissions" className="underline">myaccount.google.com/permissions</a>. Postcard’s use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" className="underline">Google API Services User Data Policy</a>, including the Limited Use requirements. Photos from Google aren’t used for advertising, aren’t sold, and aren’t used to train AI models.</p> },
   { title: 'AI assistants you connect', body: <p>If you connect an AI assistant such as Claude, ChatGPT or Muse to Postcard (see <Link href="/connector" className="font-semibold text-link underline">Postcard for AI assistants</Link>), it can, after you sign in and allow it, list and read your own trips and create or add places to your private plans. We share only those trips with it, in answer to the requests it makes; what it does with them is covered by that assistant’s own privacy policy. We don’t receive your conversations with the assistant. We keep a sign-in key for each connected assistant until you disconnect it in Settings (or it expires after 90 days), and nothing else about the assistant.</p> },
   { title: 'Keeping and deleting your data', body: <p>We keep your information while your account is open. You can delete your account and everything in it at any time in <strong>Settings → Delete account</strong>; it’s removed right away and can’t be undone. You can also email us at <a href={`mailto:${SUPPORT_EMAIL}`} className="underline">{SUPPORT_EMAIL}</a>.</p> },
   { title: 'Security', body: <p>Passwords are stored as secure hashes, and data is sent over encrypted connections.</p> },
