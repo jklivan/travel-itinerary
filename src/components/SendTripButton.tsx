@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Send } from 'lucide-react'
 import { tripShareLink } from '@/actions/tripShare'
+import { shareUrl } from '@/lib/publicUrl'
 
 // The paper airplane on a trip: opens the phone's share sheet (Messages, WhatsApp…) with the trip's link; a private trip
 // sends a view-only link. Where there's no share sheet, the link is copied instead.
@@ -18,7 +19,7 @@ export default function SendTripButton({ tripId, title, className, iconClassName
     setNote('')
     const result = link ?? await tripShareLink(tripId).catch(() => ({ error: 'Could not make a link. Please try again.' } as { error: string; path?: string }))
     if (!result.path) { setNote(result.error ?? 'Could not make a link.'); return }
-    const url = `${window.location.origin}${result.path}`
+    const url = shareUrl(result.path)
     const text = `${title || 'A trip'} on Postcard`
     if (navigator.share) { await navigator.share({ title: text, text, url }).catch(() => {}); return }
     try { await navigator.clipboard.writeText(url); setNote('Link copied') } catch { setNote(url) }

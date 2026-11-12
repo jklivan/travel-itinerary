@@ -1,5 +1,6 @@
 'use client'
 
+import { shareUrl } from '@/lib/publicUrl'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, Link2, UserPlus, X } from 'lucide-react'
@@ -35,7 +36,7 @@ export default function TripPeople({ tripId, people, isOwner, viewerId }: { trip
     try {
       const result = await inviteLink(tripId)
       if (result.error || !result.link) { setMessage(result.error ?? 'Could not make a link.'); return }
-      const url = `${window.location.origin}${result.link}`
+      const url = shareUrl(result.link)
       try { await navigator.clipboard.writeText(url); setMessage('Invite link copied. Send it to anyone you’d like to plan with.') }
       catch { setMessage(`Copy this link: ${url}`) }
     } finally { setBusy(null) }
