@@ -6,10 +6,11 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { CODE_SECONDS, hash, newSecret } from '@/lib/oauth'
 
-// The person's answer on the "Connect … to Postcard?" page (oauth/authorize).
+// The person's answer on the "Connect … to Postcard?" page (oauth/authorize). The state goes back exactly as it came
+// (OpenAI's is a long encoded value; cut short, it can't be read)
 async function checked(form: FormData) {
   const userId = (await auth())?.user?.id
-  const clientId = String(form.get('client_id') ?? ''), redirectUri = String(form.get('redirect_uri') ?? ''), state = String(form.get('state') ?? '').slice(0, 500)
+  const clientId = String(form.get('client_id') ?? ''), redirectUri = String(form.get('redirect_uri') ?? ''), state = String(form.get('state') ?? '').slice(0, 8000)
   const challenge = String(form.get('code_challenge') ?? '')
   const client = clientId.length <= 50 ? await prisma.oAuthClient.findUnique({ where: { id: clientId }, select: { id: true, redirectUris: true } }) : null
   // Only ever send people back to an address the assistant registered.
