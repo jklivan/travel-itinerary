@@ -6,6 +6,11 @@
     <array>
         <string>Default</string>
     </array>
+    <key>com.apple.developer.associated-domains</key>
+    <array>
+        <string>applinks:www.postcardtravel.app</string>
+        <string>applinks:postcardtravel.app</string>
+    </array>
     <key>aps-environment</key>
     <string>development</string>
 </dict>

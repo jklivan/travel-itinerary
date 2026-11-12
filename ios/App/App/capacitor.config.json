@@ -20,6 +20,7 @@
 	},
 	"packageClassList": [
 		"InAppReviewPlugin",
+		"AppPlugin",
 		"KeyboardPlugin",
 		"PushNotificationsPlugin",
 		"SocialLoginPlugin"
