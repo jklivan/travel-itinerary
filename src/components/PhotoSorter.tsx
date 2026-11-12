@@ -2,13 +2,14 @@
 
 import { useContext, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, ImagePlus, X } from 'lucide-react'
+import { Check, ImagePlus, Maximize2, X } from 'lucide-react'
 import { updatePlace } from '@/actions/placeQuickEdit'
 import { addToPhotoPile, takeFromPhotoPile } from '@/actions/tripPhotoPile'
 import { eventPhotos } from '@/lib/eventPhotos'
 import { sizedPhoto } from '@/lib/photoSizing'
 import { uploadFailureMessage, uploadPhotos } from '@/lib/uploadPhotos'
 import GooglePhotosButton from './GooglePhotosButton'
+import PhotoViewer from './ui/PhotoViewer'
 import { canPickTripPhotos, TripDates } from '@/lib/tripPhotos'
 import TripPhotoPicker from './TripPhotoPicker'
 
@@ -35,6 +36,8 @@ export default function PhotoSorter({ tripId, places, initialPile = [], prompt =
   // In the iPhone app on a dated trip, Choose photos opens the photos taken on the trip; Other photos… is the usual picker.
   const tripDates = useContext(TripDates)
   const [pickingTrip, setPickingTrip] = useState(false)
+  // A pile photo shown full screen.
+  const [viewing, setViewing] = useState<number | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
   async function choose(files: File[]) {
@@ -91,11 +94,16 @@ export default function PhotoSorter({ tripId, places, initialPile = [], prompt =
           {selected.length > 0 && <button type="button" disabled={!!progress} onClick={() => { const removed = selected; setPile(current => current.filter(url => !removed.includes(url))); void takeFromPhotoPile(tripId, removed).catch(() => {}); setMessage(`Removed ${removed.length} photo${removed.length === 1 ? '' : 's'}.`); setSelected([]) }} className="text-xs font-semibold text-danger">Remove</button>}
           <button type="button" onClick={() => setSelected(selected.length === pile.length ? [] : pile)} className="text-xs font-semibold text-link">{selected.length === pile.length ? 'Clear' : 'Select all'}</button>
         </div></div>
-      <div className="grid grid-cols-4 gap-1">{pile.map((url, index) => { const on = selected.includes(url); return <button key={url} type="button" aria-pressed={on} aria-label={`Photo ${index + 1}`} onClick={() => setSelected(current => on ? current.filter(item => item !== url) : [...current, url])} className="relative aspect-square overflow-hidden bg-chip">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={sizedPhoto(url, 256)} alt="" className={`size-full object-cover ${on ? 'opacity-80' : ''}`} />
-        {on && <span className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-link text-white ring-2 ring-white"><Check size={14} /></span>}
-      </button> })}</div>
+      <div className="grid grid-cols-4 gap-1">{pile.map((url, index) => { const on = selected.includes(url); return <div key={url} className="relative">
+        <button type="button" aria-pressed={on} aria-label={`Photo ${index + 1}`} onClick={() => setSelected(current => on ? current.filter(item => item !== url) : [...current, url])} className="relative block aspect-square w-full overflow-hidden bg-chip">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={sizedPhoto(url, 256)} alt="" className={`size-full object-cover ${on ? 'opacity-80' : ''}`} />
+          {on && <span className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-link text-white ring-2 ring-white"><Check size={14} /></span>}
+        </button>
+        {/* Tapping a photo selects it; this shows it full screen. */}
+        <button type="button" onClick={() => setViewing(index)} aria-label={`See photo ${index + 1} larger`} className="absolute bottom-1 left-1 flex size-7 items-center justify-center rounded-full bg-ink/60 text-white"><Maximize2 size={14} /></button>
+      </div> })}</div>
+      {viewing !== null && <PhotoViewer photos={pile} start={viewing} name="Trip photo" onClose={() => setViewing(null)} />}
       {/* No places yet: the photos wait here (kept on the trip) until there are places to tap them into. */}
       {!places.length && <p className="panel-hint p-3 text-sm text-ink">Your photos are saved to this trip. Add your places, then come back here to tap them into each one.</p>}
       {/* The places, by destination and category: tapping one adds the selected photos to it. */}

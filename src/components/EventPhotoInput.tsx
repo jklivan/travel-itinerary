@@ -8,6 +8,7 @@ import { uploadFailureMessage, uploadPhotos } from '@/lib/uploadPhotos'
 import { canPickTripPhotos, TripDates } from '@/lib/tripPhotos'
 import TripPhotoPicker from './TripPhotoPicker'
 import GooglePhotosButton from './GooglePhotosButton'
+import PhotoViewer from './ui/PhotoViewer'
 
 // large: a big dashed tile, where adding photos is the main thing on screen (the snapshot composer's first step).
 export default function EventPhotoInput({ photos, name, onChange, onBusyChange, showThumbnails = true, large = false }: {
@@ -26,6 +27,8 @@ export default function EventPhotoInput({ photos, name, onChange, onBusyChange, 
   const [pickingTrip, setPickingTrip] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
   const closeTripPicker = useCallback(() => setPickingTrip(false), [])
+  // Tap a thumbnail to see it full screen (and remove it from there).
+  const [viewing, setViewing] = useState<number | null>(null)
   // From Google Photos (beside Add photos): copied in, then added like uploaded photos.
   const [googleBusy, setGoogleBusy] = useState(false)
   const googleBusyChange = useCallback((value: boolean) => { setGoogleBusy(value); onBusyChange(value) }, [onBusyChange])
@@ -49,8 +52,10 @@ export default function EventPhotoInput({ photos, name, onChange, onBusyChange, 
   return <div className="px-3 pb-2 pt-1 space-y-2">
     {showThumbnails && photos.length > 0 && <div className="flex flex-wrap gap-2">
       {photos.map((url, index) => <div key={url} className="relative">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={sizedPhoto(url, 256)} alt={`${name}, photo ${index + 1}`} className="h-16 w-16 rounded-lg object-cover" />
+        <button type="button" onClick={() => setViewing(index)} aria-label={`See photo ${index + 1} for ${name} larger`} className="block rounded-lg">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={sizedPhoto(url, 256)} alt="" className="h-16 w-16 rounded-lg object-cover" />
+        </button>
         <button type="button" disabled={busy} onClick={() => onChange(photos.filter(photo => photo !== url))} aria-label={`Remove photo ${index + 1} for ${name}`} className="absolute -top-1 -right-1 rounded-full bg-ink p-1 text-white disabled:opacity-50"><X size={12} /></button>
       </div>)}
     </div>}
@@ -66,6 +71,7 @@ export default function EventPhotoInput({ photos, name, onChange, onBusyChange, 
     </label>
     {!large && <GooglePhotosButton link disabled={busy || googleBusy} onBusyChange={googleBusyChange} onAdded={urls => { if (urls.length) onChange(eventPhotos([...photos, ...urls])) }} />}
     </div>
+    {viewing !== null && <PhotoViewer photos={photos} start={viewing} name={name} onClose={() => setViewing(null)} onRemove={busy ? undefined : url => onChange(photos.filter(photo => photo !== url))} />}
     {error && <p role="alert" className="text-xs text-danger">{error}</p>}
     {pickingTrip && <TripPhotoPicker start={tripDates?.start} end={tripDates?.end} name={name} onPick={files => void addPhotos(files)} onFallback={openLibrary} onClose={closeTripPicker} />}
   </div>
