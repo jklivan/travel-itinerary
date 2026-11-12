@@ -42,10 +42,10 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
   const today = new Date().toISOString().slice(0, 10)
   const been = trip.datesFlexible ? !!trip.publishedAt || trip.photos.length > 0 || !!trip.tripRating || trip.destinations.some(d => d.items.some(item => item.rating))
     : trip.endDate.toISOString().slice(0, 10) < today
-  const ai = aiTrip ? { been, chat: aiChat && { id: aiChat.id, turns: aiChat.turns as unknown as Turn[] }, trip: plannerTripProps(aiTrip), usual, open: search.chat === 'open' || !!askItem,
+  const ai = aiTrip ? { chat: aiChat && { id: aiChat.id, turns: aiChat.turns as unknown as Turn[] }, trip: plannerTripProps(aiTrip), usual, open: search.chat === 'open' || !!askItem,
     draft: askItem ? `Tell me more about ${askItem.item.name} (${[askItem.d.name, askItem.d.country].filter(Boolean).join(', ')}): ` : '', ask: search.ask ?? '' } : null
   const group = trip.members.some(member => member.status === 'joined')
-  return <Planner ai={ai} audienceSuggestion={audienceSuggestion} planDays={search.days === '1'} initialImport={importing} initialDetails={search.details === '1'} initialPost={initialPost} trip={{ id: trip.id, title: trip.title, audience: trip.audience, isPlan: trip.isPlan, visibility: trip.visibility,
+  return <Planner been={been} ai={ai} audienceSuggestion={audienceSuggestion} planDays={search.days === '1'} initialImport={importing} initialDetails={search.details === '1'} initialPost={initialPost} trip={{ id: trip.id, title: trip.title, audience: trip.audience, isPlan: trip.isPlan, visibility: trip.visibility,
     postType: trip.postType, durationDays: trip.durationDays, budget: trip.budget, tripRating: trip.tripRating, tags: trip.tags, notes: trip.notes, bestMonths: trip.bestMonths, coverPhoto: trip.coverPhoto, coverFocus: trip.coverFocus, tripPhotos: trip.photos.map(photo => photo.url),
     start: trip.datesFlexible ? '' : trip.startDate.toISOString().slice(0, 10), end: trip.datesFlexible ? '' : trip.endDate.toISOString().slice(0, 10),
     destinations: trip.destinations.map(d => ({ id: d.id, name: d.name, country: d.country, days: d.days, items: d.items.map(item => ({ id: item.id, order: item.order,
