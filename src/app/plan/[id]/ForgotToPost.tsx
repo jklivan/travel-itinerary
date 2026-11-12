@@ -1,24 +1,34 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 // Leaving a trip you've been on that isn't posted yet (it's all in there, so it's easy to forget): taps on links to
-// other pages stop once a day for "Forgot to post?", with Post it (the post box) or Not now (carry on).
+// other pages (and the header's Back) stop once a day for "Forgot to post?", with Post it (the post box) or Not now (carry on).
 export default function ForgotToPost({ tripId, onPost }: { tripId: string; onPost: () => void }) {
   const router = useRouter()
-  const [leavingTo, setLeavingTo] = useState<string | null>(null)
+  // Where they were going: a page, or the header's Back (tapped again after Not now).
+  const [leavingTo, setLeavingTo] = useState<string | HTMLElement | null>(null)
+  const letThrough = useRef(false)
   useEffect(() => {
     const key = `forgotToPost:${tripId}`
     const today = new Date().toISOString().slice(0, 10)
     function onClick(event: MouseEvent) {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-      const link = event.target instanceof Element ? event.target.closest('a[href]') : null
-      if (!(link instanceof HTMLAnchorElement) || link.target === '_blank' || link.hasAttribute('download')) return
-      const url = new URL(link.href, window.location.href)
-      if (url.origin !== window.location.origin || url.pathname.startsWith(`/plan/${tripId}`) || url.pathname.startsWith(`/itinerary/${tripId}`)) return
+      if (letThrough.current) { letThrough.current = false; return }
+      const target = event.target instanceof Element ? event.target : null
+      const back = target?.closest('[data-app-back]')
+      const link = back ? null : target?.closest('a[href]')
+      let to: string | HTMLElement
+      if (back instanceof HTMLElement) to = back
+      else {
+        if (!(link instanceof HTMLAnchorElement) || link.target === '_blank' || link.hasAttribute('download')) return
+        const url = new URL(link.href, window.location.href)
+        if (url.origin !== window.location.origin || url.pathname.startsWith(`/plan/${tripId}`) || url.pathname.startsWith(`/itinerary/${tripId}`)) return
+        to = url.pathname + url.search + url.hash
+      }
       try { if (localStorage.getItem(key) === today) return; localStorage.setItem(key, today) } catch { return }
       event.preventDefault(); event.stopPropagation()
-      setLeavingTo(url.pathname + url.search + url.hash)
+      setLeavingTo(to)
     }
     document.addEventListener('click', onClick, true)
     return () => document.removeEventListener('click', onClick, true)
@@ -30,7 +40,7 @@ export default function ForgotToPost({ tripId, onPost }: { tripId: string; onPos
       <p className="mt-2 text-sm text-muted">This trip looks done but only you can see it. Post it so your friends can see where you went.</p>
       <div className="mt-5 flex flex-col gap-2">
         <button type="button" className="btn btn-primary" onClick={() => { setLeavingTo(null); onPost() }}>Post it</button>
-        <button type="button" className="btn btn-outline" onClick={() => { const to = leavingTo; setLeavingTo(null); router.push(to) }}>Not now</button>
+        <button type="button" className="btn btn-outline" onClick={() => { const to = leavingTo; setLeavingTo(null); if (typeof to === 'string') router.push(to); else { letThrough.current = true; to.click() } }}>Not now</button>
       </div>
     </div>
   </div>

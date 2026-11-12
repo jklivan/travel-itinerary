@@ -21,7 +21,7 @@ export default function HeaderLeft() {
   const pathname = usePathname()
   const router = useRouter()
   if (pathname === '/') return <FeedTips />
-  return <button type="button" onClick={() => {
+  return <button type="button" data-app-back onClick={() => {
     if (previousPage(window.history.state)) router.back()
     else router.push(parentPath(pathname, window.location.search))
   }} className="-ml-1 flex min-h-11 items-center gap-0.5 pr-2 text-base text-ink hover:text-ink-soft">
