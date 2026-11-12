@@ -34,6 +34,8 @@ const nextConfig: NextConfig = {
     return [
       // Apple's app-site-association file, for opening our links in the iPhone app (app/api/aasa).
       { source: '/.well-known/apple-app-site-association', destination: '/api/aasa' },
+      // OpenAI's site-ownership check for the ChatGPT app directory (app/api/openai-challenge).
+      { source: '/.well-known/openai-apps-challenge', destination: '/api/openai-challenge' },
       { source: '/ingest/static/:path*', destination: 'https://us-assets.i.posthog.com/static/:path*' },
       { source: '/ingest/:path*', destination: 'https://us.i.posthog.com/:path*' },
     ]
