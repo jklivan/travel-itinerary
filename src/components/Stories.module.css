@@ -6,7 +6,7 @@
    Postcard stamp in white at the corner. "Your story" is a blank card with a dashed edge and a postmark. */
 .tray { display: flex; align-items: flex-start; overflow-x: auto; padding: 6px 8px 4px; scrollbar-width: none; }
 .tray::-webkit-scrollbar { display: none; }
-.addStory, .storyThumb { position: relative; flex: 0 0 auto; display: flex; align-items: center; flex-direction: column; gap: 6px; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; background: transparent; border: 0; padding: 0; cursor: pointer; text-decoration: none; color: var(--color-link); }
+.addStory, .storyThumb { position: relative; flex: 0 0 auto; display: flex; align-items: center; flex-direction: column; gap: 6px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; background: transparent; border: 0; padding: 0; cursor: pointer; text-decoration: none; color: var(--color-link); }
 .storyThumb { margin-left: -12px; }
 .storyThumb:nth-child(2n) { z-index: 2; }
 .storyThumb:nth-child(2n+1) { z-index: 1; }
