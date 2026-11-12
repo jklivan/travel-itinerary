@@ -607,10 +607,11 @@ export default async function ItineraryPage({
         </div>
 
         {/* Same underlined tabs as the planner. */}
+        {/* A private trip opened from its view-only link keeps the link's code on every tab. */}
         <nav aria-label="Itinerary view" className="tabs mb-5">
-          <Link href={`/itinerary/${it.id}`} scroll={false} aria-current={!showMap && !showDayByDay ? 'page' : undefined} className="tab">Summary</Link>
-          {hasDailyPlan && <Link href={`/itinerary/${it.id}?view=day-by-day`} scroll={false} aria-current={showDayByDay ? 'page' : undefined} className="tab">Itinerary</Link>}
-          {mapPins.length > 0 && <Link href={`/itinerary/${it.id}?view=map`} scroll={false} aria-current={showMap ? 'page' : undefined} className="tab">Map View</Link>}
+          <Link href={`/itinerary/${it.id}${sentToYou ? `?v=${viewToken}` : ''}`} scroll={false} aria-current={!showMap && !showDayByDay ? 'page' : undefined} className="tab">Summary</Link>
+          {hasDailyPlan && <Link href={`/itinerary/${it.id}?view=day-by-day${sentToYou ? `&v=${viewToken}` : ''}`} scroll={false} aria-current={showDayByDay ? 'page' : undefined} className="tab">Itinerary</Link>}
+          {mapPins.length > 0 && <Link href={`/itinerary/${it.id}?view=map${sentToYou ? `&v=${viewToken}` : ''}`} scroll={false} aria-current={showMap ? 'page' : undefined} className="tab">Map View</Link>}
         </nav>
 
         {showMap && (
