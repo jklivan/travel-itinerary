@@ -12,6 +12,9 @@ export const BUDGETS = [
 export const DESTINATION_TYPES = ['Beach', 'City', 'Mountains', 'Countryside', 'Islands', 'Lakes', 'Snow & ski', 'Desert'] as const
 export const ACTIVITIES = ['Food & restaurants', 'Wine & bars', 'Museums & history', 'Hiking & outdoors', 'Beaches & swimming', 'Shopping', 'Nightlife', 'Spa & wellness', 'Kid-friendly activities', 'Adventure sports', 'Architecture', 'Local markets'] as const
 
+// Sign-up's "How you like to travel": the kinds of places they like to stay.
+export const STAYS = ['Boutique hotels', 'Luxury resorts', 'Big-brand hotels', 'All-inclusive', 'Vacation rentals', 'B&Bs and inns', 'Budget hotels and hostels', 'Camping and glamping'] as const
+
 // The Plan with Postcard start page: When (Dates), Somewhere nearby, With friends and Vibe.
 export const WHEN = ['This weekend', 'Next weekend', 'I’m flexible', 'Specific dates'] as const
 export const DISTANCES = ['Up to 1 hour', 'Up to 2 hours', 'Up to 4 hours', 'A short flight'] as const

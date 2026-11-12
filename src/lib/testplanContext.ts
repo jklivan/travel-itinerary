@@ -56,9 +56,15 @@ export async function loadPlanningContext(userId: string, excludeTripId?: string
   const hasOwnTrips = mine.some(trip => trip.destinations.some(destination => destination.items.length > 0))
   // Their best vacation from sign-up: the main clue to their taste while they have no trips of their own, then
   // listed like one of their trips (no more weight than the others).
-  const best = account?.bestVacation as { destination?: string; travelers?: string; hotel?: { name?: string } | null; tags?: string[] } | null
-  if (best?.destination) {
-    const details = [best.travelers && `with: ${best.travelers}`, best.tags?.length && `they did: ${best.tags.join(', ')}`, best.hotel?.name && `stayed at ${best.hotel.name}`].filter(Boolean).join(' · ')
+  const best = account?.bestVacation as { style?: boolean; destination?: string; travelers?: string | string[]; budget?: number | null; stays?: string[]; hotel?: { name?: string } | null; tags?: string[] } | null
+  // Sign-up's "How you like to travel" (newer than the best-vacation questions): who with, budget, where they stay, what they do.
+  if (best?.style) {
+    const budgets = ['', '$ budget-friendly', '$$ mid-range', '$$$ upscale', '$$$$ luxury']
+    const style = [Array.isArray(best.travelers) && best.travelers.length && `usually travel with: ${best.travelers.join(', ')}`, best.budget && `usual budget: ${budgets[best.budget] ?? ''}`,
+      best.stays?.length && `like to stay in: ${best.stays.join(', ')}`, best.tags?.length && `like to do: ${best.tags.join(', ')}`].filter(Boolean).join(' · ')
+    if (style) sections.unshift(`## How they like to travel (told us at sign-up${hasOwnTrips ? '' : '; they have no trips logged yet, so this is the main clue to their taste'}): ${style}`)
+  } else if (best?.destination) {
+    const details = [typeof best.travelers === 'string' && best.travelers && `with: ${best.travelers}`, best.tags?.length && `they did: ${best.tags.join(', ')}`, best.hotel?.name && `stayed at ${best.hotel.name}`].filter(Boolean).join(' · ')
     sections[hasOwnTrips ? 'push' : 'unshift'](hasOwnTrips
       ? `## Your trip: their best vacation (from sign-up): "${best.destination}"${details ? ` · ${details}` : ''}`
       : `## Their best vacation (told us at sign-up; they have no trips logged yet, so this is the main clue to their taste: use it for the kinds of places and things they enjoy): "${best.destination}"${details ? ` · ${details}` : ''}`)
