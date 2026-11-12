@@ -44,6 +44,8 @@ export default function BestVacation({ next }: { next: string }) {
   const last = step === steps.length - 1
 
   return <div className="page-wrap">
+    {/* Why we ask, before the first question (Laura's feedback). */}
+    {step === 0 && <p className="panel-hint mb-5 p-3 text-sm text-ink">So Postcard can tailor its recommendations to you, a few quick questions about your best vacation.</p>}
     <header className="page-header">
       <p className="type-label text-link">Step {step + 1} of {steps.length}</p>
       <h1 className="page-title mt-1">{current.title}</h1>
