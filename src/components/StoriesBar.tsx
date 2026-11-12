@@ -34,7 +34,7 @@ export default function StoriesBar({ stories, userId, following, serverTime }: {
 
   return <section aria-label="24-hour stories" className={styles.bar}>
     <div className={styles.tray}>
-      {userId ? <button type="button" className={styles.addStory} onClick={() => { setMessage(''); setComposing(true) }}><span><Plus size={28} /><Postmark /></span>Your story</button> : <Link href="/login" className={styles.addStory}><span><Plus size={28} /><Postmark /></span>Your story</Link>}
+      {userId ? <button type="button" className={styles.addStory} onClick={() => { setMessage(''); setComposing(true) }}><span><Plus size={22} /><Postmark /></span>Your story</button> : <Link href="/login" className={styles.addStory}><span><Plus size={28} /><Postmark /></span>Your story</Link>}
       {groups.map(group => { const latest = group.items[0]; return <button key={group.authorId} type="button" className={styles.storyThumb} disabled={!!loading} aria-label={`View ${group.authorId === userId ? 'your' : latest.authorName + '’s'} stories, ${group.items.length} ${group.items.length === 1 ? 'story' : 'stories'}`} onClick={async () => {
         setLoading(group.authorId); setMessage('')
         try {
