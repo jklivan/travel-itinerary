@@ -5,7 +5,7 @@ import { ChevronDown, Sparkles } from 'lucide-react'
 import TestPlanner, { type Turn } from '@/app/testplan/TestPlanner'
 import type { UsualTravelers } from '@/lib/travelers'
 
-export type TripAI = { chat: { id: string; turns: Turn[] } | null; trip: { id: string; title: string; places: { id: string; name: string; type: string; notes: string | null; placeId: string | null; lat: number | null; lng: number | null; day: number | null; photos: string[]; destination: string }[] }; usual: UsualTravelers | null; open: boolean; draft: string; ask: string }
+export type TripAI = { been: boolean; chat: { id: string; turns: Turn[] } | null; trip: { id: string; title: string; places: { id: string; name: string; type: string; notes: string | null; placeId: string | null; lat: number | null; lng: number | null; day: number | null; photos: string[]; destination: string }[] }; usual: UsualTravelers | null; open: boolean; draft: string; ask: string }
 
 // The trip's AI chat, at the top of the trip page: it carries on the trip's latest conversation, and what it adds
 // lands in the trip below. Folded to one bar unless just opened (a trip the chat made, Plan with AI or Ask AI).

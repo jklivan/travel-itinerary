@@ -37,7 +37,12 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
   const joinedOthers = trip.members.filter(member => member.status === 'joined').length
   const audienceSuggestion = trip.audience !== 'family' ? trip.audience : joinedOthers >= 2 ? 'friends' : audienceFor(usual) ?? trip.audience
   const askItem = search.ask ? trip.destinations.flatMap(d => d.items.map(item => ({ item, d }))).find(({ item }) => item.id === search.ask) : undefined
-  const ai = aiTrip ? { chat: aiChat && { id: aiChat.id, turns: aiChat.turns as unknown as Turn[] }, trip: plannerTripProps(aiTrip), usual, open: search.chat === 'open' || !!askItem,
+  // Been already (dates over; or no dates but it's posted, or has their photos or stars): the AI chat is for planning,
+  // so it stays out of the way unless asked for (Ask AI about a place, ?chat=open).
+  const today = new Date().toISOString().slice(0, 10)
+  const been = trip.datesFlexible ? !!trip.publishedAt || trip.photos.length > 0 || !!trip.tripRating || trip.destinations.some(d => d.items.some(item => item.rating))
+    : trip.endDate.toISOString().slice(0, 10) < today
+  const ai = aiTrip ? { been, chat: aiChat && { id: aiChat.id, turns: aiChat.turns as unknown as Turn[] }, trip: plannerTripProps(aiTrip), usual, open: search.chat === 'open' || !!askItem,
     draft: askItem ? `Tell me more about ${askItem.item.name} (${[askItem.d.name, askItem.d.country].filter(Boolean).join(', ')}): ` : '', ask: search.ask ?? '' } : null
   const group = trip.members.some(member => member.status === 'joined')
   return <Planner ai={ai} audienceSuggestion={audienceSuggestion} planDays={search.days === '1'} initialImport={importing} initialDetails={search.details === '1'} initialPost={initialPost} trip={{ id: trip.id, title: trip.title, audience: trip.audience, isPlan: trip.isPlan, visibility: trip.visibility,

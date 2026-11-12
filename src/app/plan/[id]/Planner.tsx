@@ -283,7 +283,7 @@ export default function Planner({ trip, ai = null, audienceSuggestion, planDays 
       {ai ? <SendTripButton tripId={trip.id} title={trip.title} className={action} iconClassName={`${actionIcon} border-line bg-card text-ink`} />
       : <Link href={`/testplan?trip=${trip.id}&from=planner`} className={action}><span className={`${actionIcon} border-mist-line bg-mist text-ink`}><Sparkles size={22} strokeWidth={1.75} /></span>Plan with AI</Link>}
     </div>
-    {ai && <TripAIChat ref={chatRef} ai={ai} open={chatOpen} onToggle={setChatOpen} />}
+    {ai && (!ai.been || chatOpen) && <TripAIChat ref={chatRef} ai={ai} open={chatOpen} onToggle={setChatOpen} />}
     {needsPlace && !places.length && <p role="alert" className="panel-hint mb-3 p-3 text-sm text-ink">Add at least one place before you post this trip: a place you stayed, ate or visited.</p>}
     <div ref={panelsRef}>
     {addForm('top')}
