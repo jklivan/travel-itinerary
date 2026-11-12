@@ -24,14 +24,14 @@ export const TOOLS = [
     title: 'List my trips',
     description: 'Lists the trips in the person’s Postcard account, newest first: private plans they’re working on and trips they’ve posted, with dates, destinations and how many places each has.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-    annotations: { readOnlyHint: true, openWorldHint: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   },
   {
     name: 'get_trip',
     title: 'Read a trip',
     description: 'Every place in one of the person’s trips (hotels, restaurants, things to do, transport), by destination, with its day, date and time, notes and rating.',
     inputSchema: { type: 'object', properties: { trip_id: { type: 'string', description: 'The trip’s id, as listed by list_trips.' } }, required: ['trip_id'], additionalProperties: false },
-    annotations: { readOnlyHint: true, openWorldHint: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   },
   {
     name: 'import_trip',
