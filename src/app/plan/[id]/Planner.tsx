@@ -977,12 +977,14 @@ function PlacePrivacy({ itemId, on }: { itemId: string; on: boolean }) {
 }
 
 // "Sort this day": flights, then the car or transfer, the hotel, then meals in order (lib/dayOrder). Only shown when
-// the day isn't in that order already, so it never sits there doing nothing.
+// the day isn't in that order already, so it never sits there doing nothing, and not on a day that came from an
+// imported itinerary or email (its places' ids are "<import>:<n>", actions/planImport): that day is already in the
+// itinerary's own order.
 function SortDay({ tripId, places, day, lastDay }: { tripId: string; places: (Place & { destination: string })[]; day: number; lastDay: number }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const sorted = sortDay(places, { day, lastDay })
-  if (places.length < 2 || sorted.every((place, index) => place.id === places[index].id)) return null
+  if (places.length < 2 || places.every(place => place.id.includes(':')) || sorted.every((place, index) => place.id === places[index].id)) return null
   return <button type="button" disabled={busy} onClick={async () => {
     setBusy(true)
     try { const result = await setDayOrder(tripId, sorted.map(place => place.id)); if (!result.error) router.refresh() } finally { setBusy(false) }
