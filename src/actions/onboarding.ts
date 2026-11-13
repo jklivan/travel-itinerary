@@ -3,7 +3,7 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { TAGS } from '@/lib/tags'
-import { learnedFrom } from '@/lib/travelerMemory'
+import { learnedFrom, memoryOn } from '@/lib/travelerMemory'
 import { BUDGETS, STAYS, TRAVELERS } from '@/lib/travelPreferences'
 
 export type TravelStyle = { travelers: string[]; budget: number | null; stays: string[]; tags: string[] }
@@ -21,9 +21,10 @@ export async function saveTravelStyle(input: TravelStyle): Promise<{ ok?: boolea
   const budget = BUDGETS.some(option => option.value === input?.budget) ? input.budget : null
   if (!travelers.length && !stays.length && !tags.length && !budget) return { ok: true }
   try {
-    // What the planner has learned in chats (lib/travelerMemory) stays.
-    const learned = learnedFrom((await prisma.user.findUnique({ where: { id: userId }, select: { bestVacation: true } }))?.bestVacation)
-    await prisma.user.update({ where: { id: userId }, data: { bestVacation: { style: true, travelers, budget, stays, tags, savedAt: new Date().toISOString(), ...(learned.length ? { learned } : {}) } } })
+    // What the planner has learned in chats, and whether it may (lib/travelerMemory), stays.
+    const before = (await prisma.user.findUnique({ where: { id: userId }, select: { bestVacation: true } }))?.bestVacation
+    const learned = learnedFrom(before)
+    await prisma.user.update({ where: { id: userId }, data: { bestVacation: { style: true, travelers, budget, stays, tags, savedAt: new Date().toISOString(), ...(learned.length ? { learned } : {}), ...(memoryOn(before) ? {} : { memoryOff: true }) } } })
     return { ok: true }
   } catch { return { error: 'Could not save. Please try again.' } }
 }

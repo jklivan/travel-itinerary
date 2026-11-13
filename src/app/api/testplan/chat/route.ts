@@ -12,7 +12,7 @@ import { finishedJsonItems, finishedJsonObject, partialJsonString } from '@/lib/
 import type { Ask } from '@/app/testplan/AskPicker'
 import { canEdit } from '@/lib/tripAccess'
 import { LOOKUP_TOOLS, routeMessage } from '@/lib/chatRouter'
-import { learnedFrom, updateLearned } from '@/lib/travelerMemory'
+import { learnedFrom, memoryOn, updateLearned } from '@/lib/travelerMemory'
 
 export const maxDuration = 300
 
@@ -90,7 +90,8 @@ Also return, for the conversation list:
 - addToTrip = true when the user approves your plan or asks to save it ("looks good", "perfect", "add them", "save this to my trip"): Postcard then adds every place from your latest plan to their trip and puts them on days, so say so briefly in the reply ("Adding these to your trip now.") and don't ask them to pick places. Otherwise false. When you offer choices after a plan, offer it as "Add these to my trip" (never a vague "Looks good"), and that option means exactly this. Agreeing to something else (a length, a hotel, a change) is not a request to add the places.
 - tripDays = how many days the trip is: what they said without dates ("5 days", "a week" = 7, "a long weekend" = 3), the ideal length you suggested and planned, or worked out from tripDates; 0 until there's a length.
 - tripDates = the trip's dates once the user has given them (start and end as YYYY-MM-DD; a month with no year means its next one; work out the end from a start and a number of nights or days). "" for both until then.
-- remember = lasting things the traveler just told you about themselves or the people they travel with, worth knowing in every future chat about any trip: diets and allergies, mobility or health needs, likes and dislikes ("Kids don't enjoy museums", "Prefer small boutique hotels", "No early starts"), how they like to travel. Short phrases in their terms, only what they actually said in this message, never guessed from where they went or what they picked, and never this trip's plans (dates, places, who's going this time: those go in notes). Leave out anything already in <what_you_know_about_them>. Usually empty.
+- remember = lasting things the traveler just told you about their tastes and how they (and the people they travel with) like to travel, worth knowing in every future chat about any trip: likes and dislikes ("Kids don't enjoy museums", "Prefer small boutique hotels", "No early starts"), food preferences such as "Vegetarian", pace, kinds of places. Short phrases in their terms, only what they actually said in this message, never guessed from where they went or what they picked, and never this trip's plans (dates, places, who's going this time: those go in notes). Leave out anything already in <what_you_know_about_them>. Usually empty.
+  Sensitive details are used for this chat but not remembered, unless in this message they ask you to remember them ("remember I'm allergic to nuts"): health, allergies, medical conditions, disabilities or mobility needs, pregnancy, religion or diets that reveal it (kosher, halal), sexuality, and anything similar. When they do ask, remember it and say so briefly.
 - forget = items from <what_you_know_about_them>, copied exactly, that the traveler just said are wrong or no longer true (then add the new version to remember), or asked you to forget. Usually empty.
 - <what_you_know_about_them>, when present, is what they've told you in earlier chats about any trip. Plan around it without asking again, and mention it only when it matters ("all vegetarian-friendly, as usual").
 - <earlier_chats_about_this_trip>, when present, holds the notes from the traveler's other conversations about this trip. Treat them as things the traveler already told you: don't ask again, and don't re-suggest what they turned down.`
@@ -152,11 +153,11 @@ export async function POST(request: Request) {
   // History lives server-side and is only ever appended to, so thinking blocks are replayed unchanged.
   const history = (chat?.history ?? []) as unknown as Anthropic.MessageParam[]
 
-  const [context, trip, usual, learned] = await Promise.all([
+  const [context, trip, usual, memory] = await Promise.all([
     loadPlanningContext(userId, tripId),
     tripId ? prisma.itinerary.findFirst({ where: { id: tripId, ...canEdit(userId) }, select: { title: true, startDate: true, endDate: true, datesFlexible: true, destinations: { select: { name: true, items: { select: { name: true, type: true, dayIndex: true } } } } } }) : null,
     usualTravelers(userId),
-    prisma.user.findUnique({ where: { id: userId }, select: { bestVacation: true } }).then(user => learnedFrom(user?.bestVacation)).catch(() => [] as string[]),
+    prisma.user.findUnique({ where: { id: userId }, select: { bestVacation: true } }).then(user => ({ on: memoryOn(user?.bestVacation), items: learnedFrom(user?.bestVacation) })).catch(() => ({ on: true, items: [] as string[] })),
   ])
   const current = trip
     ? `<current_trip title="${trip.title}"${trip.datesFlexible ? '' : ` dates="${trip.startDate.toISOString().slice(0, 10)} to ${trip.endDate.toISOString().slice(0, 10)}"`}>\n${trip.destinations.flatMap(d => d.items.map(item => `- ${item.name} (${item.type}, ${d.name}${item.dayIndex === null ? '' : `, day ${item.dayIndex}`})`)).join('\n') || '(empty so far)'}\n</current_trip>`
@@ -170,7 +171,9 @@ export async function POST(request: Request) {
     if (!preferences.friends.length) delete preferences.friends
   }
   const traveler = `<traveler past_trips="${context.hasOwnTrips ? 'yes' : 'none'}" />${usual ? `\n<usual_travelers>${describeTravelers(usual)} (the last time they said who was going; children's ages moved on since)</usual_travelers>` : ''}`
-  const learnedBlock = learned.length ? `\n<what_you_know_about_them>\n${learned.map(item => `- ${item}`).join('\n')}\n</what_you_know_about_them>` : ''
+  // What the planner remembers about them (lib/travelerMemory), or that they've switched remembering off.
+  const learnedBlock = !memory.on ? '\n<memory_off>They switched off remembering in Settings: return empty remember and forget lists, and if they ask you to remember something, say they can switch it back on in Settings → What Postcard knows about you.</memory_off>'
+    : memory.items.length ? `\n<what_you_know_about_them>\n${memory.items.map(item => `- ${item}`).join('\n')}\n</what_you_know_about_them>` : ''
   const preferencesBlock = preferences ? `\n<traveler_preferences>\n${describePreferences(preferences)}\n</traveler_preferences>` : ''
   // What the traveler's other conversations about this trip settled: each one's latest notes (or, for chats from
   // before notes existed, its summary), newest first.

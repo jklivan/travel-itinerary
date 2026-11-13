@@ -9,7 +9,8 @@ import BlockButton from '@/components/BlockButton'
 import UserAvatar from '@/components/UserAvatar'
 import DisconnectAssistant from '@/components/DisconnectAssistant'
 import ForgetLearned from '@/components/ForgetLearned'
-import { learnedFrom } from '@/lib/travelerMemory'
+import { learnedFrom, memoryOn } from '@/lib/travelerMemory'
+import MemorySwitch from '@/components/MemorySwitch'
 import { ChevronRight, Mail, Sparkles } from 'lucide-react'
 import { inboxAddress } from '@/lib/inbox'
 
@@ -20,7 +21,7 @@ export default async function SettingsPage() {
   const connected = await prisma.oAuthClient.findMany({ where: { tokens: { some: { userId: session.user.id, kind: 'refresh', revokedAt: null, expiresAt: { gt: new Date() } } } }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true } })
   const me = await prisma.user.findUnique({ where: { id: session.user.id }, select: { email: true, inboxToken: true, inboxSenders: true, bestVacation: true } })
   // What the AI planner has picked up about them in chats (lib/travelerMemory).
-  const learned = learnedFrom(me?.bestVacation)
+  const learned = learnedFrom(me?.bestVacation), remembering = memoryOn(me?.bestVacation)
   const blocked = await prisma.block.findMany({ where: { blockerId: session.user.id }, orderBy: { createdAt: 'desc' }, select: { blocked: { select: { id: true, name: true, image: true } } } })
 
   return (
@@ -49,8 +50,10 @@ export default async function SettingsPage() {
       </div>
       <section className="panel mt-6 p-5" aria-labelledby="learned-heading">
         <h2 id="learned-heading" className="type-label text-ink">What Postcard knows about you</h2>
-        <p className="mt-0.5 text-sm text-brown">Things you’ve told the AI planner about how you travel. It uses them in every chat, so you don’t have to say them again.</p>
-        {learned.length ? <ul className="mt-3 divide-y divide-line-soft">{learned.map(item => <li key={item} className="flex items-center justify-between gap-3 py-1.5">
+        <p className="mt-0.5 text-sm text-brown">Things you’ve told the AI planner about how you travel. It uses them in every chat, so you don’t have to say them again. Health details, allergies and the like are only kept when you ask it to remember them.</p>
+        <div className="mt-3 flex items-center justify-between gap-3"><span className="text-sm text-ink">Let the planner remember things about me</span><MemorySwitch on={remembering} /></div>
+        {!remembering ? <p className="mt-3 text-sm text-muted">Remembering is off: nothing is kept between chats.</p>
+        : learned.length ? <ul className="mt-3 divide-y divide-line-soft">{learned.map(item => <li key={item} className="flex items-center justify-between gap-3 py-1.5">
           <span className="min-w-0 break-words text-sm">{item}</span>
           <ForgetLearned item={item} />
         </li>)}</ul>
