@@ -4,14 +4,14 @@ import { SUPPORT_EMAIL } from '@/lib/support'
 
 export const metadata: Metadata = { title: 'Privacy Policy — Postcard' }
 
-const UPDATED = 'November 11, 2026'
+const UPDATED = 'November 13, 2026'
 
 const sections: { title: string; body: React.ReactNode }[] = [
   { title: 'What we collect', body: <ul className="list-disc space-y-1 pl-5">
     <li><strong>Your account:</strong> your name, email address, and password (stored only as a secure hash). If you sign in with Google or Apple, we receive your name and email address from them. We do not receive your Google or Apple password, contacts, or any other account data.</li>
     <li><strong>What you share on Postcard:</strong> trips, places, ratings, notes, photos, comments, messages, stories, and saved lists.</li>
     <li><strong>People you connect with:</strong> who you follow and who follows you.</li>
-    <li><strong>Planning chats:</strong> messages you send to the Plan with AI assistant and its replies.</li>
+    <li><strong>Planning chats:</strong> messages you send to the Plan with AI assistant and its replies, and lasting things you tell it about how you travel (such as a diet or “no museums”), which it remembers for later chats. You can see and remove these in <strong>Settings → What Postcard knows about you</strong>.</li>
     <li><strong>Your device:</strong> if you turn on notifications in the iPhone app, a push token so we can send them.</li>
     <li><strong>How you use Postcard:</strong> which pages you open, how long you spend on them, and what you tap, along with your browser or device type. This is linked to your account when you’re signed in.</li>
   </ul> },

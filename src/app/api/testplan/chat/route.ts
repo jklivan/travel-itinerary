@@ -12,6 +12,7 @@ import { finishedJsonItems, finishedJsonObject, partialJsonString } from '@/lib/
 import type { Ask } from '@/app/testplan/AskPicker'
 import { canEdit } from '@/lib/tripAccess'
 import { LOOKUP_TOOLS, routeMessage } from '@/lib/chatRouter'
+import { learnedFrom, updateLearned } from '@/lib/travelerMemory'
 
 export const maxDuration = 300
 
@@ -89,12 +90,15 @@ Also return, for the conversation list:
 - addToTrip = true when the user approves your plan or asks to save it ("looks good", "perfect", "add them", "save this to my trip"): Postcard then adds every place from your latest plan to their trip and puts them on days, so say so briefly in the reply ("Adding these to your trip now.") and don't ask them to pick places. Otherwise false. When you offer choices after a plan, offer it as "Add these to my trip" (never a vague "Looks good"), and that option means exactly this. Agreeing to something else (a length, a hotel, a change) is not a request to add the places.
 - tripDays = how many days the trip is: what they said without dates ("5 days", "a week" = 7, "a long weekend" = 3), the ideal length you suggested and planned, or worked out from tripDates; 0 until there's a length.
 - tripDates = the trip's dates once the user has given them (start and end as YYYY-MM-DD; a month with no year means its next one; work out the end from a start and a number of nights or days). "" for both until then.
+- remember = lasting things the traveler just told you about themselves or the people they travel with, worth knowing in every future chat about any trip: diets and allergies, mobility or health needs, likes and dislikes ("Kids don't enjoy museums", "Prefer small boutique hotels", "No early starts"), how they like to travel. Short phrases in their terms, only what they actually said in this message, never guessed from where they went or what they picked, and never this trip's plans (dates, places, who's going this time: those go in notes). Leave out anything already in <what_you_know_about_them>. Usually empty.
+- forget = items from <what_you_know_about_them>, copied exactly, that the traveler just said are wrong or no longer true (then add the new version to remember), or asked you to forget. Usually empty.
+- <what_you_know_about_them>, when present, is what they've told you in earlier chats about any trip. Plan around it without asking again, and mention it only when it matters ("all vegetarian-friendly, as usual").
 - <earlier_chats_about_this_trip>, when present, holds the notes from the traveler's other conversations about this trip. Treat them as things the traveler already told you: don't ask again, and don't re-suggest what they turned down.`
 
 const schema = {
   type: 'object',
   additionalProperties: false,
-  required: ['reply', 'recommendations', 'title', 'summary', 'notes', 'tripDates', 'tripDays', 'addToTrip', 'ask'],
+  required: ['reply', 'recommendations', 'title', 'summary', 'notes', 'remember', 'forget', 'tripDates', 'tripDays', 'addToTrip', 'ask'],
   properties: {
     reply: { type: 'string' },
     ask: { type: 'object', additionalProperties: false, required: ['kind', 'question', 'options', 'multiple'], properties: {
@@ -106,6 +110,8 @@ const schema = {
     title: { type: 'string' },
     summary: { type: 'string' },
     notes: { type: 'string' },
+    remember: { type: 'array', items: { type: 'string' } },
+    forget: { type: 'array', items: { type: 'string' } },
     tripDates: { type: 'object', additionalProperties: false, required: ['start', 'end'], properties: { start: { type: 'string' }, end: { type: 'string' } } },
     tripDays: { type: 'integer' },
     addToTrip: { type: 'boolean' },
@@ -146,10 +152,11 @@ export async function POST(request: Request) {
   // History lives server-side and is only ever appended to, so thinking blocks are replayed unchanged.
   const history = (chat?.history ?? []) as unknown as Anthropic.MessageParam[]
 
-  const [context, trip, usual] = await Promise.all([
+  const [context, trip, usual, learned] = await Promise.all([
     loadPlanningContext(userId, tripId),
     tripId ? prisma.itinerary.findFirst({ where: { id: tripId, ...canEdit(userId) }, select: { title: true, startDate: true, endDate: true, datesFlexible: true, destinations: { select: { name: true, items: { select: { name: true, type: true, dayIndex: true } } } } } }) : null,
     usualTravelers(userId),
+    prisma.user.findUnique({ where: { id: userId }, select: { bestVacation: true } }).then(user => learnedFrom(user?.bestVacation)).catch(() => [] as string[]),
   ])
   const current = trip
     ? `<current_trip title="${trip.title}"${trip.datesFlexible ? '' : ` dates="${trip.startDate.toISOString().slice(0, 10)} to ${trip.endDate.toISOString().slice(0, 10)}"`}>\n${trip.destinations.flatMap(d => d.items.map(item => `- ${item.name} (${item.type}, ${d.name}${item.dayIndex === null ? '' : `, day ${item.dayIndex}`})`)).join('\n') || '(empty so far)'}\n</current_trip>`
@@ -163,6 +170,7 @@ export async function POST(request: Request) {
     if (!preferences.friends.length) delete preferences.friends
   }
   const traveler = `<traveler past_trips="${context.hasOwnTrips ? 'yes' : 'none'}" />${usual ? `\n<usual_travelers>${describeTravelers(usual)} (the last time they said who was going; children's ages moved on since)</usual_travelers>` : ''}`
+  const learnedBlock = learned.length ? `\n<what_you_know_about_them>\n${learned.map(item => `- ${item}`).join('\n')}\n</what_you_know_about_them>` : ''
   const preferencesBlock = preferences ? `\n<traveler_preferences>\n${describePreferences(preferences)}\n</traveler_preferences>` : ''
   // What the traveler's other conversations about this trip settled: each one's latest notes (or, for chats from
   // before notes existed, its summary), newest first.
@@ -176,7 +184,7 @@ export async function POST(request: Request) {
   // Places this chat already found closed (left out of earlier answers), so they're never suggested again.
   const closedBefore = [...new Set(((chat?.turns ?? []) as unknown as { role: string; closed?: string[] }[]).flatMap(turn => turn.role === 'assistant' ? turn.closed ?? [] : []))]
   const closedBlock = closedBefore.length ? `\n<closed_places>\n${closedBefore.map(name => `- ${name}`).join('\n')}\n</closed_places>` : ''
-  const userMessage: Anthropic.MessageParam = { role: 'user', content: `${current}${earlierBlock}${closedBlock}\n${traveler}${preferencesBlock}\n\n${message}` }
+  const userMessage: Anthropic.MessageParam = { role: 'user', content: `${current}${earlierBlock}${closedBlock}\n${traveler}${learnedBlock}${preferencesBlock}\n\n${message}` }
 
   // The answer streams back as lines of JSON: the reply as it's written ("delta"/"reply"), a "status" while
   // checking prices, then "done" with the saved chat and the place cards (or "error").
@@ -331,9 +339,12 @@ export async function POST(request: Request) {
       if (response.stop_reason === 'refusal') return emit({ type: 'error', error: 'Postcard couldn’t answer that one. Try rephrasing.' })
       // The answer's text (web results can split it into several pieces).
       const text = response.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('')
-      let parsed: { reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string; notes?: string; tripDates?: { start: string; end: string }; tripDays?: number; addToTrip?: boolean; ask?: Ask }
+      let parsed: { remember?: string[]; forget?: string[]; reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string; notes?: string; tripDates?: { start: string; end: string }; tripDays?: number; addToTrip?: boolean; ask?: Ask }
       try { parsed = JSON.parse(text ?? '') } catch { return emit({ type: 'error', error: 'The answer was cut off. Please try again.' }) }
       parsed.reply = lead + parsed.reply
+      // Lasting things they told the planner about themselves, for every later chat (lib/travelerMemory).
+      const strings = (value: unknown) => Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+      await updateLearned(owner, strings(parsed.remember), strings(parsed.forget)).catch(error => console.warn('[planner] memory not saved', error instanceof Error ? error.message : error))
 
       // Something to tap for the reply's question, kept only when it's usable.
       const ask = usableAsk(parsed.ask)
