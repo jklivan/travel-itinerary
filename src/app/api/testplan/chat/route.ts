@@ -11,6 +11,7 @@ import { anthropicTools, runPlannerTool } from '@/lib/planner/registry'
 import { finishedJsonItems, finishedJsonObject, partialJsonString } from '@/lib/partialJson'
 import type { Ask } from '@/app/testplan/AskPicker'
 import { canEdit } from '@/lib/tripAccess'
+import { LOOKUP_TOOLS, routeMessage } from '@/lib/chatRouter'
 
 export const maxDuration = 300
 
@@ -180,6 +181,7 @@ export async function POST(request: Request) {
   // The answer streams back as lines of JSON: the reply as it's written ("delta"/"reply"), a "status" while
   // checking prices, then "done" with the saved chat and the place cards (or "error").
   const encoder = new TextEncoder()
+  const tripBlock = current // (for the router: answer() has its own `current`)
   const owner = userId
   const origin = new URL(request.url).origin
   // Leaving the app (switching to another) drops the connection. The answer is still worked out and saved, so the
@@ -214,11 +216,35 @@ export async function POST(request: Request) {
       }
       const usableAsk = (raw: Ask | null | undefined) => raw && raw.kind !== 'none' && (raw.kind !== 'choose' || raw.options.length > 1)
         ? { kind: raw.kind, question: raw.question.slice(0, 60), options: raw.options.map(option => option.trim().slice(0, 60)).filter(Boolean).slice(0, 8), multiple: !!raw.multiple } satisfies Ask : null
+      const routeStarted = Date.now()
       const activeChatId = chat?.id ?? (await prisma.planChat.create({ data: { userId: owner, tripId: trip ? tripId : null, history: [], turns: [] }, select: { id: true } })).id
       emit({ type: 'start', chatId: activeChatId })
+      // The router's quick first look (lib/chatRouter): the reply's opening line, shown straight away, and which
+      // lookups this answer needs. Without it (unavailable or slow), every lookup is allowed and there's no opener.
+      const recent = ((chat?.turns ?? []) as unknown as { role: string; text?: string }[]).filter(turn => turn.role === 'user' || turn.role === 'assistant').slice(-4)
+        .map(turn => `${turn.role === 'user' ? 'Traveler' : 'Planner'}: ${(turn.text ?? '').slice(0, 1200)}`).join('\n')
+      const route = await routeMessage({ message, recent, trip: tripBlock, today: new Date().toISOString().slice(0, 10) })
+      const lead = route?.opener ? `${route.opener}\n\n` : ''
+      if (lead) emit({ type: 'delta', text: lead })
+      const allowed = route ? new Set(route.lookups.flatMap(lookup => LOOKUP_TOOLS[lookup])) : null
+      // The weather it needs is fetched here straight away, rather than costing the planner a round of lookups.
+      let weatherNote = ''
+      if (route?.weather && allowed?.has('weather')) {
+        const weather = await runPlannerTool('weather', route.weather, { userId: owner, tripId: trip ? tripId : null, origin }).catch(() => null)
+        if (weather && !weather.isError) { weatherNote = `<weather_checked place="${route.weather.place}" dates="${route.weather.start_date} to ${route.weather.end_date}">\n${weather.content}\n</weather_checked>`; allowed.delete('weather') }
+      }
+      console.info('[planner] route', JSON.stringify({ lookups: route?.lookups ?? 'all', opener: !!lead, weather: !!weatherNote, seconds: Math.round((Date.now() - routeStarted) / 100) / 10 }))
+      const notes = [
+        lead && `<already_shown>Your reply's opening sentence is already on their screen: "${route!.opener}". Carry straight on from it: don't greet them again or repeat it.</already_shown>`,
+        weatherNote,
+        allowed && (allowed.size
+          ? `<lookups>Only these lookups are needed for this answer: ${[...allowed].join(', ')}. Answer from what you know for everything else (every place you recommend is checked on Google before it's shown).</lookups>`
+          : `<lookups>No lookups are needed for this answer: answer from what you know, without looking anything up. Every place you recommend is checked on Google before it's shown, so pick places you're confident are open.</lookups>`),
+      ].filter(Boolean).join('\n')
+      const routed: Anthropic.MessageParam = notes ? { ...userMessage, content: `${userMessage.content as string}\n\n${notes}` } : userMessage
       // A tool loop: when the planner looks up hotel prices, run the lookups and send the results back, until it
       // answers. Every turn is kept, in order, in the saved history.
-      const turns: Anthropic.MessageParam[] = [userMessage]
+      const turns: Anthropic.MessageParam[] = [routed]
       let response: Anthropic.Message
       // Every pick is checked on Google as soon as it's written: closed places (permanently or for now) are never shown.
       const checks = new Map<string, Promise<PlaceStatus>>()
@@ -232,7 +258,7 @@ export async function POST(request: Request) {
         ? { ...rec, name: status.renamed, why: `Now ${status.renamed} (formerly ${rec.name}). ${rec.why}` } : rec
       let liveRound = 0
       const started = Date.now()
-      let lookups = 0, enough = false
+      let lookups = 0, enough = allowed?.size === 0
       for (let round = 0; ; round++) {
         liveRound = round
         const stream = client.messages.stream({
@@ -263,7 +289,7 @@ export async function POST(request: Request) {
         stream.on('text', (_delta, snapshot) => {
           const reply = partialJsonString(snapshot, 'reply')
           if (reply !== null && reply !== shown) {
-            emit(reply.startsWith(shown) ? { type: 'delta', text: reply.slice(shown.length) } : { type: 'reply', text: reply })
+            emit(reply.startsWith(shown) ? { type: 'delta', text: reply.slice(shown.length) } : { type: 'reply', text: lead + reply })
             shown = reply
           }
           if (!askSent) {
@@ -284,7 +310,7 @@ export async function POST(request: Request) {
         if (response.stop_reason !== 'tool_use' || !calls.length) break
         if (round > MAX_ROUNDS + 1) return emit({ type: 'error', error: 'Postcard took too long looking things up. Please try again.' })
         // Looking things up: anything shown so far starts over with the next round.
-        if (shown) emit({ type: 'reply', text: '' })
+        if (shown) emit({ type: 'reply', text: lead })
         emit({ type: 'reset' })
         // Every kind of lookup in this round, e.g. "Checking opening hours… Working out travel times…".
         emit({ type: 'status', text: [...new Set(calls.map(call => STATUS[call.name] ?? 'Looking things up…'))].join(' ') })
@@ -292,6 +318,7 @@ export async function POST(request: Request) {
         const results = await Promise.all(calls.map(async call => {
           lookups++
           const result = lookups > MAX_LOOKUPS ? { content: 'That’s enough lookups for this answer. Answer with what you have.', isError: true }
+            : allowed && !allowed.has(call.name) ? { content: 'Not needed for this answer: answer from what you know.', isError: true }
             : await runPlannerTool(call.name, call.input, { userId: owner, tripId: trip ? tripId : null, origin })
           if (result.isError) console.warn('[planner] tool error', call.name, result.content.slice(0, 300))
           return { type: 'tool_result' as const, tool_use_id: call.id, content: result.content, ...(result.isError ? { is_error: true } : {}) }
@@ -306,6 +333,7 @@ export async function POST(request: Request) {
       const text = response.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('')
       let parsed: { reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string; notes?: string; tripDates?: { start: string; end: string }; tripDays?: number; addToTrip?: boolean; ask?: Ask }
       try { parsed = JSON.parse(text ?? '') } catch { return emit({ type: 'error', error: 'The answer was cut off. Please try again.' }) }
+      parsed.reply = lead + parsed.reply
 
       // Something to tap for the reply's question, kept only when it's usable.
       const ask = usableAsk(parsed.ask)
