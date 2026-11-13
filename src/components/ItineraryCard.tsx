@@ -99,6 +99,8 @@ export default function ItineraryCard({
               : <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" style={coverStyle(coverFocus)} />)}
           </Link>}
 
+          {/* Who the trip was with (Family, Friends, Couples, Solo), on the photo's corner. */}
+          {audienceLabel(audience) && <span className="pointer-events-none absolute left-3 top-3 z-10 w-fit rounded-lg bg-cream/95 px-2.5 py-1 text-label font-medium uppercase tracking-label text-ink">{audienceLabel(audience)}</span>}
         </div>
 
         {/* Place, title and length sit on the paper under the photo; the verdict is a postage stamp on the photo's edge. */}
@@ -109,7 +111,7 @@ export default function ItineraryCard({
               <MapPin size={12} className="shrink-0 text-brown" />{location}
             </span>}
             <h2 className="trip-title break-words font-[family-name:var(--font-playfair)] text-title !uppercase leading-[1.1] tracking-caps sm:text-title">{title}</h2>
-            <span className="mt-1 block text-label font-medium uppercase tracking-label text-link">{days === null ? 'Guide' : `${days}-day trip`}{audienceLabel(audience) && ` · ${audienceLabel(audience)}`}</span>
+            <span className="mt-1 block text-label font-medium uppercase tracking-label text-link">{days === null ? 'Guide' : `${days}-day trip`}</span>
           </Link>
           {stamp && <Stamp aria-label={`Author verdict: ${stamp.label}`} label={stamp.label} color={STAMP_COLORS[stamp.value]} className="pointer-events-none absolute -top-5 right-0 z-20 -rotate-[12deg]" />}
         </div>
