@@ -225,7 +225,7 @@ export async function POST(request: Request) {
         .map(turn => `${turn.role === 'user' ? 'Traveler' : 'Planner'}: ${(turn.text ?? '').slice(0, 1200)}`).join('\n')
       const route = await routeMessage({ message, recent, trip: tripBlock, today: new Date().toISOString().slice(0, 10) })
       const lead = route?.opener ? `${route.opener}\n\n` : ''
-      if (lead) emit({ type: 'delta', text: lead })
+      if (lead) emit({ type: 'opener', text: lead })
       const allowed = route ? new Set(route.lookups.flatMap(lookup => LOOKUP_TOOLS[lookup])) : null
       // The weather it needs is fetched here straight away, rather than costing the planner a round of lookups.
       let weatherNote = ''

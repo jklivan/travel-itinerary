@@ -77,6 +77,7 @@ export default function TestPlanner({ embedded = false, usualTravelers = null, t
   const chatId = useRef(chat?.id ?? '')
   const [draft, setDraft] = useState(initialDraft)
   const [thinking, setThinking] = useState(false)
+  const [openerLength, setOpenerLength] = useState(0)
   // While an answer streams in: the reply so far, and a note such as "Checking live hotel prices…".
   const [streaming, setStreaming] = useState('')
   const [status, setStatus] = useState('')
@@ -260,7 +261,7 @@ export default function TestPlanner({ embedded = false, usualTravelers = null, t
     const message = text.trim()
     if (!message || answering.current) return
     answering.current = true
-    setThinking(true); setError(''); setDraft(''); setShowHistory(false)
+    setThinking(true); setError(''); setDraft(''); setShowHistory(false); setOpenerLength(0)
     const pending: Turn[] = [...(preferences ? [{ role: 'preferences' as const, preferences }] : []), { role: 'user', text: message }]
     // The conversation's turns once this answer is saved: the ones so far, these, and the reply.
     const before = turnsNow.current
@@ -286,6 +287,8 @@ export default function TestPlanner({ embedded = false, usualTravelers = null, t
           // The address stays as it is: saving places refreshes this page from the server, and a different address
           // would rebuild it from scratch (losing your place in the chat and what you've picked).
           if (event.type === 'start') chatId.current = event.chatId ?? chatId.current
+          // The router's opening line, before the reply itself: the shimmer still says it's planning.
+          else if (event.type === 'opener') { setOpenerLength((event.text ?? '').length); setStreaming(event.text ?? '') }
           else if (event.type === 'delta') { setStatus(''); setStreaming(current => current + (event.text ?? '')) }
           else if (event.type === 'reply') setStreaming(event.text ?? '')
           else if (event.type === 'card' && event.card) { const next = event.card; setStreamingCards(current => [...current, next]) }
@@ -454,7 +457,7 @@ export default function TestPlanner({ embedded = false, usualTravelers = null, t
             </div>)}
           {/* What was just added, where, and whether it's on days yet. */}
           {notice && <p role="status" className="flex items-start gap-1.5 text-sm text-ink"><Check size={16} className="mt-0.5 shrink-0 text-link" /><span>Added {notice.count} {notice.count === 1 ? 'place' : 'places'} to {embedded ? 'this trip' : <Link href={notice.href} className="font-semibold text-link underline underline-offset-2">{notice.title}</Link>}{notice.days === 'placing' ? <>. <span className="text-shimmer">Putting them on days…</span></> : notice.days === 'placed' ? ' and put them on days.' : '.'}</span></p>}
-          {thinking && <p role="status" className="text-shimmer text-sm">{status || (streaming ? 'Finding the places…' : 'Planning in progress…')}</p>}
+          {thinking && <p role="status" className="text-shimmer text-sm">{status || (streaming.length > openerLength ? 'Finding the places…' : 'Planning in progress…')}</p>}
   </>
   const composerForm = (sticky: boolean) => (
         <form ref={form} style={pinnedTop === null ? undefined : { position: 'fixed', top: pinnedTop, left: 12, right: 12, bottom: 'auto', zIndex: 60 }} className={`${sticky ? 'sticky bottom-[calc(var(--app-bottom-clearance)-1.5rem)] pb-[calc(0.75rem+1.5rem)] lg:static lg:pb-3' : ''} z-10 flex items-end gap-2 border-t border-line-soft bg-card p-3 ${pinnedTop === null ? 'rounded-b-2xl' : 'rounded-2xl border shadow-pop'}`} onSubmit={event => { event.preventDefault(); void send(draft) }}>
