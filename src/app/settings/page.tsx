@@ -9,7 +9,7 @@ import BlockButton from '@/components/BlockButton'
 import UserAvatar from '@/components/UserAvatar'
 import DisconnectAssistant from '@/components/DisconnectAssistant'
 import ForgetLearned from '@/components/ForgetLearned'
-import { learnedFrom, memoryOn } from '@/lib/travelerMemory'
+import { healthFrom, learnedFrom, memoryOn } from '@/lib/travelerMemory'
 import MemorySwitch from '@/components/MemorySwitch'
 import { ChevronRight, Mail, Sparkles } from 'lucide-react'
 import { inboxAddress } from '@/lib/inbox'
@@ -21,7 +21,7 @@ export default async function SettingsPage() {
   const connected = await prisma.oAuthClient.findMany({ where: { tokens: { some: { userId: session.user.id, kind: 'refresh', revokedAt: null, expiresAt: { gt: new Date() } } } }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true } })
   const me = await prisma.user.findUnique({ where: { id: session.user.id }, select: { email: true, inboxToken: true, inboxSenders: true, bestVacation: true } })
   // What the AI planner has picked up about them in chats (lib/travelerMemory).
-  const learned = learnedFrom(me?.bestVacation), remembering = memoryOn(me?.bestVacation)
+  const learned = learnedFrom(me?.bestVacation), health = healthFrom(me?.bestVacation), remembering = memoryOn(me?.bestVacation)
   const blocked = await prisma.block.findMany({ where: { blockerId: session.user.id }, orderBy: { createdAt: 'desc' }, select: { blocked: { select: { id: true, name: true, image: true } } } })
 
   return (
@@ -50,13 +50,18 @@ export default async function SettingsPage() {
       </div>
       <section className="panel mt-6 p-5" aria-labelledby="learned-heading">
         <h2 id="learned-heading" className="type-label text-ink">What Postcard knows about you</h2>
-        <p className="mt-0.5 text-sm text-brown">Things you’ve told the AI planner about how you travel. It uses them in every chat, so you don’t have to say them again. Health details, allergies and the like are only kept when you ask it to remember them.</p>
+        <p className="mt-0.5 text-sm text-brown">Things you’ve told the AI planner about how you travel. It uses them in every chat, so you don’t have to say them again. Health details, like an allergy, are only kept when you ask it to and tap Save (<Link href="/privacy/health-data" className="underline">how we handle health information</Link>).</p>
         <div className="mt-3 flex items-center justify-between gap-3"><span className="text-sm text-ink">Let the planner remember things about me</span><MemorySwitch on={remembering} /></div>
         {!remembering ? <p className="mt-3 text-sm text-muted">Remembering is off: nothing is kept between chats.</p>
-        : learned.length ? <ul className="mt-3 divide-y divide-line-soft">{learned.map(item => <li key={item} className="flex items-center justify-between gap-3 py-1.5">
+        : learned.length || health.length ? <ul className="mt-3 divide-y divide-line-soft">{learned.map(item => <li key={item} className="flex items-center justify-between gap-3 py-1.5">
           <span className="min-w-0 break-words text-sm">{item}</span>
           <ForgetLearned item={item} />
-        </li>)}</ul>
+        </li>)}
+          {/* Health details, kept with their consent (when is shown). */}
+          {health.map(item => <li key={item.text} className="flex items-center justify-between gap-3 py-1.5">
+            <span className="min-w-0 break-words text-sm">{item.text}<span className="block text-xs text-muted">Health detail · saved with your OK on {new Date(item.consentedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span></span>
+            <ForgetLearned item={item.text} />
+          </li>)}</ul>
         : <p className="panel-dashed mt-3 p-3 text-sm text-muted">Nothing yet. Tell the planner things like “we’re vegetarian” or “the kids don’t like museums” and they’ll show up here.</p>}
       </section>
       {connected.length > 0 && <section className="panel mt-6 p-5" aria-labelledby="assistants-heading">
@@ -76,7 +81,7 @@ export default async function SettingsPage() {
           <BlockButton userId={person.id} name={person.name} initialBlocked />
         </li>)}</ul>
       </section>}
-      <p className="mt-8 text-xs text-muted"><Link href="/support" className="underline">Help</Link> · <Link href="/terms" className="underline">Terms of use</Link> · <Link href="/privacy" className="underline">Privacy</Link></p>
+      <p className="mt-8 text-xs text-muted"><Link href="/support" className="underline">Help</Link> · <Link href="/terms" className="underline">Terms of use</Link> · <Link href="/privacy/health-data" className="underline">Consumer Health Data Privacy Policy</Link> · <Link href="/privacy" className="underline">Privacy</Link></p>
       {/* Kept small and last, away from Sign out, so no one deletes their account by mistake. */}
       <DeleteAccount />
     </div>

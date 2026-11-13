@@ -12,7 +12,7 @@ import { finishedJsonItems, finishedJsonObject, partialJsonString } from '@/lib/
 import type { Ask } from '@/app/testplan/AskPicker'
 import { canEdit } from '@/lib/tripAccess'
 import { LOOKUP_TOOLS, routeMessage } from '@/lib/chatRouter'
-import { learnedFrom, memoryOn, updateLearned } from '@/lib/travelerMemory'
+import { healthFrom, learnedFrom, memoryOn, updateLearned } from '@/lib/travelerMemory'
 
 export const maxDuration = 300
 
@@ -91,7 +91,8 @@ Also return, for the conversation list:
 - tripDays = how many days the trip is: what they said without dates ("5 days", "a week" = 7, "a long weekend" = 3), the ideal length you suggested and planned, or worked out from tripDates; 0 until there's a length.
 - tripDates = the trip's dates once the user has given them (start and end as YYYY-MM-DD; a month with no year means its next one; work out the end from a start and a number of nights or days). "" for both until then.
 - remember = lasting things the traveler just told you about their tastes and how they (and the people they travel with) like to travel, worth knowing in every future chat about any trip: likes and dislikes ("Kids don't enjoy museums", "Prefer small boutique hotels", "No early starts"), food preferences such as "Vegetarian", pace, kinds of places. Short phrases in their terms, only what they actually said in this message, never guessed from where they went or what they picked, and never this trip's plans (dates, places, who's going this time: those go in notes). Leave out anything already in <what_you_know_about_them>. Usually empty.
-  Sensitive details are used for this chat but not remembered, unless in this message they ask you to remember them ("remember I'm allergic to nuts"): health, allergies, medical conditions, disabilities or mobility needs, pregnancy, religion or diets that reveal it (kosher, halal), sexuality, and anything similar. When they do ask, remember it and say so briefly.
+  Sensitive details never go in remember: health, allergies, medical conditions, disabilities or mobility needs, pregnancy, religion or diets that reveal it (kosher, halal), sexuality, and anything similar. Use them for this chat. Only when in this message they ask you to remember one ("remember my son is allergic to peanuts"), put it in rememberSensitive as a short phrase, and say in your reply that they can tap Save below to keep it (it's only kept if they do). Never say you've saved it.
+- rememberSensitive = those sensitive details they asked you to remember in this message, waiting for them to tap Save. Usually empty.
 - forget = items from <what_you_know_about_them>, copied exactly, that the traveler just said are wrong or no longer true (then add the new version to remember), or asked you to forget. Usually empty.
 - <what_you_know_about_them>, when present, is what they've told you in earlier chats about any trip. Plan around it without asking again, and mention it only when it matters ("all vegetarian-friendly, as usual").
 - <earlier_chats_about_this_trip>, when present, holds the notes from the traveler's other conversations about this trip. Treat them as things the traveler already told you: don't ask again, and don't re-suggest what they turned down.`
@@ -99,7 +100,7 @@ Also return, for the conversation list:
 const schema = {
   type: 'object',
   additionalProperties: false,
-  required: ['reply', 'recommendations', 'title', 'summary', 'notes', 'remember', 'forget', 'tripDates', 'tripDays', 'addToTrip', 'ask'],
+  required: ['reply', 'recommendations', 'title', 'summary', 'notes', 'remember', 'rememberSensitive', 'forget', 'tripDates', 'tripDays', 'addToTrip', 'ask'],
   properties: {
     reply: { type: 'string' },
     ask: { type: 'object', additionalProperties: false, required: ['kind', 'question', 'options', 'multiple'], properties: {
@@ -112,6 +113,7 @@ const schema = {
     summary: { type: 'string' },
     notes: { type: 'string' },
     remember: { type: 'array', items: { type: 'string' } },
+    rememberSensitive: { type: 'array', items: { type: 'string' } },
     forget: { type: 'array', items: { type: 'string' } },
     tripDates: { type: 'object', additionalProperties: false, required: ['start', 'end'], properties: { start: { type: 'string' }, end: { type: 'string' } } },
     tripDays: { type: 'integer' },
@@ -157,7 +159,7 @@ export async function POST(request: Request) {
     loadPlanningContext(userId, tripId),
     tripId ? prisma.itinerary.findFirst({ where: { id: tripId, ...canEdit(userId) }, select: { title: true, startDate: true, endDate: true, datesFlexible: true, destinations: { select: { name: true, items: { select: { name: true, type: true, dayIndex: true } } } } } }) : null,
     usualTravelers(userId),
-    prisma.user.findUnique({ where: { id: userId }, select: { bestVacation: true } }).then(user => ({ on: memoryOn(user?.bestVacation), items: learnedFrom(user?.bestVacation) })).catch(() => ({ on: true, items: [] as string[] })),
+    prisma.user.findUnique({ where: { id: userId }, select: { bestVacation: true } }).then(user => ({ on: memoryOn(user?.bestVacation), items: [...learnedFrom(user?.bestVacation), ...healthFrom(user?.bestVacation).map(item => item.text)] })).catch(() => ({ on: true, items: [] as string[] })),
   ])
   const current = trip
     ? `<current_trip title="${trip.title}"${trip.datesFlexible ? '' : ` dates="${trip.startDate.toISOString().slice(0, 10)} to ${trip.endDate.toISOString().slice(0, 10)}"`}>\n${trip.destinations.flatMap(d => d.items.map(item => `- ${item.name} (${item.type}, ${d.name}${item.dayIndex === null ? '' : `, day ${item.dayIndex}`})`)).join('\n') || '(empty so far)'}\n</current_trip>`
@@ -342,7 +344,7 @@ export async function POST(request: Request) {
       if (response.stop_reason === 'refusal') return emit({ type: 'error', error: 'Postcard couldn’t answer that one. Try rephrasing.' })
       // The answer's text (web results can split it into several pieces).
       const text = response.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('')
-      let parsed: { remember?: string[]; forget?: string[]; reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string; notes?: string; tripDates?: { start: string; end: string }; tripDays?: number; addToTrip?: boolean; ask?: Ask }
+      let parsed: { remember?: string[]; rememberSensitive?: string[]; forget?: string[]; reply: string; recommendations: RawRecommendation[]; title?: string; summary?: string; notes?: string; tripDates?: { start: string; end: string }; tripDays?: number; addToTrip?: boolean; ask?: Ask }
       try { parsed = JSON.parse(text ?? '') } catch { return emit({ type: 'error', error: 'The answer was cut off. Please try again.' }) }
       parsed.reply = lead + parsed.reply
       // Lasting things they told the planner about themselves, for every later chat (lib/travelerMemory).
@@ -367,11 +369,13 @@ export async function POST(request: Request) {
       if (closed.length) parsed.reply = `${parsed.reply}\n\n(I left out ${closed.join(', ')}: Google lists ${closed.length === 1 ? 'it' : 'them'} as closed.)`
       const recommendations = parsed.recommendations.map((rec, index) => { const status = statuses[index]; return { ...card(current(rec, status), index, response.id), ...(typeof status === 'object' ? { placeId: status.placeId } : {}) } }).filter((_, index) => statuses[index] !== 'closed')
       const nextHistory = [...history, ...turns, { role: 'assistant', content: response.content }] as unknown as Prisma.InputJsonValue
-      const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, ...(ask ? { ask } : {}), title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160), notes: (parsed.notes ?? '').trim().slice(0, 600), ...(tripDates ? { tripDates } : {}), ...(tripDays ? { tripDays } : {}), ...(closed.length ? { closed } : {}) }]
+      // Health details they asked it to remember: offered on a consent card, kept only if they tap Save.
+      const sensitive = memory.on ? strings(parsed.rememberSensitive).map(item => item.trim().slice(0, 120)).filter(Boolean).slice(0, 5) : []
+      const newTurns = [...(preferences ? [{ role: 'preferences', preferences }] : []), { role: 'user', text: message }, { role: 'assistant', text: parsed.reply, recommendations, ...(ask ? { ask } : {}), ...(sensitive.length ? { sensitive } : {}), title: (parsed.title ?? '').trim().slice(0, 60), summary: (parsed.summary ?? '').trim().slice(0, 160), notes: (parsed.notes ?? '').trim().slice(0, 600), ...(tripDates ? { tripDates } : {}), ...(tripDays ? { tripDays } : {}), ...(closed.length ? { closed } : {}) }]
       // The turns as saved now (descriptions may have been added to earlier cards since this started).
       const latest = await prisma.planChat.findUnique({ where: { id: activeChatId }, select: { turns: true } })
       const saved = await prisma.planChat.update({ where: { id: activeChatId }, data: { history: nextHistory, turns: [...((latest?.turns ?? chat?.turns ?? []) as Prisma.JsonArray), ...newTurns] as Prisma.InputJsonValue, ...(trip && !chat?.tripId ? { tripId } : {}) }, select: { id: true } })
-      emit({ type: 'done', chatId: saved.id, reply: parsed.reply, recommendations, ...(ask ? { ask } : {}), ...(tripDates ? { tripDates } : {}), ...(tripDays ? { tripDays } : {}), ...(parsed.addToTrip === true ? { addToTrip: true } : {}) })
+      emit({ type: 'done', chatId: saved.id, reply: parsed.reply, recommendations, ...(ask ? { ask } : {}), ...(sensitive.length ? { sensitive } : {}), ...(tripDates ? { tripDates } : {}), ...(tripDays ? { tripDays } : {}), ...(parsed.addToTrip === true ? { addToTrip: true } : {}) })
     } catch (error) {
       if (error instanceof Anthropic.RateLimitError) return emit({ type: 'error', error: 'Postcard is busy. Try again in a moment.' })
       if (error instanceof Anthropic.APIError) console.error('[testplan] Claude API error', error.status, error.message)

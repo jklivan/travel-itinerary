@@ -16,6 +16,8 @@ export default function WelcomeScreen() {
         <Link href="/register" className="flex min-h-14 items-center justify-center rounded-full bg-ink text-sm font-semibold uppercase tracking-label text-white shadow-pop">Sign up</Link>
         <Link href="/login" className="flex min-h-14 items-center justify-center rounded-full border border-white/80 bg-black/20 text-sm font-semibold uppercase tracking-label text-white backdrop-blur-sm">Log in</Link>
       </div>
+      {/* Washington's My Health My Data Act asks for a link to the health data policy on the home page. */}
+      <p className="mt-4 text-center text-xs text-white/85"><Link href="/privacy" className="underline">Privacy Policy</Link> · <Link href="/privacy/health-data" className="underline">Consumer Health Data Privacy Policy</Link></p>
     </div>
   </div>
 }

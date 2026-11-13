@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import RatingStars from '@/components/RatingStars'
 import { useEffect, useId, useRef, useState } from 'react'
+import RememberConsent from './RememberConsent'
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core'
 import { Keyboard } from '@capacitor/keyboard'
 import { useRouter } from 'next/navigation'
@@ -27,7 +28,7 @@ import { formatDate } from '@/lib/placeDates'
 type Place = { id: string; name: string; type: string; notes: string | null; placeId: string | null; lat: number | null; lng: number | null; day: number | null; photos: string[]; destination: string }
 type Trip = { id: string; title: string; places: Place[] }
 type Recommendation = { key: string; name: string; type: 'hotel' | 'food_drink' | 'activity'; why: string; price?: string; destination: string; country: string | null; tripOption?: string; day?: number | null; description?: string; source: 'friend' | 'you' | 'claude'; friendName: string; sourceItemId: string; placeId: string | null; lat: number | null; lng: number | null }
-export type Turn = { role: 'user'; text: string } | { role: 'assistant'; text: string; recommendations: Recommendation[]; title?: string; summary?: string; ask?: Ask; tripDates?: { start: string; end: string }; tripDays?: number } | { role: 'preferences'; preferences: TravelPreferences }
+export type Turn = { role: 'user'; text: string } | { role: 'assistant'; text: string; recommendations: Recommendation[]; title?: string; summary?: string; ask?: Ask; sensitive?: string[]; tripDates?: { start: string; end: string }; tripDays?: number } | { role: 'preferences'; preferences: TravelPreferences }
 type MapPlace = TripMapPlace & { lat: number | null; lng: number | null; color?: string; label?: string }
 
 const categories = [{ value: 'hotel', label: 'Accommodation', eyebrow: 'Stay', Icon: Hotel }, { value: 'food_drink', label: 'Restaurants', eyebrow: 'Food & drink', Icon: Utensils }, { value: 'activity', label: 'Activities', eyebrow: 'Explore', Icon: Camera }, { value: 'transport', label: 'Transportation', eyebrow: 'Getting around', Icon: Plane }]
@@ -283,7 +284,7 @@ export default function TestPlanner({ embedded = false, usualTravelers = null, t
         buffer += value
         const lines = buffer.split('\n'); buffer = lines.pop() ?? ''
         for (const line of lines.filter(Boolean)) {
-          const event = JSON.parse(line) as { type: string; text?: string; error?: string; chatId?: string; reply?: string; recommendations?: Recommendation[]; ask?: Ask; card?: Recommendation; tripDates?: { start: string; end: string }; tripDays?: number; addToTrip?: boolean }
+          const event = JSON.parse(line) as { type: string; text?: string; error?: string; chatId?: string; reply?: string; recommendations?: Recommendation[]; ask?: Ask; sensitive?: string[]; card?: Recommendation; tripDates?: { start: string; end: string }; tripDays?: number; addToTrip?: boolean }
           // The address stays as it is: saving places refreshes this page from the server, and a different address
           // would rebuild it from scratch (losing your place in the chat and what you've picked).
           if (event.type === 'start') chatId.current = event.chatId ?? chatId.current
@@ -298,7 +299,7 @@ export default function TestPlanner({ embedded = false, usualTravelers = null, t
           else if (event.type === 'error') throw new AnswerError(event.error || 'Something went wrong.')
           else if (event.type === 'done') {
             chatId.current = event.chatId ?? ''
-            const reply: Turn = { role: 'assistant', text: event.reply ?? '', recommendations: event.recommendations ?? [], ...(event.ask ? { ask: event.ask } : {}), ...(event.tripDates ? { tripDates: event.tripDates } : {}), ...(event.tripDays ? { tripDays: event.tripDays } : {}) }
+            const reply: Turn = { role: 'assistant', text: event.reply ?? '', recommendations: event.recommendations ?? [], ...(event.ask ? { ask: event.ask } : {}), ...(event.sensitive?.length ? { sensitive: event.sensitive } : {}), ...(event.tripDates ? { tripDates: event.tripDates } : {}), ...(event.tripDays ? { tripDays: event.tripDays } : {}) }
             setTurns(current => [...current, reply])
             // "Looks good": the latest plan's places go into the trip (no tapping each one).
             if (event.addToTrip) approved = [...before, ...pending, reply]
@@ -428,6 +429,8 @@ export default function TestPlanner({ embedded = false, usualTravelers = null, t
             ? <p key={index} ref={index === lastQuestionIndex ? lastQuestion : undefined} className="ml-auto w-fit max-w-[85%] scroll-mt-28 whitespace-pre-wrap rounded-2xl rounded-br-sm bg-ink px-4 py-2 text-sm text-white">{turn.text}</p>
             : <div key={index} className="space-y-3"><p className="max-w-[92%] whitespace-pre-wrap text-sm leading-relaxed"><BoldText text={turn.text} /></p>
               {/* The latest question's answers to tap (choices, dates, who's going) instead of typing. */}
+              {/* A health detail they asked it to remember: kept only if they tap Save (Washington's health data law). */}
+              {turn.sensitive?.length && index === shownTurns.length - 1 ? <RememberConsent items={turn.sensitive} /> : null}
               {turn.ask && index === shownTurns.length - 1 && <AskPicker key={index} ask={turn.ask} usual={usualTravelers} disabled={false} waiting={thinking} onAnswer={text => { if (answering.current) queued.current = text; else void send(text) }} />}
               {/* Each option folds up to its name, places and counts; tap to see its cards. A single plan starts open (and
                   stays as you left it while its cards arrive: it used to fold shut at the fifth card and jump the page). */}
