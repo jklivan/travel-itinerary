@@ -106,9 +106,11 @@ export default function TripPhotoPicker({ start, end, name, onPick, onFallback, 
     } catch { setError('Some photos couldn’t be loaded (they may still be downloading from iCloud). Try again.'); setAdding('') }
   }
 
+  // Only the tiles whose previews are loading are shown, so the next screens' worth loads as soon as you scroll to
+  // the end of them (with every tile shown, the middle of a big month stayed blank until you reached the bottom).
   const days = new Map<string, LibraryPhoto[]>()
   const favorites = (photos ?? []).filter(photo => photo.favorite).length
-  for (const photo of (photos ?? []).filter(photo => !favoritesOnly || photo.favorite)) {
+  for (const photo of shown.slice(0, wanted)) {
     const label = photo.date ? new Date(photo.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Undated'
     days.set(label, [...(days.get(label) ?? []), photo])
   }

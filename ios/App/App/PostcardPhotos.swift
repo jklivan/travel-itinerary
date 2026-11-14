@@ -61,23 +61,32 @@ public class PostcardPhotosPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    // Small square previews (base64 JPEG) for up to 60 photos at a time.
+    // Small square previews (base64 JPEG) for up to 60 photos at a time, from what's on the phone only: with
+    // "Optimize iPhone Storage" the full photos are in iCloud, and downloading each one for a preview made the grid
+    // stall on a slow connection. The phone always keeps a small version, used when a sharper one isn't there.
     @objc func thumbnails(_ call: CAPPluginCall) {
         let ids = Array((call.getArray("ids", String.self) ?? []).prefix(60))
         let size = CGFloat(call.getInt("size") ?? 240)
         DispatchQueue.global(qos: .userInitiated).async {
-            let options = PHImageRequestOptions()
-            options.isSynchronous = true
-            options.deliveryMode = .highQualityFormat
-            options.resizeMode = .fast
-            options.isNetworkAccessAllowed = true
+            let sharp = PHImageRequestOptions()
+            sharp.isSynchronous = true
+            sharp.deliveryMode = .highQualityFormat
+            sharp.resizeMode = .fast
+            sharp.isNetworkAccessAllowed = false
+            let quick = PHImageRequestOptions()
+            quick.isSynchronous = true
+            quick.deliveryMode = .fastFormat
+            quick.isNetworkAccessAllowed = false
+            let target = CGSize(width: size, height: size)
             var thumbnails: [String: String] = [:]
             PHAsset.fetchAssets(withLocalIdentifiers: ids, options: nil).enumerateObjects { asset, _, _ in
-                PHImageManager.default().requestImage(for: asset, targetSize: CGSize(width: size, height: size),
-                                                      contentMode: .aspectFill, options: options) { image, _ in
-                    if let data = image?.jpegData(compressionQuality: 0.7) {
-                        thumbnails[asset.localIdentifier] = data.base64EncodedString()
-                    }
+                var preview: UIImage?
+                PHImageManager.default().requestImage(for: asset, targetSize: target, contentMode: .aspectFill, options: sharp) { image, _ in preview = image }
+                if preview == nil {
+                    PHImageManager.default().requestImage(for: asset, targetSize: target, contentMode: .aspectFill, options: quick) { image, _ in preview = image }
+                }
+                if let data = preview?.jpegData(compressionQuality: 0.7) {
+                    thumbnails[asset.localIdentifier] = data.base64EncodedString()
                 }
             }
             call.resolve(["thumbnails": thumbnails])
