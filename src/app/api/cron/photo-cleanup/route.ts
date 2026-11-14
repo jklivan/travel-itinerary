@@ -13,7 +13,12 @@ export async function GET(req: NextRequest) {
     const session = await auth()
     if (!process.env.ADMIN_EMAIL || session?.user?.email !== process.env.ADMIN_EMAIL) return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  const report = await cleanUpPhotos({ erase: cron && process.env.PHOTO_CLEANUP_ERASE === '1' })
-  console.log('[photo-cleanup]', JSON.stringify({ ...report, examples: undefined }))
-  return Response.json(report)
+  try {
+    const report = await cleanUpPhotos({ erase: cron && process.env.PHOTO_CLEANUP_ERASE === '1' })
+    console.log('[photo-cleanup]', JSON.stringify({ ...report, examples: undefined }))
+    return Response.json(report)
+  } catch (error) {
+    console.error('[photo-cleanup] failed', error)
+    return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 })
+  }
 }

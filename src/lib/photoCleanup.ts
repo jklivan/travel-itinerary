@@ -16,7 +16,7 @@ const BLOB_URL = /https:\/\/[a-z0-9-]+\.(?:private\.|public\.)?blob\.vercel-stor
 // Every stored-file path the database mentions, decoded (e.g. "event-1b2c…-IMG_0042.jpg").
 async function usedPaths() {
   const columns = await prisma.$queryRawUnsafe<{ table_name: string; column_name: string }[]>(
-    `SELECT table_name, column_name FROM information_schema.columns
+    `SELECT table_name::text AS table_name, column_name::text AS column_name FROM information_schema.columns
      WHERE table_schema = current_schema() AND data_type IN ('text', 'character varying', 'ARRAY', 'json', 'jsonb')`)
   const used = new Set<string>()
   for (const { table_name, column_name } of columns) {
