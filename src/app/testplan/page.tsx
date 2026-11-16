@@ -9,6 +9,7 @@ import { SETUP_MESSAGE } from '@/lib/travelPreferences'
 import { nameChat } from '@/lib/chatTitle'
 import { canEdit } from '@/lib/tripAccess'
 import { usualTravelers } from '@/lib/usualTravelers'
+import { inboxAddress } from '@/lib/inbox'
 
 export const metadata: Metadata = { title: 'Plan with Postcard', robots: { index: false, follow: false } }
 export const maxDuration = 300
@@ -55,7 +56,8 @@ export default async function TestPlanPage({ searchParams }: { searchParams: Pro
     prisma.bucketListItem.count({ where: { userId, itinerary: { visibility: { not: 'draft' } } } }),
     prisma.itinerary.findMany({ where: { isPlan: true, visibility: 'draft', ...canEdit(userId) }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 20,
       select: { id: true, title: true, destinations: { select: { _count: { select: { items: true } } } } } }),
-  ]).then(([savedCount, plans]) => ({ savedCount, plans: plans.map(plan => ({ id: plan.id, title: plan.title || 'Untitled trip', places: plan.destinations.reduce((sum, d) => sum + d._count.items, 0) })) })) : null
+    prisma.user.findUnique({ where: { id: userId }, select: { inboxToken: true } }),
+  ]).then(([savedCount, plans, me]) => ({ savedCount, inboxAddress: me?.inboxToken ? inboxAddress(me.inboxToken) : null, plans: plans.map(plan => ({ id: plan.id, title: plan.title || 'Untitled trip', places: plan.destinations.reduce((sum, d) => sum + d._count.items, 0) })) })) : null
   return <TestPlanner usualTravelers={usual} key={`${chat?.id ?? `new:${tripId ?? ''}`}:${ask ?? ''}`} landing={landing} initialDraft={initialDraft} fromPlanner={from === 'planner'} history={history} chat={chat && { id: chat.id, turns: chat.turns as unknown as Turn[] }} trip={trip && plannerTripProps(trip)} />
 }
 

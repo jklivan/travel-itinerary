@@ -5,10 +5,12 @@ import { useState } from 'react'
 import { ArrowUp, Bookmark, ChevronRight, Mail, PenLine, Sparkles } from 'lucide-react'
 import Image from 'next/image'
 import PostcardLogo from '@/components/PostcardLogo'
+import EmailPlansIn from '@/components/EmailPlansIn'
 import type { TravelPreferences } from '@/lib/travelPreferences'
 
-// What the start page loads besides the past chats: how many trips are in Saved (its row under the chats).
-export type Landing = { savedCount: number; plans: { id: string; title: string; places: number }[] }
+// What the start page loads besides the past chats: how many trips are in Saved (its row under the chats), and their
+// Postcard address (for Email plans in).
+export type Landing = { savedCount: number; plans: { id: string; title: string; places: number }[]; inboxAddress: string | null }
 
 // Plan with Postcard's start page (the bottom bar's Plan button): ask where to go, or reopen a past chat. Who's going,
 // budget and the kind of trip aren't asked here: the planner asks a new traveler for them in the chat.
@@ -16,6 +18,7 @@ export default function PlanLanding({ landing, history, busy, onSend }: { landin
   const [text, setText] = useState('')
   const [allChats, setAllChats] = useState(false)
   const [allPlans, setAllPlans] = useState(false)
+  const [emailOpen, setEmailOpen] = useState(false)
   function submit() {
     const message = text.trim()
     if (message && !busy) onSend(message)
@@ -52,13 +55,15 @@ export default function PlanLanding({ landing, history, busy, onSend }: { landin
     </form>
     <p className="mt-2 px-1 text-xs text-muted">Try “A long weekend in Italy with kids”</p>
 
-    {/* Plans that already exist elsewhere: email them in (or have an assistant do it), from Settings → Send trips to
-        Postcard, which shows their address and how; Continue comes back here. */}
-    <Link href="/settings/email?next=%2Ftestplan" className="panel mt-4 flex items-center gap-3 px-4 py-2.5 text-ink transition-colors hover:bg-cream">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Mail size={16} /></span>
-      <span className="min-w-0 flex-1 text-sm font-semibold">Email plans in, or have your AI assistant send them</span>
-      <ChevronRight size={18} className="shrink-0 text-link" />
-    </Link>
+    {/* Plans that already exist elsewhere: unfolds to their Postcard address and how to connect an assistant. */}
+    <div className="panel mt-4 overflow-hidden text-ink">
+      <button type="button" aria-expanded={emailOpen} aria-controls="email-plans-in" onClick={() => setEmailOpen(open => !open)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-cream">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Mail size={16} /></span>
+        <span className="min-w-0 flex-1 text-sm font-semibold">Email plans in, or have your AI assistant send them</span>
+        <ChevronRight size={18} className={`shrink-0 text-link transition-transform ${emailOpen ? 'rotate-90' : ''}`} />
+      </button>
+      {emailOpen && <div id="email-plans-in"><EmailPlansIn initialAddress={landing.inboxAddress} /></div>}
+    </div>
     {/* The way in without AI: its own box, right under the question, rather than a small link at the bottom. */}
     <Link href="/plan" className="panel mt-3 flex items-center gap-3 px-4 py-2.5 text-ink transition-colors hover:bg-cream">
       <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><PenLine size={16} /></span>
