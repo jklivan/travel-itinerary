@@ -12,13 +12,14 @@ import { datesCovering, isDate } from '@/lib/placeDates'
 import { readFileForUpload, fetchExtraction } from '@/lib/importFiles'
 import { importedPlaces } from '@/lib/planImport'
 import AiAgentTip, { markAiAgentTipSeen } from '@/components/AiAgentTip'
+import EmailItIn from '@/components/EmailItIn'
 
 export const inputClass = 'field mt-1.5'
 // The shared dark button (see .btn in globals.css).
 export const buttonClass = 'btn btn-primary'
 
 // past: posting a trip they've already taken (Post → Another trip), so the wording is in the past tense.
-export default function NewPlanForm({ savePlace, saveStory, past = false, initialImport = false }: { savePlace?: string; saveStory?: string; past?: boolean; initialImport?: boolean }) {
+export default function NewPlanForm({ savePlace, saveStory, past = false, initialImport = false, inboxAddress = null }: { savePlace?: string; saveStory?: string; past?: boolean; initialImport?: boolean; inboxAddress?: string | null }) {
   const router = useRouter()
   const clientId = useRef('')
   const placeCopyId = useRef('')
@@ -122,6 +123,7 @@ export default function NewPlanForm({ savePlace, saveStory, past = false, initia
         </label>
         <label className="block text-sm">Or paste notes<textarea value={notes} onChange={event => { setNotes(event.target.value); setFile(null) }} maxLength={200000} rows={2} placeholder="Hotels, restaurants, activities…" className="field mt-2" /></label>
         <button type="submit" value="import" disabled={!file && !notes.trim()} className={`${buttonClass} w-full`}>{stage || 'Import and start planning →'}</button>
+        <EmailItIn address={inboxAddress} back={past ? '/plan?from=post&import=1' : '/plan?import=1'} />
       </fieldset>}
     <div className="panel space-y-5 p-4 sm:p-6">
     {(savePlace || saveStory) && <p className="text-sm text-link">We’ll add the place you selected to this new plan.</p>}

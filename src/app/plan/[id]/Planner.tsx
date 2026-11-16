@@ -82,7 +82,7 @@ function postFormatOf(trip: Trip): 'guide' | 'day-trip' | 'itinerary' {
   return days >= 2 ? 'itinerary' : days === 1 ? 'day-trip' : 'guide'
 }
 
-export default function Planner({ trip, been = false, ai = null, audienceSuggestion, planDays = false, initialImport = false, initialDetails = false, initialPost = false }: { trip: Trip; been?: boolean; ai?: TripAI | null; audienceSuggestion?: string; planDays?: boolean; initialImport?: boolean; initialDetails?: boolean; initialPost?: boolean }) {
+export default function Planner({ trip, been = false, ai = null, audienceSuggestion, planDays = false, initialImport = false, initialDetails = false, initialPost = false, inboxAddress = null }: { trip: Trip; inboxAddress?: string | null; been?: boolean; ai?: TripAI | null; audienceSuggestion?: string; planDays?: boolean; initialImport?: boolean; initialDetails?: boolean; initialPost?: boolean }) {
   const router = useRouter()
   // A shared plan keeps itself up to date: every few seconds (while on screen) it checks whether anyone changed the
   // trip and, if so, refreshes in place (not while you're typing in a box, so nothing you're writing is lost).
@@ -290,7 +290,7 @@ export default function Planner({ trip, been = false, ai = null, audienceSuggest
     {addForm('top')}
     {/* Photos can be added before places: they wait on the trip until they're tapped into places. */}
     {sortingPhotos && <PhotoSorter tripId={trip.id} places={places} initialPile={photoPile} startOpen onClose={() => setSortingPhotos(false)} />}
-    {importing && <div id="plan-import-panel"><PlanImport tripId={trip.id} trip={trip.start && trip.end ? { start: trip.start, end: trip.end } : null} destinations={destinations.filter(d => d.name !== 'Destination to decide').map(d => ({ name: d.name, country: d.country }))} onClose={() => setImporting(false)} /></div>}
+    {importing && <div id="plan-import-panel"><PlanImport tripId={trip.id} inboxAddress={inboxAddress} trip={trip.start && trip.end ? { start: trip.start, end: trip.end } : null} destinations={destinations.filter(d => d.name !== 'Destination to decide').map(d => ({ name: d.name, country: d.country }))} onClose={() => setImporting(false)} /></div>}
     </div>
     <div role="tablist" aria-label="Trip view" className="tabs mb-4 mt-1">{(['places', 'itinerary', 'map'] as const).map(value => <button key={value} role="tab" id={`${value}-tab`} aria-controls="trip-panel" aria-selected={tab === value} onClick={() => { setTab(value); if (value === 'map') setMapOpened(true) }} className="tab">{value === 'places' ? 'Places' : value === 'map' ? 'Map' : 'Itinerary'}</button>)}</div>
     <section role="tabpanel" id="trip-panel" aria-labelledby={`${tab}-tab`}>

@@ -9,9 +9,10 @@ import { importIntoPlan, importMatches } from '@/actions/planImport'
 import type { ImportMatch } from '@/lib/importMatch'
 import PlacesAutocomplete from './PlacesAutocomplete'
 import { dateProblems, datesCovering, dayOnTrip, formatDate, tripDay, whenLabel } from '@/lib/placeDates'
+import EmailItIn from '@/components/EmailItIn'
 
 // trip: the trip's dates, when it has them, for putting each booking on its day and spotting dates outside the trip.
-export default function PlanImport({ tripId, destinations = [], trip = null, onClose }: { tripId: string; destinations?: { name: string; country: string | null }[]; trip?: { start: string; end: string } | null; onClose: () => void }) {
+export default function PlanImport({ tripId, destinations = [], trip = null, onClose, inboxAddress = null }: { tripId: string; inboxAddress?: string | null; destinations?: { name: string; country: string | null }[]; trip?: { start: string; end: string } | null; onClose: () => void }) {
   const router = useRouter()
   const [text, setText] = useState('')
   // Every imported place goes under this destination (the trip's, to start). Each card then shows the
@@ -116,6 +117,7 @@ export default function PlanImport({ tripId, destinations = [], trip = null, onC
         <label className="block text-sm">Or paste notes<textarea value={text} onChange={event => { setText(event.target.value); setFiles([]) }} maxLength={200000} rows={2} placeholder="Hotels, restaurants, activities…" className="field mt-2" /></label>
         <button type="button" disabled={!file && !text.trim()} onClick={() => void read()} className="btn btn-primary w-full">Find places</button>
       </fieldset>
+      <EmailItIn address={inboxAddress} back={`/plan/${tripId}?import=1`} />
     </> : <>
       {suggested && <label className="panel-hint flex items-start gap-3 p-3 text-sm"><input type="checkbox" checked={useDates} onChange={event => setUseDates(event.target.checked)} className="mt-0.5 h-5 w-5 shrink-0" />
         <span>{trip ? 'Stretch the trip to ' : 'Set the trip’s dates to '}<strong>{formatDate(suggested.start)} – {formatDate(suggested.end)}</strong> ({tripDay(suggested.end, suggested.start)} days), {trip ? 'so the bookings just outside it get a day too. Places already on a day keep their date.' : 'from these bookings, so each one goes on its day.'}</span></label>}

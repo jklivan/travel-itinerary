@@ -2,6 +2,8 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import NewPlanForm from './NewPlanForm'
+import { prisma } from '@/lib/prisma'
+import { inboxAddress } from '@/lib/inbox'
 import { ChevronRight, Sparkles } from 'lucide-react'
 
 export default async function PlansPage({ searchParams }: { searchParams: Promise<{ savePlace?: string; saveStory?: string; from?: string; import?: string }> }) {
@@ -10,6 +12,8 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
   const posting = from === 'post'
   const userId = (await auth())?.user?.id
   if (!userId) redirect('/login?callbackUrl=%2Fplan')
+  // Their Postcard address, offered in the import panel as another way in.
+  const inboxToken = (await prisma.user.findUnique({ where: { id: userId }, select: { inboxToken: true } }))?.inboxToken
   return <div className="mx-auto max-w-2xl px-4 py-7 text-ink">
     <section aria-labelledby="start-planning-heading" className="bg-transparent">
       <header className="mb-5 px-1">
@@ -21,7 +25,7 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
         <span className="min-w-0 flex-1"><span className="block font-semibold">Plan with AI</span><span className="block text-sm text-link">Ask where to go, using what you and your friends loved.</span></span>
         <ChevronRight size={18} className="shrink-0 text-link transition-transform group-hover:translate-x-0.5" />
       </Link>}
-      <NewPlanForm saveStory={typeof saveStory === 'string' && saveStory.length <= 200 ? saveStory : undefined} savePlace={typeof savePlace === 'string' && savePlace.length <= 200 ? savePlace : undefined} past={posting} initialImport={openImport === '1'} />
+      <NewPlanForm inboxAddress={inboxToken ? inboxAddress(inboxToken) : null} saveStory={typeof saveStory === 'string' && saveStory.length <= 200 ? saveStory : undefined} savePlace={typeof savePlace === 'string' && savePlace.length <= 200 ? savePlace : undefined} past={posting} initialImport={openImport === '1'} />
     </section>
   </div>
 }
