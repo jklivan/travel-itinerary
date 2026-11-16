@@ -28,8 +28,9 @@ export async function GET(req: NextRequest) {
       headers: {
         'Content-Type': result.blob.contentType,
         'Cache-Control': 'public, max-age=31536000, immutable',
-        // Blob URLs never change content, so Vercel's CDN can keep them too, not just each viewer's browser.
-        'CDN-Cache-Control': 'public, max-age=31536000, immutable',
+        // Blob URLs never change content, so Vercel's CDN keeps them too, but only for a day: a photo someone deletes
+        // (lib/photoCleanup) then stops being served from the CDN within a day.
+        'CDN-Cache-Control': 'public, max-age=86400',
       },
     })
   } catch (err) {
