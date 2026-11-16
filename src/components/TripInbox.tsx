@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Copy, Mail, X } from 'lucide-react'
+import { Mail, X } from 'lucide-react'
+import CopyButton from '@/components/ui/CopyButton'
 import { createInbox, renameInbox, setInboxSender } from '@/actions/inbox'
 
 // Settings → Send trips to Postcard: a private email address. Booking confirmations and trip summaries sent to it
@@ -19,16 +20,12 @@ export default function TripInbox({ initialAddress, initialSenders, accountEmail
     try { const result = await action(); if (result.address) setAddress(result.address); if (result.senders) setSenders(result.senders); setMessage(result.error ?? done ?? ''); return !result.error }
     catch { setMessage('Couldn’t save. Please try again.'); return false } finally { setBusy(false) }
   }
-  async function copy() {
-    if (!address) return
-    try { await navigator.clipboard.writeText(address); setMessage('Copied.') } catch { setMessage('Select the address and copy it.') }
-  }
 
   return <section className="panel space-y-3 p-5" aria-labelledby="inbox-heading">
     <h2 id="inbox-heading" className="type-label text-ink">Send trips to Postcard</h2>
     <p className="text-sm text-brown">Email booking confirmations or a trip summary to your Postcard address, or ask your assistant to. Postcard adds the places to the private plan they belong to, or starts a new one, and emails you back.</p>
     {!address ? <button type="button" disabled={busy} onClick={() => void run(() => createInbox())} className="btn btn-primary btn-sm"><Mail size={16} />Get my address</button> : <>
-      <div className="panel-inset flex items-center gap-2 p-3"><span className="min-w-0 flex-1 select-all break-words text-sm text-ink">{address}</span><button type="button" onClick={() => void copy()} aria-label="Copy address" className="btn-icon"><Copy size={18} /></button></div>
+      <div className="panel-inset flex items-center gap-2 p-3"><span className="min-w-0 flex-1 select-all break-words text-sm text-ink">{address}</span><CopyButton text={address} label="Copy address" onFail={() => setMessage('Select the address and copy it.')} /></div>
       <div className="space-y-2">
         <p className="text-sm text-ink">Accepted from</p>
         <ul className="space-y-1.5 text-sm text-ink">
