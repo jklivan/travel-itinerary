@@ -164,7 +164,11 @@ export async function processInboundEmail(emailId: string, origin: string) {
     if (!started.id) { log('could not start plan', started.error); return }
     plan = { id: started.id, title }
   }
-  const result = await actAs(user.id, () => importIntoPlan(plan.id, refs.import, places, dates))
+  // Marked as importing meanwhile, so the trip says so rather than showing no places (components/ImportingNotice).
+  const planId = plan.id
+  await prisma.itinerary.update({ where: { id: planId }, data: { importingSince: new Date() } })
+  const result = await actAs(user.id, () => importIntoPlan(planId, refs.import, places, dates))
+    .finally(() => prisma.itinerary.update({ where: { id: planId }, data: { importingSince: null } }).catch(() => {}))
   if (result.error) { log('import failed', result.error); return }
   log('imported', places.length, 'places')
   await noteImported(user.id, plan.id, created)

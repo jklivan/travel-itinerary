@@ -118,6 +118,9 @@ model Itinerary {
   chatMessages     TripMessage[]
   createdAt        DateTime         @default(now())
   publishedAt      DateTime?
+  // An emailed trip still being imported (lib/inboxImport): when it started; cleared once its places are in. The
+  // trip page and My trips say "Importing your trip…" meanwhile instead of showing 0 places.
+  importingSince   DateTime?
 }
 
 // Someone invited to plan a trip together (#116). Joined members can change the plan like its creator, except

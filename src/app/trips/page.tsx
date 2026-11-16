@@ -8,11 +8,13 @@ import { fetchStockPhoto } from '@/lib/stockPhoto'
 import { SwipeToDeleteTrip } from '@/components/SwipeToDelete'
 import { canEdit } from '@/lib/tripAccess'
 import UserAvatar from '@/components/UserAvatar'
+import ImportingNotice from '@/components/ImportingNotice'
+import { stillImporting } from '@/lib/importing'
 
 export const metadata: Metadata = { title: 'My Trips — Postcard' }
 
 const tripSelect = {
-  id: true, title: true, isPlan: true, publishedAt: true, coverPhoto: true, coverFocus: true, startDate: true, endDate: true, datesFlexible: true,
+  id: true, title: true, isPlan: true, publishedAt: true, coverPhoto: true, coverFocus: true, startDate: true, endDate: true, datesFlexible: true, importingSince: true,
   // Group trips: who started it and who's invited or joined.
   userId: true, user: { select: { name: true, image: true } },
   members: { where: { userId: { not: null }, status: { in: ['invited', 'joined'] } }, orderBy: { createdAt: 'asc' as const }, select: { status: true, user: { select: { name: true, image: true } } } },
@@ -60,6 +62,8 @@ export default async function MyTripsPage({ searchParams }: { searchParams: Prom
   const cover = (trip: Trip) => ({ saved: savedCover(trip), focus: trip.coverPhoto ? trip.coverFocus : null, itemId: trip.destinations.flatMap(d => d.items).find(item => item.type !== 'transport')?.id ?? null, stock: stock.get(trip.id) ?? null })
 
   return <div className="page-wrap">
+    {/* An emailed trip still importing: reload until its places are in. */}
+    {plans.some(trip => stillImporting(trip.importingSince)) && <ImportingNotice message={false} />}
     <header className="page-header">
       <h1 className="page-title">My trips</h1>
       <p className="page-subtitle">Trips you’re planning and trips you’ve been on.</p>
@@ -77,7 +81,7 @@ export default async function MyTripsPage({ searchParams }: { searchParams: Prom
     </nav>
     <TripSection title="Not posted yet" description={past ? 'Trips you’ve been on that only you (and anyone you planned with) can see. Post them so friends can use your picks.' : 'Only you, and anyone you’re planning with, can see these. Keep planning, then post when you’re ready.'} empty={past ? 'Nothing waiting to be posted.' : 'No upcoming plans yet.'}>
       {/* Plans go straight to /plan: the trip editor's redirect there fails during in-app navigation. */}
-      {privateTrips.map(trip => { const ready = past && trip.userId === userId && readyToPost(trip); return <TripRow key={trip.id} id={trip.id} href={`/plan/${trip.id}`} postHref={trip.userId === userId ? `/plan/${trip.id}?post=1` : undefined} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={`${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}`} cta="Keep planning →" ready={ready} own={trip.userId === userId} newMessages={unread.has(trip.id)}
+      {privateTrips.map(trip => { const ready = past && trip.userId === userId && readyToPost(trip); return <TripRow key={trip.id} id={trip.id} href={`/plan/${trip.id}`} postHref={trip.userId === userId ? `/plan/${trip.id}?post=1` : undefined} title={trip.title || 'Untitled trip'} photo={cover(trip)} detail={stillImporting(trip.importingSince) ? 'Importing your trip…' : `${placeCount(trip)} ${placeCount(trip) === 1 ? 'place' : 'places'}`} cta="Keep planning →" ready={ready} own={trip.userId === userId} newMessages={unread.has(trip.id)}
         people={trip.members.length ? { joined: [trip.user, ...trip.members.filter(member => member.status === 'joined').map(member => member.user!)], invited: trip.members.filter(member => member.status === 'invited').length } : undefined} /> })}
     </TripSection>
     <TripSection title="Posted" description={past ? 'Trips you’ve shared. You can still add places and update them.' : 'Upcoming trips you’ve shared.'} empty={past ? 'You haven’t posted a trip yet.' : 'No upcoming trips posted.'}>
