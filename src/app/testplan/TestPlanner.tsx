@@ -465,7 +465,9 @@ export default function TestPlanner({ embedded = false, usualTravelers = null, t
   const composerForm = (sticky: boolean) => (
         <form ref={form} style={pinnedTop === null ? undefined : { position: 'fixed', top: pinnedTop, left: 12, right: 12, bottom: 'auto', zIndex: 60 }} className={`${sticky ? 'sticky bottom-[calc(var(--app-bottom-clearance)-1.5rem)] pb-[calc(0.75rem+1.5rem)] lg:static lg:pb-3' : ''} z-10 flex items-end gap-2 border-t border-line-soft bg-card p-3 ${pinnedTop === null ? 'rounded-b-2xl' : 'rounded-2xl border shadow-pop'}`} onSubmit={event => { event.preventDefault(); void send(draft) }}>
           <textarea ref={composer} autoFocus={!!initialDraft} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(draft) } }} rows={1} maxLength={4000} placeholder={tripChat ? 'Ask about this trip…' : 'Ask about a place or a trip…'} aria-label="Message Postcard" className="field max-h-40 flex-1 resize-none overflow-y-auto" />
-          <button type="submit" disabled={thinking || !draft.trim()} aria-label="Send" className="btn btn-primary w-11 shrink-0 !px-0"><ArrowUp size={18} /></button>
+          {/* Pressing Send mustn't take focus from the message box: on a phone that closes the keyboard, the box drops from
+              above it to the bottom, and the tap lands where Send used to be (it took two taps to send). */}
+          <button type="submit" disabled={thinking || !draft.trim()} onPointerDown={event => event.preventDefault()} onMouseDown={event => event.preventDefault()} aria-label="Send" className="btn btn-primary w-11 shrink-0 !px-0"><ArrowUp size={18} /></button>
         </form>
   )
 
