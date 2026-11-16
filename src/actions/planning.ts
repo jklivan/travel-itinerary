@@ -26,6 +26,7 @@ import { fileUnderDestination, type DestinationQuestion } from '@/lib/fileUnderD
 import { locateDestinations } from '@/lib/locateDestinations'
 import { locateTripPlaces } from '@/lib/locatePlaces'
 import { scheduleTripPublishedNotifications } from '@/lib/tripPublishedNotifications'
+import { releaseLater } from '@/lib/photoCleanup'
 
 type Result = { error?: string; success?: boolean; id?: string; chooseDestination?: DestinationQuestion }
 class InputError extends Error {}
@@ -364,7 +365,7 @@ export async function setTripCover(id: string, url: string | null, focus?: strin
 }
 
 // Takes a photo off the whole trip: its trip photos, every place it's on, and the cover if it was the cover (the trip
-// then shows its next photo). The file itself stays, in case a postcard or another trip uses it.
+// then shows its next photo). The file is deleted once nothing else (a postcard, another trip) uses it.
 export async function removeTripPhoto(id: string, url: string): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
@@ -381,6 +382,7 @@ export async function removeTripPhoto(id: string, url: string): Promise<Result> 
       }),
       ...(trip.coverPhoto === url ? [prisma.itinerary.updateMany({ where: { id, ...canEdit(userId) }, data: { coverPhoto: null, coverFocus: null } })] : []),
     ])
+    releaseLater([url])
     refresh(id, userId)
     return { success: true }
   } catch { return { error: 'Could not remove that photo. Please try again.' } }
@@ -499,7 +501,7 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
     if (!name || !['considering', 'booked', 'visited'].includes(status)) return { error: 'Enter a place name and choose a status.' }
     if (day && (!/^\d+$/.test(day) || Number(day) < 1 || Number(day) > 365)) return { error: 'Choose a day from 1 to 365, or leave it unscheduled.' }
     const owned = { id: itemId, destination: { itinerary: canEdit(userId) } }
-    const item = await prisma.destItem.findFirst({ where: owned, select: { name: true, type: true, placeId: true, destinationId: true, destination: { select: { itineraryId: true, name: true, country: true, itinerary: { select: { userId: true } } } } } })
+    const item = await prisma.destItem.findFirst({ where: owned, select: { name: true, type: true, placeId: true, destinationId: true, photoUrl: true, photoUrls: true, takes: { where: { userId }, select: { photoUrls: true } }, destination: { select: { itineraryId: true, name: true, country: true, itinerary: { select: { userId: true } } } } } })
     if (!item) return { error: unavailable }
     // Someone who joined a group trip: their stars and photos go to their own take on the place, and the creator's
     // booking details (which they don't see) are left alone.
@@ -538,6 +540,8 @@ export async function editPlanPlace(itemId: string, form: FormData): Promise<Res
       // The destination it left goes away once it's empty, unless it has its own notes.
       if (moveTo) await tx.destination.deleteMany({ where: { id: item.destinationId, notes: null, items: { none: {} } } })
     })
+    // Photos taken off the place (or off their own take on it) go once nothing else uses them.
+    if (form.has('photos')) releaseLater([item.photoUrl, ...item.photoUrls, ...item.takes.flatMap(take => take.photoUrls)])
     refresh(item.destination.itineraryId, userId)
     return { success: true }
   } catch (error) { return message(error) }
@@ -676,13 +680,17 @@ export async function mergePlanDestination(tripId: string, fromId: string, intoI
 export async function removePlanDestination(tripId: string, destinationId: string, withPlaces = false): Promise<Result> {
   const userId = (await auth())?.user?.id
   if (!userId) return { error: 'Please sign in.' }
+  let photos: (string | null)[] = []
   try {
     await prisma.$transaction(async tx => {
       await ownedDestination(tx, userId, tripId, destinationId)
       if (await tx.destination.count({ where: { itineraryId: tripId } }) <= 1) throw new InputError('A trip needs at least one destination. Change it instead.')
       if (!withPlaces && await tx.destItem.count({ where: { destinationId } })) throw new InputError('Move or remove its places first.')
+      const items = await tx.destItem.findMany({ where: { destinationId }, select: { photoUrl: true, photoUrls: true, takes: { select: { photoUrls: true } } } })
+      photos = items.flatMap(item => [item.photoUrl, ...item.photoUrls, ...item.takes.flatMap(take => take.photoUrls)])
       await tx.destination.delete({ where: { id: destinationId } })
     })
+    releaseLater(photos)
     refresh(tripId, userId)
     return { success: true }
   } catch (error) { return message(error) }
@@ -701,6 +709,8 @@ export async function removePlanPlace(itemId: string): Promise<Result> {
       if (destination.itinerary.members.length) await tx.deletedPlace.create({ data: { itineraryId: destination.itineraryId, destinationId: place.destinationId, deletedById: userId, data: JSON.parse(JSON.stringify({ place, takes })) } })
       await tx.destItem.deleteMany({ where: owned })
     })
+    // On a group trip the photos are kept with the deleted place (for undo), so they stay until that goes too.
+    releaseLater([place.photoUrl, ...place.photoUrls, ...takes.flatMap(take => take.photoUrls)])
     refresh(destination.itineraryId, userId)
     return { success: true }
   } catch { return { error: 'Could not remove this place. Please try again.' } }

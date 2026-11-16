@@ -1,43 +1,82 @@
-import { list, del, rename } from '@vercel/blob'
+import { after } from 'next/server'
+import { list, del } from '@vercel/blob'
 import { prisma } from '@/lib/prisma'
 
-// Erases stored photos nothing in Postcard uses any more: removed from a place or trip, a deleted trip or snapshot,
-// a replaced profile photo, a deleted account. Rather than deleting at each of those places (and missing one, or
-// erasing a photo a copied trip still shows), it lists the stored photos and keeps every one whose address appears
-// anywhere in the database, in any text, list or JSON column, written plainly or inside an /api/img?url= link.
-// Only uploaded photos are considered (event-… and profile-… files), and only ones older than a day, so a photo
-// still being added isn't taken. Unused photos go to trash/ first (the same file under trash/…), and are only
-// deleted for good after 30 days there, so a mistake can be put back (restorePhotos).
+// Deletes stored photos once nothing in Postcard uses them. A photo's file can be shared (Copy trip, copying a
+// place to a plan and posting a postcard reuse the same file), so removing it from one place only deletes the file
+// when no other row still mentions it, in any text, list or JSON column, written plainly or inside an /api/img link.
+// Two ways in:
+// - releasePhotos: right after a photo, place, trip, postcard or account is removed (scheduled with releaseLater, so
+//   it runs after the response and doesn't slow the tap).
+// - cleanUpPhotos: the daily job (api/cron/photo-cleanup) for uploads that were never saved (closed mid-way, an
+//   abandoned postcard), only once they're a week old, and anything the first way missed.
+// Every uploaded photo's file name starts with event-<uuid> or profile-<uuid>, which survives any URL encoding, so
+// that's what's looked for.
+const KEY = /(?:event|profile)-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g
 const PREFIXES = ['event-', 'profile-']
-const TRASH = 'trash/'
-const TRASH_DAYS = 30
-const GRACE_MS = 24 * 60 * 60 * 1000
-// A bug in finding what's used would look like most photos being unused: stop rather than erase them.
+const UNSAVED_DAYS = 7
+// A bug in finding what's used would look like most photos being unused: the daily job stops rather than delete them.
 const MAX_SHARE = 0.5
-const BLOB_URL = /https:\/\/[a-z0-9-]+\.(?:private\.|public\.)?blob\.vercel-storage\.com\/[^\s"'<>?#&)\\]+/gi
 
-// Every stored-file path the database mentions, decoded (e.g. "event-1b2c…-IMG_0042.jpg").
-async function usedPaths() {
-  const columns = await prisma.$queryRawUnsafe<{ table_name: string; column_name: string }[]>(
+const keysIn = (texts: (string | null | undefined)[]) => new Set(texts.flatMap(text => text?.match(KEY) ?? []))
+
+async function textColumns() {
+  return prisma.$queryRawUnsafe<{ table_name: string; column_name: string }[]>(
     `SELECT table_name::text AS table_name, column_name::text AS column_name FROM information_schema.columns
      WHERE table_schema = current_schema() AND data_type IN ('text', 'character varying', 'ARRAY', 'json', 'jsonb')`)
+}
+
+// Which of these photos (by key) something in the database still mentions; every photo mentioned when keys is null.
+async function stillUsed(keys: string[] | null) {
   const used = new Set<string>()
-  for (const { table_name, column_name } of columns) {
+  const patterns = keys ? keys.map(key => `%${key}%`) : ['%event-%', '%profile-%']
+  for (const { table_name, column_name } of await textColumns()) {
     const rows = await prisma.$queryRawUnsafe<{ value: string }[]>(
-      `SELECT "${column_name}"::text AS value FROM "${table_name}" WHERE "${column_name}"::text LIKE '%blob.vercel-storage.com%'`)
-    for (const { value } of rows) {
-      let decoded = value
-      try { decoded = decodeURIComponent(value) } catch { /* keep as written */ }
-      for (const text of [value, decoded]) {
-        for (const match of text.matchAll(BLOB_URL)) {
-          const path = new URL(match[0]).pathname.slice(1)
-          used.add(path)
-          try { used.add(decodeURIComponent(path)) } catch { /* the plain one is there */ }
-        }
-      }
-    }
+      `SELECT "${column_name}"::text AS value FROM "${table_name}" WHERE "${column_name}"::text LIKE ANY ($1::text[])`, patterns)
+    for (const key of keysIn(rows.map(row => row.value))) used.add(key)
   }
   return used
+}
+
+// Deletes the files of these photos that nothing uses any more. Pass every photo the removed thing had: ones still
+// used elsewhere are kept.
+export async function releasePhotos(urls: (string | null | undefined)[]) {
+  const keys = [...keysIn(urls)]
+  if (!keys.length) return
+  const used = await stillUsed(keys)
+  const gone = keys.filter(key => !used.has(key))
+  const files = (await Promise.all(gone.map(key => list({ prefix: key, limit: 10 })))).flatMap(page => page.blobs.map(blob => blob.url))
+  if (files.length) await del(files)
+}
+
+// releasePhotos once the response has gone; a failure is left for the daily job.
+export function releaseLater(urls: (string | null | undefined)[]) {
+  if (!urls.some(Boolean)) return
+  after(() => releasePhotos(urls).catch(error => console.error('[photo-cleanup] release failed', error)))
+}
+
+// Every photo on these trips (cover, trip photos and pile, places, everyone's takes, deleted places kept for undo),
+// read before deleting them.
+export async function tripPhotoUrls(tripIds: string[]) {
+  if (!tripIds.length) return []
+  const trips = await prisma.itinerary.findMany({ where: { id: { in: tripIds } }, select: {
+    coverPhoto: true, photos: { select: { url: true } }, deletedPlaces: { select: { data: true } },
+    destinations: { select: { items: { select: { photoUrl: true, photoUrls: true, takes: { select: { photoUrls: true } } } } } },
+  } })
+  return trips.flatMap(trip => [trip.coverPhoto, ...trip.photos.map(photo => photo.url), ...trip.deletedPlaces.map(row => JSON.stringify(row.data)),
+    ...trip.destinations.flatMap(destination => destination.items.flatMap(item => [item.photoUrl, ...item.photoUrls, ...item.takes.flatMap(take => take.photoUrls)]))])
+}
+
+// Every photo an account's deletion takes with it: their profile photo, trips, postcards, photos on other people's
+// trips, and places they deleted from group trips.
+export async function userPhotoUrls(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: {
+    image: true, itineraries: { select: { id: true } }, stories: { select: { photoUrl: true } },
+    placeTakes: { select: { photoUrls: true } }, placesDeleted: { select: { data: true } },
+  } })
+  if (!user) return []
+  return [user.image, ...user.stories.map(story => story.photoUrl), ...user.placeTakes.flatMap(take => take.photoUrls),
+    ...user.placesDeleted.map(row => JSON.stringify(row.data)), ...await tripPhotoUrls(user.itineraries.map(trip => trip.id))]
 }
 
 async function listAll(prefix: string) {
@@ -51,42 +90,28 @@ async function listAll(prefix: string) {
   return blobs
 }
 
-// Runs jobs a few at a time.
-async function inBatches<T>(items: T[], size: number, job: (item: T) => Promise<unknown>) {
-  for (let index = 0; index < items.length; index += size) await Promise.all(items.slice(index, index + size).map(job))
-}
-
-// erase: move unused photos to the trash (and empty trash older than 30 days). confirm: the number of unused photos
-// the admin saw in the report, to go ahead even when more than half look unused.
+// The daily job. erase: delete what's unused (otherwise just report). confirm: the unused count the admin saw in
+// the report, to go ahead once when more than half look unused (the first clean-up of old leftovers).
 export async function cleanUpPhotos({ erase, confirm }: { erase: boolean; confirm?: number }) {
-  const used = await usedPaths()
-  const cutoff = Date.now() - GRACE_MS
+  const used = await stillUsed(null)
+  const cutoff = Date.now() - UNSAVED_DAYS * 24 * 60 * 60 * 1000
   const stored = (await Promise.all(PREFIXES.map(listAll))).flat()
-  const unused = stored.filter(blob => blob.uploadedAt.getTime() <= cutoff && !used.has(blob.pathname))
+  // A stored file with no key (an older naming) is left alone.
+  const unused = stored.filter(blob => { const keys = [...keysIn([blob.pathname])]; return blob.uploadedAt.getTime() <= cutoff && keys.length > 0 && !keys.some(key => used.has(key)) })
   // When the unused ones were uploaded, to compare with when features changed.
-  const byMonth: Record<string, number> = {}
-  for (const blob of unused) { const month = blob.uploadedAt.toISOString().slice(0, 7); byMonth[month] = (byMonth[month] ?? 0) + 1 }
-  const trash = await listAll(TRASH)
-  const expired = trash.filter(blob => blob.uploadedAt.getTime() < Date.now() - TRASH_DAYS * 24 * 60 * 60 * 1000)
-  const report = { stored: stored.length, used: used.size, unused: unused.length, unusedMB: Math.round(unused.reduce((sum, blob) => sum + blob.size, 0) / 1e5) / 10, unusedByMonth: byMonth, examples: unused.slice(0, 10).map(blob => blob.pathname), inTrash: trash.length, movedToTrash: 0, deletedFromTrash: 0, stopped: '' }
+  const unusedByMonth: Record<string, number> = {}
+  for (const blob of unused) { const month = blob.uploadedAt.toISOString().slice(0, 7); unusedByMonth[month] = (unusedByMonth[month] ?? 0) + 1 }
+  const report = { stored: stored.length, used: used.size, unused: unused.length, unusedMB: Math.round(unused.reduce((sum, blob) => sum + blob.size, 0) / 1e5) / 10, unusedByMonth, examples: unused.slice(0, 10).map(blob => blob.pathname), deleted: 0, stopped: '' }
   const confirmed = confirm === unused.length
   if (!used.size || (!confirmed && stored.length && unused.length / stored.length > MAX_SHARE)) {
-    report.stopped = `Not erasing: ${unused.length} of ${stored.length} photos look unused, which is more than expected.`
+    report.stopped = `Not deleting: ${unused.length} of ${stored.length} photos look unused, which is more than expected.`
     return report
   }
   if (erase || confirmed) {
-    await inBatches(unused, 10, async blob => { await rename(blob.url, TRASH + blob.pathname, { access: 'private', addRandomSuffix: false, allowOverwrite: true }); report.movedToTrash++ })
-    for (let index = 0; index < expired.length; index += 100) {
-      await del(expired.slice(index, index + 100).map(blob => blob.url))
-      report.deletedFromTrash += Math.min(100, expired.length - index)
+    for (let index = 0; index < unused.length; index += 100) {
+      await del(unused.slice(index, index + 100).map(blob => blob.url))
+      report.deleted += Math.min(100, unused.length - index)
     }
   }
   return report
-}
-
-// Puts trashed photos back where they were (same address, so trips show them again): one file, or all of them.
-export async function restorePhotos(pathname: string) {
-  const trash = (await listAll(TRASH)).filter(blob => pathname === 'all' || blob.pathname === TRASH + pathname)
-  await inBatches(trash, 10, blob => rename(blob.url, blob.pathname.slice(TRASH.length), { access: 'private', addRandomSuffix: false, allowOverwrite: true }))
-  return { restored: trash.length }
 }

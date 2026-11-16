@@ -12,6 +12,7 @@ import { eventPhotos } from '@/lib/eventPhotos'
 import { getRecommendation, recommendationTags, type PlaceRecommendation } from '@/lib/placeRecommendation'
 import { STORY_LIFETIME_MS, visibleStoriesWhere, type StoryCard } from '@/lib/stories'
 import { realStops } from '@/lib/tripLocation'
+import { releaseLater } from '@/lib/photoCleanup'
 
 type Result = { error?: string; success?: boolean; chooseDestination?: DestinationQuestion }
 export async function activeStories(following = false): Promise<StoryCard[]> {
@@ -192,6 +193,7 @@ export async function deleteStory(id: string): Promise<Result> {
         data: { photoUrls, photoUrl: item.photoUrl === story.photoUrl ? photoUrls[0] ?? null : item.photoUrl } })
       if (updated.count !== 1) throw new Error('Photos changed while deleting; retry')
     })
+    releaseLater([story.photoUrl])
     for (const path of ['/', '/explore', `/user/${userId}`, ...(story.sourceItineraryId ? [`/plan/${story.sourceItineraryId}`, `/itinerary/${story.sourceItineraryId}`] : [])]) revalidatePath(path)
     return { success: true }
   } catch { return { error: 'Could not remove your story. Please try again.' } }

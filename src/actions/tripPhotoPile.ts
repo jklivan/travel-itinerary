@@ -4,6 +4,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { canEdit } from '@/lib/tripAccess'
+import { releaseLater } from '@/lib/photoCleanup'
 
 // Photos added to a trip but not yet tapped into a place (Add your trip photos): kept as the trip's own photos, so
 // they're still there after closing the sorter, adding places first, or coming back another day. Tapping one into
@@ -34,6 +35,8 @@ export async function takeFromPhotoPile(tripId: string, urls: string[]): Promise
   if (!list) return { error: 'Invalid photos.' }
   if (!await editableTrip(tripId)) return { error: 'This trip is unavailable.' }
   await prisma.photo.deleteMany({ where: { itineraryId: tripId, url: { in: list }, isStock: false } })
+  // Removed from the pile: the file goes. Tapped into a place: it's in use there, so it stays.
+  releaseLater(list)
   revalidatePath(`/plan/${tripId}`)
   return {}
 }

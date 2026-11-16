@@ -6,6 +6,7 @@ import { eventPhotos } from '@/lib/eventPhotos'
 import { revalidatePath } from 'next/cache'
 import { canEdit } from '@/lib/tripAccess'
 import { recommendationTags, type PlaceRecommendation } from '@/lib/placeRecommendation'
+import { releaseLater } from '@/lib/photoCleanup'
 
 type Edit = { kind: 'rating'; rating: number; recommendation?: PlaceRecommendation; notes?: string } | { kind: 'photos'; photos: string[]; expectedPhotos: string[] } | { kind: 'notes'; notes: string }
 
@@ -40,6 +41,8 @@ export async function updatePlace(itemId: string, edit: Edit) {
       const mine = edit.kind === 'rating' ? { rating: edit.rating || null, ...(edit.notes === undefined ? {} : { notes: edit.notes.trim() || null }) }
         : edit.kind === 'notes' ? { notes: edit.notes.trim() || null } : { photoUrls: eventPhotos(edit.photos) }
       await prisma.placeTake.upsert({ where: { itemId_userId: { itemId, userId } }, create: { itemId, userId, ...mine }, update: mine })
+      // Photos they took off go once nothing else uses them (ones moved here from the pile are in use).
+      if (edit.kind === 'photos') releaseLater(take?.photoUrls ?? [])
       // Must do / Avoid is about the plan, so it's shared.
       if (edit.kind === 'rating' && edit.recommendation !== undefined) await prisma.destItem.updateMany({ where: owned, data: { tags: recommendationTags(item.tags, edit.recommendation) } })
       revalidatePath(`/plan/${item.destination.itineraryId}`)
@@ -55,6 +58,7 @@ export async function updatePlace(itemId: string, edit: Edit) {
         : edit.kind === 'rating' ? { rating: edit.rating || null, ...(edit.recommendation === undefined ? {} : { tags: recommendationTags(item.tags, edit.recommendation) }), ...(edit.notes === undefined ? {} : { notes: edit.notes.trim() || null }) } : { photoUrls: photos, photoUrl: photos[0] ?? null },
     })
     if (result.count !== 1) return { error: 'This place changed while saving. Reload and try again.' }
+    if (edit.kind === 'photos') releaseLater([item.photoUrl, ...item.photoUrls])
     revalidatePath(`/plan/${item.destination.itineraryId}`)
     revalidatePath(`/itinerary/${item.destination.itineraryId}`)
     revalidatePath(`/user/${userId}`)

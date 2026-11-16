@@ -12,6 +12,7 @@ import { generateTags } from '@/lib/generateTags'
 import { geocode } from '@/lib/geocode'
 import { inferPlaceAttributes } from '@/lib/inferPriceLevels'
 import { generateDescriptions } from '@/lib/generateDescriptions'
+import { releaseLater, tripPhotoUrls } from '@/lib/photoCleanup'
 
 export type ItineraryState = { error?: string; itineraryId?: string } | undefined
 
@@ -450,7 +451,9 @@ export async function deleteItinerary(id: string): Promise<{ error?: string; suc
   const existing = await prisma.itinerary.findUnique({ where: { id } })
   if (!existing || existing.userId !== session.user.id) return { error: 'Not found.' }
 
+  const photos = await tripPhotoUrls([id])
   await prisma.itinerary.delete({ where: { id } })
+  releaseLater(photos)
   revalidatePath('/')
   revalidatePath('/plan')
   revalidatePath(`/user/${session.user.id}`)

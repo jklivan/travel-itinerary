@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma'
 import { inboxRefs } from '@/lib/inbox'
 import { daysBetween } from '@/lib/placeDates'
 import { startPlan } from '@/actions/planning'
+import { releaseLater, tripPhotoUrls } from '@/lib/photoCleanup'
 
 // The reply to an emailed trip links here when Postcard filed it in the wrong trip: move the places that email added
 // to another plan, make them a trip of their own, or remove them. Only the trip's owner, signed in, can do it.
@@ -69,7 +70,10 @@ export async function undoEmailPlaces(ref: string): Promise<Result> {
   if (!validRef(ref)) return { error: 'This link doesn’t work.' }
   const { refs, items } = await emailPlaces(ref, userId)
   if (!items.length) return { error: 'These places are no longer in your trips.' }
+  // Photos added to those places since (and the plan the email started, if it goes): any no longer used are deleted.
+  const photos = await tripPhotoUrls([...new Set(items.map(item => item.destination.itineraryId))])
   await prisma.destItem.deleteMany({ where: { id: { in: items.map(item => item.id) }, destination: { itinerary: { userId } } } })
   await tidy(items.map(item => item.destination.itineraryId), refs.plan, userId)
+  releaseLater(photos)
   return {}
 }

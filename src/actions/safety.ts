@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { unregisterPushDevice } from '@/actions/notifications'
 
 import { REPORT_KINDS as KINDS, REPORT_REASONS, type ReportKind } from '@/lib/reports'
+import { releaseLater, userPhotoUrls } from '@/lib/photoCleanup'
 
 // Whose content it is, and whether the reporter can see it (you can only report what you can see).
 async function subjectOf(kind: ReportKind, targetId: string, reporterId: string): Promise<string | null | undefined> {
@@ -66,11 +67,14 @@ export async function deleteAccount(confirmation: string) {
   if (confirmation !== 'DELETE') return { error: 'Type DELETE to confirm.' }
   try {
     await unregisterPushDevice().catch(() => {})
+    const photos = await userPhotoUrls(userId)
     await prisma.$transaction([
       // Trips first (they don't go with the account on their own); everything else is removed with the account.
       prisma.itinerary.deleteMany({ where: { userId } }),
       prisma.user.delete({ where: { id: userId } }),
     ])
+    // Their photos' files go too (any still shown elsewhere, e.g. a trip someone copied, stay).
+    releaseLater(photos)
   } catch { return { error: 'Could not delete your account. Please try again.' } }
   // The page then reloads itself on the home page.
   await signOut({ redirect: false })
