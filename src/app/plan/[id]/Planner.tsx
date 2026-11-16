@@ -2,7 +2,7 @@
 
 import { inTimeOrder } from '@/lib/timeOrder'
 import { sortDay } from '@/lib/dayOrder'
-import { ArrowDownUp, ImagePlus } from 'lucide-react'
+import { ArrowDownUp, FileDown, ImagePlus } from 'lucide-react'
 import ItineraryPdf from '@/components/ItineraryPdf'
 import RatingStars from '@/components/RatingStars'
 import { destinationRanges, stayOn, totalDays, type DayRange } from '@/lib/tripStays'
@@ -12,7 +12,7 @@ import styles from '../../itinerary/[id]/places.module.css'
 import planningStyles from './Planner.module.css'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarDays, Clock, Plus, MapPin, Trash2, LockKeyhole, Check, Hotel, Utensils, Camera, Plane, Upload, Pencil, Sparkles, Users, EyeOff } from 'lucide-react'
+import { CalendarDays, Clock, Plus, MapPin, Trash2, LockKeyhole, Check, Hotel, Utensils, Camera, Plane, Pencil, Sparkles, Users, EyeOff } from 'lucide-react'
 import { daysBetween, isDate, tripDay, whenLabel } from '@/lib/placeDates'
 import { addPlanPlace, removeTripPhoto, setPlanStartDate, editPlanPlace, savePlanDetails, removePlanPlace, savePublishDetails, sharePlan, removePlanDestination, renamePlanDestination, mergePlanDestination, setPlanDays, deletePlanDay, setPlaceDay, setPlaceTime, applyDayPlan, setTripCover, setPlacePrivate, setDayOrder } from '@/actions/planning'
 import PlanImport from '@/components/PlanImport'
@@ -278,7 +278,7 @@ export default function Planner({ trip, been = false, ai = null, audienceSuggest
       <button type="button" onClick={() => { setAdding(null); setSortingPhotos(false); setImporting(true) }} aria-expanded={importing} aria-controls="plan-import-panel" className={`${action} relative`}>
         {nudgeImport && <><span aria-hidden="true" className="absolute -inset-x-2 -top-2 bottom-[-0.5rem] -z-10 rounded-full bg-mist" />
           <span className="absolute bottom-full left-1/2 z-10 mb-0 w-44 -translate-x-1/2 rounded-2xl bg-mist px-3 py-1.5 text-center text-xs font-medium leading-snug text-link shadow-card after:absolute after:left-1/2 after:top-full after:-translate-x-1/2 after:border-x-[7px] after:border-t-[7px] after:border-x-transparent after:border-t-mist">Have an itinerary or notes? Import them here.</span></>}
-        <span className={`${actionIcon} ${nudgeImport ? 'border-mist-line bg-mist text-link' : 'border-line bg-card text-ink'}`}><Upload size={22} strokeWidth={1.75} /></span>Import notes or files</button>
+        <span className={`${actionIcon} ${nudgeImport ? 'border-mist-line bg-mist text-link' : 'border-line bg-card text-ink'}`}><FileDown size={22} strokeWidth={1.75} /></span>Import notes or files</button>
       {/* Send (the share icon): the trip's link by Messages, WhatsApp…, view-only while private. Plan with AI is the
           chat below (Chat with AI about this trip); someone who joined the trip opens it on its own page instead. */}
       {ai ? <SendTripButton tripId={trip.id} title={trip.title} className={action} iconClassName={`${actionIcon} border-line bg-card text-ink`} />
