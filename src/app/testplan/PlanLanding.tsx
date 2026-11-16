@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { ArrowUp, Bookmark, ChevronRight, PenLine, Sparkles } from 'lucide-react'
+import { ArrowUp, Bookmark, ChevronRight, Mail, PenLine, Sparkles } from 'lucide-react'
 import Image from 'next/image'
 import PostcardLogo from '@/components/PostcardLogo'
 import type { TravelPreferences } from '@/lib/travelPreferences'
@@ -52,8 +52,15 @@ export default function PlanLanding({ landing, history, busy, onSend }: { landin
     </form>
     <p className="mt-2 px-1 text-xs text-muted">Try “A long weekend in Italy with kids”</p>
 
+    {/* Plans that already exist elsewhere: email them in (or have an assistant do it), from Settings → Send trips to
+        Postcard, which shows their address and how; Continue comes back here. */}
+    <Link href="/settings/email?next=%2Ftestplan" className="panel mt-4 flex items-center gap-3 px-4 py-2.5 text-ink transition-colors hover:bg-cream">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Mail size={16} /></span>
+      <span className="min-w-0 flex-1 text-sm font-semibold">Email plans in, or have your AI assistant send them</span>
+      <ChevronRight size={18} className="shrink-0 text-link" />
+    </Link>
     {/* The way in without AI: its own box, right under the question, rather than a small link at the bottom. */}
-    <Link href="/plan" className="panel mt-4 flex items-center gap-3 px-4 py-2.5 text-ink transition-colors hover:bg-cream">
+    <Link href="/plan" className="panel mt-3 flex items-center gap-3 px-4 py-2.5 text-ink transition-colors hover:bg-cream">
       <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><PenLine size={16} /></span>
       <span className="min-w-0 flex-1 text-sm font-semibold">Start a plan yourself</span>
       <ChevronRight size={18} className="shrink-0 text-link" />
