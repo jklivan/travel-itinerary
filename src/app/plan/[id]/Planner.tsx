@@ -279,7 +279,7 @@ export default function Planner({ trip, been = false, ai = null, audienceSuggest
         {nudgeImport && <><span aria-hidden="true" className="absolute -inset-x-2 -top-2 bottom-[-0.5rem] -z-10 rounded-full bg-mist" />
           <span className="absolute bottom-full left-1/2 z-10 mb-0 w-44 -translate-x-1/2 rounded-2xl bg-mist px-3 py-1.5 text-center text-xs font-medium leading-snug text-link shadow-card after:absolute after:left-1/2 after:top-full after:-translate-x-1/2 after:border-x-[7px] after:border-t-[7px] after:border-x-transparent after:border-t-mist">Have an itinerary or notes? Import them here.</span></>}
         <span className={`${actionIcon} ${nudgeImport ? 'border-mist-line bg-mist text-link' : 'border-line bg-card text-ink'}`}><Upload size={22} strokeWidth={1.75} /></span>Import notes or files</button>
-      {/* Send (the paper airplane): the trip's link by Messages, WhatsApp…, view-only while private. Plan with AI is the
+      {/* Send (the share icon): the trip's link by Messages, WhatsApp…, view-only while private. Plan with AI is the
           chat below (Chat with AI about this trip); someone who joined the trip opens it on its own page instead. */}
       {ai ? <SendTripButton tripId={trip.id} title={trip.title} className={action} iconClassName={`${actionIcon} border-line bg-card text-ink`} />
       : <Link href={`/testplan?trip=${trip.id}&from=planner`} className={action}><span className={`${actionIcon} border-mist-line bg-mist text-ink`}><Sparkles size={22} strokeWidth={1.75} /></span>Plan with AI</Link>}

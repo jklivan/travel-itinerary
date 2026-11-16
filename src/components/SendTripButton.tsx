@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Send } from 'lucide-react'
+import { Share } from 'lucide-react'
 import { tripShareLink } from '@/actions/tripShare'
 import { shareUrl } from '@/lib/publicUrl'
 
-// The paper airplane on a trip: opens the phone's share sheet (Messages, WhatsApp…) with the trip's link; a private trip
+// The share button on a trip (the box with an arrow, as on iPhone, so it doesn't read as posting): opens the phone's share sheet (Messages, WhatsApp…) with the trip's link; a private trip
 // sends a view-only link. Where there's no share sheet, the link is copied instead.
 // className / iconClassName: shown as one of the planner's round actions (a circle with "Send" under it) instead of a
 // small icon button.
@@ -25,8 +25,8 @@ export default function SendTripButton({ tripId, title, className, iconClassName
     try { await navigator.clipboard.writeText(url); setNote('Link copied') } catch { setNote(url) }
   }
   return <span className={`relative ${className ? 'flex justify-center' : 'inline-flex'}`}>
-    {className ? <button type="button" onClick={() => void send()} title="Send this trip" className={className}><span className={iconClassName}><Send size={22} strokeWidth={1.75} /></span>Send</button>
-    : <button type="button" onClick={() => void send()} aria-label="Send this trip" title="Send this trip" className="btn-icon"><Send size={18} /></button>}
+    {className ? <button type="button" onClick={() => void send()} title="Send this trip" className={className}><span className={iconClassName}><Share size={22} strokeWidth={1.75} /></span>Send</button>
+    : <button type="button" onClick={() => void send()} aria-label="Send this trip" title="Send this trip" className="btn-icon"><Share size={18} /></button>}
     {note && <span role="status" className="absolute right-0 top-full z-10 mt-1 w-max max-w-64 rounded-lg bg-ink px-2 py-1 text-xs text-white [overflow-wrap:anywhere]">{note}</span>}
   </span>
 }
