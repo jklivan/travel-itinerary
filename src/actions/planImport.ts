@@ -72,7 +72,9 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
       for (const [index, place] of places.entries()) {
         const answer = matches?.[index]
         const auto = answer ? null : importMatch(existing.map(item => ({ id: item.id, name: item.name, type: item.type, date: item.date?.toISOString().slice(0, 10) ?? null, day: item.dayIndex })), { name: place.name, type: place.type, date: place.date, day: dayOf(place) })
-        const same = answer && answer !== 'new' ? existing.find(item => item.id === answer) : auto?.sure ? existing.find(item => item.id === auto.id) : undefined
+        // Unanswered (email, an assistant): a booking for a place already in the trip on another day is that place,
+        // and the app then asks which day is right, rather than adding it twice.
+        const same = answer && answer !== 'new' ? existing.find(item => item.id === answer) : auto?.sure || auto?.otherDayOnly ? existing.find(item => item.id === auto.id) : undefined
         if (same) {
           const notes = place.notes?.trim()
           // The booking says another day or time than the place has: it stays where it is, and the trip page asks

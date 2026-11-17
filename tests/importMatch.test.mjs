@@ -24,3 +24,12 @@ test('unclear matches are asked about: different kind, different day or date, se
 test('different places are not matched at all', () => {
   assert.equal(importMatch([fourSeasons], { name: 'St. Regis Punta Mita', type: 'hotel' }), null)
 })
+test('a booking for the same place on another day is that place (otherDayOnly), so email can merge it and ask', () => {
+  const ajax = { id: 'a', name: 'Ajax Tavern', type: 'food_drink', date: null, day: 4 }
+  const booking = importMatch([ajax], { name: 'Ajax Tavern', type: 'food_drink', date: '2026-12-21', day: 2 })
+  assert.equal(booking.sure, false); assert.equal(booking.otherDayOnly, true)
+  // Anything else unclear still isn't taken for the same place.
+  assert.equal(importMatch([ajax], { name: 'Ajax Tavern', type: 'activity', day: 2 }).otherDayOnly, false)
+  assert.equal(importMatch([ajax, { ...ajax, id: 'b', day: 5 }], { name: 'Ajax Tavern', type: 'food_drink', day: 2 }).otherDayOnly, false)
+  assert.equal(importMatch([ajax], { name: 'Ajax Tavern', type: 'food_drink', day: 4 }).otherDayOnly, false)
+})
