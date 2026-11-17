@@ -265,6 +265,9 @@ model DestItem {
   // landing at endDate/endTime. Times are 24-hour "HH:MM".
   date                 DateTime?   @db.Date
   time                 String?
+  // A booking emailed or imported for this place with a different day or time than it has (lib/dateCheck): the
+  // booking's { date, time, day }, kept until they choose which is right on the trip page.
+  dateCheck            Json?
   endDate              DateTime?   @db.Date
   endTime              String?
   // Private to the trip's owner, never shown to anyone else or on a posted trip: confirmation numbers, seats,

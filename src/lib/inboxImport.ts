@@ -172,6 +172,9 @@ export async function processInboundEmail(emailId: string, origin: string) {
   if (result.error) { log('import failed', result.error); return }
   log('imported', places.length, 'places')
   await noteImported(user.id, plan.id, created)
+  // Bookings for places already in the trip on another day or time: the app asks which is right when it's opened.
+  const checks = 'checks' in result && Array.isArray(result.checks) ? result.checks : []
+  const checkLine = checks.length ? [`${checks.length === 1 ? `${checks[0]}’s booking is` : `The bookings for ${checks.slice(0, -1).join(', ')} and ${checks.at(-1)} are`} for a different day or time than your trip has. Open Postcard to choose which is right; it moves ${checks.length === 1 ? 'it' : 'them'} if you pick the booking.`] : []
   await reply(sender, subject, [`Added ${places.length} ${places.length === 1 ? 'place' : 'places'} to ${created ? 'a new private plan, ' : ''}“${plan.title}”. Places already in the trip were updated, not repeated.`,
-    'Plans stay private until you post them.'], [{ href: `${origin}/plan/${plan.id}`, label: 'Open the trip' }, { href: `${origin}/inbox/${refs.ref}`, label: 'Wrong trip? Move these places, make them their own trip, or undo' }])
+    ...checkLine, 'Plans stay private until you post them.'], [{ href: `${origin}/plan/${plan.id}`, label: 'Open the trip' }, { href: `${origin}/inbox/${refs.ref}`, label: 'Wrong trip? Move these places, make them their own trip, or undo' }])
 }

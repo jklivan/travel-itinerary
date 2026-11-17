@@ -7,8 +7,9 @@ import KeyboardDismiss from './KeyboardDismiss'
 import PreviewAppTag from './PreviewAppTag'
 import AnalyticsIdentify from './AnalyticsIdentify'
 import ImportedNotice from './ImportedNotice'
+import DateCheckPrompt from './DateCheckPrompt'
 import AppLinks from './AppLinks'
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  return <SessionProvider><AnalyticsIdentify /><ImportedNotice /><AppLinks /><PreviewAppTag /><TripNavigation /><KeyboardDismiss /><NativeNotifications>{children}</NativeNotifications></SessionProvider>
+  return <SessionProvider><AnalyticsIdentify /><ImportedNotice /><DateCheckPrompt /><AppLinks /><PreviewAppTag /><TripNavigation /><KeyboardDismiss /><NativeNotifications>{children}</NativeNotifications></SessionProvider>
 }

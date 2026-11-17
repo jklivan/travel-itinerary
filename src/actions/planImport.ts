@@ -27,6 +27,8 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
     || (p.booking !== undefined && (typeof p.booking !== 'string' || p.booking.length > 2000)) || (p.near !== undefined && (!p.near || typeof p.near.name !== 'string' || p.near.name.length > 160 || typeof p.near.country !== 'string' || p.near.country.length > 160)))) return { error: 'Some imported details are invalid. Please shorten the notes or import fewer places.' }
   if (!matches || typeof matches !== 'object' || Object.entries(matches).some(([key, value]) => !/^\d+$/.test(key) || typeof value !== 'string' || value.length > 100)) return { error: 'Please try again.' }
   try {
+    // Places whose booking disagrees with their day or time (asked about on the trip page; the reply email says so).
+    const checks: string[] = []
     await prisma.$transaction(async tx => {
       const plan = await tx.itinerary.findFirst({ where: { id: planId, ...canEdit(userId) }, select: { id: true, datesFlexible: true, startDate: true, endDate: true, durationDays: true } })
       if (!plan) throw Error('Unavailable')
@@ -73,8 +75,15 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
         const same = answer && answer !== 'new' ? existing.find(item => item.id === answer) : auto?.sure ? existing.find(item => item.id === auto.id) : undefined
         if (same) {
           const notes = place.notes?.trim()
+          // The booking says another day or time than the place has: it stays where it is, and the trip page asks
+          // which is right (the booking's version is kept on it until then; see lib/dateCheck).
+          const day = dayOf(place), sameDate = same.date?.toISOString().slice(0, 10) ?? null
+          const otherDay = day !== null && same.dayIndex !== null ? day !== same.dayIndex : !!place.date && !!sameDate && place.date !== sameDate
+          const otherTime = !!place.time && !!same.time && place.time !== same.time
+          if (otherDay || otherTime) checks.push(same.name)
           const fill = {
-            ...(!same.date && place.date ? { date: new Date(`${place.date}T00:00:00Z`) } : {}), ...(!same.time && place.time ? { time: place.time } : {}),
+            ...(otherDay || otherTime ? { dateCheck: { date: place.date ?? null, time: place.time ?? null, day } } : {}),
+            ...(!same.date && place.date && !otherDay ? { date: new Date(`${place.date}T00:00:00Z`) } : {}), ...(!same.time && place.time ? { time: place.time } : {}),
             ...(!same.endDate && place.endDate ? { endDate: new Date(`${place.endDate}T00:00:00Z`) } : {}), ...(!same.endTime && place.endTime ? { endTime: place.endTime } : {}),
             ...(!same.nights && place.type === 'hotel' && place.nights && place.nights >= 1 && place.nights <= 60 ? { nights: place.nights } : {}),
             ...(same.dayIndex === null && dayOf(place) !== null ? { dayIndex: dayOf(place) } : {}),
@@ -119,7 +128,7 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
     after(() => enrichPlaceIds(places.map((_, index) => `${requestId}:${index}`), new Map(places.flatMap((place, index) => place.near?.name.trim() ? [[`${requestId}:${index}`, place.near] as const] : []))).catch(() => undefined))
     after(() => locateTripPlaces(planId).catch(() => {}))
     for (const path of ['/', '/plan', `/plan/${planId}`, `/itinerary/${planId}`]) revalidatePath(path)
-    return { success: true }
+    return { success: true, checks }
   } catch { return { error: 'Could not add these places. Your review is still here; please try again.' } }
 }
 
