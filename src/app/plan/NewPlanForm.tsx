@@ -125,6 +125,11 @@ export default function NewPlanForm({ savePlace, saveStory, past = false, initia
         <button type="submit" value="import" disabled={!file && !notes.trim()} className={`${buttonClass} w-full`}>{stage || 'Import and start planning →'}</button>
         <EmailItIn address={inboxAddress} back={past ? '/plan?from=post&import=1' : '/plan?import=1'} />
       </fieldset>}
+    {/* The two ways in, told apart: friends typed a destination below and never saw Import above. */}
+    <div className="space-y-3 pt-1">
+      <div aria-hidden="true" className="flex items-center gap-3 text-label font-semibold uppercase tracking-label text-muted"><span className="h-px flex-1 bg-line" />or<span className="h-px flex-1 bg-line" /></div>
+      <h2 className="type-title">Start from scratch</h2>
+    </div>
     <div className="panel space-y-5 p-4 sm:p-6">
     {(savePlace || saveStory) && <p className="text-sm text-link">We’ll add the place you selected to this new plan.</p>}
     <fieldset disabled={saving} className="space-y-5">
