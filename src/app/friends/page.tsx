@@ -2,6 +2,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import FriendsUI from './FriendsUI'
+import InviteFriendsButton from '@/components/InviteFriendsButton'
 import { peopleToFollow } from '@/lib/suggestedPeople'
 import { hiddenAccountsFor } from '@/lib/hiddenAccounts'
 
@@ -48,6 +49,8 @@ export default async function FriendsPage() {
           Follow travelers to see their itineraries in your feed.
         </p>
       </div>
+      {/* Bring friends in: the app's download link by text (they asked for one at the top of this page). */}
+      <div className="mb-5"><InviteFriendsButton /></div>
       <FriendsUI
         following={acceptedFollows.map((f) => f.following).filter(visible)}
         pendingOutgoing={pendingOutgoingFollows.map((f) => f.following)}
