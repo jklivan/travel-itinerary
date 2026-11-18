@@ -69,12 +69,15 @@ export async function importIntoPlan(planId: string, requestId: string, places: 
       // that the existing place doesn't have yet (dates, times, nights, its day, notes) instead.
       const existing: { id: string; name: string; type: string; notes: string | null; bookingDetails: string | null; date: Date | null; time: string | null; endDate: Date | null; endTime: string | null; nights: number | null; dayIndex: number | null; rating?: number | null }[] =
         await tx.destItem.findMany({ where: { destination: { itineraryId: planId } }, select: { id: true, name: true, type: true, notes: true, bookingDetails: true, date: true, time: true, endDate: true, endTime: true, nights: true, dayIndex: true, rating: true } })
+      // Places the trip had before this import. Only these can be taken for a booking on another day: the same thing
+      // twice in one file (two massages on different days) is two places.
+      const before = new Set(existing.map(item => item.id))
       for (const [index, place] of places.entries()) {
         const answer = matches?.[index]
         const auto = answer ? null : importMatch(existing.map(item => ({ id: item.id, name: item.name, type: item.type, date: item.date?.toISOString().slice(0, 10) ?? null, day: item.dayIndex })), { name: place.name, type: place.type, date: place.date, day: dayOf(place) })
         // Unanswered (email, an assistant): a booking for a place already in the trip on another day is that place,
         // and the app then asks which day is right, rather than adding it twice.
-        const same = answer && answer !== 'new' ? existing.find(item => item.id === answer) : auto?.sure || auto?.otherDayOnly ? existing.find(item => item.id === auto.id) : undefined
+        const same = answer && answer !== 'new' ? existing.find(item => item.id === answer) : auto?.sure || (auto?.otherDayOnly && before.has(auto.id)) ? existing.find(item => item.id === auto.id) : undefined
         if (same) {
           const notes = place.notes?.trim()
           // The booking says another day or time than the place has: it stays where it is, and the trip page asks
