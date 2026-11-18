@@ -1,10 +1,10 @@
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const SEASONS = ['Winter', 'Spring', 'Summer', 'Fall']
-// The Tropic of Capricorn: south of it, seasons run the other way round.
-const SOUTHERN_SEASONS = 23.4
 
-export function tripSeason({ startDate, endDate, datesFlexible, postType, bestMonths = [], latitude }: {
-  startDate: Date; endDate: Date; datesFlexible?: boolean; postType: string; bestMonths?: string[]; latitude?: number | null
+// When the person went, in their own seasons (the calendar's, as at home): a July trip is Summer wherever it was, even
+// Sydney or Ecuador. (It used to flip south of the equator, so a July trip to Quito said Winter.)
+export function tripSeason({ startDate, endDate, datesFlexible, postType, bestMonths = [] }: {
+  startDate: Date; endDate: Date; datesFlexible?: boolean; postType: string; bestMonths?: string[]
 }): string | null {
   let months: number[] = []
   if (postType === 'guide' || datesFlexible) {
@@ -15,10 +15,6 @@ export function tripSeason({ startDate, endDate, datesFlexible, postType, bestMo
     const count = Math.min(12, (end.getUTCFullYear() - start.getUTCFullYear()) * 12 + end.getUTCMonth() - start.getUTCMonth() + 1)
     months = Array.from({ length: count }, (_, index) => (start.getUTCMonth() + index) % 12)
   }
-  // Seasons flip only properly south (Australia, Argentina, South Africa: July is winter there). The tropics have no
-  // winter or summer to speak of, so they keep the calendar season you went in (a July trip to Quito, just south of
-  // the equator, was labelled Winter).
-  const south = latitude != null && latitude < -SOUTHERN_SEASONS
-  const seasons = [...new Set(months.map(month => SEASONS[(Math.floor(((month + 1) % 12) / 3) + (south ? 2 : 0)) % 4]))]
+  const seasons = [...new Set(months.map(month => SEASONS[Math.floor(((month + 1) % 12) / 3)]))]
   return seasons.length === 4 ? 'Year-round' : seasons.length ? seasons.join(' / ') : null
 }

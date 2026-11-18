@@ -80,7 +80,7 @@ export default function ItineraryCard({
   // one of its places. The colour only shows when none of those exist.
   const cover = coverPhoto ?? photos[0]?.url ?? null
   const placeIds = cover ? [] : destinations.flatMap(destination => destination.items).flatMap(item => item.id ? [item.id] : []).slice(0, 4)
-  const season = tripSeason({ startDate, endDate, datesFlexible: !hasTripDates({ startDate, endDate, datesFlexible, postType }), postType: isGuide ? 'guide' : postType, bestMonths, latitude: destinations.find(destination => destination.lat != null)?.lat })
+  const season = tripSeason({ startDate, endDate, datesFlexible: !hasTripDates({ startDate, endDate, datesFlexible, postType }), postType: isGuide ? 'guide' : postType, bestMonths })
 
   const location = tripLocationLabel(destinations)
 
