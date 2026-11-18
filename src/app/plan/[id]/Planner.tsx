@@ -262,7 +262,11 @@ export default function Planner({ trip, been = false, ai = null, audienceSuggest
   const bookedDates = places.flatMap(place => [place.date, place.endDate].filter((date): date is string => !!date)).sort()
   const photoDates = trip.start && trip.end ? { start: trip.start, end: trip.end } : bookedDates.length ? { start: bookedDates[0], end: bookedDates[bookedDates.length - 1] } : null
   return <DayNames.Provider value={dayName}><GroupTrip.Provider value={!!trip.people?.some(person => person.status === 'joined')}><TripDates.Provider value={photoDates}><div className="mx-auto max-w-2xl px-4 pb-6 pt-2 text-ink">
-    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? ((trip.people?.filter(person => person.status !== 'invited').length ?? 0) > 1 ? `Private plan · ${trip.people!.filter(person => person.status !== 'invited').length} of you` : 'Private plan · Only you') : 'Shared trip'}</div>
+    {/* Private trips: Post right next to "Private plan", where it's seen first (at the bottom alone, people missed it). */}
+    <div className="flex items-center gap-2"><div className="flex min-w-0 flex-1 items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? ((trip.people?.filter(person => person.status !== 'invited').length ?? 0) > 1 ? `Private plan · ${trip.people!.filter(person => person.status !== 'invited').length} of you` : 'Private plan · Only you') : 'Shared trip'}</div>
+      {trip.visibility === 'draft' && (trip.isOwner === false
+        ? <button type="button" disabled={publishing} onClick={() => void postMine()} title="Post your version: your stars and photos" className="btn btn-primary btn-sm shrink-0">Post yours</button>
+        : <button type="button" disabled={publishing} onClick={() => { if (!places.length) { askForPlace(); return } openPostBox() }} className="btn btn-primary btn-sm shrink-0">Post</button>)}</div>
     <h1 className="trip-title mt-1 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
     {/* Group trips: who's planning it, and Invite (the creator) or Leave. */}
     {trip.viewerId && (trip.visibility === 'draft' || (trip.people?.length ?? 0) > 1) && <TripPeople tripId={trip.id} people={trip.people ?? []} isOwner={trip.isOwner !== false} viewerId={trip.viewerId} />}
