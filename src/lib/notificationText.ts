@@ -9,6 +9,7 @@ export function notificationText(kind: string, actor: string, trip: string) {
   if (kind === 'message') return `${actor} sent you a private message.`
   if (kind === 'follow') return `${actor} started following you.`
   if (kind === 'published') return `${actor} posted a new trip: “${trip}”.`
+  if (kind === 'planned_destination') return `${actor} just posted a trip to a place you’re planning: “${trip}”. See their picks.`
   if (kind === 'trip_invite') return `${actor} invited you to plan “${trip}” together.`
   if (kind === 'trip_joined') return `${actor} joined your trip “${trip}”.`
   if (kind === 'trip_chat') return `${actor} wrote in the chat for “${trip}”.`
