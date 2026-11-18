@@ -166,6 +166,17 @@ export default function Planner({ trip, been = false, ai = null, audienceSuggest
   // The circles stay pinned while you scroll, but what they open sits under them at the top of the page. Scrolled
   // down, it would open out of sight (and on iPhone push the page down), so bring it up just under the circles.
   const actionsRef = useRef<HTMLDivElement>(null)
+  // The Post button at the end of the trip: while it's off screen, a copy floats above the bottom bar (people never
+  // scrolled down to it).
+  const endPostRef = useRef<HTMLDivElement>(null)
+  const [endPostShown, setEndPostShown] = useState(false)
+  useEffect(() => {
+    const end = endPostRef.current
+    if (!end) return
+    const observer = new IntersectionObserver(entries => setEndPostShown(entries.some(entry => entry.isIntersecting)))
+    observer.observe(end)
+    return () => observer.disconnect()
+  }, [])
   const panelsRef = useRef<HTMLDivElement>(null)
   const topPanelOpen = adding?.at === 'top' || sortingPhotos || importing
   useEffect(() => {
@@ -262,11 +273,7 @@ export default function Planner({ trip, been = false, ai = null, audienceSuggest
   const bookedDates = places.flatMap(place => [place.date, place.endDate].filter((date): date is string => !!date)).sort()
   const photoDates = trip.start && trip.end ? { start: trip.start, end: trip.end } : bookedDates.length ? { start: bookedDates[0], end: bookedDates[bookedDates.length - 1] } : null
   return <DayNames.Provider value={dayName}><GroupTrip.Provider value={!!trip.people?.some(person => person.status === 'joined')}><TripDates.Provider value={photoDates}><div className="mx-auto max-w-2xl px-4 pb-6 pt-2 text-ink">
-    {/* Private trips: Post right next to "Private plan", where it's seen first (at the bottom alone, people missed it). */}
-    <div className="flex items-center gap-2"><div className="flex min-w-0 flex-1 items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? ((trip.people?.filter(person => person.status !== 'invited').length ?? 0) > 1 ? `Private plan · ${trip.people!.filter(person => person.status !== 'invited').length} of you` : 'Private plan · Only you') : 'Shared trip'}</div>
-      {trip.visibility === 'draft' && (trip.isOwner === false
-        ? <button type="button" disabled={publishing} onClick={() => void postMine()} title="Post your version: your stars and photos" className="btn btn-primary btn-sm shrink-0">Post yours</button>
-        : <button type="button" disabled={publishing} onClick={() => { if (!places.length) { askForPlace(); return } openPostBox() }} className="btn btn-primary btn-sm shrink-0">Post</button>)}</div>
+    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-link"><LockKeyhole size={14} />{trip.visibility === 'draft' ? ((trip.people?.filter(person => person.status !== 'invited').length ?? 0) > 1 ? `Private plan · ${trip.people!.filter(person => person.status !== 'invited').length} of you` : 'Private plan · Only you') : 'Shared trip'}</div>
     <h1 className="trip-title mt-1 break-words font-[family-name:var(--font-playfair)] text-display sm:text-display-lg">{trip.title}</h1>
     {/* Group trips: who's planning it, and Invite (the creator) or Leave. */}
     {trip.viewerId && (trip.visibility === 'draft' || (trip.people?.length ?? 0) > 1) && <TripPeople tripId={trip.id} people={trip.people ?? []} isOwner={trip.isOwner !== false} viewerId={trip.viewerId} />}
@@ -339,7 +346,7 @@ export default function Planner({ trip, been = false, ai = null, audienceSuggest
     {!!trip.deletedCount && <DeletedPlaces tripId={trip.id} count={trip.deletedCount} />}
     {/* Post (a circle like the ones at the top) in the middle, with the trip's other actions in a row under it.
         Someone else on a group trip posts their own version: their stars and photos. */}
-    <div className="mt-8 flex flex-col items-center gap-5 border-t border-line pt-5">
+    <div ref={endPostRef} className="mt-8 flex flex-col items-center gap-5 border-t border-line pt-5">
       {trip.visibility !== 'draft' ? null
         : trip.isOwner === false ? <button type="button" disabled={publishing} onClick={() => void postMine()} aria-label="Post your version" title="Post your version: your stars and photos" className={`${action} disabled:opacity-60`}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={22} /></span>Post yours</button>
         : <button type="button" disabled={publishing} onClick={() => { if (!places.length) { askForPlace(); return } openPostBox() }} aria-label="Post trip" title="Post trip" className={`${action} disabled:opacity-60`}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={22} /></span>Post</button>}
@@ -348,6 +355,11 @@ export default function Planner({ trip, been = false, ai = null, audienceSuggest
       <div className="flex flex-wrap items-start justify-center gap-2"><ItineraryPdf tripId={trip.id} title={trip.title} />{trip.isOwner !== false && <><CopyTripButton itineraryId={trip.id} title={trip.title} isOwn small /><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></>}</div>
     </div>
     {trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="panel w-full max-w-md p-5 shadow-pop"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="type-title">A few more details</h2><p className="mt-1 text-sm text-muted">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-title leading-none text-muted" aria-label="Close">×</button></div><div className="mt-5 space-y-5">{allPhotos.length > 0 && <fieldset><legend className="mb-1 text-sm font-semibold text-link">Choose cover photo</legend><p className="mb-1 text-xs text-muted">The photo people see first. Scroll sideways to see them all.</p><CoverPhotoPicker photos={allPhotos} value={publishCover} onChange={url => { setPublishCover(url); setPublishFocus(null) }} />{publishCover && <div className="mt-2"><CoverFramer url={publishCover} value={publishFocus} onChange={setPublishFocus} /></div>}</fieldset>}<fieldset><legend className="mb-2 text-sm font-semibold text-link">Who was it with?</legend><div className="flex flex-wrap gap-2">{AUDIENCES.map(option => <button key={option.id} type="button" aria-pressed={publishAudience === option.id} onClick={() => setPublishAudience(option.id)} className="chip">{option.label}</button>)}</div></fieldset><TripExtras budget={publishBudget} onBudget={setPublishBudget} rating={publishRating} onRating={setPublishRating} legendClass="mb-2 text-sm font-semibold text-link" />{/* Why posting didn't go through, right above the button (it used to show behind this box). */}{publishMessage && <p role="alert" className="rounded-xl bg-cream p-3 text-sm text-danger">{publishMessage}{!places.length && <> <button type="button" onClick={() => { setPublishFormat(null); setPublishMessage(''); setTab('places'); setImporting(false); setAdding({ at: 'top' }) }} className="font-semibold text-link underline underline-offset-2">Add a place</button></>}</p>}<button type="button" disabled={publishing} onClick={() => void continueToPost(publishFormat)} className="btn btn-primary w-full">{publishing ? 'Posting…' : 'Post trip'}</button></div></div></div>}
+    {trip.visibility === 'draft' && !endPostShown && !publishFormat && <div className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--app-bottom-clearance)+0.75rem)] z-30 mx-auto flex max-w-2xl justify-end px-4">
+      {trip.isOwner === false
+        ? <button type="button" disabled={publishing} onClick={() => void postMine()} title="Post your version: your stars and photos" className="btn btn-primary pointer-events-auto shadow-pop"><Plus size={18} />Post yours</button>
+        : <button type="button" disabled={publishing} onClick={() => { if (!places.length) { askForPlace(); return } openPostBox() }} className="btn btn-primary pointer-events-auto shadow-pop"><Plus size={18} />Post</button>}
+    </div>}
     {been && trip.visibility === 'draft' && trip.isOwner !== false && places.length > 0 && !publishFormat && <ForgotToPost tripId={trip.id} onPost={openPostBox} />}
     {photosPrompt && <PhotosPrompt tripId={trip.id} pile={photoPile} places={places} missing={withoutPhotos.length} onClose={() => setPhotosPrompt(false)} onNext={() => void afterPhotos()} posting={publishing} last={!unrated.length} />}
     {unratedPrompt && <UnratedPrompt places={places.filter(place => unratedPrompt.includes(place.id))} onClose={() => setUnratedPrompt(null)} onPost={() => void postNow()} posting={publishing} />}
