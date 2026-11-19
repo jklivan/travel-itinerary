@@ -15,6 +15,17 @@ export const maxDuration = 60
 const ink = '#1f3354', muted = '#6b7285', brown = '#8b6f4e', paper = '#f7f3ec', card = '#fffdf7', line = '#d7cebc', stamp = '#6f8b6e'
 const SIZES = { story: { width: 1080, height: 1920, photo: 840, places: 5 }, post: { width: 1080, height: 1350, photo: 560, places: 4 } }
 
+// Playfair for the title. The site's own copy (public/fonts) is a variable font, which the image drawing can't read,
+// so the regular weight comes from Google Fonts (asked for plainly, it answers with a .ttf), kept between requests.
+let playfairCache: Promise<ArrayBuffer> | null = null
+function playfairFont() {
+  playfairCache ??= fetch('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400').then(response => response.text())
+    .then(css => { const url = css.match(/url\((https:[^)]+\.ttf)\)/)?.[1]; if (!url) throw new Error('No Playfair font'); return fetch(url) })
+    .then(response => response.arrayBuffer())
+    .catch(error => { playfairCache = null; throw error })
+  return playfairCache
+}
+
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const userId = (await auth())?.user?.id
   if (!userId) return Response.json({ error: 'Please sign in.' }, { status: 401 })
@@ -43,8 +54,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const season = tripSeason({ startDate: trip.startDate, endDate: trip.endDate, datesFlexible: trip.datesFlexible, postType: trip.postType, bestMonths: trip.bestMonths })
   const details = [where, days && days > 0 ? `${days} ${days === 1 ? 'day' : 'days'}` : null, audienceLabel(trip.audience), season].filter(Boolean).join(' · ')
 
-  // The site's own files, by address (a server function can't read the public folder directly), as the PDF does.
-  const playfair = await fetch(`${origin}/fonts/playfair.ttf`).then(response => response.arrayBuffer())
+  const playfair = await playfairFont()
+  // The site's own logo, by address (a server function can't read the public folder directly).
   const logoSrc = `${origin}/brand/postcard-stamp-logo.png`
 
   try {
