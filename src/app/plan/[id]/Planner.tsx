@@ -41,6 +41,7 @@ import PhotoSorter from '@/components/PhotoSorter'
 import TripAIChat, { type TripAI } from './TripAIChat'
 import ForgotToPost from './ForgotToPost'
 import SendTripButton from '@/components/SendTripButton'
+import ShareToInstagram from '@/components/ShareToInstagram'
 import { AUDIENCES } from '@/lib/audience'
 import { DateFields, inputClass, buttonClass } from '../NewPlanForm'
 import { tagMeta } from '@/lib/tags'
@@ -279,6 +280,9 @@ export default function Planner({ trip, been = false, ai = null, audienceSuggest
     {trip.viewerId && (trip.visibility === 'draft' || (trip.people?.length ?? 0) > 1) && <TripPeople tripId={trip.id} people={trip.people ?? []} isOwner={trip.isOwner !== false} viewerId={trip.viewerId} />}
     {/* A posted trip keeps showing where it is and what it's posted with (budget, who it's for, tags), as on its page. */}
     {trip.visibility !== 'draft' && <div className="mt-2 [&>*:last-child]:mb-0"><TripDescriptors trip={trip} /></div>}
+    {/* A posted trip can go on Instagram as a picture (its link opens for anyone). */}
+    {trip.visibility !== 'draft' && <div className="mt-2"><ShareToInstagram tripId={trip.id} title={trip.title} align="left"
+      photos={[...new Set([trip.coverPhoto, ...(trip.tripPhotos ?? []), ...places.flatMap(place => place.photos)].filter((url): url is string => !!url))]} /></div>}
     <div className="mt-1"><details id="trip-details" open={initialDetails || undefined} className="scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-1 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} /><span className="font-semibold">Edit trip details</span><span className="text-muted">· name, dates, cover photo</span></summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details></div>
     {/* One row of compact actions, so the places start higher up the screen. */}
     <div ref={actionsRef} className="sticky top-[var(--app-header-height,0px)] z-20 -mx-1 mt-1 grid grid-cols-4 items-start gap-2 bg-paper px-1 py-2">

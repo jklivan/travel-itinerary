@@ -9,7 +9,8 @@ import { shareUrl } from '@/lib/publicUrl'
 // room for a Link sticker back to the trip) or Post (4:5). The phone's share sheet opens with the picture, so Instagram
 // is one tap away, and the trip's link is copied to paste into the Link sticker or the caption (Instagram posts can't
 // hold a tappable link; Stories can). Without a share sheet (a computer) the picture downloads instead.
-export default function ShareToInstagram({ tripId, title, photos }: { tripId: string; title: string; photos: string[] }) {
+// align: which edge the panel lines up with (left when the button sits at the start of a line).
+export default function ShareToInstagram({ tripId, title, photos, align = 'right' }: { tripId: string; title: string; photos: string[]; align?: 'left' | 'right' }) {
   const [open, setOpen] = useState(false)
   const [look, setLook] = useState<'photo' | 'plain'>('photo')
   const [photo, setPhoto] = useState(photos[0] ?? '')
@@ -40,7 +41,7 @@ export default function ShareToInstagram({ tripId, title, photos }: { tripId: st
   }
   return <span className="relative inline-flex">
     <button type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} className="chip"><ImageUp size={14} />Instagram</button>
-    {open && <div className="panel absolute right-0 top-full z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] space-y-3 p-3 shadow-pop">
+    {open && <div className={`panel absolute ${align === 'left' ? 'left-0' : 'right-0'} top-full z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] space-y-3 p-3 shadow-pop`}>
       <p className="text-sm text-ink">Share this trip as a picture on Instagram.</p>
       <div className="flex gap-2" role="group" aria-label="Look">
         <button type="button" aria-pressed={look === 'photo'} onClick={() => setLook('photo')} className="chip">Photo</button>
