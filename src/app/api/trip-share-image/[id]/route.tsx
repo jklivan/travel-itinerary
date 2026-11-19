@@ -50,8 +50,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const logo = `${origin}/brand/postcard-stamp-logo.png`
   const story = format === 'story'
   const titleSize = trip.title.length > 34 ? (story ? 76 : 64) : (story ? 96 : 80)
-  // The empty strip at the bottom where the Link sticker goes.
-  const stickerRoom = story ? 300 : 170
+  // A Story leaves an empty strip at the bottom for the Link sticker; a post (no stickers) says where to find the trip.
+  const stickerRoom = story ? 300 : 70
+  const footer = (color: string, tint: string) => <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color }}>
+    <div style={{ display: 'flex', fontSize: 30 }}>See the whole trip on Postcard</div>
+    <div style={{ display: 'flex', fontSize: 26, color: tint }}>postcardtravel.app</div>
+  </div>
 
   const brand = (color: string) => <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 22, color }}>
     <div style={{ display: 'flex', width: 60, height: 2, background: color, opacity: 0.6 }} />
@@ -70,6 +74,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       <div style={{ display: 'flex', marginTop: story ? 60 : 40, fontSize: titleSize, lineHeight: 1.08, textAlign: 'center', justifyContent: 'center', textShadow: '0 2px 18px rgba(0,0,0,0.35)' }}>{trip.title}</div>
       {details && <div style={{ display: 'flex', marginTop: 22, fontSize: 32, textAlign: 'center', textShadow: '0 1px 10px rgba(0,0,0,0.4)' }}>{details}</div>}
     </div>
+    {!story && <div style={{ position: 'absolute', bottom: 64, left: 0, right: 0, display: 'flex', justifyContent: 'center', textShadow: '0 1px 10px rgba(0,0,0,0.5)' }}>{footer('#fff', '#fff')}</div>}
   </div>
 
   const plainStyle = <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', background: paper, padding: `${story ? 120 : 76}px 80px ${stickerRoom}px`, color: ink, position: 'relative' }}>
@@ -85,6 +90,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         <img src={photo} alt="" width={story ? 860 : 700} height={story ? 900 : 560} style={{ objectFit: 'cover' }} />
       </div>
     </div>}
+    {!story && <div style={{ display: 'flex', marginTop: 28 }}>{footer(ink, brown)}</div>}
   </div>
 
   try {
