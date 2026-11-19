@@ -15,7 +15,7 @@ export const maxDuration = 60
 // plain (cream); ?photo= one of the trip's own photos (anything else falls back to its cover), or POST a picture from
 // the phone. A Story leaves its bottom clear for Instagram's Link sticker back to the trip; a post says where to find it.
 // Colours are the palette's (globals.css), written out because the image is drawn outside the page.
-const ink = '#1f3354', link = '#3f5a80', brown = '#8b6f4e', paper = '#f7f3ec', card = '#fffdf7', cream = '#faf7f1', lineSoft = '#e3dccf', avatar = '#4d6a8c'
+const ink = '#1f3354', link = '#3f5a80', brown = '#8b6f4e', paper = '#f7f3ec', card = '#fffdf7', lineSoft = '#e3dccf', avatar = '#4d6a8c'
 const SIZES = { story: { width: 1080, height: 1920, card: 880 }, post: { width: 1080, height: 1350, card: 720 } }
 
 // The fonts the feed card uses: Playfair (titles) and Geist (labels). The site's own Playfair (public/fonts) is a
