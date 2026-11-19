@@ -66,8 +66,6 @@ async function draw(request: Request, id: string, formatAsked: string | null, st
   const season = tripSeason({ startDate: trip.startDate, endDate: trip.endDate, datesFlexible: trip.datesFlexible, postType: trip.postType, bestMonths: trip.bestMonths })
   const details = [where, days && days > 0 ? `${days} ${days === 1 ? 'day' : 'days'}` : null, audienceLabel(trip.audience), season].filter(Boolean).join(' · ')
   const playfair = await playfairFont()
-  // The site's own logo, by address (a server function can't read the public folder directly).
-  const logo = `${origin}/brand/postcard-stamp-logo.png`
   const story = format === 'story'
   const titleSize = trip.title.length > 34 ? (story ? 76 : 64) : (story ? 96 : 80)
   // A Story leaves an empty strip at the bottom for the Link sticker; a post (no stickers) says where to find the trip.
@@ -77,10 +75,14 @@ async function draw(request: Request, id: string, formatAsked: string | null, st
     <div style={{ display: 'flex', fontSize: 26, color: tint }}>postcardtravel.app</div>
   </div>
 
-  const brand = (color: string) => <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 22, color }}>
-    <div style={{ display: 'flex', width: 60, height: 2, background: color, opacity: 0.6 }} />
-    <div style={{ display: 'flex', fontSize: 34, letterSpacing: 12 }}>POSTCARD</div>
-    <div style={{ display: 'flex', width: 60, height: 2, background: color, opacity: 0.6 }} />
+  // The wordmark as the app's header shows it: POSTCARD, with Places worth sharing under it.
+  const brand = (color: string) => <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 22 }}>
+      <div style={{ display: 'flex', width: 60, height: 2, background: color, opacity: 0.6 }} />
+      <div style={{ display: 'flex', fontSize: 34, letterSpacing: 12 }}>POSTCARD</div>
+      <div style={{ display: 'flex', width: 60, height: 2, background: color, opacity: 0.6 }} />
+    </div>
+    <div style={{ display: 'flex', marginTop: 8, fontSize: 18, letterSpacing: 7 }}>PLACES WORTH SHARING</div>
   </div>
 
   const photoStyle = <div style={{ width: '100%', height: '100%', display: 'flex', position: 'relative', background: ink }}>
@@ -99,8 +101,6 @@ async function draw(request: Request, id: string, formatAsked: string | null, st
 
   const plainStyle = <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', background: paper, padding: `${story ? 120 : 76}px 80px ${stickerRoom}px`, color: ink, position: 'relative' }}>
     <div style={{ position: 'absolute', top: 28, left: 28, right: 28, bottom: 28, display: 'flex', border: `3px solid ${line}` }} />
-    {/* eslint-disable-next-line @next/next/no-img-element */}
-    <img src={logo} alt="" width={110} height={110} style={{ position: 'absolute', top: story ? 70 : 52, right: 70, opacity: 0.85 }} />
     {brand(brown)}
     <div style={{ display: 'flex', marginTop: story ? 70 : 40, fontSize: titleSize, lineHeight: 1.08, textAlign: 'center', justifyContent: 'center' }}>{trip.title}</div>
     {details && <div style={{ display: 'flex', marginTop: 20, fontSize: 30, color: muted, textAlign: 'center' }}>{details}</div>}
