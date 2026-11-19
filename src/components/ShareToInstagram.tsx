@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { ImageUp } from 'lucide-react'
+import { ImagePlus, ImageUp } from 'lucide-react'
 import { shareUrl } from '@/lib/publicUrl'
+import { compressPhoto } from '@/lib/photoSizing'
 
 // A trip, as a picture for Instagram (api/trip-share-image). Choose the look (Photo: your picture fills it with the
 // trip's name over it; Plain: cream with the picture framed) and which of the trip's pictures, then Story (tall, with
@@ -14,6 +15,8 @@ export default function ShareToInstagram({ tripId, title, photos, align = 'right
   const [open, setOpen] = useState(false)
   const [look, setLook] = useState<'photo' | 'plain'>('photo')
   const [photo, setPhoto] = useState(photos[0] ?? '')
+  // A picture from the phone instead of one of the trip's (shrunk first, so it uploads quickly).
+  const [upload, setUpload] = useState<{ file: File; preview: string } | null>(null)
   const [busy, setBusy] = useState('')
   const [note, setNote] = useState('')
   async function share(format: 'story' | 'post') {
@@ -22,8 +25,12 @@ export default function ShareToInstagram({ tripId, title, photos, align = 'right
     // Copied first, while the tap still counts (phones only allow copying straight from one).
     const copied = await navigator.clipboard.writeText(format === 'story' ? link : `${title}: every place we loved is on Postcard. ${link}`).then(() => true, () => false)
     try {
-      const query = new URLSearchParams({ format, style: look, ...(photo ? { photo } : {}) })
-      const response = await fetch(`/api/trip-share-image/${tripId}?${query}`)
+      let response: Response
+      if (upload) {
+        const form = new FormData()
+        form.set('format', format); form.set('style', look); form.set('photo', upload.file)
+        response = await fetch(`/api/trip-share-image/${tripId}`, { method: 'POST', body: form })
+      } else response = await fetch(`/api/trip-share-image/${tripId}?${new URLSearchParams({ format, style: look, ...(photo ? { photo } : {}) })}`)
       if (!response.ok) throw new Error()
       const name = `${title.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'postcard-trip'}-${format}.png`
       const file = new File([await response.blob()], name, { type: 'image/png' })
@@ -47,14 +54,25 @@ export default function ShareToInstagram({ tripId, title, photos, align = 'right
         <button type="button" aria-pressed={look === 'photo'} onClick={() => setLook('photo')} className="chip">Photo</button>
         <button type="button" aria-pressed={look === 'plain'} onClick={() => setLook('plain')} className="chip">Plain</button>
       </div>
-      {photos.length > 1 && <div>
+      <div>
         <p className="field-label mb-1.5">Picture</p>
-        <div className="flex gap-2 overflow-x-auto pb-1">{photos.slice(0, 24).map(url => <button key={url} type="button" aria-pressed={photo === url} aria-label="Use this picture" onClick={() => setPhoto(url)}
-          className={`size-14 shrink-0 overflow-hidden rounded-lg border-2 ${photo === url ? 'border-ink' : 'border-transparent'}`}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={url} alt="" className="size-full object-cover" />
-        </button>)}</div>
-      </div>}
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {upload && <button type="button" aria-pressed="true" aria-label="Your picture" className="size-14 shrink-0 overflow-hidden rounded-lg border-2 border-ink">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={upload.preview} alt="" className="size-full object-cover" />
+          </button>}
+          {photos.slice(0, 24).map(url => <button key={url} type="button" aria-pressed={!upload && photo === url} aria-label="Use this picture" onClick={() => { setUpload(null); setPhoto(url) }}
+            className={`size-14 shrink-0 overflow-hidden rounded-lg border-2 ${!upload && photo === url ? 'border-ink' : 'border-transparent'}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt="" className="size-full object-cover" />
+          </button>)}
+          {/* Any picture from the phone's library. */}
+          <label className="panel-dashed flex size-14 shrink-0 cursor-pointer flex-col items-center justify-center text-link" aria-label="Choose a picture from your phone">
+            <ImagePlus size={18} /><span className="text-label">Phone</span>
+            <input type="file" accept="image/*" className="sr-only" onChange={event => { const chosen = event.target.files?.[0]; if (!chosen) return; void compressPhoto(chosen).then(file => setUpload({ file, preview: URL.createObjectURL(file) })) }} />
+          </label>
+        </div>
+      </div>
       <div className="flex gap-2">
         <button type="button" disabled={!!busy} onClick={() => void share('story')} className="btn btn-primary btn-sm flex-1">{busy === 'story' ? 'Making…' : 'Story'}</button>
         <button type="button" disabled={!!busy} onClick={() => void share('post')} className="btn btn-outline btn-sm flex-1">{busy === 'post' ? 'Making…' : 'Post'}</button>

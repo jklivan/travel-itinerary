@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og'
+import sharp from 'sharp'
 import { auth } from '@/auth'
 import { audienceLabel } from '@/lib/audience'
 import { tripSeason } from '@/lib/tripSeason'
@@ -25,13 +26,31 @@ function playfairFont() {
   return playfairCache
 }
 
+// The picture, upright and not too big, as a data address the drawing can use: phone photos are often stored sideways
+// with a note saying which way is up, which the drawing ignores (a portrait photo came out on its side).
+async function upright(source: ArrayBuffer) {
+  const jpeg = await sharp(Buffer.from(source)).rotate().resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 85 }).toBuffer()
+  return `data:image/jpeg;base64,${jpeg.toString('base64')}`
+}
+
+// GET: one of the trip's own pictures (?photo=, else its cover). POST: a picture from the phone (form field "photo").
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const search = new URL(request.url).searchParams
+  return draw(request, (await params).id, search.get('format'), search.get('style'), { url: search.get('photo') })
+}
+
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const form = await request.formData().catch(() => null)
+  const file = form?.get('photo')
+  if (!(file instanceof File) || file.size > 4_000_000 || !file.type.startsWith('image/')) return Response.json({ error: 'Choose a photo under 4 MB.' }, { status: 400 })
+  return draw(request, (await params).id, String(form?.get('format') ?? ''), String(form?.get('style') ?? ''), { upload: await file.arrayBuffer() })
+}
+
+async function draw(request: Request, id: string, formatAsked: string | null, styleAsked: string | null, chosen: { url?: string | null; upload?: ArrayBuffer }) {
   const userId = (await auth())?.user?.id
   if (!userId) return Response.json({ error: 'Please sign in.' }, { status: 401 })
-  const { id } = await params
-  const search = new URL(request.url).searchParams
-  const format = search.get('format') === 'post' ? 'post' : 'story'
-  const style = search.get('style') === 'plain' ? 'plain' : 'photo'
+  const format = formatAsked === 'post' ? 'post' : 'story'
+  const style = styleAsked === 'plain' ? 'plain' : 'photo'
   const size = SIZES[format]
   const found = await tripSharePhotos(id, userId)
   if (!found) return Response.json({ error: 'This trip is unavailable.' }, { status: 404 })
@@ -39,8 +58,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const origin = new URL(request.url).origin
   const absolute = (url: string | undefined) => !url ? null : url.startsWith('/') ? `${origin}${url}` : url
-  const asked = search.get('photo')
-  const photo = absolute(asked && photos.includes(asked) ? asked : photos[0])
+  const address = absolute(chosen.url && photos.includes(chosen.url) ? chosen.url : photos[0])
+  const source = chosen.upload ?? (address ? await fetch(address).then(response => response.ok ? response.arrayBuffer() : null).catch(() => null) : null)
+  const photo = source ? await upright(source).catch(() => null) : null
   const where = [...new Set(trip.destinations.filter(destination => destination.name !== 'Destination to decide').map(destination => destination.name))].slice(0, 2).join(' & ')
   const days = trip.durationDays ?? (trip.datesFlexible ? null : Math.round((trip.endDate.getTime() - trip.startDate.getTime()) / 86_400_000) + 1)
   const season = tripSeason({ startDate: trip.startDate, endDate: trip.endDate, datesFlexible: trip.datesFlexible, postType: trip.postType, bestMonths: trip.bestMonths })
