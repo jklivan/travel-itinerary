@@ -4,12 +4,15 @@ import { useState } from 'react'
 import { ImageUp } from 'lucide-react'
 import { shareUrl } from '@/lib/publicUrl'
 
-// A posted trip, as a picture for Instagram (api/trip-share-image): a Story (tall, for a Link sticker back to the trip)
-// or a post (4:5). The phone's share sheet opens with the picture, so Instagram is one tap away, and the trip's link is
-// copied to paste into the Link sticker or the caption (Instagram posts can't hold a tappable link; Stories can).
-// Without a share sheet (a computer) the picture downloads instead.
-export default function ShareToInstagram({ tripId, title }: { tripId: string; title: string }) {
+// A trip, as a picture for Instagram (api/trip-share-image). Choose the look (Photo: your picture fills it with the
+// trip's name over it; Plain: cream with the picture framed) and which of the trip's pictures, then Story (tall, with
+// room for a Link sticker back to the trip) or Post (4:5). The phone's share sheet opens with the picture, so Instagram
+// is one tap away, and the trip's link is copied to paste into the Link sticker or the caption (Instagram posts can't
+// hold a tappable link; Stories can). Without a share sheet (a computer) the picture downloads instead.
+export default function ShareToInstagram({ tripId, title, photos }: { tripId: string; title: string; photos: string[] }) {
   const [open, setOpen] = useState(false)
+  const [look, setLook] = useState<'photo' | 'plain'>('photo')
+  const [photo, setPhoto] = useState(photos[0] ?? '')
   const [busy, setBusy] = useState('')
   const [note, setNote] = useState('')
   async function share(format: 'story' | 'post') {
@@ -18,7 +21,8 @@ export default function ShareToInstagram({ tripId, title }: { tripId: string; ti
     // Copied first, while the tap still counts (phones only allow copying straight from one).
     const copied = await navigator.clipboard.writeText(format === 'story' ? link : `${title}: every place we loved is on Postcard. ${link}`).then(() => true, () => false)
     try {
-      const response = await fetch(`/api/trip-share-image/${tripId}?format=${format}`)
+      const query = new URLSearchParams({ format, style: look, ...(photo ? { photo } : {}) })
+      const response = await fetch(`/api/trip-share-image/${tripId}?${query}`)
       if (!response.ok) throw new Error()
       const name = `${title.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'postcard-trip'}-${format}.png`
       const file = new File([await response.blob()], name, { type: 'image/png' })
@@ -36,8 +40,20 @@ export default function ShareToInstagram({ tripId, title }: { tripId: string; ti
   }
   return <span className="relative inline-flex">
     <button type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} className="chip"><ImageUp size={14} />Instagram</button>
-    {open && <div className="panel absolute right-0 top-full z-30 mt-2 w-72 space-y-3 p-3 shadow-pop">
+    {open && <div className="panel absolute right-0 top-full z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] space-y-3 p-3 shadow-pop">
       <p className="text-sm text-ink">Share this trip as a picture on Instagram.</p>
+      <div className="flex gap-2" role="group" aria-label="Look">
+        <button type="button" aria-pressed={look === 'photo'} onClick={() => setLook('photo')} className="chip">Photo</button>
+        <button type="button" aria-pressed={look === 'plain'} onClick={() => setLook('plain')} className="chip">Plain</button>
+      </div>
+      {photos.length > 1 && <div>
+        <p className="field-label mb-1.5">Picture</p>
+        <div className="flex gap-2 overflow-x-auto pb-1">{photos.slice(0, 24).map(url => <button key={url} type="button" aria-pressed={photo === url} aria-label="Use this picture" onClick={() => setPhoto(url)}
+          className={`size-14 shrink-0 overflow-hidden rounded-lg border-2 ${photo === url ? 'border-ink' : 'border-transparent'}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={url} alt="" className="size-full object-cover" />
+        </button>)}</div>
+      </div>}
       <div className="flex gap-2">
         <button type="button" disabled={!!busy} onClick={() => void share('story')} className="btn btn-primary btn-sm flex-1">{busy === 'story' ? 'Making…' : 'Story'}</button>
         <button type="button" disabled={!!busy} onClick={() => void share('post')} className="btn btn-outline btn-sm flex-1">{busy === 'post' ? 'Making…' : 'Post'}</button>
