@@ -281,7 +281,7 @@ export default function Planner({ trip, been = false, ai = null, audienceSuggest
     {/* A posted trip keeps showing where it is and what it's posted with (budget, who it's for, tags), as on its page. */}
     {trip.visibility !== 'draft' && <div className="mt-2 [&>*:last-child]:mb-0"><TripDescriptors trip={trip} /></div>}
     {/* A posted trip can go on Instagram as a picture (its link opens for anyone). */}
-    {trip.visibility !== 'draft' && <div className="mt-2"><ShareToInstagram tripId={trip.id} title={trip.title} align="left"
+    {trip.visibility !== 'draft' && <div className="mt-2"><ShareToInstagram tripId={trip.id} title={trip.title}
       photos={[...new Set([trip.coverPhoto, ...(trip.tripPhotos ?? []), ...places.flatMap(place => place.photos)].filter((url): url is string => !!url))]} /></div>}
     <div className="mt-1"><details id="trip-details" open={initialDetails || undefined} className="scroll-mt-24"><summary className="flex cursor-pointer list-none items-center gap-1.5 py-1 text-sm text-link [&::-webkit-details-marker]:hidden"><Pencil size={14} /><span className="font-semibold">Edit trip details</span><span className="text-muted">· name, dates, cover photo</span></summary><DetailsForm key={`${trip.title}:${trip.start}:${trip.end}`} trip={trip} /></details></div>
     {/* One row of compact actions, so the places start higher up the screen. */}

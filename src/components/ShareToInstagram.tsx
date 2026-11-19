@@ -1,89 +1,118 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { ImagePlus, ImageUp } from 'lucide-react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { ImagePlus, ImageUp, X } from 'lucide-react'
 import { shareUrl } from '@/lib/publicUrl'
 import { compressPhoto } from '@/lib/photoSizing'
 
-// A trip, as a picture for Instagram (api/trip-share-image). Choose the headline, the look (Photo: your picture fills it;
-// Plain: cream) and which picture, then Share to Instagram. One 4:5 picture works for everything Instagram offers next
-// (Post, Story, Reel, Message), so it doesn't ask Story or Post twice: as a Story it sits mid-screen with room for a
-// Link sticker. The phone's share sheet opens with the picture, and the trip's link is copied to paste into the Link
-// sticker or the caption (posts can't hold a tappable link). Without a share sheet (a computer) it downloads instead.
-// align: which edge the panel lines up with (left when the button sits at the start of a line).
-export default function ShareToInstagram({ tripId, title, photos, align = 'right' }: { tripId: string; title: string; photos: string[]; align?: 'left' | 'right' }) {
+// A trip, as a picture for Instagram (api/trip-share-image), in a sheet that slides up: the picture itself as a preview,
+// which changes as they edit the headline, switch the look (Photo: their picture fills it; Plain: cream) or pick another
+// picture, then Share to Instagram. One 4:5 picture works for everything Instagram offers next (Post, Story, Reel,
+// Message), so it doesn't ask Story or Post twice: as a Story it sits mid-screen with room for a Link sticker. The
+// phone's share sheet opens with the previewed picture, and the trip's link is copied to paste into the Link sticker or
+// the caption (posts can't hold a tappable link). Without a share sheet (a computer) it downloads instead.
+export default function ShareToInstagram({ tripId, title, photos }: { tripId: string; title: string; photos: string[] }) {
   const [open, setOpen] = useState(false)
+  const dialog = useRef<HTMLDialogElement>(null)
+  const titleId = useId()
   const [look, setLook] = useState<'photo' | 'plain'>('photo')
   const [photo, setPhoto] = useState(photos[0] ?? '')
   // A picture from the phone instead of one of the trip's (shrunk first, so it uploads quickly).
   const [upload, setUpload] = useState<{ file: File; preview: string } | null>(null)
-  // The words over the picture: the automatic one ("5 days in Paris") until they write their own.
+  // The words over the picture: the automatic one ("5 days in Paris") until they write their own. The preview waits
+  // until they pause typing.
   const [headline, setHeadline] = useState('')
+  const [settledHeadline, setSettledHeadline] = useState('')
+  useEffect(() => { const timer = setTimeout(() => setSettledHeadline(headline), 600); return () => clearTimeout(timer) }, [headline])
   useEffect(() => {
     if (!open || headline) return
-    void fetch(`/api/trip-share-image/${tripId}?info=1`).then(response => response.ok ? response.json() : null).then(info => { if (info?.headline) setHeadline(current => current || info.headline) }, () => {})
+    void fetch(`/api/trip-share-image/${tripId}?info=1`).then(response => response.ok ? response.json() : null).then(info => { if (info?.headline) { setHeadline(current => current || info.headline); setSettledHeadline(current => current || info.headline) } }, () => {})
   }, [open, headline, tripId])
-  const [busy, setBusy] = useState('')
+  // The picture as it will be shared, remade whenever a choice changes; sharing uses it as is.
+  // Each set of choices has a key; the preview is up to date when its key matches the current one.
+  const key = JSON.stringify([look, upload?.preview ?? photo, settledHeadline])
+  const [preview, setPreview] = useState<{ blob: Blob; url: string; key: string } | null>(null)
+  const [failed, setFailed] = useState('')
+  const loading = open && !!settledHeadline && preview?.key !== key && failed !== key
+  const error = failed === key ? 'Couldn’t make the picture. Please try again.' : ''
+  useEffect(() => {
+    if (!open || !settledHeadline) return
+    const controller = new AbortController()
+    const request = upload
+      ? (() => { const form = new FormData(); form.set('format', 'post'); form.set('style', look); form.set('headline', settledHeadline); form.set('photo', upload.file); return fetch(`/api/trip-share-image/${tripId}`, { method: 'POST', body: form, signal: controller.signal }) })()
+      : fetch(`/api/trip-share-image/${tripId}?${new URLSearchParams({ format: 'post', style: look, headline: settledHeadline, ...(photo ? { photo } : {}) })}`, { signal: controller.signal })
+    void request.then(async response => {
+      if (!response.ok) throw new Error()
+      const blob = await response.blob()
+      setPreview(current => { if (current) URL.revokeObjectURL(current.url); return { blob, url: URL.createObjectURL(blob), key } })
+    }).catch(caught => { if ((caught as Error).name !== 'AbortError') setFailed(key) })
+    return () => controller.abort()
+  }, [open, look, photo, upload, settledHeadline, tripId, key])
+  useEffect(() => { if (open) dialog.current?.showModal() }, [open])
   const [note, setNote] = useState('')
+
   async function share() {
-    const format = 'post'
-    setBusy(format); setNote('')
+    if (!preview) return
+    setNote('')
     const link = shareUrl(`/itinerary/${tripId}`)
     // Copied first, while the tap still counts (phones only allow copying straight from one).
     const copied = await navigator.clipboard.writeText(link).then(() => true, () => false)
-    try {
-      let response: Response
-      if (upload) {
-        const form = new FormData()
-        form.set('format', format); form.set('style', look); form.set('headline', headline); form.set('photo', upload.file)
-        response = await fetch(`/api/trip-share-image/${tripId}`, { method: 'POST', body: form })
-      } else response = await fetch(`/api/trip-share-image/${tripId}?${new URLSearchParams({ format, style: look, headline, ...(photo ? { photo } : {}) })}`)
-      if (!response.ok) throw new Error()
-      const name = `${title.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'postcard-trip'}.png`
-      const file = new File([await response.blob()], name, { type: 'image/png' })
-      if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] }) && /iPhone|iPad|Android/i.test(navigator.userAgent)) {
-        await navigator.share({ files: [file] }).catch(() => {})
-      } else {
-        const url = URL.createObjectURL(file)
-        const anchor = Object.assign(document.createElement('a'), { href: url, download: name })
-        document.body.append(anchor); anchor.click(); anchor.remove()
-        setTimeout(() => URL.revokeObjectURL(url), 10_000)
-      }
-      setNote(!copied ? `Add this link: ${link}` : 'Link copied. On a Story, add a Link sticker and paste it; on a post, paste it into the caption.')
-    } catch { setNote('Couldn’t make the picture. Please try again.') }
-    finally { setBusy('') }
+    const name = `${title.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'postcard-trip'}.png`
+    const file = new File([preview.blob], name, { type: 'image/png' })
+    if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] }) && /iPhone|iPad|Android/i.test(navigator.userAgent)) {
+      await navigator.share({ files: [file] }).catch(() => {})
+    } else {
+      const anchor = Object.assign(document.createElement('a'), { href: preview.url, download: name })
+      document.body.append(anchor); anchor.click(); anchor.remove()
+    }
+    setNote(!copied ? `Add this link: ${link}` : 'Link copied. On a Story, add a Link sticker and paste it; on a post, paste it into the caption.')
   }
-  return <span className="relative inline-flex">
-    <button type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} className="chip"><ImageUp size={14} />Instagram</button>
-    {open && <div className={`panel absolute ${align === 'left' ? 'left-0' : 'right-0'} top-full z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] space-y-3 p-3 shadow-pop`}>
-      <p className="text-sm text-ink">Share this trip as a picture on Instagram.</p>
-      <label className="block"><span className="field-label mb-1.5 block">Headline</span>
-        <input value={headline} onChange={event => setHeadline(event.target.value)} maxLength={80} placeholder="5 days in Paris" className="field w-full" /></label>
-      <div className="flex gap-2" role="group" aria-label="Look">
-        <button type="button" aria-pressed={look === 'photo'} onClick={() => setLook('photo')} className="chip">Photo</button>
-        <button type="button" aria-pressed={look === 'plain'} onClick={() => setLook('plain')} className="chip">Plain</button>
-      </div>
-      <div>
-        <p className="field-label mb-1.5">Picture</p>
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {upload && <button type="button" aria-pressed="true" aria-label="Your picture" className="size-14 shrink-0 overflow-hidden rounded-lg border-2 border-ink">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={upload.preview} alt="" className="size-full object-cover" />
-          </button>}
-          {photos.slice(0, 24).map(url => <button key={url} type="button" aria-pressed={!upload && photo === url} aria-label="Use this picture" onClick={() => { setUpload(null); setPhoto(url) }}
-            className={`size-14 shrink-0 overflow-hidden rounded-lg border-2 ${!upload && photo === url ? 'border-ink' : 'border-transparent'}`}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" className="size-full object-cover" />
-          </button>)}
-          {/* Any picture from the phone's library. */}
-          <label className="panel-dashed flex size-14 shrink-0 cursor-pointer flex-col items-center justify-center text-link" aria-label="Choose a picture from your phone">
-            <ImagePlus size={18} /><span className="text-label">Phone</span>
-            <input type="file" accept="image/*" className="sr-only" onChange={event => { const chosen = event.target.files?.[0]; if (!chosen) return; void compressPhoto(chosen).then(file => setUpload({ file, preview: URL.createObjectURL(file) })) }} />
-          </label>
+
+  return <>
+    <button type="button" onClick={() => setOpen(true)} className="chip"><ImageUp size={14} />Instagram</button>
+    {open && <dialog ref={dialog} aria-labelledby={titleId} onClose={() => setOpen(false)} onClick={event => { if (event.target === dialog.current) dialog.current?.close() }}
+      className="bottom-sheet m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-y-auto rounded-t-3xl bg-card p-0 text-ink shadow-pop backdrop:bg-ink/50 sm:mx-auto sm:max-w-md">
+      <div className="space-y-4 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-2">
+        <span aria-hidden="true" className="mx-auto block h-1 w-10 rounded-full bg-line" />
+        <header className="flex items-center justify-between gap-3">
+          <h2 id={titleId} className="type-title">Share to Instagram</h2>
+          <button type="button" aria-label="Close" onClick={() => dialog.current?.close()} className="btn-icon"><X size={18} /></button>
+        </header>
+        {/* The picture as it will look on Instagram. */}
+        <div className="relative mx-auto aspect-[4/5] w-full max-w-72 overflow-hidden rounded-lg bg-chip">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {preview && <img src={preview.url} alt="Your Instagram picture" className={`size-full object-cover transition-opacity ${loading ? 'opacity-50' : ''}`} />}
+          {loading && <p role="status" className="absolute inset-x-0 bottom-3 text-center text-sm text-ink">Updating…</p>}
+          {error && <p role="alert" className="absolute inset-x-4 top-1/2 -translate-y-1/2 text-center text-sm text-danger">{error}</p>}
         </div>
+        <label className="block"><span className="field-label mb-1.5 block">Headline</span>
+          <input value={headline} onChange={event => setHeadline(event.target.value)} maxLength={80} placeholder="5 days in Paris" className="field w-full" /></label>
+        <div className="flex gap-2" role="group" aria-label="Look">
+          <button type="button" aria-pressed={look === 'photo'} onClick={() => setLook('photo')} className="chip">Photo</button>
+          <button type="button" aria-pressed={look === 'plain'} onClick={() => setLook('plain')} className="chip">Plain</button>
+        </div>
+        <div>
+          <p className="field-label mb-1.5">Picture</p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {upload && <button type="button" aria-pressed="true" aria-label="Your picture" className="size-14 shrink-0 overflow-hidden rounded-lg border-2 border-ink">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={upload.preview} alt="" className="size-full object-cover" />
+            </button>}
+            {photos.slice(0, 24).map(url => <button key={url} type="button" aria-pressed={!upload && photo === url} aria-label="Use this picture" onClick={() => { setUpload(null); setPhoto(url) }}
+              className={`size-14 shrink-0 overflow-hidden rounded-lg border-2 ${!upload && photo === url ? 'border-ink' : 'border-transparent'}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="" className="size-full object-cover" />
+            </button>)}
+            {/* Any picture from the phone's library. */}
+            <label className="panel-dashed flex size-14 shrink-0 cursor-pointer flex-col items-center justify-center text-link" aria-label="Choose a picture from your phone">
+              <ImagePlus size={18} /><span className="text-label">Phone</span>
+              <input type="file" accept="image/*" className="sr-only" onChange={event => { const chosen = event.target.files?.[0]; if (!chosen) return; void compressPhoto(chosen).then(file => setUpload({ file, preview: URL.createObjectURL(file) })) }} />
+            </label>
+          </div>
+        </div>
+        <button type="button" disabled={!preview || loading} onClick={() => void share()} className="btn btn-primary w-full">{!preview || loading ? 'Making your picture…' : 'Share to Instagram'}</button>
+        <p role="status" className="break-words text-xs text-muted">{note || 'Post it, or share it as a Story and add a Link sticker back to the trip; we’ll copy the link for you.'}</p>
       </div>
-      <button type="button" disabled={!!busy} onClick={() => void share()} className="btn btn-primary btn-sm w-full">{busy ? 'Making your picture…' : 'Share to Instagram'}</button>
-      <p role="status" className="break-words text-xs text-muted">{note || 'Post it, or share it as a Story and add a Link sticker back to the trip; we’ll copy the link for you.'}</p>
-    </div>}
-  </span>
+    </dialog>}
+  </>
 }
