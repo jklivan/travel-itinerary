@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useId, useRef, useState } from 'react'
-import { ImagePlus, ImageUp, X } from 'lucide-react'
+import { ImagePlus, X } from 'lucide-react'
 import { shareUrl } from '@/lib/publicUrl'
 import { compressPhoto } from '@/lib/photoSizing'
 
@@ -11,6 +11,17 @@ import { compressPhoto } from '@/lib/photoSizing'
 // Message), so it doesn't ask Story or Post twice: as a Story it sits mid-screen with room for a Link sticker. The
 // phone's share sheet opens with the previewed picture, and the trip's link is copied to paste into the Link sticker or
 // the caption (posts can't hold a tappable link). Without a share sheet (a computer) it downloads instead.
+// Instagram's own logo (the icon set has no brand logos), so the button is recognisable at a glance.
+function InstagramLogo({ size }: { size: number }) {
+  const id = useId()
+  return <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+    <defs><radialGradient id={id} cx="0.3" cy="1.07" r="1.3"><stop offset="0" stopColor="#fdd56a" /><stop offset="0.25" stopColor="#f9a03f" /><stop offset="0.5" stopColor="#e1306c" /><stop offset="0.8" stopColor="#833ab4" /><stop offset="1" stopColor="#5b51d8" /></radialGradient></defs>
+    <rect width="24" height="24" rx="6.5" fill={`url(#${id})`} />
+    <rect x="5.5" y="5.5" width="13" height="13" rx="4" fill="none" stroke="#fff" strokeWidth="1.8" />
+    <circle cx="12" cy="12" r="3.1" fill="none" stroke="#fff" strokeWidth="1.8" /><circle cx="16.4" cy="7.6" r="1" fill="#fff" />
+  </svg>
+}
+
 export default function ShareToInstagram({ tripId, title, photos }: { tripId: string; title: string; photos: string[] }) {
   const [open, setOpen] = useState(false)
   const dialog = useRef<HTMLDialogElement>(null)
@@ -69,17 +80,17 @@ export default function ShareToInstagram({ tripId, title, photos }: { tripId: st
   }
 
   return <>
-    <button type="button" onClick={() => setOpen(true)} className="chip"><ImageUp size={14} />Instagram</button>
+    <button type="button" onClick={() => setOpen(true)} className="chip"><InstagramLogo size={18} />Instagram</button>
     {open && <dialog ref={dialog} aria-labelledby={titleId} onClose={() => setOpen(false)} onClick={event => { if (event.target === dialog.current) dialog.current?.close() }}
       className="bottom-sheet m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-y-auto rounded-t-3xl bg-card p-0 text-ink shadow-pop backdrop:bg-ink/50 sm:mx-auto sm:max-w-md">
-      <div className="space-y-4 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-2">
+      <div className="space-y-3 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
         <span aria-hidden="true" className="mx-auto block h-1 w-10 rounded-full bg-line" />
         <header className="flex items-center justify-between gap-3">
           <h2 id={titleId} className="type-title">Share to Instagram</h2>
           <button type="button" aria-label="Close" onClick={() => dialog.current?.close()} className="btn-icon"><X size={18} /></button>
         </header>
         {/* The picture as it will look on Instagram. */}
-        <div className="relative mx-auto aspect-[4/5] w-full max-w-72 overflow-hidden rounded-lg bg-chip">
+        <div className="relative mx-auto aspect-[4/5] w-full max-w-[min(14rem,30dvh)] overflow-hidden rounded-lg bg-chip">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {preview && <img src={preview.url} alt="Your Instagram picture" className={`size-full object-cover transition-opacity ${loading ? 'opacity-50' : ''}`} />}
           {loading && <p role="status" className="absolute inset-x-0 bottom-3 text-center text-sm text-ink">Updating…</p>}

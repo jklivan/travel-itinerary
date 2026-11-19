@@ -3,11 +3,12 @@ import { canEdit } from '@/lib/tripAccess'
 import { tripPhotoGallery } from '@/lib/eventPhotos'
 
 // The pictures a trip can be shared to Instagram with (api/trip-share-image), in the order the trip shows them: its
-// cover first, then its photos and its places' photos, or its stock photo when it has none of its own. Null when the
-// person can't see the trip (posted trips for anyone; private plans only for the people planning them).
+// cover first, then its photos and its places' photos, or its stock photo when it has none of its own. Only for the
+// trip's own people (its creator, or someone who joined it): nobody else can put someone's trip on Instagram. Null
+// otherwise.
 export async function tripSharePhotos(tripId: string, userId: string) {
   const trip = await prisma.itinerary.findFirst({
-    where: { id: tripId, OR: [{ visibility: 'public' }, canEdit(userId)] },
+    where: { id: tripId, ...canEdit(userId) },
     select: { title: true, audience: true, postType: true, bestMonths: true, datesFlexible: true, startDate: true, endDate: true, durationDays: true, coverPhoto: true, tripRating: true, budget: true,
       user: { select: { name: true, image: true } },
       photos: { select: { id: true, url: true, caption: true, isStock: true } },

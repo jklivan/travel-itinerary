@@ -563,8 +563,8 @@ export default async function ItineraryPage({
             {!isOwn && it.visibility !== 'draft' && <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />}
             {/* Send it to someone (Messages, WhatsApp…). */}
             {it.visibility !== 'draft' && <SendTripButton tripId={it.id} title={it.title} />}
-            {/* Post it to Instagram as a picture (a Story can link back to it). */}
-            {it.visibility !== 'draft' && session?.user && <ShareToInstagram tripId={it.id} title={it.title} photos={(() => { const own = tripPhotoGallery(it.photos, it.destinations.flatMap(d => d.items), it.coverPhoto).map(photo => photo.url); const stock = it.photos.find(photo => photo.isStock)?.url; return own.length ? own : stock ? [stock] : [] })()} />}
+            {/* Your own trip to Instagram as a picture (a Story can link back to it). Not other people's. */}
+            {it.visibility !== 'draft' && isOwn && <ShareToInstagram tripId={it.id} title={it.title} photos={(() => { const own = tripPhotoGallery(it.photos, it.destinations.flatMap(d => d.items), it.coverPhoto).map(photo => photo.url); const stock = it.photos.find(photo => photo.isStock)?.url; return own.length ? own : stock ? [stock] : [] })()} />}
           </>} />
 
           {/* Italic description */}
