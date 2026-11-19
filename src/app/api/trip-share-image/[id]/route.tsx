@@ -13,7 +13,7 @@ export const maxDuration = 60
 // sticker) or post (4:5). Posted trips for anyone signed in; private plans only for the people planning them.
 // Colours are the palette's (globals.css), written out because the image is drawn outside the page.
 const ink = '#1f3354', muted = '#6b7285', brown = '#8b6f4e', paper = '#f7f3ec', card = '#fffdf7', line = '#d7cebc', stamp = '#6f8b6e'
-const SIZES = { story: { width: 1080, height: 1920, photo: 840, places: 5 }, post: { width: 1080, height: 1350, photo: 560, places: 4 } }
+const SIZES = { story: { width: 1080, height: 1920, photo: 840, places: 5 }, post: { width: 1080, height: 1350, photo: 540, places: 3 } }
 
 // Playfair for the title. The site's own copy (public/fonts) is a variable font, which the image drawing can't read,
 // so the regular weight comes from Google Fonts (asked for plainly, it answers with a .ttf), kept between requests.
