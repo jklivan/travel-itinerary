@@ -19,6 +19,7 @@ import { Plane, Hotel, Utensils, Camera, MapPin, Check, Ban, Pencil, Clock } fro
 import BucketButton from '@/components/BucketButton'
 import LikeButton from '@/components/LikeButton'
 import SendTripButton from '@/components/SendTripButton'
+import ShareToInstagram from '@/components/ShareToInstagram'
 import { eventPhotos, pickEventPhoto, tripPhotoGallery } from '@/lib/eventPhotos'
 import DeleteButton from '@/components/DeleteButton'
 import { STAMP_COLORS } from '@/lib/tripStamps'
@@ -562,6 +563,8 @@ export default async function ItineraryPage({
             {!isOwn && it.visibility !== 'draft' && <BucketButton key={String(isBucketed)} itineraryId={it.id} initialBucketed={isBucketed} isLoggedIn={!!session?.user} size="md" withFolders={!!session?.user} />}
             {/* Send it to someone (Messages, WhatsApp…). */}
             {it.visibility !== 'draft' && <SendTripButton tripId={it.id} title={it.title} />}
+            {/* Post it to Instagram as a picture (a Story can link back to it). */}
+            {it.visibility !== 'draft' && session?.user && <ShareToInstagram tripId={it.id} title={it.title} />}
           </>} />
 
           {/* Italic description */}
