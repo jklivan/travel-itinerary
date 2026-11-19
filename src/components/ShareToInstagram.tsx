@@ -5,11 +5,11 @@ import { ImagePlus, ImageUp } from 'lucide-react'
 import { shareUrl } from '@/lib/publicUrl'
 import { compressPhoto } from '@/lib/photoSizing'
 
-// A trip, as a picture for Instagram (api/trip-share-image). Choose the look (Photo: your picture fills it with the
-// trip's name over it; Plain: cream with the picture framed) and which of the trip's pictures, then Story (tall, with
-// room for a Link sticker back to the trip) or Post (4:5). The phone's share sheet opens with the picture, so Instagram
-// is one tap away, and the trip's link is copied to paste into the Link sticker or the caption (Instagram posts can't
-// hold a tappable link; Stories can). Without a share sheet (a computer) the picture downloads instead.
+// A trip, as a picture for Instagram (api/trip-share-image). Choose the headline, the look (Photo: your picture fills it;
+// Plain: cream) and which picture, then Share to Instagram. One 4:5 picture works for everything Instagram offers next
+// (Post, Story, Reel, Message), so it doesn't ask Story or Post twice: as a Story it sits mid-screen with room for a
+// Link sticker. The phone's share sheet opens with the picture, and the trip's link is copied to paste into the Link
+// sticker or the caption (posts can't hold a tappable link). Without a share sheet (a computer) it downloads instead.
 // align: which edge the panel lines up with (left when the button sits at the start of a line).
 export default function ShareToInstagram({ tripId, title, photos, align = 'right' }: { tripId: string; title: string; photos: string[]; align?: 'left' | 'right' }) {
   const [open, setOpen] = useState(false)
@@ -25,11 +25,12 @@ export default function ShareToInstagram({ tripId, title, photos, align = 'right
   }, [open, headline, tripId])
   const [busy, setBusy] = useState('')
   const [note, setNote] = useState('')
-  async function share(format: 'story' | 'post') {
+  async function share() {
+    const format = 'post'
     setBusy(format); setNote('')
     const link = shareUrl(`/itinerary/${tripId}`)
     // Copied first, while the tap still counts (phones only allow copying straight from one).
-    const copied = await navigator.clipboard.writeText(format === 'story' ? link : `${title}: every place we loved is on Postcard. ${link}`).then(() => true, () => false)
+    const copied = await navigator.clipboard.writeText(link).then(() => true, () => false)
     try {
       let response: Response
       if (upload) {
@@ -38,7 +39,7 @@ export default function ShareToInstagram({ tripId, title, photos, align = 'right
         response = await fetch(`/api/trip-share-image/${tripId}`, { method: 'POST', body: form })
       } else response = await fetch(`/api/trip-share-image/${tripId}?${new URLSearchParams({ format, style: look, headline, ...(photo ? { photo } : {}) })}`)
       if (!response.ok) throw new Error()
-      const name = `${title.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'postcard-trip'}-${format}.png`
+      const name = `${title.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'postcard-trip'}.png`
       const file = new File([await response.blob()], name, { type: 'image/png' })
       if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] }) && /iPhone|iPad|Android/i.test(navigator.userAgent)) {
         await navigator.share({ files: [file] }).catch(() => {})
@@ -48,7 +49,7 @@ export default function ShareToInstagram({ tripId, title, photos, align = 'right
         document.body.append(anchor); anchor.click(); anchor.remove()
         setTimeout(() => URL.revokeObjectURL(url), 10_000)
       }
-      setNote(!copied ? `Add this link: ${link}` : format === 'story' ? 'Link copied. In Instagram, add a Link sticker and paste it.' : 'Caption with the link copied. Paste it into your post.')
+      setNote(!copied ? `Add this link: ${link}` : 'Link copied. On a Story, add a Link sticker and paste it; on a post, paste it into the caption.')
     } catch { setNote('Couldn’t make the picture. Please try again.') }
     finally { setBusy('') }
   }
@@ -81,11 +82,8 @@ export default function ShareToInstagram({ tripId, title, photos, align = 'right
           </label>
         </div>
       </div>
-      <div className="flex gap-2">
-        <button type="button" disabled={!!busy} onClick={() => void share('story')} className="btn btn-primary btn-sm flex-1">{busy === 'story' ? 'Making…' : 'Story'}</button>
-        <button type="button" disabled={!!busy} onClick={() => void share('post')} className="btn btn-outline btn-sm flex-1">{busy === 'post' ? 'Making…' : 'Post'}</button>
-      </div>
-      <p role="status" className="break-words text-xs text-muted">{note || 'A Story can link back to the trip with a Link sticker; we’ll copy the link for you.'}</p>
+      <button type="button" disabled={!!busy} onClick={() => void share()} className="btn btn-primary btn-sm w-full">{busy ? 'Making your picture…' : 'Share to Instagram'}</button>
+      <p role="status" className="break-words text-xs text-muted">{note || 'Post it, or share it as a Story and add a Link sticker back to the trip; we’ll copy the link for you.'}</p>
     </div>}
   </span>
 }
