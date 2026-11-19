@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ImagePlus, ImageUp } from 'lucide-react'
 import { shareUrl } from '@/lib/publicUrl'
 import { compressPhoto } from '@/lib/photoSizing'
@@ -17,6 +17,12 @@ export default function ShareToInstagram({ tripId, title, photos, align = 'right
   const [photo, setPhoto] = useState(photos[0] ?? '')
   // A picture from the phone instead of one of the trip's (shrunk first, so it uploads quickly).
   const [upload, setUpload] = useState<{ file: File; preview: string } | null>(null)
+  // The words over the picture: the automatic one ("5 days in Paris") until they write their own.
+  const [headline, setHeadline] = useState('')
+  useEffect(() => {
+    if (!open || headline) return
+    void fetch(`/api/trip-share-image/${tripId}?info=1`).then(response => response.ok ? response.json() : null).then(info => { if (info?.headline) setHeadline(current => current || info.headline) }, () => {})
+  }, [open, headline, tripId])
   const [busy, setBusy] = useState('')
   const [note, setNote] = useState('')
   async function share(format: 'story' | 'post') {
@@ -28,9 +34,9 @@ export default function ShareToInstagram({ tripId, title, photos, align = 'right
       let response: Response
       if (upload) {
         const form = new FormData()
-        form.set('format', format); form.set('style', look); form.set('photo', upload.file)
+        form.set('format', format); form.set('style', look); form.set('headline', headline); form.set('photo', upload.file)
         response = await fetch(`/api/trip-share-image/${tripId}`, { method: 'POST', body: form })
-      } else response = await fetch(`/api/trip-share-image/${tripId}?${new URLSearchParams({ format, style: look, ...(photo ? { photo } : {}) })}`)
+      } else response = await fetch(`/api/trip-share-image/${tripId}?${new URLSearchParams({ format, style: look, headline, ...(photo ? { photo } : {}) })}`)
       if (!response.ok) throw new Error()
       const name = `${title.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'postcard-trip'}-${format}.png`
       const file = new File([await response.blob()], name, { type: 'image/png' })
@@ -50,6 +56,8 @@ export default function ShareToInstagram({ tripId, title, photos, align = 'right
     <button type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} className="chip"><ImageUp size={14} />Instagram</button>
     {open && <div className={`panel absolute ${align === 'left' ? 'left-0' : 'right-0'} top-full z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] space-y-3 p-3 shadow-pop`}>
       <p className="text-sm text-ink">Share this trip as a picture on Instagram.</p>
+      <label className="block"><span className="field-label mb-1.5 block">Headline</span>
+        <input value={headline} onChange={event => setHeadline(event.target.value)} maxLength={80} placeholder="5 days in Paris" className="field w-full" /></label>
       <div className="flex gap-2" role="group" aria-label="Look">
         <button type="button" aria-pressed={look === 'photo'} onClick={() => setLook('photo')} className="chip">Photo</button>
         <button type="button" aria-pressed={look === 'plain'} onClick={() => setLook('plain')} className="chip">Plain</button>

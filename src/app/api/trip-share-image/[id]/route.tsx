@@ -38,20 +38,39 @@ async function upright(source: ArrayBuffer, size = 1600) {
   return `data:image/jpeg;base64,${jpeg.toString('base64')}`
 }
 
-// GET: one of the trip's own pictures (?photo=, else its cover). POST: a picture from the phone (form field "photo").
+type Trip = NonNullable<Awaited<ReturnType<typeof tripSharePhotos>>>['trip']
+const lengthOf = (trip: Trip) => trip.durationDays ?? (trip.datesFlexible ? null : Math.round((trip.endDate.getTime() - trip.startDate.getTime()) / 86_400_000) + 1)
+// The headline over the card: "5 days in Paris", or the trip's name when there's no length or place. People can write
+// their own (?headline=), up to 80 characters.
+function headlineFor(trip: Trip, asked: string | null) {
+  const own = asked?.replace(/\s+/g, ' ').trim().slice(0, 80)
+  if (own) return own
+  const town = tripLocationLabel(trip.destinations)?.split(',')[0]?.trim() || null
+  const days = lengthOf(trip)
+  return days && days > 0 && town ? `${days} ${days === 1 ? 'day' : 'days'} in ${town}` : trip.title
+}
+
+// GET: one of the trip's own pictures (?photo=, else its cover); ?info=1 answers with just the headline it would use.
+// POST: a picture from the phone (form field "photo").
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const search = new URL(request.url).searchParams
-  return draw(request, (await params).id, search.get('format'), search.get('style'), { url: search.get('photo') })
+  const id = (await params).id
+  if (search.get('info') === '1') {
+    const userId = (await auth())?.user?.id
+    const found = userId ? await tripSharePhotos(id, userId) : null
+    return found ? Response.json({ headline: headlineFor(found.trip, null) }) : Response.json({ error: 'This trip is unavailable.' }, { status: 404 })
+  }
+  return draw(request, id, search.get('format'), search.get('style'), search.get('headline'), { url: search.get('photo') })
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const form = await request.formData().catch(() => null)
   const file = form?.get('photo')
   if (!(file instanceof File) || file.size > 4_000_000 || !file.type.startsWith('image/')) return Response.json({ error: 'Choose a photo under 4 MB.' }, { status: 400 })
-  return draw(request, (await params).id, String(form?.get('format') ?? ''), String(form?.get('style') ?? ''), { upload: await file.arrayBuffer() })
+  return draw(request, (await params).id, String(form?.get('format') ?? ''), String(form?.get('style') ?? ''), String(form?.get('headline') ?? ''), { upload: await file.arrayBuffer() })
 }
 
-async function draw(request: Request, id: string, formatAsked: string | null, styleAsked: string | null, chosen: { url?: string | null; upload?: ArrayBuffer }) {
+async function draw(request: Request, id: string, formatAsked: string | null, styleAsked: string | null, headlineAsked: string | null, chosen: { url?: string | null; upload?: ArrayBuffer }) {
   const userId = (await auth())?.user?.id
   if (!userId) return Response.json({ error: 'Please sign in.' }, { status: 401 })
   const format = formatAsked === 'post' ? 'post' : 'story'
@@ -74,13 +93,11 @@ async function draw(request: Request, id: string, formatAsked: string | null, st
   const authorPhoto = face ? await upright(face, 200).catch(() => null) : null
 
   const where = tripLocationLabel(trip.destinations)
-  const town = where?.split(',')[0]?.trim() || null
-  const days = trip.durationDays ?? (trip.datesFlexible ? null : Math.round((trip.endDate.getTime() - trip.startDate.getTime()) / 86_400_000) + 1)
+  const days = lengthOf(trip)
   const season = tripSeason({ startDate: trip.startDate, endDate: trip.endDate, datesFlexible: trip.datesFlexible, postType: trip.postType, bestMonths: trip.bestMonths })
   const audience = audienceLabel(trip.audience)
   const stamp = TRIP_STAMPS.find(entry => entry.value === trip.tripRating)
-  // "5 days in Paris" (or just the trip's name when there's no length or place), like a caption over the card.
-  const headline = days && days > 0 && town ? `${days} ${days === 1 ? 'day' : 'days'} in ${town}` : trip.title
+  const headline = headlineFor(trip, headlineAsked)
   const story = format === 'story'
   const onPhoto = style === 'photo'
   const words = onPhoto ? '#fff' : ink
