@@ -3,33 +3,38 @@ import sharp from 'sharp'
 import { auth } from '@/auth'
 import { audienceLabel } from '@/lib/audience'
 import { tripSeason } from '@/lib/tripSeason'
+import { tripLocationLabel } from '@/lib/tripLocation'
+import { TRIP_STAMPS, STAMP_COLORS } from '@/lib/tripStamps'
 import { tripSharePhotos } from '@/lib/tripSharePhotos'
 
 export const maxDuration = 60
 
-// A trip as an Instagram-ready picture (components/ShareToInstagram). ?format=story (9:16) or post (4:5);
-// ?style=photo (the chosen picture fills it, the trip's name over it) or plain (cream, the name, the picture framed in
-// the middle); ?photo= one of the trip's own photos (anything else falls back to its cover). The bottom is left clear for
-// Instagram's Link sticker back to the trip. Colours are the palette's (globals.css), written out because the image is
-// drawn outside the page.
-const ink = '#1f3354', brown = '#8b6f4e', muted = '#6b7285', paper = '#f7f3ec', card = '#fffdf7', line = '#d7cebc'
-const SIZES = { story: { width: 1080, height: 1920 }, post: { width: 1080, height: 1350 } }
+// A trip as an Instagram-ready picture (components/ShareToInstagram): POSTCARD and a headline ("5 days in Paris") over
+// the trip's card as the feed shows it (its photo with who it was with, the Must go! stamp, where, the title, how long,
+// who posted it). ?format=story (9:16) or post (4:5); ?style=photo (the chosen picture also fills the background) or
+// plain (cream); ?photo= one of the trip's own photos (anything else falls back to its cover), or POST a picture from
+// the phone. A Story leaves its bottom clear for Instagram's Link sticker back to the trip; a post says where to find it.
+// Colours are the palette's (globals.css), written out because the image is drawn outside the page.
+const ink = '#1f3354', link = '#3f5a80', brown = '#8b6f4e', paper = '#f7f3ec', card = '#fffdf7', cream = '#faf7f1', lineSoft = '#e3dccf', avatar = '#4d6a8c'
+const SIZES = { story: { width: 1080, height: 1920, card: 880 }, post: { width: 1080, height: 1350, card: 720 } }
 
-// Playfair for the words. The site's own copy (public/fonts) is a variable font, which the image drawing can't read,
-// so the regular weight comes from Google Fonts (asked for plainly, it answers with a .ttf), kept between requests.
-let playfairCache: Promise<ArrayBuffer> | null = null
-function playfairFont() {
-  playfairCache ??= fetch('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400').then(response => response.text())
-    .then(css => { const url = css.match(/url\((https:[^)]+\.ttf)\)/)?.[1]; if (!url) throw new Error('No Playfair font'); return fetch(url) })
+// The fonts the feed card uses: Playfair (titles) and Geist (labels). The site's own Playfair (public/fonts) is a
+// variable font, which the image drawing can't read, so both come from Google Fonts as plain .ttf files, kept between
+// requests.
+const fontCache = new Map<string, Promise<ArrayBuffer>>()
+function googleFont(family: string, weight: number) {
+  const key = `${family}:${weight}`
+  if (!fontCache.has(key)) fontCache.set(key, fetch(`https://fonts.googleapis.com/css2?family=${family.replace(/ /g, '+')}:wght@${weight}`).then(response => response.text())
+    .then(css => { const url = css.match(/url\((https:[^)]+\.ttf)\)/)?.[1]; if (!url) throw new Error(`No ${family} font`); return fetch(url) })
     .then(response => response.arrayBuffer())
-    .catch(error => { playfairCache = null; throw error })
-  return playfairCache
+    .catch(error => { fontCache.delete(key); throw error }))
+  return fontCache.get(key)!
 }
 
 // The picture, upright and not too big, as a data address the drawing can use: phone photos are often stored sideways
 // with a note saying which way is up, which the drawing ignores (a portrait photo came out on its side).
-async function upright(source: ArrayBuffer) {
-  const jpeg = await sharp(Buffer.from(source)).rotate().resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 85 }).toBuffer()
+async function upright(source: ArrayBuffer, size = 1600) {
+  const jpeg = await sharp(Buffer.from(source)).rotate().resize({ width: size, height: size, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 85 }).toBuffer()
   return `data:image/jpeg;base64,${jpeg.toString('base64')}`
 }
 
@@ -57,65 +62,92 @@ async function draw(request: Request, id: string, formatAsked: string | null, st
   const { trip, photos } = found
 
   const origin = new URL(request.url).origin
-  const absolute = (url: string | undefined) => !url ? null : url.startsWith('/') ? `${origin}${url}` : url
+  const absolute = (url: string | null | undefined) => !url ? null : url.startsWith('/') ? `${origin}${url}` : url
+  const fetchBytes = (url: string | null) => url ? fetch(url).then(response => response.ok ? response.arrayBuffer() : null).catch(() => null) : Promise.resolve(null)
   const address = absolute(chosen.url && photos.includes(chosen.url) ? chosen.url : photos[0])
-  const source = chosen.upload ?? (address ? await fetch(address).then(response => response.ok ? response.arrayBuffer() : null).catch(() => null) : null)
+  const [source, face, playfair, geist] = await Promise.all([
+    chosen.upload ? Promise.resolve(chosen.upload) : fetchBytes(address),
+    fetchBytes(absolute(trip.user.image)),
+    googleFont('Playfair Display', 400), googleFont('Geist', 500),
+  ])
   const photo = source ? await upright(source).catch(() => null) : null
-  const where = [...new Set(trip.destinations.filter(destination => destination.name !== 'Destination to decide').map(destination => destination.name))].slice(0, 2).join(' & ')
+  const authorPhoto = face ? await upright(face, 200).catch(() => null) : null
+
+  const where = tripLocationLabel(trip.destinations)
+  const town = where?.split(',')[0]?.trim() || null
   const days = trip.durationDays ?? (trip.datesFlexible ? null : Math.round((trip.endDate.getTime() - trip.startDate.getTime()) / 86_400_000) + 1)
   const season = tripSeason({ startDate: trip.startDate, endDate: trip.endDate, datesFlexible: trip.datesFlexible, postType: trip.postType, bestMonths: trip.bestMonths })
-  const details = [where, days && days > 0 ? `${days} ${days === 1 ? 'day' : 'days'}` : null, audienceLabel(trip.audience), season].filter(Boolean).join(' · ')
-  const playfair = await playfairFont()
+  const audience = audienceLabel(trip.audience)
+  const stamp = TRIP_STAMPS.find(entry => entry.value === trip.tripRating)
+  // "5 days in Paris" (or just the trip's name when there's no length or place), like a caption over the card.
+  const headline = days && days > 0 && town ? `${days} ${days === 1 ? 'day' : 'days'} in ${town}` : trip.title
   const story = format === 'story'
-  const titleSize = trip.title.length > 34 ? (story ? 76 : 64) : (story ? 96 : 80)
-  // A Story leaves an empty strip at the bottom for the Link sticker; a post (no stickers) says where to find the trip.
-  const stickerRoom = story ? 300 : 70
-  const footer = (color: string, tint: string) => <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color }}>
-    <div style={{ display: 'flex', fontSize: 30 }}>See the whole trip on Postcard</div>
-    <div style={{ display: 'flex', fontSize: 26, color: tint }}>postcardtravel.app</div>
-  </div>
+  const onPhoto = style === 'photo'
+  const words = onPhoto ? '#fff' : ink
+  const cardWidth = size.card
+  const photoHeight = Math.round((cardWidth - 44) * 0.75)
+  const initials = trip.user.name.split(/\s+/).map(part => part[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
 
-  // The wordmark as the app's header shows it: POSTCARD, with Places worth sharing under it.
-  const brand = (color: string) => <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color }}>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 22 }}>
-      <div style={{ display: 'flex', width: 60, height: 2, background: color, opacity: 0.6 }} />
-      <div style={{ display: 'flex', fontSize: 34, letterSpacing: 12 }}>POSTCARD</div>
-      <div style={{ display: 'flex', width: 60, height: 2, background: color, opacity: 0.6 }} />
+  const brand = <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: onPhoto ? '#fff' : brown }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
+      <div style={{ display: 'flex', width: 60, height: 2, background: 'currentColor', opacity: 0.6 }} />
+      <div style={{ display: 'flex', fontFamily: 'Playfair', fontSize: 34, letterSpacing: 12 }}>POSTCARD</div>
+      <div style={{ display: 'flex', width: 60, height: 2, background: 'currentColor', opacity: 0.6 }} />
     </div>
-    <div style={{ display: 'flex', marginTop: 8, fontSize: 18, letterSpacing: 7 }}>PLACES WORTH SHARING</div>
+    <div style={{ display: 'flex', marginTop: 8, fontFamily: 'Playfair', fontSize: 18, letterSpacing: 7 }}>PLACES WORTH SHARING</div>
   </div>
 
-  const photoStyle = <div style={{ width: '100%', height: '100%', display: 'flex', position: 'relative', background: ink }}>
-    {/* eslint-disable-next-line @next/next/no-img-element */}
-    {photo && <img src={photo} alt="" width={size.width} height={size.height} style={{ position: 'absolute', top: 0, left: 0, width: size.width, height: size.height, objectFit: 'cover' }} />}
-    {/* Darker at the top (and a little at the bottom), so white words read on any photo. */}
-    <div style={{ position: 'absolute', top: 0, left: 0, width: size.width, height: size.height, display: 'flex', backgroundImage: 'linear-gradient(to bottom, rgba(15,25,45,0.62) 0%, rgba(15,25,45,0.15) 38%, rgba(15,25,45,0) 60%, rgba(15,25,45,0.25) 100%)' }} />
-    <div style={{ position: 'absolute', top: 28, left: 28, right: 28, bottom: 28, display: 'flex', border: '3px solid rgba(255,255,255,0.85)' }} />
-    <div style={{ position: 'absolute', top: story ? 130 : 90, left: 80, right: 80, display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#fff' }}>
-      {brand('#fff')}
-      <div style={{ display: 'flex', marginTop: story ? 60 : 40, fontSize: titleSize, lineHeight: 1.08, textAlign: 'center', justifyContent: 'center', textShadow: '0 2px 18px rgba(0,0,0,0.35)' }}>{trip.title}</div>
-      {details && <div style={{ display: 'flex', marginTop: 22, fontSize: 32, textAlign: 'center', textShadow: '0 1px 10px rgba(0,0,0,0.4)' }}>{details}</div>}
+  // The trip's card, as the feed shows it.
+  const tripCard = <div style={{ display: 'flex', flexDirection: 'column', width: cardWidth, padding: 22, background: card, border: `2px solid ${lineSoft}`, borderRadius: 18, boxShadow: '0 20px 50px rgba(15,25,45,0.25)' }}>
+    <div style={{ display: 'flex', position: 'relative', width: cardWidth - 44, height: photoHeight, borderRadius: 14, overflow: 'hidden', background: lineSoft }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {photo && <img src={photo} alt="" width={cardWidth - 44} height={photoHeight} style={{ width: cardWidth - 44, height: photoHeight, objectFit: 'cover' }} />}
+      {audience && <div style={{ display: 'flex', position: 'absolute', top: 22, left: 22, padding: '8px 20px', borderRadius: 12, background: 'rgba(250,247,241,0.95)', color: ink, fontSize: 22, letterSpacing: 3 }}>{audience.toUpperCase()}</div>}
     </div>
-    {!story && <div style={{ position: 'absolute', bottom: 64, left: 0, right: 0, display: 'flex', justifyContent: 'center', textShadow: '0 1px 10px rgba(0,0,0,0.5)' }}>{footer('#fff', '#fff')}</div>}
-  </div>
-
-  const plainStyle = <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', background: paper, padding: `${story ? 120 : 76}px 80px ${stickerRoom}px`, color: ink, position: 'relative' }}>
-    <div style={{ position: 'absolute', top: 28, left: 28, right: 28, bottom: 28, display: 'flex', border: `3px solid ${line}` }} />
-    {brand(brown)}
-    <div style={{ display: 'flex', marginTop: story ? 70 : 40, fontSize: titleSize, lineHeight: 1.08, textAlign: 'center', justifyContent: 'center' }}>{trip.title}</div>
-    {details && <div style={{ display: 'flex', marginTop: 20, fontSize: 30, color: muted, textAlign: 'center' }}>{details}</div>}
-    {photo && <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', marginTop: story ? 60 : 36 }}>
-      <div style={{ display: 'flex', padding: 18, background: card, border: `2px solid ${line}`, boxShadow: '0 18px 40px rgba(31,51,84,0.18)' }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={photo} alt="" width={story ? 860 : 700} height={story ? 900 : 560} style={{ objectFit: 'cover' }} />
+    <div style={{ display: 'flex', flexDirection: 'column', position: 'relative', padding: '24px 6px 0' }}>
+      {stamp && <div style={{ display: 'flex', position: 'absolute', top: -44, right: 0, padding: 6, background: STAMP_COLORS[stamp.value], transform: 'rotate(-12deg)' }}>
+        <div style={{ display: 'flex', padding: '8px 18px', border: '3px dashed rgba(255,255,255,0.85)', color: '#fff', fontSize: 26, letterSpacing: 3 }}>{stamp.label.toUpperCase()}</div>
+      </div>}
+      {where && <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: link, fontSize: 22, letterSpacing: 3, paddingRight: stamp ? 200 : 0 }}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={brown} strokeWidth="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
+        {where.toUpperCase()}
+      </div>}
+      <div style={{ display: 'flex', marginTop: 10, fontFamily: 'Playfair', fontSize: story ? 46 : 40, lineHeight: 1.1, letterSpacing: 4, color: ink }}>{trip.title.toUpperCase()}</div>
+      <div style={{ display: 'flex', marginTop: 10, color: link, fontSize: 22, letterSpacing: 3 }}>{days && days > 0 ? `${days}-DAY TRIP` : 'GUIDE'}</div>
+    </div>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, paddingTop: 18, borderTop: `2px solid ${lineSoft}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {authorPhoto
+          // eslint-disable-next-line @next/next/no-img-element
+          ? <img src={authorPhoto} alt="" width={56} height={56} style={{ width: 56, height: 56, borderRadius: 28, objectFit: 'cover' }} />
+          : <div style={{ display: 'flex', width: 56, height: 56, borderRadius: 28, background: avatar, color: '#fff', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>{initials}</div>}
+        <div style={{ display: 'flex', fontFamily: 'Playfair', fontSize: 22, letterSpacing: 3, color: link }}>{trip.user.name.toUpperCase()}</div>
       </div>
-    </div>}
-    {!story && <div style={{ display: 'flex', marginTop: 28 }}>{footer(ink, brown)}</div>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        {season && <div style={{ display: 'flex', fontSize: 18, letterSpacing: 4, color: brown }}>{season.toUpperCase()}</div>}
+        {trip.budget && trip.budget > 0 && <div style={{ display: 'flex', fontSize: 22 }}>{[1, 2, 3, 4, 5].map(n => <span key={n} style={{ color: n <= trip.budget! ? ink : '#b3a78e' }}>$</span>)}</div>}
+      </div>
+    </div>
+  </div>
+
+  const page = <div style={{ width: '100%', height: '100%', display: 'flex', position: 'relative', background: onPhoto ? ink : paper, fontFamily: 'Geist' }}>
+    {/* Photo: the picture fills the background, darkened at the top so the words read. */}
+    {/* eslint-disable-next-line @next/next/no-img-element */}
+    {onPhoto && photo && <img src={photo} alt="" width={size.width} height={size.height} style={{ position: 'absolute', top: 0, left: 0, width: size.width, height: size.height, objectFit: 'cover' }} />}
+    {onPhoto && <div style={{ position: 'absolute', top: 0, left: 0, width: size.width, height: size.height, display: 'flex', backgroundImage: 'linear-gradient(to bottom, rgba(15,25,45,0.6) 0%, rgba(15,25,45,0.2) 35%, rgba(15,25,45,0.1) 70%, rgba(15,25,45,0.35) 100%)' }} />}
+    <div style={{ position: 'absolute', top: 28, left: 28, right: 28, bottom: 28, display: 'flex', border: onPhoto ? '3px solid rgba(255,255,255,0.85)' : `3px solid ${lineSoft}` }} />
+    <div style={{ position: 'absolute', top: 0, left: 0, width: size.width, height: size.height, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: story ? '110px 80px 300px' : '64px 80px 60px', color: words }}>
+      {brand}
+      <div style={{ display: 'flex', marginTop: story ? 48 : 26, fontFamily: 'Playfair', fontSize: headline.length > 30 ? (story ? 64 : 52) : (story ? 84 : 66), lineHeight: 1.08, textAlign: 'center', justifyContent: 'center', textShadow: onPhoto ? '0 2px 18px rgba(0,0,0,0.35)' : 'none' }}>{headline}</div>
+      <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: story ? 40 : 24 }}>{tripCard}</div>
+      {/* A post can't hold a tappable link, so it says where to find the trip. */}
+      {!story && <div style={{ display: 'flex', marginTop: 22, fontFamily: 'Playfair', fontSize: 28, textShadow: onPhoto ? '0 1px 10px rgba(0,0,0,0.5)' : 'none' }}>See the whole trip on postcardtravel.app</div>}
+    </div>
   </div>
 
   try {
-    return new ImageResponse(style === 'photo' ? photoStyle : plainStyle,
-      { width: size.width, height: size.height, fonts: [{ name: 'Playfair', data: playfair, weight: 400, style: 'normal' }], headers: { 'Cache-Control': 'private, max-age=300' } })
+    return new ImageResponse(page, { width: size.width, height: size.height, headers: { 'Cache-Control': 'private, max-age=300' },
+      fonts: [{ name: 'Playfair', data: playfair, weight: 400, style: 'normal' }, { name: 'Geist', data: geist, weight: 500, style: 'normal' }] })
   } catch (error) {
     console.error('[share-image] failed', error)
     return Response.json({ error: 'Could not make the picture.' }, { status: 500 })

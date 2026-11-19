@@ -8,9 +8,10 @@ import { tripPhotoGallery } from '@/lib/eventPhotos'
 export async function tripSharePhotos(tripId: string, userId: string) {
   const trip = await prisma.itinerary.findFirst({
     where: { id: tripId, OR: [{ visibility: 'public' }, canEdit(userId)] },
-    select: { title: true, audience: true, postType: true, bestMonths: true, datesFlexible: true, startDate: true, endDate: true, durationDays: true, coverPhoto: true,
+    select: { title: true, audience: true, postType: true, bestMonths: true, datesFlexible: true, startDate: true, endDate: true, durationDays: true, coverPhoto: true, tripRating: true, budget: true,
+      user: { select: { name: true, image: true } },
       photos: { select: { id: true, url: true, caption: true, isStock: true } },
-      destinations: { orderBy: { order: 'asc' }, select: { name: true, items: { orderBy: { order: 'asc' }, select: { id: true, name: true, photoUrl: true, photoUrls: true } } } } },
+      destinations: { orderBy: { order: 'asc' }, select: { name: true, country: true, items: { orderBy: { order: 'asc' }, select: { id: true, name: true, type: true, photoUrl: true, photoUrls: true } } } } },
   })
   if (!trip) return null
   const gallery = tripPhotoGallery(trip.photos, trip.destinations.flatMap(destination => destination.items), trip.coverPhoto).map(photo => photo.url)
