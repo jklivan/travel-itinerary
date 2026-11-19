@@ -80,7 +80,7 @@ export default function ShareToInstagram({ tripId, title, photos }: { tripId: st
   }
 
   return <>
-    <button type="button" onClick={() => setOpen(true)} className="chip"><InstagramLogo size={18} />Instagram</button>
+    <button type="button" onClick={() => setOpen(true)} className="btn btn-outline btn-sm"><InstagramLogo size={22} />Instagram</button>
     {open && <dialog ref={dialog} aria-labelledby={titleId} onClose={() => setOpen(false)} onClick={event => { if (event.target === dialog.current) dialog.current?.close() }}
       className="bottom-sheet m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-y-auto rounded-t-3xl bg-card p-0 text-ink shadow-pop backdrop:bg-ink/50 sm:mx-auto sm:max-w-md">
       <div className="space-y-3 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
