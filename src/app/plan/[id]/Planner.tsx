@@ -2,7 +2,7 @@
 
 import { inTimeOrder } from '@/lib/timeOrder'
 import { sortDay } from '@/lib/dayOrder'
-import { ArrowDownUp, FileDown, ImagePlus } from 'lucide-react'
+import { ArrowDownUp, FileDown, ImagePlus, Send } from 'lucide-react'
 import ItineraryPdf from '@/components/ItineraryPdf'
 import RatingStars from '@/components/RatingStars'
 import { destinationRanges, stayOn, totalDays, type DayRange } from '@/lib/tripStays'
@@ -348,15 +348,17 @@ export default function Planner({ trip, been = false, ai = null, audienceSuggest
     {trip.viewerId && trip.people?.some(person => person.status === 'joined') && <TripChat tripId={trip.id} viewerId={trip.viewerId} />}
     {/* Group trips: places someone deleted, to bring back. */}
     {!!trip.deletedCount && <DeletedPlaces tripId={trip.id} count={trip.deletedCount} />}
-    {/* Post (a circle like the ones at the top) in the middle, with the trip's other actions in a row under it.
-        Someone else on a group trip posts their own version: their stars and photos. */}
-    <div ref={endPostRef} className="mt-8 flex flex-col items-center gap-5 border-t border-line pt-5">
+    {/* The end of the trip: Post trip across the page, then one row for the PDF (with private transport and booking
+        details), a copy as a new plan (going back somewhere) and deleting it (the creator's). Someone else on a group
+        trip posts their own version: their stars and photos. */}
+    <div ref={endPostRef} className="mt-8 space-y-3 border-t border-line pt-5">
       {trip.visibility !== 'draft' ? null
-        : trip.isOwner === false ? <button type="button" disabled={publishing} onClick={() => void postMine()} aria-label="Post your version" title="Post your version: your stars and photos" className={`${action} disabled:opacity-60`}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={22} /></span>Post yours</button>
-        : <button type="button" disabled={publishing} onClick={() => { if (!places.length) { askForPlace(); return } openPostBox() }} aria-label="Post trip" title="Post trip" className={`${action} disabled:opacity-60`}><span className={`${actionIcon} border-ink bg-ink text-white`}><Plus size={22} /></span>Post</button>}
-      {/* One tidy row under it: the whole itinerary as a PDF (with private transport and booking details), a copy of
-          the trip as a new plan (going back somewhere) and deleting it, for the creator. */}
-      <div className="flex flex-wrap items-start justify-center gap-2"><ItineraryPdf tripId={trip.id} title={trip.title} />{trip.isOwner !== false && <><CopyTripButton itineraryId={trip.id} title={trip.title} isOwn small /><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" /></>}</div>
+        : trip.isOwner === false ? <button type="button" disabled={publishing} onClick={() => void postMine()} title="Post your version: your stars and photos" className="btn btn-primary w-full"><Send size={18} />Post yours</button>
+        : <button type="button" disabled={publishing} onClick={() => { if (!places.length) { askForPlace(); return } openPostBox() }} className="btn btn-primary w-full"><Send size={18} />Post trip</button>}
+      <div className={`panel grid ${trip.isOwner !== false ? 'grid-cols-3' : 'grid-cols-1'} divide-x divide-line-soft overflow-hidden`}>
+        <ItineraryPdf tripId={trip.id} title={trip.title} row />
+        {trip.isOwner !== false && <><CopyTripButton itineraryId={trip.id} title={trip.title} isOwn row /><DeleteButton id={trip.id} visibility={trip.visibility} returnTo="/plan" row /></>}
+      </div>
     </div>
     {trip.visibility === 'draft' && publishFormat && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-ink/50 px-4 py-6 [grid-template-columns:minmax(0,1fr)]" role="dialog" aria-modal="true" aria-labelledby="publish-format-heading"><div className="panel w-full max-w-md p-5 shadow-pop"><div className="flex items-start justify-between gap-4"><div><h2 id="publish-format-heading" className="type-title">A few more details</h2><p className="mt-1 text-sm text-muted">Add a few details before sharing your trip.</p></div><button type="button" onClick={() => setPublishFormat(null)} className="text-title leading-none text-muted" aria-label="Close">×</button></div><div className="mt-5 space-y-5">{allPhotos.length > 0 && <fieldset><legend className="mb-1 text-sm font-semibold text-link">Choose cover photo</legend><p className="mb-1 text-xs text-muted">The photo people see first. Scroll sideways to see them all.</p><CoverPhotoPicker photos={allPhotos} value={publishCover} onChange={url => { setPublishCover(url); setPublishFocus(null) }} />{publishCover && <div className="mt-2"><CoverFramer url={publishCover} value={publishFocus} onChange={setPublishFocus} /></div>}</fieldset>}<fieldset><legend className="mb-2 text-sm font-semibold text-link">Who was it with?</legend><div className="flex flex-wrap gap-2">{AUDIENCES.map(option => <button key={option.id} type="button" aria-pressed={publishAudience === option.id} onClick={() => setPublishAudience(option.id)} className="chip">{option.label}</button>)}</div></fieldset><TripExtras budget={publishBudget} onBudget={setPublishBudget} rating={publishRating} onRating={setPublishRating} legendClass="mb-2 text-sm font-semibold text-link" />{/* Why posting didn't go through, right above the button (it used to show behind this box). */}{publishMessage && <p role="alert" className="rounded-xl bg-cream p-3 text-sm text-danger">{publishMessage}{!places.length && <> <button type="button" onClick={() => { setPublishFormat(null); setPublishMessage(''); setTab('places'); setImporting(false); setAdding({ at: 'top' }) }} className="font-semibold text-link underline underline-offset-2">Add a place</button></>}</p>}<button type="button" disabled={publishing} onClick={() => void continueToPost(publishFormat)} className="btn btn-primary w-full">{publishing ? 'Posting…' : 'Post trip'}</button></div></div></div>}
     {trip.visibility === 'draft' && !endPostShown && !publishFormat && <div className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--app-bottom-clearance)+0.75rem)] z-30 mx-auto flex max-w-2xl justify-center px-4">

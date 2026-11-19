@@ -5,7 +5,8 @@ import { FileDown } from 'lucide-react'
 
 // The trip as a PDF, with private transport and booking details (only its owner can get it). In the iPhone app it
 // opens the share sheet (save to Files, AirDrop, email); elsewhere it downloads.
-export default function ItineraryPdf({ tripId, title }: { tripId: string; title: string }) {
+// row: one of the plain buttons in the row at the end of a trip (Export PDF · Copy trip · Delete trip).
+export default function ItineraryPdf({ tripId, title, row = false }: { tripId: string; title: string; row?: boolean }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   async function make() {
@@ -27,8 +28,8 @@ export default function ItineraryPdf({ tripId, title }: { tripId: string; title:
     } catch { setError('Couldn’t make the PDF. Please try again.') }
     finally { setBusy(false) }
   }
-  return <span className="inline-flex flex-col">
-    <button type="button" onClick={() => void make()} disabled={busy} className="btn btn-outline btn-sm"><FileDown size={16} />{busy ? 'Making PDF…' : 'Export to PDF'}</button>
+  return <span className={row ? 'flex flex-col' : 'inline-flex flex-col'}>
+    <button type="button" onClick={() => void make()} disabled={busy} className={row ? 'inline-flex min-h-11 w-full items-center justify-center gap-1.5 px-2 text-xs text-link sm:text-sm' : 'btn btn-outline btn-sm'}><FileDown size={16} />{busy ? 'Making PDF…' : row ? 'Export PDF' : 'Export to PDF'}</button>
     {error && <span role="alert" className="mt-1 text-xs text-danger">{error}</span>}
   </span>
 }
