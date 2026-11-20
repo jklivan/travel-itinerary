@@ -54,6 +54,7 @@ import TripPeople from '@/components/TripPeople'
 import DeletedPlaces from '@/components/DeletedPlaces'
 import { copyForPosting, tripFingerprint } from '@/actions/tripMembers'
 import TripChat from '@/components/TripChat'
+import { askForNotifications } from '@/components/NativeNotifications'
 
 type PlaceSource = { kind: string; person: string | null; trip: { id: string; title: string } | null }
 type Place = { addedBy?: string | null; bookingDetails?: string | null; date?: string | null; time?: string | null; endDate?: string | null; endTime?: string | null; source?: PlaceSource | null; order: number; nights?: number | null; tags: string[]; lat: number | null; lng: number | null; placeId: string | null; id: string; name: string; type: string; notes: string | null; status: string; day: number | null; rating: number | null; photos: string[]; mealType: string | null; alternative: string | null; description: string | null; link: string | null; address: string | null }
@@ -246,6 +247,7 @@ export default function Planner({ trip, been = false, ai = null, audienceSuggest
       const result = await sharePlan(trip.id, postFormat.current, { budget: publishBudget, tripRating: publishRating, tags: publishTags, bestMonths: publishMonths, audience: publishAudience })
       if (result.error) { setPostError(result.error); return }
       setUnratedPrompt(null)
+      askForNotifications('posted')
       router.push(`/?posted=${encodeURIComponent(trip.id)}`)
     } catch { setPostError('Could not post your trip. Please try again.') }
     finally { posting.current = false; setPublishing(false) }

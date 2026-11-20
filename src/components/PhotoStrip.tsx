@@ -19,17 +19,24 @@ export default function PhotoStrip({ photos, title, contain = false, fillContain
   const [revealed, setRevealed] = useState(1)
   const [failed, setFailed] = useState<Set<string>>(new Set())
 
+  // The photo an arrow tap is heading to, until the strip gets there. Quick taps step on from it rather than from the
+  // photo showing, which only changes once the slide is halfway across (taps in between used to go nowhere).
+  const heading = useRef<number | null>(null)
   const scrollTo = useCallback((index: number) => {
     const el = ref.current
     if (!el) return
+    heading.current = index
+    setRevealed(previous => Math.max(previous, index + 1))
     el.scrollTo({ left: index * el.clientWidth, behavior: 'smooth' })
   }, [])
+  const step = (by: number) => scrollTo(Math.max(0, Math.min(photos.length - 1, (heading.current ?? current) + by)))
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
     const onScroll = () => {
       const index = Math.round(el.scrollLeft / el.clientWidth)
+      if (Math.abs(el.scrollLeft - (heading.current ?? index) * el.clientWidth) < 2) heading.current = null
       setCurrent(index)
       setRevealed(previous => Math.max(previous, index + 1))
     }
@@ -46,7 +53,7 @@ export default function PhotoStrip({ photos, title, contain = false, fillContain
       <div ref={ref} tabIndex={photos.length > 1 ? 0 : undefined} aria-label="Scroll through photos" onKeyDown={event => {
         if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
           event.preventDefault()
-          scrollTo(Math.max(0, Math.min(photos.length - 1, current + (event.key === 'ArrowRight' ? 1 : -1))))
+          step(event.key === 'ArrowRight' ? 1 : -1)
         }
       }} className={`flex overflow-x-auto snap-x snap-mandatory scrollbar-hide ${heightClass}`} style={{ overscrollBehaviorX: 'contain' }}>
         {photos.map((photo, index) => (
@@ -54,7 +61,7 @@ export default function PhotoStrip({ photos, title, contain = false, fillContain
             {index > revealed ? null : failed.has(photo.id) ? <p className="flex h-full items-center justify-center p-4 text-sm text-muted">This photo could not be loaded.</p> :
               <Image src={photo.url} alt={photo.caption ?? title} fill sizes="(max-width: 768px) 100vw, 900px" className={contain || gallery ? 'object-contain' : 'object-cover'} style={index === 0 && !contain && !gallery ? coverStyle(coverFocus) : undefined} loading={index === 0 ? 'eager' : 'lazy'} onError={() => setFailed(previous => new Set([...previous, photo.id]))} />}
             {href && <Link href={href} aria-label={`Open ${title}`} className="absolute inset-0 focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white" draggable={false}
-              onPointerDown={event => { pointerStart.current = { x: event.clientX, y: event.clientY }; dragged.current = false }}
+              onPointerDown={event => { pointerStart.current = { x: event.clientX, y: event.clientY }; dragged.current = false; heading.current = null }}
               onPointerMove={event => {
                 const start = pointerStart.current
                 if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) dragged.current = true
@@ -75,7 +82,7 @@ export default function PhotoStrip({ photos, title, contain = false, fillContain
       {current > 0 && (
         <button
           type="button"
-          onClick={() => scrollTo(current - 1)}
+          onClick={() => step(-1)}
           className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full min-h-11 min-w-11 flex items-center justify-center p-1.5 transition-colors"
           aria-label="Previous photo"
         >
@@ -87,7 +94,7 @@ export default function PhotoStrip({ photos, title, contain = false, fillContain
       {current < photos.length - 1 && (
         <button
           type="button"
-          onClick={() => scrollTo(current + 1)}
+          onClick={() => step(1)}
           className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full min-h-11 min-w-11 flex items-center justify-center p-1.5 transition-colors"
           aria-label="Next photo"
         >

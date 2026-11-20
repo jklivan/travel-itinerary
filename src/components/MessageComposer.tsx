@@ -7,6 +7,7 @@ import { Plus } from 'lucide-react'
 import ItineraryAttachmentPicker from './ItineraryAttachmentPicker'
 import { sendDirectMessage } from '@/actions/messages'
 import { messageThreadHref } from '@/lib/messageThread'
+import { askForNotifications } from '@/components/NativeNotifications'
 
 export type MessageReplyTarget = { id: string; content: string; author: string; itineraryTitle?: string | null; placeName?: string | null }
 export type ComposerAttachment = { id: string; name: string; trip?: string; kind: 'place' | 'trip' }
@@ -34,6 +35,7 @@ export default function MessageComposer({ recipientId, itineraryId, attachment, 
         const result = await sendDirectMessage({ recipientId, content, clientId: clientId.current!, replyToId: replyTo?.id, placeId: selected?.kind === 'place' ? selected.id : undefined, itineraryId: selected?.kind === 'trip' ? selected.id : selected?.kind === 'place' ? undefined : itineraryId })
         if (result.error) { setError(result.error); return }
         setContent(''); setSelected(undefined); setShowPicker(false); clientId.current = null
+        askForNotifications('messaged')
         onClearReply?.()
         router.replace(messageThreadHref(recipientId, result.itineraryId ?? itineraryId), { scroll: false })
         router.refresh()

@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createFriendQuestion, myQuestionTrips, replyToFriendQuestion } from '@/actions/questions'
 import MessageAttachment from './MessageAttachment'
+import { askForNotifications } from '@/components/NativeNotifications'
 
 type Trip = Awaited<ReturnType<typeof myQuestionTrips>>[number]
 
@@ -34,6 +35,7 @@ export default function QuestionComposer({ questionId }: { questionId?: string }
         const result = questionId ? await replyToFriendQuestion(questionId, input) : await createFriendQuestion(input)
         if (result.error) { setError(result.error); return }
         setContent(''); setTrip(undefined); setShowPicker(false); clientId.current = null
+        askForNotifications('asked')
         router.push(`/explore/questions/${questionId || result.id}`, { scroll: !questionId })
         router.refresh()
       } catch { setError('Could not post. Your text is still here—please try again.') }

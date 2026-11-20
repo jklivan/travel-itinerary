@@ -115,34 +115,55 @@ export default function NativeNotifications({ children }: { children: React.Reac
   return <PushContext.Provider value={{ native, available, ready, enabled, busy, message, canAsk, toggle }}>{children}<NotificationPrompt /></PushContext.Provider>
 }
 
-// After signing up (or any time iOS hasn't asked yet), in the iPhone app: a short card asking to turn notifications on.
-// Turn on shows Apple's prompt; Not now waits a few days, because Apple's prompt can only be shown once.
+// In the iPhone app, while iOS hasn't asked yet: a short card asking to turn notifications on, at a moment that gives a
+// reason (they've just posted a trip, followed someone, sent a message or asked their friends), saying what they'd hear
+// about. Asked as the app opened, 16 of 19 people said Not now. Someone who never has one of those moments is asked as
+// the app opens once they've used it on a third day. Turn on shows Apple's prompt; Not now waits a few days, because
+// Apple's prompt can only be shown once.
 const SNOOZE_MS = 3 * 24 * 60 * 60 * 1000
+const MOMENTS = {
+  posted: 'Hear when friends like, save or comment on your trip.',
+  followed: 'Hear when they post a trip, and when people follow you.',
+  messaged: 'Hear when they reply.',
+  asked: 'Hear when friends answer.',
+}
+export type NotificationMoment = keyof typeof MOMENTS
+const GENERAL = 'Hear when friends post a trip, message you or reply to you.'
+export function askForNotifications(moment: NotificationMoment) {
+  window.dispatchEvent(new CustomEvent('postcard:ask-notifications', { detail: moment }))
+}
 function NotificationPrompt() {
   const push = useContext(PushContext)
   const { data: session } = useSession()
   const pathname = usePathname()
   const userId = session?.user?.id
-  const [show, setShow] = useState(false)
+  const [reason, setReason] = useState('')
   const wanted = !!push && push.available && push.ready && push.canAsk && !push.enabled && !!userId && !['/login', '/register'].includes(pathname)
   useEffect(() => {
     if (!wanted) return
-    const snoozed = Number(localStorage.getItem(`push-prompt-snoozed:${userId}`) ?? 0)
-    if (Date.now() - snoozed < SNOOZE_MS) return
+    const snoozed = () => Date.now() - Number(localStorage.getItem(`push-prompt-snoozed:${userId}`) ?? 0) < SNOOZE_MS
+    // The days they've opened the app (the last few), for asking anyone who never has one of the moments.
+    const today = new Date().toISOString().slice(0, 10)
+    let days: string[] = []
+    try { days = JSON.parse(localStorage.getItem(`push-prompt-days:${userId}`) ?? '[]') } catch {}
+    if (!days.includes(today)) { days = [...days, today].slice(-5); localStorage.setItem(`push-prompt-days:${userId}`, JSON.stringify(days)) }
     // A moment after the page settles, so it doesn't land on top of the welcome.
-    const timer = setTimeout(() => setShow(true), 2500)
-    return () => clearTimeout(timer)
+    const timer = days.length >= 3 && !snoozed() ? setTimeout(() => setReason(GENERAL), 2500) : undefined
+    // After the moment's own screen has loaded (posting a trip goes to the feed).
+    const onMoment = (event: Event) => { if (!snoozed()) setTimeout(() => setReason(MOMENTS[(event as CustomEvent<NotificationMoment>).detail] ?? GENERAL), 1200) }
+    window.addEventListener('postcard:ask-notifications', onMoment)
+    return () => { clearTimeout(timer); window.removeEventListener('postcard:ask-notifications', onMoment) }
   }, [wanted, userId])
-  if (!show || !wanted || !push) return null
-  const dismiss = () => { localStorage.setItem(`push-prompt-snoozed:${userId}`, String(Date.now())); setShow(false) }
+  if (!reason || !wanted || !push) return null
+  const dismiss = () => { localStorage.setItem(`push-prompt-snoozed:${userId}`, String(Date.now())); setReason('') }
   return <div role="dialog" aria-modal="false" aria-labelledby="push-prompt-title" className="fixed inset-x-3 bottom-[calc(var(--app-bottom-clearance)+0.5rem)] z-[80] mx-auto max-w-md">
     <div className="panel flex gap-3 p-4 shadow-pop">
       <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-link/10 text-link"><Bell size={18} /></span>
       <div className="min-w-0 flex-1">
         <h2 id="push-prompt-title" className="type-body text-sm font-semibold">Turn on notifications?</h2>
-        <p className="mt-0.5 text-sm text-muted">Hear when friends post a trip, message you or reply to you.</p>
+        <p className="mt-0.5 text-sm text-muted">{reason}</p>
         <div className="mt-3 flex gap-2">
-          <button type="button" disabled={push.busy} onClick={async () => { setShow(false); await push.toggle() }} className="btn btn-primary btn-sm">Turn on</button>
+          <button type="button" disabled={push.busy} onClick={async () => { setReason(''); await push.toggle() }} className="btn btn-primary btn-sm">Turn on</button>
           <button type="button" onClick={dismiss} className="btn btn-outline btn-sm">Not now</button>
         </div>
       </div>

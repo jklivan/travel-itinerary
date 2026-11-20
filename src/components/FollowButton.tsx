@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { cancelFollowRequest, sendFollowRequest, unfollowUser } from '@/actions/friends'
+import { askForNotifications } from '@/components/NativeNotifications'
 
 type Status = 'accepted' | 'pending' | null
 
@@ -23,7 +24,7 @@ export default function FollowButton({ userId, name, initialStatus, followsYou =
     try {
       if (before === 'accepted') await unfollowUser(userId)
       else if (before === 'pending') await cancelFollowRequest(userId)
-      else await sendFollowRequest(userId)
+      else { await sendFollowRequest(userId); askForNotifications('followed') }
       if (refresh) router.refresh()
     } catch { setStatus(before); onChange?.(!!before) } finally { setSaving(false) }
   }

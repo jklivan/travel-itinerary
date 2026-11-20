@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { sharePlan } from '@/actions/planning'
+import { askForNotifications } from '@/components/NativeNotifications'
 
 type Format = 'guide' | 'day-trip' | 'itinerary'
 
@@ -21,7 +22,7 @@ export default function PublishPreviewBar({ id, postType, budget, tripRating, ta
     try {
       const result = await sharePlan(id, format, { budget: budget ?? 0, tripRating: tripRating ?? 0, tags: tags.filter(tag => tag !== 'day-trip') })
       if (result.error) setError(result.error)
-      else router.push(`/?posted=${encodeURIComponent(id)}`)
+      else { askForNotifications('posted'); router.push(`/?posted=${encodeURIComponent(id)}`) }
     } catch { setError('Could not post your trip. Please try again.') }
     finally { setPosting(false) }
   }
