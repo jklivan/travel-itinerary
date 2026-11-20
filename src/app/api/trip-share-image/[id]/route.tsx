@@ -157,11 +157,9 @@ async function draw(request: Request, id: string, formatAsked: string | null, st
       {brand}
       <div style={{ display: 'flex', marginTop: story ? 48 : 26, fontFamily: 'Playfair', fontSize: headline.length > 30 ? (story ? 64 : 52) : (story ? 84 : 66), lineHeight: 1.08, textAlign: 'center', justifyContent: 'center', textShadow: onPhoto ? '0 2px 18px rgba(0,0,0,0.35)' : 'none' }}>{headline}</div>
       <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: story ? 40 : 24 }}>{tripCard}</div>
-      {/* A post can't hold a tappable link, so it says where to find the trip, as a pill like Instagram's Link sticker. */}
-      {!story && <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 26, padding: '16px 34px', borderRadius: 999, background: '#fff', color: ink, fontSize: 32, boxShadow: '0 8px 24px rgba(15,25,45,0.18)', border: onPhoto ? 'none' : `2px solid ${lineSoft}` }}>
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={link} strokeWidth="2.2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" /></svg>
-        See the whole trip on postcardtravel.app
-      </div>}
+      {/* Where to find the trip, as plain words: anything drawn into the picture can't be tapped, so it mustn't look like
+          a link (a pill with a link icon did, and confused people). The real link is the Link sticker they add. */}
+      {!story && <div style={{ display: 'flex', marginTop: 26, fontFamily: 'Playfair', fontSize: 32, textShadow: onPhoto ? '0 1px 10px rgba(0,0,0,0.5)' : 'none' }}>See the whole trip on postcardtravel.app</div>}
     </div>
   </div>
 
