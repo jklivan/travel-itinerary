@@ -4,13 +4,18 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import { Bell } from 'lucide-react'
-import { Capacitor, type PluginListenerHandle } from '@capacitor/core'
+import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor/core'
 import { PushNotifications } from '@capacitor/push-notifications'
 import { notificationStatus, registerPushDevice, unregisterPushDevice, openNotification, sendTestPush } from '@/actions/notifications'
 
 // canAsk: iOS hasn't asked this iPhone about notifications yet (its one-time prompt is still unused).
-type PushState = { native: boolean; available: boolean; ready: boolean; enabled: boolean; busy: boolean; message: string; canAsk: boolean; toggle: () => Promise<void> }
+type PushState = { native: boolean; available: boolean; ready: boolean; enabled: boolean; quiet: boolean; busy: boolean; message: string; canAsk: boolean; toggle: () => Promise<void> }
 const PushContext = createContext<PushState | null>(null)
+
+// The iPhone app's own notifications plugin (ios/App/App/PostcardPhotos.swift), in app builds from 1.0.6 (build 341): quiet
+// notifications, and telling quiet from full alerts.
+type NotifyStatus = 'notDetermined' | 'quiet' | 'on' | 'denied'
+const PostcardNotifications = registerPlugin<{ status(): Promise<{ status: NotifyStatus }>; allowQuiet(): Promise<{ status: NotifyStatus }> }>('PostcardNotifications')
 
 export default function NativeNotifications({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession()
@@ -22,6 +27,8 @@ export default function NativeNotifications({ children }: { children: React.Reac
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [canAsk, setCanAsk] = useState(false)
+  // Notifications arrive, but only quietly in Notification Center: still worth asking to turn on full alerts.
+  const [quiet, setQuiet] = useState(false)
   const registrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -70,9 +77,19 @@ export default function NativeNotifications({ children }: { children: React.Reac
       const status = await notificationStatus()
       if (!active) return
       setReady(status.pushReady)
+      // Quiet notifications from the start, with no prompt, for anyone iOS has never asked (and who hasn't turned
+      // them off here). Full alerts are still asked for at a good moment (NotificationPrompt).
+      const turnedOff = localStorage.getItem(`push-disabled:${userId}`) === 'true'
+      if (Capacitor.isPluginAvailable('PostcardNotifications')) {
+        let { status: notify } = await PostcardNotifications.status()
+        if (notify === 'notDetermined' && status.pushReady && !turnedOff) notify = (await PostcardNotifications.allowQuiet()).status
+        if (!active) return
+        setQuiet(notify === 'quiet')
+        setCanAsk(notify === 'notDetermined' || notify === 'quiet')
+      }
       const permission = await PushNotifications.checkPermissions()
-      if (active) setCanAsk(permission.receive === 'prompt' || permission.receive === 'prompt-with-rationale')
-      if (active && status.pushReady && permission.receive === 'granted' && localStorage.getItem(`push-disabled:${userId}`) !== 'true') await PushNotifications.register()
+      if (active && !Capacitor.isPluginAvailable('PostcardNotifications')) setCanAsk(permission.receive === 'prompt' || permission.receive === 'prompt-with-rationale')
+      if (active && status.pushReady && permission.receive === 'granted' && !turnedOff) await PushNotifications.register()
     }
     void setup().catch(() => { if (active) setMessage('Could not check iPhone notifications. Please try again.') })
     return () => {
@@ -87,6 +104,15 @@ export default function NativeNotifications({ children }: { children: React.Reac
     setBusy(true)
     setMessage('')
     try {
+      // Quiet: ask for full alerts (Apple's prompt still shows). The device is already registered.
+      if (enabled && quiet) {
+        await PushNotifications.requestPermissions()
+        const { status: notify } = await PostcardNotifications.status()
+        setQuiet(notify === 'quiet'); setCanAsk(false)
+        setMessage(notify === 'on' ? 'Notifications are on for this iPhone.' : notify === 'denied' ? 'To allow alerts, turn on notifications for Postcard in iPhone Settings.' : '')
+        setBusy(false)
+        return
+      }
       if (enabled) {
         await unregisterPushDevice()
         localStorage.setItem(`push-disabled:${userId}`, 'true')
@@ -97,7 +123,7 @@ export default function NativeNotifications({ children }: { children: React.Reac
         return
       }
       const permission = await PushNotifications.requestPermissions()
-      setCanAsk(false)
+      setCanAsk(false); setQuiet(false)
       if (permission.receive !== 'granted') {
         setMessage('To allow alerts, turn on notifications for Postcard in iPhone Settings.')
         setBusy(false)
@@ -112,7 +138,7 @@ export default function NativeNotifications({ children }: { children: React.Reac
     }
   }
 
-  return <PushContext.Provider value={{ native, available, ready, enabled, busy, message, canAsk, toggle }}>{children}<NotificationPrompt /></PushContext.Provider>
+  return <PushContext.Provider value={{ native, available, ready, enabled, quiet, busy, message, canAsk, toggle }}>{children}<NotificationPrompt /></PushContext.Provider>
 }
 
 // In the iPhone app, while iOS hasn't asked yet: a short card asking to turn notifications on, at a moment that gives a
@@ -138,7 +164,7 @@ function NotificationPrompt() {
   const pathname = usePathname()
   const userId = session?.user?.id
   const [reason, setReason] = useState('')
-  const wanted = !!push && push.available && push.ready && push.canAsk && !push.enabled && !!userId && !['/login', '/register'].includes(pathname)
+  const wanted = !!push && push.available && push.ready && push.canAsk && (!push.enabled || push.quiet) && !!userId && !['/login', '/register'].includes(pathname)
   useEffect(() => {
     if (!wanted) return
     const snoozed = () => Date.now() - Number(localStorage.getItem(`push-prompt-snoozed:${userId}`) ?? 0) < SNOOZE_MS
@@ -181,7 +207,8 @@ export function NotificationPreferences() {
       !push.available ? <p className="mt-2 text-sm text-muted">Update the iPhone app to enable notifications.</p> :
         !push.ready ? <p className="mt-2 text-sm text-muted">Push notifications are not available yet. You can still check your activity here.</p> :
           <div className="mt-3 flex flex-wrap gap-2">
-            <button onClick={push.toggle} disabled={push.busy} className="btn btn-primary btn-sm">{push.busy ? 'Updating…' : push.enabled ? 'Turn off on this iPhone' : 'Enable notifications'}</button>
+            {push.enabled && push.quiet && <p className="w-full text-sm text-muted">On quietly: they arrive in Notification Center, with no banner or sound. Turn on alerts to see them as they come in.</p>}
+            <button onClick={push.toggle} disabled={push.busy} className="btn btn-primary btn-sm">{push.busy ? 'Updating…' : push.enabled && push.quiet ? 'Turn on alerts' : push.enabled ? 'Turn off on this iPhone' : 'Enable notifications'}</button>
             {push.enabled && <TestPushButton />}
           </div>}
     {push.message && <p role="status" className="mt-2 text-sm text-muted">{push.message}</p>}

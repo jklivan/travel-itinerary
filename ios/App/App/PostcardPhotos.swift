@@ -2,6 +2,7 @@ import Foundation
 import Capacitor
 import Photos
 import UIKit
+import UserNotifications
 
 // Photos from a trip's dates, for adding to its places without hunting through albums. The web app calls these
 // (as PostcardPhotos) when it runs in the iPhone app; the system photo picker can't be opened at an album or date.
@@ -117,9 +118,50 @@ public class PostcardPhotosPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 }
 
+// Quiet notifications (Apple's provisional authorization): turned on without asking, they arrive only in
+// Notification Center (no banner, sound or lock screen), each with Apple's Keep / Turn Off. The web app calls these
+// (as PostcardNotifications) because the push plugin reports quiet and full alike as "granted", and asking for full
+// alerts later (the push plugin's requestPermissions) still shows Apple's prompt.
+@objc(PostcardNotificationsPlugin)
+public class PostcardNotificationsPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "PostcardNotificationsPlugin"
+    public let jsName = "PostcardNotifications"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "status", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "allowQuiet", returnType: CAPPluginReturnPromise),
+    ]
+
+    private func name(_ status: UNAuthorizationStatus) -> String {
+        switch status {
+        case .notDetermined: return "notDetermined"
+        case .denied: return "denied"
+        case .provisional: return "quiet"
+        case .authorized, .ephemeral: return "on"
+        @unknown default: return "notDetermined"
+        }
+    }
+
+    // "notDetermined" (never asked), "quiet", "on" or "denied".
+    @objc func status(_ call: CAPPluginCall) {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            call.resolve(["status": self.name(settings.authorizationStatus)])
+        }
+    }
+
+    // Turns quiet notifications on, with no prompt. Only does anything while iOS has never asked.
+    @objc func allowQuiet(_ call: CAPPluginCall) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge, .provisional]) { _, _ in
+            UNUserNotificationCenter.current().getNotificationSettings { settings in
+                call.resolve(["status": self.name(settings.authorizationStatus)])
+            }
+        }
+    }
+}
+
 // The app's web view, with Postcard's own plugins registered.
 class PostcardBridgeViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(PostcardPhotosPlugin())
+        bridge?.registerPluginInstance(PostcardNotificationsPlugin())
     }
 }
