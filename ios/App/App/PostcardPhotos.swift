@@ -158,10 +158,54 @@ public class PostcardNotificationsPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 }
 
+// A trip's Instagram picture straight onto a new Story (Meta's Sharing to Stories), instead of the share sheet. The
+// picture goes in as a sticker on a background in Postcard's colours, leaving room for the Link sticker, which only the
+// person can add; the trip's link goes on the clipboard with it, ready to paste into that sticker. The web app calls this
+// (as PostcardInstagram) in the iPhone app. Needs Instagram installed (Info.plist: LSApplicationQueriesSchemes).
+@objc(PostcardInstagramPlugin)
+public class PostcardInstagramPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "PostcardInstagramPlugin"
+    public let jsName = "PostcardInstagram"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "shareToStory", returnType: CAPPluginReturnPromise),
+    ]
+    // Postcard's Meta app (made by Jen); Instagram shows where the Story came from with it. Not a secret.
+    private let metaAppId = "914279408341055"
+
+    // { image: base64 PNG, link, plain } → { opened }: false when Instagram isn't installed (the web app then uses the
+    // share sheet).
+    @objc func shareToStory(_ call: CAPPluginCall) {
+        guard let base64 = call.getString("image"), let image = Data(base64Encoded: base64),
+              let url = URL(string: "instagram-stories://share?source_application=\(metaAppId)") else {
+            call.reject("No picture")
+            return
+        }
+        // Plain: paper to chip; Photo: ink to ink-soft (the palette in globals.css, as the picture itself uses).
+        let plain = call.getBool("plain") ?? false
+        let top = plain ? "#f7f3ec" : "#1f3354"
+        let bottom = plain ? "#ede7dd" : "#2b4368"
+        DispatchQueue.main.async {
+            guard UIApplication.shared.canOpenURL(url) else {
+                call.resolve(["opened": false])
+                return
+            }
+            var item: [String: Any] = [
+                "com.instagram.sharedSticker.stickerImage": image,
+                "com.instagram.sharedSticker.backgroundTopColor": top,
+                "com.instagram.sharedSticker.backgroundBottomColor": bottom,
+            ]
+            if let link = call.getString("link") { item["public.utf8-plain-text"] = link }
+            UIPasteboard.general.setItems([item], options: [.expirationDate: Date().addingTimeInterval(10 * 60)])
+            UIApplication.shared.open(url) { opened in call.resolve(["opened": opened]) }
+        }
+    }
+}
+
 // The app's web view, with Postcard's own plugins registered.
 class PostcardBridgeViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(PostcardPhotosPlugin())
         bridge?.registerPluginInstance(PostcardNotificationsPlugin())
+        bridge?.registerPluginInstance(PostcardInstagramPlugin())
     }
 }

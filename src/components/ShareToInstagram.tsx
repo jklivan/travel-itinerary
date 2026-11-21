@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react'
 import { ImagePlus, X } from 'lucide-react'
+import { Capacitor, registerPlugin } from '@capacitor/core'
 import { shareUrl } from '@/lib/publicUrl'
 import { compressPhoto } from '@/lib/photoSizing'
 
@@ -11,6 +12,16 @@ import { compressPhoto } from '@/lib/photoSizing'
 // Message), so it doesn't ask Story or Post twice: as a Story it sits mid-screen with room for a Link sticker. The
 // phone's share sheet opens with the previewed picture, and the trip's link is copied to paste into the Link sticker or
 // the caption (posts can't hold a tappable link). Without a share sheet (a computer) it downloads instead.
+// In the iPhone app (builds from 1.0.6): straight onto a new Instagram Story, the picture as a sticker with room for the
+// Link sticker and the link on the clipboard (ios/App/App/PostcardPhotos.swift). Opened is false without Instagram.
+const PostcardInstagram = registerPlugin<{ shareToStory(options: { image: string; link: string; plain: boolean }): Promise<{ opened: boolean }> }>('PostcardInstagram')
+const blobToBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '')
+  reader.onerror = () => reject(reader.error)
+  reader.readAsDataURL(blob)
+})
+
 // Instagram's own logo (the icon set has no brand logos), so the button is recognisable at a glance.
 function InstagramLogo({ size }: { size: number }) {
   const id = useId()
@@ -61,6 +72,16 @@ export default function ShareToInstagram({ tripId, title, photos }: { tripId: st
   }, [open, look, photo, upload, settledHeadline, tripId, key])
   useEffect(() => { if (open) dialog.current?.showModal() }, [open])
   const [note, setNote] = useState('')
+
+  const direct = typeof window !== 'undefined' && Capacitor.isPluginAvailable('PostcardInstagram')
+  async function shareToStory() {
+    if (!preview) return
+    setNote('')
+    const link = shareUrl(`/itinerary/${tripId}`)
+    const result = await PostcardInstagram.shareToStory({ image: await blobToBase64(preview.blob), link, plain: look === 'plain' }).catch(() => ({ opened: false }))
+    if (result.opened) setNote('Link copied. Add a Link sticker in Instagram and paste it.')
+    else await share()
+  }
 
   async function share() {
     if (!preview) return
@@ -121,7 +142,10 @@ export default function ShareToInstagram({ tripId, title, photos }: { tripId: st
             </label>
           </div>
         </div>
-        <button type="button" disabled={!preview || loading} onClick={() => void share()} className="btn btn-primary w-full">{!preview || loading ? 'Making your picture…' : 'Share to Instagram'}</button>
+        {direct ? <div className="space-y-2">
+          <button type="button" disabled={!preview || loading} onClick={() => void shareToStory()} className="btn btn-primary w-full">{!preview || loading ? 'Making your picture…' : 'Add to your Story'}</button>
+          <button type="button" disabled={!preview || loading} onClick={() => void share()} className="btn btn-outline w-full">Post it or send it</button>
+        </div> : <button type="button" disabled={!preview || loading} onClick={() => void share()} className="btn btn-primary w-full">{!preview || loading ? 'Making your picture…' : 'Share to Instagram'}</button>}
         <p role="status" className="break-words text-xs text-muted">{note || 'Post it, or share it as a Story and add a Link sticker back to the trip; we’ll copy the link for you.'}</p>
       </div>
     </dialog>}
