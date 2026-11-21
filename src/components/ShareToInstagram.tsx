@@ -12,7 +12,7 @@ import { compressPhoto } from '@/lib/photoSizing'
 // Message), so it doesn't ask Story or Post twice: as a Story it sits mid-screen with room for a Link sticker. The
 // phone's share sheet opens with the previewed picture, and the trip's link is copied to paste into the Link sticker or
 // the caption (posts can't hold a tappable link). Without a share sheet (a computer) it downloads instead.
-// In the iPhone app (builds from 1.0.6): straight onto a new Instagram Story, the picture as a sticker with room for the
+// In the iPhone app (builds from 1.0.7): straight onto a new Instagram Story, the picture as a sticker with room for the
 // Link sticker and the link on the clipboard (ios/App/App/PostcardPhotos.swift). Opened is false without Instagram.
 const PostcardInstagram = registerPlugin<{ shareToStory(options: { image: string; link: string; plain: boolean }): Promise<{ opened: boolean }> }>('PostcardInstagram')
 const blobToBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {

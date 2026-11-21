@@ -12,7 +12,7 @@ import { notificationStatus, registerPushDevice, unregisterPushDevice, openNotif
 type PushState = { native: boolean; available: boolean; ready: boolean; enabled: boolean; quiet: boolean; busy: boolean; message: string; canAsk: boolean; toggle: () => Promise<void> }
 const PushContext = createContext<PushState | null>(null)
 
-// The iPhone app's own notifications plugin (ios/App/App/PostcardPhotos.swift), in app builds from 1.0.6 (build 341): quiet
+// The iPhone app's own notifications plugin (ios/App/App/PostcardPhotos.swift), in app builds from 1.0.7: quiet
 // notifications, and telling quiet from full alerts.
 type NotifyStatus = 'notDetermined' | 'quiet' | 'on' | 'denied'
 const PostcardNotifications = registerPlugin<{ status(): Promise<{ status: NotifyStatus }>; allowQuiet(): Promise<{ status: NotifyStatus }> }>('PostcardNotifications')
