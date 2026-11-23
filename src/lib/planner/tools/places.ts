@@ -20,17 +20,23 @@ export const friendsPlaces: PlannerTool = {
   async run(input, { userId }) {
     const destination = text(input.destination, 120)
     if (!destination) return fail('Name a destination.')
-    const type = TYPES.includes(String(input.type)) ? String(input.type) : undefined
-    const minRating = int(input.min_rating, 1, 5)
-    const where = { contains: destination, mode: 'insensitive' as const }
-    const trips = await prisma.itinerary.findMany({ where: { visibility: 'public', userId: { notIn: [userId, ...hiddenAccountsFor(userId)] }, user: { followers: { some: { followerId: userId, status: 'accepted' } } },
-      destinations: { some: { OR: [{ name: where }, { country: where }] } } }, take: 40, orderBy: { createdAt: 'desc' },
-      select: { id: true, title: true, user: { select: { name: true } }, destinations: { where: { OR: [{ name: where }, { country: where }] }, select: { name: true, country: true, items: { select: { name: true, type: true, rating: true, notes: true, tags: true, placeId: true } } } } } })
-    const places = trips.flatMap(trip => trip.destinations.flatMap(stop => withoutPrivateTransport(stop.items)
-      .filter(item => (!type || item.type === type) && (!minRating || (item.rating ?? 0) >= minRating) && !item.tags.includes('__option'))
-      .map(item => ({ name: item.name, type: item.type, rating: item.rating, notes: item.notes?.slice(0, 300) || undefined, where: [stop.name, stop.country].filter(Boolean).join(', '), friend: trip.user.name, trip: trip.title, place_id: item.placeId ?? undefined }))))
-    return ok(places.length ? { count: places.length, places: places.slice(0, 60) } : `None of the traveler’s friends have posted places for ${destination} yet.`)
+    const places = await postedPlaces(userId, destination, { friends: true, type: String(input.type ?? ''), minRating: int(input.min_rating, 1, 5) })
+    return ok(places.length ? { count: places.length, places: places.slice(0, 60).map(place => ({ ...place, trip_id: undefined })) } : `None of the traveler’s friends have posted places for ${destination} yet.`)
   },
+}
+
+// Places in posted trips for a destination: from people `userId` follows (friends), or from anyone else on Postcard
+// (friends: false; their trips are public in Explore anyway). Shared with the assistant connector (lib/mcpTools).
+export async function postedPlaces(userId: string, destination: string, { friends, type, minRating }: { friends: boolean; type?: string; minRating?: number | null }) {
+  const only = TYPES.includes(type ?? '') ? type : undefined
+  const where = { contains: destination, mode: 'insensitive' as const }
+  const following = { followers: { some: { followerId: userId, status: 'accepted' } } }
+  const trips = await prisma.itinerary.findMany({ where: { visibility: 'public', userId: { notIn: [userId, ...hiddenAccountsFor(userId)] }, user: friends ? following : { NOT: following },
+    destinations: { some: { OR: [{ name: where }, { country: where }] } } }, take: 40, orderBy: { createdAt: 'desc' },
+    select: { id: true, title: true, user: { select: { name: true } }, destinations: { where: { OR: [{ name: where }, { country: where }] }, select: { name: true, country: true, items: { select: { name: true, type: true, rating: true, notes: true, tags: true, placeId: true } } } } } })
+  return trips.flatMap(trip => trip.destinations.flatMap(stop => withoutPrivateTransport(stop.items)
+    .filter(item => (!only || item.type === only) && (!minRating || (item.rating ?? 0) >= minRating) && !item.tags.includes('__option'))
+    .map(item => ({ name: item.name, type: item.type, rating: item.rating, notes: item.notes?.slice(0, 300) || undefined, where: [stop.name, stop.country].filter(Boolean).join(', '), friend: trip.user.name, trip: trip.title, trip_id: trip.id, place_id: item.placeId ?? undefined }))))
 }
 
 export const searchPlacesTool: PlannerTool = {

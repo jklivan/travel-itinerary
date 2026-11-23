@@ -1,3 +1,4 @@
+import { ASSISTANT_HABIT } from '@/lib/assistantHabit'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SUPPORT_EMAIL } from '@/lib/support'
@@ -9,6 +10,7 @@ const CONNECTOR_URL = 'https://www.postcardtravel.app/api/mcp'
 // The public documentation for the Postcard connector (an MCP server at /api/mcp), linked from directory listings
 // (Claude, Muse) and from Settings → Connect an AI assistant. Open to everyone, signed in or not.
 const tools: { name: string; title: string; text: string }[] = [
+  { name: 'friends_picks', title: 'What my friends loved there', text: 'The hotels, restaurants and things to do your friends (people you follow) went to in a destination, with their ratings, notes and links to their posted trips. If no friends have been, picks from other travelers’ posted trips instead. Read-only.' },
   { name: 'list_trips', title: 'List my trips', text: 'Your trips, newest first: private plans you’re working on and trips you’ve posted, with dates, destinations and how many places each has. Read-only.' },
   { name: 'get_trip', title: 'Read a trip', text: 'Every place in one of your trips (hotels, restaurants, things to do, transport), by destination, with its day, date and time, your notes and rating. Read-only.' },
   { name: 'import_trip', title: 'Import a trip', text: 'Creates a new private plan from a written trip summary in any format (notes, an itinerary, booking confirmations). Postcard finds each place and files it under its town.' },
@@ -16,6 +18,7 @@ const tools: { name: string; title: string; text: string }[] = [
 ]
 
 const prompts = [
+  'I’m thinking about Lisbon in May. What did my friends love there?',
   'Add my last five trips to Postcard.',
   'Import this itinerary into Postcard as a new trip: [paste it]',
   'What did I love in Lisbon? Check my Postcard trips.',
@@ -41,7 +44,7 @@ export default function ConnectorPage() {
     <section className="mt-8 text-base leading-relaxed">
       <h2 className="type-title mb-2">What it can do</h2>
       <ul className="space-y-3">{tools.map(tool => <li key={tool.name}><strong>{tool.title}</strong> <span className="text-sm text-muted">({tool.name})</span><br />{tool.text}</li>)}</ul>
-      <p className="mt-3">It can’t delete anything, change trips you’ve posted, post for you, or see other people’s private plans.</p>
+      <p className="mt-3">It can’t delete anything, change trips you’ve posted, post for you, or see other people’s private plans. Friends’ picks come only from trips they’ve posted.</p>
     </section>
 
     <section className="mt-8 text-base leading-relaxed">
@@ -50,8 +53,14 @@ export default function ConnectorPage() {
     </section>
 
     <section className="mt-8 text-base leading-relaxed">
+      <h2 className="type-title mb-2">So it remembers Postcard</h2>
+      <p>Assistants can’t remind you on their own, but they follow standing instructions. Paste this into your assistant’s custom instructions, or ask it to remember it:</p>
+      <p className="panel-inset mt-2 select-all p-3 text-sm">{ASSISTANT_HABIT}</p>
+    </section>
+
+    <section className="mt-8 text-base leading-relaxed">
       <h2 className="type-title mb-2">Privacy and disconnecting</h2>
-      <p>The assistant only gets what you allow when you sign in: your own trips, to read them and add places to private plans. Trips it creates stay private until you post them. Postcard doesn’t receive your conversations with the assistant, only the requests it sends to the connector. To disconnect, go to <strong>Profile → Settings</strong>, find it under <strong>Connected assistants</strong> and tap <strong>Disconnect</strong>, or remove it in your assistant’s settings. See our <Link href="/privacy" className="font-semibold text-link underline">Privacy Policy</Link> for details.</p>
+      <p>The assistant only gets what you allow when you sign in: your own trips, to read them and add places to private plans, and the trips people you follow have posted. Trips it creates stay private until you post them. Postcard doesn’t receive your conversations with the assistant, only the requests it sends to the connector. To disconnect, go to <strong>Profile → Settings</strong>, find it under <strong>Connected assistants</strong> and tap <strong>Disconnect</strong>, or remove it in your assistant’s settings. See our <Link href="/privacy" className="font-semibold text-link underline">Privacy Policy</Link> for details.</p>
     </section>
 
     <section className="mt-8 text-base leading-relaxed">

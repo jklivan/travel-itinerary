@@ -7,18 +7,30 @@ import { importedPlaces, type ImportedPlace } from '@/lib/planImport'
 import { isDate } from '@/lib/placeDates'
 import { startPlan } from '@/actions/planning'
 import { importIntoPlan } from '@/actions/planImport'
+import { postedPlaces } from '@/lib/planner/tools/places'
 
 // New trips per person per 24 hours through import_trip (a runaway assistant can't run up AI costs).
 const DAILY_TRIP_LIMIT = 25
 
 // What an AI assistant can do with someone's Postcard account through the connector (api/mcp): read their trips,
-// and start private plans or add places to them. Nothing here posts, deletes or messages anyone.
+// what their friends loved somewhere, and start private plans or add places to them. Nothing here posts, deletes or
+// messages anyone.
 type Args = Record<string, unknown>
 export type ToolResult = { text: string; error?: boolean }
 
 const TYPES = ['hotel', 'food_drink', 'activity', 'transport']
 
 export const TOOLS = [
+  {
+    name: 'friends_picks',
+    title: 'What my friends loved there',
+    description: 'The hotels, restaurants and things to do the person’s friends (people they follow on Postcard) went to in a destination, with each friend’s rating, notes and a link to their trip. When no friends have been, it gives picks from other Postcard travelers instead (marked as such). Call this as soon as the person starts planning or talking about a trip somewhere, before suggesting places of your own, and lead with what friends loved.',
+    inputSchema: { type: 'object', properties: {
+      destination: { type: 'string', description: 'Town, region or country, e.g. "Lisbon" or "Amalfi Coast".', maxLength: 120 },
+      type: { type: 'string', enum: TYPES, description: 'Only hotels, food_drink (restaurants, cafés, bars), activity or transport.' },
+    }, required: ['destination'], additionalProperties: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  },
   {
     name: 'list_trips',
     title: 'List my trips',
@@ -67,6 +79,20 @@ const day = (value: Date) => value.toISOString().slice(0, 10)
 const str = (value: unknown, max: number) => typeof value === 'string' ? value.trim().slice(0, max) : ''
 
 export async function callTool(name: string, args: Args, userId: string, origin: string): Promise<ToolResult> {
+  if (name === 'friends_picks') {
+    const destination = str(args.destination, 120)
+    if (!destination) return { text: 'Name a destination, like "Lisbon".', error: true }
+    const type = str(args.type, 20)
+    let places = await postedPlaces(userId, destination, { friends: true, type })
+    const fromFriends = places.length > 0
+    if (!fromFriends) places = await postedPlaces(userId, destination, { friends: false, type })
+    if (!places.length) return { text: `No one on Postcard has posted places in ${destination} yet. If the person has been, they could add the trip (import_trip) to help their friends.` }
+    // Rated highest first, so the best picks lead.
+    const picks = places.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).slice(0, 60)
+    return { text: JSON.stringify({ destination, from: fromFriends ? 'friends' : 'other Postcard travelers (none of their friends have posted here yet)', count: picks.length,
+      places: picks.map(place => ({ name: place.name, type: place.type, rating: place.rating, notes: place.notes, where: place.where, [fromFriends ? 'friend' : 'traveler']: place.friend, trip: place.trip, trip_url: `${origin}/itinerary/${place.trip_id}` })) }) }
+  }
+
   if (name === 'list_trips') {
     const trips = await prisma.itinerary.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 100, select: {
       id: true, title: true, visibility: true, datesFlexible: true, startDate: true, endDate: true, durationDays: true,
