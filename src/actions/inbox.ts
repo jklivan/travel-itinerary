@@ -3,17 +3,17 @@
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { after } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { cleanInboxName, emailOf, inboxAddress, suggestedInboxName, tokenFrom, validEmail } from '@/lib/inbox'
-import { processInboundEmail, receivedEmail } from '@/lib/inboxImport'
+import { readHeldEmails, receivedEmail } from '@/lib/inboxImport'
 
 // Settings → Send trips to Postcard: turn on or change your address, and choose who besides your account email may
 // send to it.
-type Result = { address?: string; senders?: string[]; error?: string }
+type Result = { address?: string; senders?: string[]; error?: string; reading?: number }
 
 async function signedIn() { return (await auth())?.user?.id ?? null }
+async function requestOrigin() { const head = await headers(); return `${head.get('x-forwarded-proto') ?? 'https'}://${head.get('host')}` }
 
 // Turn the address on: a name from the person's own (jen.rosenthal), with a number added if it's taken.
 export async function createInbox(): Promise<Result> {
@@ -60,11 +60,13 @@ export async function setInboxSender(address: string, allowed: boolean): Promise
   const senders = allowed ? [...new Set([...user.inboxSenders, email])].slice(0, 10) : user.inboxSenders.filter(sender => sender !== email)
   await prisma.user.update({ where: { id: userId }, data: { inboxSenders: senders } })
   revalidatePath('/settings')
-  return { senders }
+  // Anything they sent before being added is read now.
+  return { senders, reading: allowed && senders.includes(email) ? await readHeldEmails(userId, email, await requestOrigin()) : 0 }
 }
 
 // From the "Add … to your Postcard address?" email (inbox/allow): an email from an address they hadn't added. Adds the
-// sender and reads that email now, as if it had just arrived (its reply says what was added).
+// sender and reads that email now (and any others they sent meanwhile), as if it had just arrived (its reply says what
+// was added).
 export async function allowEmailedSender(emailId: string) {
   const userId = await signedIn()
   if (!userId) redirect('/login')
@@ -80,8 +82,7 @@ export async function allowEmailedSender(emailId: string) {
     await prisma.user.update({ where: { id: userId }, data: { inboxSenders: [...user.inboxSenders, sender].slice(-10) } })
     revalidatePath('/settings')
   }
-  const head = await headers()
-  const origin = `${head.get('x-forwarded-proto') ?? 'https'}://${head.get('host')}`
-  after(() => processInboundEmail(emailId, origin).catch(error => console.error('[inbox] failed', error instanceof Error ? error.message : error)))
+  // This email, and anything else they sent before being added.
+  await readHeldEmails(userId, sender, await requestOrigin(), emailId)
   redirect(`/inbox/allow/${emailId}?added=1`)
 }

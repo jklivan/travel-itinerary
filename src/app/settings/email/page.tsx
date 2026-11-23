@@ -6,6 +6,9 @@ import { inboxAddress } from '@/lib/inbox'
 import TripInbox from '@/components/TripInbox'
 import { returnPath } from '@/lib/returnPath'
 
+// Adding an address reads the emails it already sent (actions/inbox setInboxSender), which can take a while.
+export const maxDuration = 300
+
 // Settings → Send trips to Postcard (also the intro's last slide): your own address for confirmations and trip
 // summaries. From the intro, Continue goes back to signing up.
 export default async function EmailSettingsPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {

@@ -15,9 +15,14 @@ export default function TripInbox({ initialAddress, initialSenders, accountEmail
   const [newName, setNewName] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
-  async function run(action: () => Promise<{ address?: string; senders?: string[]; error?: string }>, done?: string) {
+  async function run(action: () => Promise<{ address?: string; senders?: string[]; error?: string; reading?: number }>, done?: string) {
     setBusy(true); setMessage('')
-    try { const result = await action(); if (result.address) setAddress(result.address); if (result.senders) setSenders(result.senders); setMessage(result.error ?? done ?? ''); return !result.error }
+    try {
+      const result = await action(); if (result.address) setAddress(result.address); if (result.senders) setSenders(result.senders)
+      // Emails they'd already sent, held until now.
+      const reading = result.reading ? ` Reading the ${result.reading === 1 ? 'email' : `${result.reading} emails`} they already sent; we’ll email you when the places are in.` : ''
+      setMessage(result.error ?? ((done ?? '') + reading).trim()); return !result.error
+    }
     catch { setMessage('Couldn’t save. Please try again.'); return false } finally { setBusy(false) }
   }
 

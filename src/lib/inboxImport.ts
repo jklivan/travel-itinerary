@@ -15,6 +15,7 @@ import { sendEmail } from '@/lib/email'
 import { startPlan } from '@/actions/planning'
 import { importIntoPlan } from '@/actions/planImport'
 import { noteImported } from '@/lib/importNotice'
+import { after } from 'next/server'
 
 // One email sent to someone's "Send trips to Postcard" address: check it's really from them, read it and its
 // attachments like Import notes or files, and add the places to the private plan it belongs to (or a new one).
@@ -137,11 +138,16 @@ function reply(to: string, subject: string, lines: string[], links: { href: stri
   return sendEmail({ to, subject, text, html })
 }
 
-// From an address the person hasn't added (a travel agent, or an assistant's own address): nothing is read yet. The
-// person is emailed a link that adds the address and reads this email (inbox/allow); the sender, when the email
-// really is from them, hears it's waiting for approval. At most once a day per sender, so a flood of mail sends one
-// note: the marker is a notification with no trip, which no list, count or push shows.
+// Emails held for an address the person hasn't added yet, kept as notifications with no trip (no list, count or push
+// shows those): `inbox_held:<person>:<sender>:<email id>`.
+const heldKey = (userId: string, sender: string) => `inbox_held:${userId}:${sender}:`
+
+// From an address the person hasn't added (a travel agent, or an assistant's own address): nothing is read yet, but
+// the email is held, and read once they add the address (by the emailed link or in Settings). The person is emailed
+// a link that adds it (inbox/allow); the sender, when the email really is from them, hears it's waiting for approval.
+// Those notes go at most once a day per sender, so a flood of mail sends one.
 async function waitForApproval(emailId: string, email: Received, owner: { id: string; email: string }, sender: string, origin: string) {
+  await prisma.notification.createMany({ data: [{ recipientId: owner.id, actorId: owner.id, kind: 'inbox_held', dedupeKey: heldKey(owner.id, sender) + emailId }], skipDuplicates: true }).catch(() => {})
   const day = new Date().toISOString().slice(0, 10)
   const marked = await prisma.notification.createManyAndReturn({ data: [{ recipientId: owner.id, actorId: owner.id, kind: 'inbox_waiting', dedupeKey: `inbox_waiting:${owner.id}:${sender}:${day}` }], skipDuplicates: true }).catch(() => [])
   if (!marked.length) return log('already asked about this sender today')
@@ -153,6 +159,17 @@ async function waitForApproval(emailId: string, email: Received, owner: { id: st
   if (authenticatedFrom(await authenticationResults(email), sender)) await reply(sender, email.subject ? `Re: ${email.subject}` : 'Your email to Postcard', [
     'This Postcard address only takes trips from its owner and the addresses they’ve added. We’ve asked them to add yours. Once they do, this email is read and its places go into their trips; you don’t need to send it again.',
   ])
+}
+
+// They've added `sender`: read what it sent while it wasn't allowed (the last 30 days, up to 10 emails), oldest first,
+// as if each had just arrived. Returns how many it will read; the reading carries on in the background.
+export async function readHeldEmails(userId: string, sender: string, origin: string, alsoEmailId?: string) {
+  const since = new Date(Date.now() - 30 * 86_400_000)
+  const held = await prisma.notification.findMany({ where: { recipientId: userId, kind: 'inbox_held', dedupeKey: { startsWith: heldKey(userId, sender) } }, orderBy: { createdAt: 'asc' }, select: { id: true, dedupeKey: true, createdAt: true } })
+  await prisma.notification.deleteMany({ where: { id: { in: held.map(row => row.id) } } })
+  const ids = [...new Set([...held.filter(row => row.createdAt >= since).map(row => row.dedupeKey.slice(heldKey(userId, sender).length)), ...(alsoEmailId ? [alsoEmailId] : [])])].slice(-10)
+  after(async () => { for (const id of ids) await processInboundEmail(id, origin).catch(error => console.error('[inbox] failed', error instanceof Error ? error.message : error)) })
+  return ids.length
 }
 
 export async function processInboundEmail(emailId: string, origin: string) {
