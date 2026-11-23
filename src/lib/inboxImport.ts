@@ -27,6 +27,9 @@ const MAX_BYTES = 20 * 1024 * 1024
 const INLINE_LOGO_BYTES = 100_000
 const log = (...parts: unknown[]) => console.log('[inbox]', ...parts)
 
+// One received email, from Resend (also for the page that approves an unknown sender).
+export const receivedEmail = (emailId: string) => resend<Received>(`/emails/receiving/${emailId}`)
+
 async function resend<T>(path: string): Promise<T> {
   const response = await fetch(`${RESEND}${path}`, { headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` }, signal: AbortSignal.timeout(20_000) })
   if (!response.ok) throw new Error(`Resend ${path}: ${response.status}`)
@@ -127,14 +130,33 @@ export async function matchingPlan(userId: string, dates: { start: string; end: 
     ?? null
 }
 
+const escape = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
 function reply(to: string, subject: string, lines: string[], links: { href: string; label: string }[] = []) {
   const text = [...lines, ...links.map(link => `${link.label}: ${link.href}`)].join('\n\n')
-  const html = `<div style="font-family:Georgia,serif;color:#1f3354;line-height:1.5">${lines.map(line => `<p>${line.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`).join('')}${links.map(link => `<p><a href="${link.href}" style="color:#1f3354">${link.label}</a></p>`).join('')}<p style="color:#6b7285;font-size:13px">Postcard · Send trips to Postcard</p></div>`
+  const html = `<div style="font-family:Georgia,serif;color:#1f3354;line-height:1.5">${lines.map(line => `<p>${escape(line)}</p>`).join('')}${links.map(link => `<p><a href="${escape(link.href)}" style="color:#1f3354">${escape(link.label)}</a></p>`).join('')}<p style="color:#6b7285;font-size:13px">Postcard · Send trips to Postcard</p></div>`
   return sendEmail({ to, subject, text, html })
 }
 
+// From an address the person hasn't added (a travel agent, or an assistant's own address): nothing is read yet. The
+// person is emailed a link that adds the address and reads this email (inbox/allow); the sender, when the email
+// really is from them, hears it's waiting for approval. At most once a day per sender, so a flood of mail sends one
+// note: the marker is a notification with no trip, which no list, count or push shows.
+async function waitForApproval(emailId: string, email: Received, owner: { id: string; email: string }, sender: string, origin: string) {
+  const day = new Date().toISOString().slice(0, 10)
+  const marked = await prisma.notification.createManyAndReturn({ data: [{ recipientId: owner.id, actorId: owner.id, kind: 'inbox_waiting', dedupeKey: `inbox_waiting:${owner.id}:${sender}:${day}` }], skipDuplicates: true }).catch(() => [])
+  if (!marked.length) return log('already asked about this sender today')
+  await reply(owner.email, `Add ${sender} to your Postcard address?`, [
+    `${sender} sent “${email.subject?.trim() || 'an email'}” to your Postcard address. Postcard only reads mail from you and addresses you’ve added, so nothing from it is in your trips yet.`,
+    'If you know them (your travel agent, say), add their address and Postcard will read this email now. What they send after that goes straight in.',
+    'If you don’t know them, you can ignore this.',
+  ], [{ href: `${origin}/inbox/allow/${emailId}`, label: `Add ${sender} and read this email` }])
+  if (authenticatedFrom(await authenticationResults(email), sender)) await reply(sender, email.subject ? `Re: ${email.subject}` : 'Your email to Postcard', [
+    'This Postcard address only takes trips from its owner and the addresses they’ve added. We’ve asked them to add yours. Once they do, this email is read and its places go into their trips; you don’t need to send it again.',
+  ])
+}
+
 export async function processInboundEmail(emailId: string, origin: string) {
-  const email = await resend<Received>(`/emails/receiving/${emailId}`)
+  const email = await receivedEmail(emailId)
   const token = tokenFrom(email.to ?? [])
   if (!token) return log('no inbox address in', email.to)
   const user = await prisma.user.findUnique({ where: { inboxToken: token }, select: { id: true, email: true, inboxSenders: true } })
@@ -142,14 +164,16 @@ export async function processInboundEmail(emailId: string, origin: string) {
   const sender = emailOf(email.from ?? '')
   // Only the person themselves (their account email or an address they added), and only if it's really them.
   const allowed = [user.email, ...user.inboxSenders].map(address => address.toLowerCase())
-  if (!allowed.includes(sender)) return log('sender not allowed for this inbox')
+  if (!allowed.includes(sender)) { log('sender not allowed for this inbox'); return waitForApproval(emailId, email, user, sender, origin) }
   const results = await authenticationResults(email)
   if (!authenticatedFrom(results, sender)) return log('sender not authenticated', results.length ? 'results present' : 'no authentication results')
 
   const parts = await readEmail(emailId, email)
   const places = parts.flatMap(part => importedPlaces(part)).slice(0, 200)
   const subject = email.subject ? `Re: ${email.subject}` : 'Your trip in Postcard'
-  if (!places.length) { await reply(sender, subject, ['Postcard couldn’t find any hotels, restaurants or things to do in that email. Send a booking confirmation or a trip summary that names the places and their towns.']); return }
+  // Sent by someone they added (their agent, say): the person hears what came of it too, and the sender gets a short note.
+  const byOther = sender !== user.email.toLowerCase()
+  if (!places.length) { await reply(byOther ? user.email : sender, byOther ? `Nothing found in ${sender}’s email` : subject, ['Postcard couldn’t find any hotels, restaurants or things to do in that email. Send a booking confirmation or a trip summary that names the places and their towns.']); return }
 
   const dates = datesOf(parts, places)
   // This email's own ids: its import and any plan it starts, both found again from one reference in the reply's links.
@@ -175,6 +199,7 @@ export async function processInboundEmail(emailId: string, origin: string) {
   // Bookings for places already in the trip on another day or time: the app asks which is right when it's opened.
   const checks = 'checks' in result && Array.isArray(result.checks) ? result.checks : []
   const checkLine = checks.length ? [`${checks.length === 1 ? `${checks[0]}’s booking is` : `The bookings for ${checks.slice(0, -1).join(', ')} and ${checks.at(-1)} are`} for a different day or time than your trip has. Open Postcard to choose which is right; it moves ${checks.length === 1 ? 'it' : 'them'} if you pick the booking.`] : []
-  await reply(sender, subject, [`Added ${places.length} ${places.length === 1 ? 'place' : 'places'} to ${created ? 'a new private plan, ' : ''}“${plan.title}”. Places already in the trip were updated, not repeated.`,
+  if (byOther) await reply(sender, subject, [`Added ${places.length} ${places.length === 1 ? 'place' : 'places'} to their Postcard trip “${plan.title}”. Thanks!`])
+  await reply(user.email, byOther ? `${sender} added ${places.length === 1 ? 'a place' : 'places'} to “${plan.title}”` : subject, [`Added ${places.length} ${places.length === 1 ? 'place' : 'places'} to ${created ? 'a new private plan, ' : ''}“${plan.title}”. Places already in the trip were updated, not repeated.`,
     ...checkLine, 'Plans stay private until you post them.'], [{ href: `${origin}/plan/${plan.id}`, label: 'Open the trip' }, { href: `${origin}/inbox/${refs.ref}`, label: 'Wrong trip? Move these places, make them their own trip, or undo' }])
 }

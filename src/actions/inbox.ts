@@ -1,9 +1,13 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
-import { cleanInboxName, emailOf, inboxAddress, suggestedInboxName, validEmail } from '@/lib/inbox'
+import { cleanInboxName, emailOf, inboxAddress, suggestedInboxName, tokenFrom, validEmail } from '@/lib/inbox'
+import { processInboundEmail, receivedEmail } from '@/lib/inboxImport'
 
 // Settings → Send trips to Postcard: turn on or change your address, and choose who besides your account email may
 // send to it.
@@ -57,4 +61,27 @@ export async function setInboxSender(address: string, allowed: boolean): Promise
   await prisma.user.update({ where: { id: userId }, data: { inboxSenders: senders } })
   revalidatePath('/settings')
   return { senders }
+}
+
+// From the "Add … to your Postcard address?" email (inbox/allow): an email from an address they hadn't added. Adds the
+// sender and reads that email now, as if it had just arrived (its reply says what was added).
+export async function allowEmailedSender(emailId: string) {
+  const userId = await signedIn()
+  if (!userId) redirect('/login')
+  if (typeof emailId !== 'string' || !/^[\w-]{8,100}$/.test(emailId)) redirect('/settings/email')
+  const [user, email] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { email: true, inboxToken: true, inboxSenders: true } }),
+    receivedEmail(emailId).catch(() => null),
+  ])
+  // Only an email sent to their own address.
+  if (!user?.inboxToken || !email || tokenFrom(email.to ?? []) !== user.inboxToken) redirect(`/inbox/allow/${emailId}?failed=1`)
+  const sender = emailOf(email.from ?? '')
+  if (validEmail(sender) && sender !== user.email.toLowerCase() && !user.inboxSenders.includes(sender)) {
+    await prisma.user.update({ where: { id: userId }, data: { inboxSenders: [...user.inboxSenders, sender].slice(-10) } })
+    revalidatePath('/settings')
+  }
+  const head = await headers()
+  const origin = `${head.get('x-forwarded-proto') ?? 'https'}://${head.get('host')}`
+  after(() => processInboundEmail(emailId, origin).catch(error => console.error('[inbox] failed', error instanceof Error ? error.message : error)))
+  redirect(`/inbox/allow/${emailId}?added=1`)
 }
