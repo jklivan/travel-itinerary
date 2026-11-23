@@ -24,7 +24,7 @@ export const TOOLS = [
   {
     name: 'friends_picks',
     title: 'What my friends loved there',
-    description: 'The hotels, restaurants and things to do the person’s friends (people they follow on Postcard) went to in a destination, with each friend’s rating, notes and a link to their trip. When no friends have been, it gives picks from other Postcard travelers instead (marked as such). Call this as soon as the person starts planning or talking about a trip somewhere, before suggesting places of your own, and lead with what friends loved.',
+    description: 'The hotels, restaurants and things to do the person’s friends (people they follow on Postcard) went to in a destination, with each friend’s rating, notes and a link to their trip. When no friends have been, it gives picks from other Postcard travelers instead (marked as such).',
     inputSchema: { type: 'object', properties: {
       destination: { type: 'string', description: 'Town, region or country, e.g. "Lisbon" or "Amalfi Coast".', maxLength: 120 },
       type: { type: 'string', enum: TYPES, description: 'Only hotels, food_drink (restaurants, cafés, bars), activity or transport.' },
@@ -86,7 +86,7 @@ export async function callTool(name: string, args: Args, userId: string, origin:
     let places = await postedPlaces(userId, destination, { friends: true, type })
     const fromFriends = places.length > 0
     if (!fromFriends) places = await postedPlaces(userId, destination, { friends: false, type })
-    if (!places.length) return { text: `No one on Postcard has posted places in ${destination} yet. If the person has been, they could add the trip (import_trip) to help their friends.` }
+    if (!places.length) return { text: `No one on Postcard has posted places in ${destination} yet.` }
     // Rated highest first, so the best picks lead.
     const picks = places.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).slice(0, 60)
     return { text: JSON.stringify({ destination, from: fromFriends ? 'friends' : 'other Postcard travelers (none of their friends have posted here yet)', count: picks.length,
