@@ -41,7 +41,7 @@ export default function TripInbox({ initialAddress, initialSenders, accountEmail
           <label className="min-w-0 flex-1"><span className="sr-only">Also accept email from</span><input id="inbox-sender" type="email" value={newSender} onChange={event => setNewSender(event.target.value)} placeholder="Also accept from, e.g. your assistant" className="field w-full" /></label>
           <button type="submit" disabled={busy || !newSender.trim()} className="btn btn-outline btn-sm">Add</button>
         </form>
-        <p className="text-xs text-muted">Only email that really comes from these addresses is used. Anything else is ignored.</p>
+        <p className="text-xs text-muted">Only email that really comes from these addresses is used. If someone else sends you a trip, we’ll email you to ask, and read it once you add them.</p>
       </div>
       {!renaming ? <button type="button" onClick={() => { setRenaming(true); setNewName(address.split('@')[0]) }} className="text-sm text-link underline underline-offset-2">Change address</button>
         : <form noValidate className="space-y-2" onSubmit={event => { event.preventDefault(); const value = newName; void run(() => renameInbox(value), 'Address changed.').then(ok => { if (ok) setRenaming(false) }) }}>
