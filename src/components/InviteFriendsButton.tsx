@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { UserPlus } from 'lucide-react'
 
 export const APP_STORE_URL = 'https://apps.apple.com/us/app/postcard-travel/id6800008568'
-const INVITE = `Join me on Postcard, where friends share the places worth going and plan trips together. Get the iPhone app: ${APP_STORE_URL} (or use it on the web at postcardtravel.app)`
+export const INVITE = `Join me on Postcard, where friends share the places worth going and plan trips together. Get the iPhone app: ${APP_STORE_URL} (or use it on the web at postcardtravel.app)`
 
 // Friends → Invite friends: the phone's share sheet (Messages, WhatsApp…) with an invite and the App Store link.
 // Without a share sheet (a computer), a new text message with it; if that can't open either, the invite is copied.

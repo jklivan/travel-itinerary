@@ -4,13 +4,14 @@ import { SUPPORT_EMAIL } from '@/lib/support'
 
 export const metadata: Metadata = { title: 'Privacy Policy — Postcard' }
 
-const UPDATED = 'November 16, 2026'
+const UPDATED = 'November 26, 2026'
 
 const sections: { title: string; body: React.ReactNode }[] = [
   { title: 'What we collect', body: <ul className="list-disc space-y-1 pl-5">
     <li><strong>Your account:</strong> your name, email address, and password (stored only as a secure hash). If you sign in with Google or Apple, we receive your name and email address from them. We do not receive your Google or Apple password, contacts, or any other account data.</li>
     <li><strong>What you share on Postcard:</strong> trips, places, ratings, notes, photos, comments, messages, stories, and saved lists.</li>
     <li><strong>People you connect with:</strong> who you follow and who follows you.</li>
+    <li><strong>Your contacts, only if you ask:</strong> in the iPhone app, Find friends from your contacts sends the email addresses in your contacts to Postcard once, to check which belong to Postcard accounts. They are compared and then discarded: never saved, never used for anything else, and never shared. Names and phone numbers stay on your phone (they’re used there to show who you can invite).</li>
     <li><strong>Planning chats:</strong> messages you send to the Plan with AI assistant and its replies, and lasting things you tell it about how you and the people you travel with like to travel (such as “vegetarian” or “no museums”), which it remembers for later chats. Health details, such as an allergy, are used in that chat and only kept if you ask it to remember them and agree (see our <Link href="/privacy/health-data" className="font-semibold text-link underline">Consumer Health Data Privacy Policy</Link>). You can see and remove what it remembers, or switch remembering off, in <strong>Settings → What Postcard knows about you</strong>.</li>
     <li><strong>Your device:</strong> if you turn on notifications in the iPhone app, a push token so we can send them.</li>
     <li><strong>How you use Postcard:</strong> which pages you open, how long you spend on them, and what you tap, along with your browser or device type. This is linked to your account when you’re signed in.</li>

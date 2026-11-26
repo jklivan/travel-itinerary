@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { revalidatePath } from 'next/cache'
-import { isBlockedBetween } from '@/lib/blocks'
+import { isBlockedBetween, hiddenUserIds } from '@/lib/blocks'
 import { hiddenAccountsFor } from '@/lib/hiddenAccounts'
 import { after } from 'next/server'
 import { createFollowNotification } from '@/lib/notifications'
@@ -91,4 +91,20 @@ export async function searchUsers(query: string): Promise<{ id: string; name: st
     select: { id: true, name: true, image: true },
     take: 10,
   })
+}
+
+// Find friends from your contacts (iPhone app): which of these email addresses belong to Postcard accounts.
+// The addresses are only compared, never saved. Blocked people, test accounts and you are left out.
+export async function findContactsOnPostcard(emails: string[]): Promise<{ id: string; name: string; image: string | null; email: string }[]> {
+  const session = await auth()
+  if (!session?.user?.id || !Array.isArray(emails)) return []
+  const wanted = [...new Set(emails.filter(e => typeof e === 'string').map(e => e.trim().toLowerCase()).filter(e => e.includes('@') && e.length <= 254))].slice(0, 5000)
+  if (!wanted.length) return []
+  const hidden = [session.user.id, ...await hiddenUserIds(session.user.id)]
+  const users = await prisma.user.findMany({
+    where: { email: { in: wanted, mode: 'insensitive' }, id: { notIn: hidden } },
+    select: { id: true, name: true, image: true, email: true },
+    orderBy: { name: 'asc' },
+  })
+  return users.map(u => ({ ...u, email: u.email.toLowerCase() }))
 }

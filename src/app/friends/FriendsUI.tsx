@@ -6,6 +6,7 @@ import { Users, Search, UserPlus } from 'lucide-react'
 import UserAvatar from '@/components/UserAvatar'
 import SearchField from '@/components/ui/SearchField'
 import PeopleList, { type ListedPerson } from '@/components/PeopleList'
+import ContactsFinder from '@/components/ContactsFinder'
 import {
   searchUsers,
   sendFollowRequest,
@@ -76,6 +77,7 @@ export default function FriendsUI({
   const [pendingIds, setPendingIds] = useState(new Set(pendingOutgoing.map((u) => u.id)))
   const [requests, setRequests] = useState(incomingRequests)
   const [followingList, setFollowingList] = useState(following)
+  const [contactMatches, setContactMatches] = useState<User[]>([])
   const [, startTransition] = useTransition()
 
   function followStatus(userId: string): 'none' | 'pending' | 'following' {
@@ -95,7 +97,7 @@ export default function FriendsUI({
   // Both change on screen straight away (saving takes a moment) and change back if the save fails.
   function handleFollow(userId: string) {
     setFollowingIds((prev) => new Set([...prev, userId]))
-    const user = [...nameResults, ...followers].find((u) => u.id === userId)
+    const user = [...nameResults, ...contactMatches, ...followers].find((u) => u.id === userId)
     if (user) setFollowingList((prev) => prev.some((u) => u.id === userId) ? prev : [user, ...prev])
     startTransition(async () => {
       try { await sendFollowRequest(userId) } catch {
@@ -206,6 +208,10 @@ export default function FriendsUI({
           )}
         </div>
       </section>
+
+      <ContactsFinder onMatched={setContactMatches} renderFollow={(user) =>
+        <FollowButton userId={user.id} status={followStatus(user.id)}
+          onFollow={handleFollow} onCancel={handleCancel} onUnfollow={handleUnfollow} />} />
 
       {/* Suggested for you: friends of friends, then the most active travelers. Shown first while you follow no one. */}
       {suggested.length > 0 && <section className={`panel overflow-hidden ${followingList.length ? 'order-last' : ''}`}>
