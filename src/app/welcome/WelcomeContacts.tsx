@@ -3,14 +3,14 @@
 import { useState } from 'react'
 import BottomSheet from '@/components/ui/BottomSheet'
 import PeopleList from '@/components/PeopleList'
-import { FindContactsButton, InviteList } from '@/components/ContactsFinder'
+import { ContactsFootnote, FindContactsButton, InviteList } from '@/components/ContactsFinder'
 import useContactsOnPostcard from '@/components/useContactsOnPostcard'
 
 // Sign-up → Welcome, in the iPhone app: a sheet that pops up to find friends from your contacts. The phone only asks
 // for permission after the tap; then the friends already on Postcard are listed to follow, and the rest to invite.
 // Closing it (Not now, Done, ✕) leaves the Welcome page as it was.
 export default function WelcomeContacts({ viewerId }: { viewerId: string }) {
-  const { available, state, matches, invitees, find } = useContactsOnPostcard()
+  const { available, state, matches, invitees, limited, find } = useContactsOnPostcard()
   const [open, setOpen] = useState(true)
   if (!available || !open) return null
   const done = state === 'done'
@@ -27,7 +27,7 @@ export default function WelcomeContacts({ viewerId }: { viewerId: string }) {
           <PeopleList key={matches.map(m => `${m.id}${m.following}`).join()} people={matches} viewerId={viewerId} bare />
         </>
         : <p className="px-1 text-sm text-muted">None of your contacts are on Postcard yet. Invite a few so you can see each other’s trips.</p>}
-      <div className="-mx-4"><InviteList invitees={invitees} /></div>
+      <div className="-mx-4"><InviteList invitees={invitees} /><ContactsFootnote limited={limited} find={find} /></div>
     </>}
   </BottomSheet>
 }

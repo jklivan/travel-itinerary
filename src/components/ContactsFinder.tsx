@@ -60,6 +60,14 @@ export function FindContactsButton({ state, find, outline = false }: { state: Re
   </>
 }
 
+// After a look: a note when only some contacts were shared, and Look again (after changing that in Settings).
+export function ContactsFootnote({ limited, find }: { limited: boolean; find: () => Promise<unknown> }) {
+  return <div className="px-5 pb-4 pt-3 text-sm text-muted">
+    {limited && <p className="mb-1">You shared only some of your contacts, so only those were checked. To check them all, open the iPhone’s Settings, then Apps, Postcard, Contacts, and choose Full Access.</p>}
+    <button type="button" onClick={() => void find()} className="font-medium text-link underline">Look again</button>
+  </div>
+}
+
 // Friends → From your contacts (iPhone app only). People already here get Follow (Friends' own follow buttons, so
 // they join People you follow); everyone else gets Invite.
 export default function ContactsFinder({ renderFollow, onMatched }: {
@@ -67,7 +75,7 @@ export default function ContactsFinder({ renderFollow, onMatched }: {
   onMatched: (users: ContactMatch[]) => void
 }) {
   const contacts = useContactsOnPostcard()
-  const { available, state, matches, invitees } = contacts
+  const { available, state, matches, invitees, limited } = contacts
   // Friends needs them too (a follow from here joins People you follow), also when the list comes back from earlier.
   useEffect(() => { onMatched(matches) }, [matches, onMatched])
   if (!available) return null
@@ -101,6 +109,7 @@ export default function ContactsFinder({ renderFollow, onMatched }: {
             <p className="text-sm text-brown italic px-5 pt-4">None of your contacts are on Postcard yet. Invite a few below.</p>
           )}
           <InviteList invitees={invitees} />
+          <ContactsFootnote limited={limited} find={contacts.find} />
         </div>
       )}
     </section>

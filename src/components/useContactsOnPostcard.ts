@@ -7,7 +7,7 @@ import { findContactsOnPostcard } from '@/actions/friends'
 export type ContactMatch = { id: string; name: string; image: string | null; following: boolean }
 export type ContactInvitee = { key: string; name: string; phone: string | null; email: string | null }
 
-type Found = { matches: ContactMatch[]; invitees: ContactInvitee[]; emails: string[] }
+type Found = { matches: ContactMatch[]; invitees: ContactInvitee[]; emails: string[]; limited?: boolean }
 
 // The last results, kept on the phone for this session only, so opening someone's profile and coming back shows the
 // list again instead of asking to look again.
@@ -32,6 +32,8 @@ export default function useContactsOnPostcard() {
   const [state, setState] = useState<'idle' | 'loading' | 'denied' | 'failed' | 'done'>(kept ? 'done' : 'idle')
   const [matches, setMatches] = useState<ContactMatch[]>(kept?.matches ?? [])
   const [invitees, setInvitees] = useState<ContactInvitee[]>(kept?.invitees ?? [])
+  // iOS lets people share only some contacts (Select Contacts); then only those are checked.
+  const [limited, setLimited] = useState(kept?.limited ?? false)
 
   // Back from a profile: the kept list, with who you follow brought up to date (you may have followed them there).
   useEffect(() => {
@@ -50,6 +52,7 @@ export default function useContactsOnPostcard() {
       const { Contacts } = await import('@capacitor-community/contacts')
       const permission = await Contacts.requestPermissions()
       if (permission.contacts !== 'granted' && permission.contacts !== 'limited') { setState('denied'); return [] }
+      const someOnly = permission.contacts === 'limited'
       const { contacts } = await Contacts.getContacts({ projection: { name: true, emails: true, phones: true } })
       const people = contacts.map(c => ({
         key: c.contactId,
@@ -66,7 +69,8 @@ export default function useContactsOnPostcard() {
         .sort((a, b) => a.name.localeCompare(b.name))
       setMatches(users)
       setInvitees(others)
-      keepFound({ matches: users, invitees: others, emails: [...new Set(emails)] })
+      setLimited(someOnly)
+      keepFound({ matches: users, invitees: others, emails: [...new Set(emails)], limited: someOnly })
       setState('done')
       return users
     } catch {
@@ -75,5 +79,5 @@ export default function useContactsOnPostcard() {
     }
   }
 
-  return { available, state, matches, invitees, find }
+  return { available, state, matches, invitees, limited, find }
 }
