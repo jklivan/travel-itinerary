@@ -5,9 +5,11 @@ import { prisma } from '@/lib/prisma'
 import { saveTripId } from '@/lib/saveTripReturn'
 import PeopleList from '@/components/PeopleList'
 import { suggestedPeople } from '@/lib/suggestedPeople'
+import WelcomeContacts from './WelcomeContacts'
 
 // Right after signing up: the people they already follow (the five travelers with the most posted trips, followed
-// when the account was made), so the feed isn't empty. Tap to unfollow any of them.
+// when the account was made), so the feed isn't empty. Tap to unfollow any of them. In the iPhone app a sheet pops
+// up first to find friends from their contacts.
 export default async function WelcomePage({ searchParams }: { searchParams: Promise<{ saveTrip?: string }> }) {
   const userId = (await auth())?.user?.id
   if (!userId) redirect('/login?callbackUrl=%2Fwelcome')
@@ -31,5 +33,7 @@ export default async function WelcomePage({ searchParams }: { searchParams: Prom
       ? <PeopleList people={people} viewerId={userId} />
       : <p className="panel p-5 text-sm text-muted">No one has posted a trip yet. Yours could be the first.</p>}
     <Link href={next} className="btn btn-primary mt-6 w-full">Continue</Link>
+    {/* In the iPhone app: a sheet pops up to find friends from their contacts. */}
+    <WelcomeContacts viewerId={userId} />
   </div>
 }

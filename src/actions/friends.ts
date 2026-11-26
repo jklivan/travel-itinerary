@@ -95,7 +95,7 @@ export async function searchUsers(query: string): Promise<{ id: string; name: st
 
 // Find friends from your contacts (iPhone app): which of these email addresses belong to Postcard accounts.
 // The addresses are only compared, never saved. Blocked people, test accounts and you are left out.
-export async function findContactsOnPostcard(emails: string[]): Promise<{ id: string; name: string; image: string | null; email: string }[]> {
+export async function findContactsOnPostcard(emails: string[]): Promise<{ id: string; name: string; image: string | null; email: string; following: boolean }[]> {
   const session = await auth()
   if (!session?.user?.id || !Array.isArray(emails)) return []
   const wanted = [...new Set(emails.filter(e => typeof e === 'string').map(e => e.trim().toLowerCase()).filter(e => e.includes('@') && e.length <= 254))].slice(0, 5000)
@@ -103,8 +103,8 @@ export async function findContactsOnPostcard(emails: string[]): Promise<{ id: st
   const hidden = [session.user.id, ...await hiddenUserIds(session.user.id)]
   const users = await prisma.user.findMany({
     where: { email: { in: wanted, mode: 'insensitive' }, id: { notIn: hidden } },
-    select: { id: true, name: true, image: true, email: true },
+    select: { id: true, name: true, image: true, email: true, followers: { where: { followerId: session.user.id }, select: { status: true } } },
     orderBy: { name: 'asc' },
   })
-  return users.map(u => ({ ...u, email: u.email.toLowerCase() }))
+  return users.map(({ followers, ...u }) => ({ ...u, email: u.email.toLowerCase(), following: followers.length > 0 }))
 }
