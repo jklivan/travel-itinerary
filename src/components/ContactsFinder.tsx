@@ -2,12 +2,18 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { BookUser } from 'lucide-react'
+import { BookUser, Check } from 'lucide-react'
 import UserAvatar from '@/components/UserAvatar'
 import { INVITE } from '@/components/InviteFriendsButton'
 import useContactsOnPostcard, { type ContactInvitee, type ContactMatch } from '@/components/useContactsOnPostcard'
 
 const SHOWN = 25
+// Who's been invited from this phone (contact ids stay on the phone), so Invited ✓ is still there next time.
+const INVITED_KEY = 'postcard-invited-contacts'
+
+function readInvited(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(INVITED_KEY) || '[]')) } catch { return new Set() }
+}
 
 function inviteLink(person: ContactInvitee) {
   if (person.phone) return `sms:${person.phone.replace(/[^\d+]/g, '')}&body=${encodeURIComponent(INVITE)}`
@@ -15,8 +21,15 @@ function inviteLink(person: ContactInvitee) {
 }
 
 // Contacts not on Postcard yet, each with Invite (a text to their number, or an email): the first 25, then Show all.
+// Once tapped it turns into Invited ✓ (still tappable, to send it again).
 export function InviteList({ invitees }: { invitees: ContactInvitee[] }) {
   const [showAll, setShowAll] = useState(false)
+  const [invited, setInvited] = useState(readInvited)
+  function markInvited(key: string) {
+    const next = new Set([...invited, key])
+    setInvited(next)
+    try { localStorage.setItem(INVITED_KEY, JSON.stringify([...next])) } catch {}
+  }
   if (!invitees.length) return null
   return <>
     <p className="field-label px-5 pt-4">Invite to Postcard</p>
@@ -24,7 +37,9 @@ export function InviteList({ invitees }: { invitees: ContactInvitee[] }) {
       {(showAll ? invitees : invitees.slice(0, SHOWN)).map(person => (
         <li key={person.key} className="flex items-center justify-between gap-3 px-5 py-2.5">
           <p className="min-w-0 truncate text-sm text-ink">{person.name}</p>
-          <a href={inviteLink(person)} className="chip shrink-0">Invite</a>
+          <a href={inviteLink(person)} onClick={() => markInvited(person.key)} className="chip shrink-0">
+            {invited.has(person.key) ? <><Check size={14} />Invited</> : 'Invite'}
+          </a>
         </li>
       ))}
     </ul>
