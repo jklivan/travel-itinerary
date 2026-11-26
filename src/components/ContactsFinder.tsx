@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { BookUser, Check } from 'lucide-react'
 import UserAvatar from '@/components/UserAvatar'
@@ -68,11 +68,9 @@ export default function ContactsFinder({ renderFollow, onMatched }: {
 }) {
   const contacts = useContactsOnPostcard()
   const { available, state, matches, invitees } = contacts
+  // Friends needs them too (a follow from here joins People you follow), also when the list comes back from earlier.
+  useEffect(() => { onMatched(matches) }, [matches, onMatched])
   if (!available) return null
-
-  async function find() {
-    onMatched(await contacts.find())
-  }
 
   return (
     <section className="panel overflow-hidden">
@@ -83,7 +81,7 @@ export default function ContactsFinder({ renderFollow, onMatched }: {
       {state !== 'done' ? (
         <div className="p-4">
           <p className="mb-3 text-sm text-brown">See which of your contacts are already on Postcard. Their email addresses are only checked, never saved.</p>
-          <FindContactsButton state={state} find={find} outline />
+          <FindContactsButton state={state} find={contacts.find} outline />
         </div>
       ) : (
         <div>

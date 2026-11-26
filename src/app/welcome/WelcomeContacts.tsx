@@ -24,7 +24,7 @@ export default function WelcomeContacts({ viewerId }: { viewerId: string }) {
       {matches.length > 0
         ? <>
           <p className="mb-2 px-1 text-sm text-muted">{matches.length === 1 ? '1 friend is' : `${matches.length} friends are`} on Postcard. Follow them to see their trips in your feed.</p>
-          <PeopleList people={matches} viewerId={viewerId} bare />
+          <PeopleList key={matches.map(m => `${m.id}${m.following}`).join()} people={matches} viewerId={viewerId} bare />
         </>
         : <p className="px-1 text-sm text-muted">None of your contacts are on Postcard yet. Invite a few so you can see each other’s trips.</p>}
       <div className="-mx-4"><InviteList invitees={invitees} /></div>
