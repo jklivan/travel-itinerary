@@ -55,6 +55,8 @@ export function FindContactsButton({ state, find, outline = false }: { state: Re
     <button type="button" onClick={() => void find()} disabled={state === 'loading'} className={`btn ${outline ? 'btn-outline' : 'btn-primary'} w-full`}>
       <BookUser size={18} />{state === 'loading' ? 'Looking…' : 'Find friends from your contacts'}
     </button>
+    {/* iOS asks next: Share All Contacts or Select Contacts. Say what each means here (the choice stays theirs). */}
+    {state === 'idle' && <p className="mt-3 text-sm text-muted">Next, your iPhone asks which contacts to share. To have Postcard search all of them, tap <strong className="font-semibold text-ink">Share All Contacts</strong>. Otherwise, tap <strong className="font-semibold text-ink">Select Contacts</strong> and choose the ones you want it to search.</p>}
     {state === 'denied' && <p role="status" className="mt-3 text-sm text-muted">Postcard can’t see your contacts. To allow it, open the iPhone’s Settings, then Apps, Postcard, Contacts.</p>}
     {state === 'failed' && <p role="status" className="mt-3 text-sm text-danger">Something went wrong reading your contacts. Try again.</p>}
   </>
